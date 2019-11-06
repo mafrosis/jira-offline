@@ -1,0 +1,12 @@
+version: '3'
+
+services:
+  jira:
+    image: mafrosis/jira:dev
+    build:
+      context: .
+    entrypoint: python3 jira-auto.py
+    working_dir: /srv/app
+    volumes:
+      - ./:/srv/app
+      - /srv/app/.git

@@ -1,12 +1,5 @@
 #! /usr/bin/env python3
 
-# PREREQS / ASSUMPTIONS
-#
-# Supports only tickets from a single JIRA project
-# Username/Password available for JIRA
-# Must be on ANZ network to pull//push
-#
-
 from dataclasses import dataclass, field
 import datetime
 import json
