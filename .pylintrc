@@ -1,0 +1,2 @@
+[MESSAGES CONTROL]
+disable=invalid-name, missing-docstring, bad-whitespace, import-error, no-else-return, line-too-long, too-many-arguments, too-many-locals, too-few-public-methods, inconsistent-return-statements
