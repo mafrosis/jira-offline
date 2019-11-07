@@ -27,10 +27,10 @@ class Issue:
     created: str
     creator: str
     description: str
-    fixVersions: list
+    fixVersions: set
     issuetype: str
     key: str
-    labels: list
+    labels: set
     lastViewed: str
     priority: str
     project: str
@@ -46,7 +46,7 @@ class Issue:
     def deserialize(cls, attrs: dict) -> object:
         """
         Deserialize JIRA API dict to dataclass
-        Support decimal, date/datetime & enum
+        Support decimal, date/datetime, enum & set
         """
         data = copy.deepcopy(attrs)
 
@@ -66,13 +66,15 @@ class Issue:
                 data[f.name] = datetime.datetime.strptime(v, '%Y-%m-%d').date()
             elif f.type is datetime.datetime:
                 data[f.name] = datetime.datetime.strptime(v, '%Y-%m-%dT%H:%M:%S.%f')
+            elif f.type is set:
+                data[f.name] = set(v)
 
         return cls(**data)
 
     def serialize(self) -> dict:
         """
         Serialize dataclass to JIRA API dict
-        Support decimal, date/datetime & enum
+        Support decimal, date/datetime, enum & set
         Include only fields with repr=True (dataclass.field default)
         """
         data = {}
@@ -94,13 +96,15 @@ class Issue:
                 data[f.name] = v.value
             elif isinstance(v, (datetime.date, datetime.datetime)):
                 data[f.name] = v.isoformat()
+            elif isinstance(v, set):
+                data[f.name] = list(v)
             else:
                 data[f.name] = v
 
         return data
 
 
-class Jira:
+class Jira():
     _jira = None
     _issues:dict = None
 
@@ -152,9 +156,9 @@ class Jira:
         """
         Convert raw JSON from JIRA API to a dataclass object
         """
-        fixVersions = []
+        fixVersions = set()
         if issue.fields.fixVersions:
-            fixVersions = [f.name for f in issue.fields.fixVersions]
+            fixVersions = {f.name for f in issue.fields.fixVersions}
 
         return Issue.deserialize({
             'assignee': issue.fields.assignee.name if issue.fields.assignee else None,
