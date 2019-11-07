@@ -1,4 +1,5 @@
 click
 jira
 pandas
+tabulate
 urllib3
