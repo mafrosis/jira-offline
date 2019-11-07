@@ -1,3 +1,4 @@
+import collections.abc
 import copy
 import dataclasses
 from dataclasses import dataclass, field
@@ -108,9 +109,30 @@ class Issue:
         return data
 
 
-class Jira():
+class Jira(collections.abc.MutableMapping):
     _jira = None
-    _issues:dict = None
+
+    def __init__(self, *args, **kwargs):
+        self.store = dict()
+        self.update(dict(*args, **kwargs))
+
+    def __getitem__(self, key):
+        return self.store[self.__keytransform__(key)]
+
+    def __setitem__(self, key, value):
+        self.store[self.__keytransform__(key)] = value
+
+    def __delitem__(self, key):
+        del self.store[self.__keytransform__(key)]
+
+    def __iter__(self):
+        return iter(self.store)
+
+    def __len__(self):
+        return len(self.store)
+
+    def __keytransform__(self, key):  # pylint: disable=no-self-use
+        return key
 
     def _connect(self):
         if self._jira:
@@ -144,16 +166,16 @@ class Jira():
 
         logger.info(f'Retrieved {len(data)} tickets')
 
-        # update changed issues
+        # add/update all issues into self
         for issue in data:
-            self._issues[issue.key] = self._raw_issue_to_object(issue)
+            self[issue.key] = self._raw_issue_to_object(issue)
 
         # dump issues to JSON cache
         json.dump(
-            {k:v.serialize() for k,v in self._issues.items()},
+            {k:v.serialize() for k,v in self.items()},
             open('issue_cache.json', 'w')
         )
-        return self._issues
+        return self
 
     def _raw_issue_to_object(self, issue):  # pylint: disable=no-self-use
         """
@@ -191,22 +213,18 @@ class Jira():
         """
         if not os.path.exists('issue_cache.json'):
             # first run; cache file doesn't exist
-            self._issues = self.pull_issues()
+            self.pull_issues()
         else:
             # load from cache file
-            self._issues = {
-                k:Issue.deserialize(v)
-                for k,v in json.load(open('issue_cache.json')).items()
-            }
+            for k,v in json.load(open('issue_cache.json')).items():
+                self.__setitem__(k, Issue.deserialize(v))
 
         return self.to_frame()
 
-    def to_frame(self):
+    def to_frame(self) -> pd.DataFrame:
         """
-        Convert class variable to pandas DataFrame
+        Convert self (aka a dict) into pandas DataFrame
         """
-        df = pd.DataFrame.from_dict(
-            {key: issue.__dict__ for key, issue in self._issues.items()}, orient='index'
-        )
+        df = pd.DataFrame.from_dict({k:v.__dict__ for k,v in self.items()}, orient='index')
         df = df[ (df.issuetype != 'Delivery Risk') & (df.issuetype != 'Ops/Introduced Risk') ]
         return df
