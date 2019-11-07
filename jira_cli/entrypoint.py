@@ -39,7 +39,8 @@ def cli(verbose: bool=False, debug: bool=False):
 def cli_pull():
     '''Fetch and cache all JIRA issues'''
     dtstart = datetime.datetime.now()
-    Jira.pull_issues()
+    jira = Jira()
+    jira.pull_issues()
     print('Query time: {}'.format(datetime.datetime.now() - dtstart))
 
 @cli.group(name='stats')
@@ -49,21 +50,24 @@ def cli_group_stats():
 @cli_group_stats.command(name='issuetype')
 def cli_stats_issuetype():
     '''Stats on issue type'''
-    df = Jira.load_issues()
+    jira = Jira()
+    df = jira.load_issues()
     aggregated_issuetype = df.groupby([df['issuetype']]).size().to_frame(name='count')
     _print_table(aggregated_issuetype)
 
 @cli_group_stats.command(name='status')
 def cli_stats_status():
     '''Stats on ticket status'''
-    df = Jira.load_issues()
+    jira = Jira()
+    df = jira.load_issues()
     aggregated_status = df.groupby([df['status']]).size().to_frame(name='count')
     _print_table(aggregated_status)
 
 @cli_group_stats.command(name='fixversions')
 def cli_stats_fixversions():
     '''Stats on ticket fixversions'''
-    df = Jira.load_issues()
+    jira = Jira()
+    df = jira.load_issues()
     df['fixVersions'] = df['fixVersions'].apply(lambda x: ','.join(x) if x else '')
     aggregated_fixVersions = df.groupby([df['fixVersions']]).size().to_frame(name='count')
     _print_table(aggregated_fixVersions)
@@ -83,7 +87,8 @@ def cli_group_lint(ctx, fix=False):
 @click.pass_context
 def cli_group_lint_fixversions(ctx):
     '''Lint on missing fixVersions field'''
-    df = Jira.load_issues()
+    jira = Jira()
+    df = jira.load_issues()
 
     if ctx.obj.fix:
         logger.error('Not currently implemented')

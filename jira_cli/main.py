@@ -11,7 +11,7 @@ import urllib3
 
 import pandas as pd
 
-import jira
+import jira as mod_jira
 
 
 USERNAME = ''
@@ -112,33 +112,31 @@ class Jira():
     _jira = None
     _issues:dict = None
 
-    @classmethod
-    def connect(cls):
-        if cls._jira:
-            return cls._jira
+    def _connect(self):
+        if self._jira:
+            return self._jira
 
         # no insecure cert warnings
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-        cls._jira = jira.JIRA(
+        self._jira = mod_jira.JIRA(
             options={'server': JIRA_HOSTNAME,'verify': False},
             basic_auth=(USERNAME, PASSWORD)
         )
-        return cls._jira
+        return self._jira
 
-    @classmethod
-    def pull_issues(cls):
-        cls.connect()
+    def pull_issues(self):
+        self._connect()
 
         # load existing issue data from cache
-        cls.load_issues()
+        self.load_issues()
 
         data = []
         page = 0
 
         while True:
             start = page * 50
-            issues = cls._jira.search_issues(f'project=CNPS', start, 50)
+            issues = self._jira.search_issues(f'project=CNPS', start, 50)
             if len(issues) == 0:
                 break
             data += issues
@@ -148,17 +146,16 @@ class Jira():
 
         # update changed issues
         for issue in data:
-            cls._issues[issue.key] = cls._raw_issue_to_object(issue)
+            self._issues[issue.key] = self._raw_issue_to_object(issue)
 
         # dump issues to JSON cache
         json.dump(
-            {k:v.serialize() for k,v in cls._issues.items()},
+            {k:v.serialize() for k,v in self._issues.items()},
             open('issue_cache.json', 'w')
         )
-        return cls._issues
+        return self._issues
 
-    @classmethod
-    def _raw_issue_to_object(cls, issue):
+    def _raw_issue_to_object(self, issue):  # pylint: disable=no-self-use
         """
         Convert raw JSON from JIRA API to a dataclass object
         """
@@ -187,31 +184,29 @@ class Jira():
             'updated': issue.fields.updated,
         })
 
-    @classmethod
-    def load_issues(cls) -> pd.DataFrame:
+    def load_issues(self) -> pd.DataFrame:
         """
         Load issues from JSON cache file, and store as class variable
         return DataFrame of entire dataset
         """
         if not os.path.exists('issue_cache.json'):
             # first run; cache file doesn't exist
-            cls._issues = cls.pull_issues()
+            self._issues = self.pull_issues()
         else:
             # load from cache file
-            cls._issues = {
+            self._issues = {
                 k:Issue.deserialize(v)
                 for k,v in json.load(open('issue_cache.json')).items()
             }
 
-        return Jira.to_frame()
+        return self.to_frame()
 
-    @classmethod
-    def to_frame(cls):
+    def to_frame(self):
         """
         Convert class variable to pandas DataFrame
         """
         df = pd.DataFrame.from_dict(
-            {key: issue.__dict__ for key, issue in cls._issues.items()}, orient='index'
+            {key: issue.__dict__ for key, issue in self._issues.items()}, orient='index'
         )
         df = df[ (df.issuetype != 'Delivery Risk') & (df.issuetype != 'Ops/Introduced Risk') ]
         return df
