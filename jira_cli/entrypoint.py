@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import datetime
 import logging
 
@@ -67,14 +68,27 @@ def cli_stats_fixversions():
     aggregated_fixVersions = df.groupby([df['fixVersions']]).size().to_frame(name='count')
     _print_table(aggregated_fixVersions)
 
+@dataclass
+class LintParams:
+    fix: bool
+
 @cli.group(name='lint')
-def cli_group_lint():
+@click.option('--fix', is_flag=True, help='Attempt to fix the errors automatically')
+@click.pass_context
+def cli_group_lint(ctx, fix=False):
     'Report on common mistakes in JIRA issues'
+    ctx.obj = LintParams(fix=fix)
 
 @cli_group_lint.command(name='fixversions')
-def cli_group_lint_fixversions():
+@click.pass_context
+def cli_group_lint_fixversions(ctx):
     '''Lint on missing fixVersions field'''
     df = Jira.load_issues()
+
+    if ctx.obj.fix:
+        logger.error('Not currently implemented')
+        return 1
+
     print('There are {} issues missing the fixVersions field'.format(
         len(df[df['fixVersions'].apply(lambda x: len(x) == 0)])
     ))
