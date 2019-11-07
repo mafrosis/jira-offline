@@ -5,6 +5,7 @@ import datetime
 import decimal
 import enum
 import json
+import logging
 import os
 import urllib3
 
@@ -19,6 +20,9 @@ JIRA_HOSTNAME = 'https://jira.service.anz'
 CUSTOM_FIELD_EPIC_LINK = 'customfield_14182'
 CUSTOM_FIELD_EPIC_NAME = 'customfield_14183'
 CUSTOM_FIELD_ESTIMATE = 'customfield_10002'
+
+logger = logging.getLogger('jira')
+
 
 # pylint: disable=too-many-instance-attributes
 @dataclass
@@ -139,6 +143,8 @@ class Jira():
                 break
             data += issues
             page += 1
+
+        logger.info(f'Retrieved {len(data)} tickets')
 
         # update changed issues
         for issue in data:
