@@ -59,6 +59,15 @@ def cli_stats_status():
     aggregated_status = df.groupby([df['status']]).size().to_frame(name='count')
     _print_table(aggregated_status)
 
+@cli_group_stats.command(name='fixversions')
+def cli_stats_fixversions():
+    '''Stats on ticket fixversions'''
+    df = Jira.load_issues()
+    df['fixVersions'] = df['fixVersions'].apply(lambda x: ','.join(x) if x else '')
+    aggregated_fixVersions = df.groupby([df['fixVersions']]).size().to_frame(name='count')
+    _print_table(aggregated_fixVersions)
+
+
 def _print_table(df):
     '''Helper to pretty print dataframes'''
     print(tabulate(df, headers='keys', tablefmt='psql'))
