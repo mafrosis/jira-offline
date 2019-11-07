@@ -67,6 +67,18 @@ def cli_stats_fixversions():
     aggregated_fixVersions = df.groupby([df['fixVersions']]).size().to_frame(name='count')
     _print_table(aggregated_fixVersions)
 
+@cli.group(name='lint')
+def cli_group_lint():
+    'Report on common mistakes in JIRA issues'
+
+@cli_group_lint.command(name='fixversions')
+def cli_group_lint_fixversions():
+    '''Lint on missing fixVersions field'''
+    df = Jira.load_issues()
+    print('There are {} issues missing the fixVersions field'.format(
+        len(df[df['fixVersions'].apply(lambda x: len(x) == 0)])
+    ))
+
 
 def _print_table(df):
     '''Helper to pretty print dataframes'''
