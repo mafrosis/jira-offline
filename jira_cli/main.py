@@ -15,9 +15,6 @@ import pandas as pd
 import jira as mod_jira
 
 
-USERNAME = ''
-PASSWORD = ''
-JIRA_HOSTNAME = 'https://jira.service.anz'
 CUSTOM_FIELD_EPIC_LINK = 'customfield_14182'
 CUSTOM_FIELD_EPIC_NAME = 'customfield_14183'
 CUSTOM_FIELD_ESTIMATE = 'customfield_10002'
@@ -111,6 +108,7 @@ class Issue:
 
 class Jira(collections.abc.MutableMapping):
     _jira = None
+    config = None
 
     def __init__(self, *args, **kwargs):
         self.store = dict()
@@ -134,16 +132,23 @@ class Jira(collections.abc.MutableMapping):
     def __keytransform__(self, key):  # pylint: disable=no-self-use
         return key
 
-    def _connect(self):
-        if self._jira:
+    def _connect(self, config=None):
+        if config is None and self.config is None:
+            raise Exception('Jira object not configured')
+
+        if self._jira and self.config:
             return self._jira
 
         # no insecure cert warnings
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+        # cache config object
+        if config:
+            self.config = config
+
         self._jira = mod_jira.JIRA(
-            options={'server': JIRA_HOSTNAME,'verify': False},
-            basic_auth=(USERNAME, PASSWORD)
+            options={'server': 'https://{}'.format(self.config.hostname), 'verify': False},
+            basic_auth=(self.config.username, self.config.password),
         )
         return self._jira
 

@@ -5,6 +5,7 @@ import logging
 import click
 from tabulate import tabulate
 
+from jira_cli.config import load_config
 from jira_cli.main import Jira
 
 
@@ -40,6 +41,7 @@ def cli_pull():
     '''Fetch and cache all JIRA issues'''
     dtstart = datetime.datetime.now()
     jira = Jira()
+    jira.config = load_config()
     jira.pull_issues()
     print('Query time: {}'.format(datetime.datetime.now() - dtstart))
 

@@ -1,5 +1,7 @@
 click
 jira
 pandas
+pytest
+requests
 tabulate
 urllib3
