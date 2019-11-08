@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 import json
 import os
 import getpass
@@ -18,6 +18,15 @@ class AppConfig:
     username: str = field(default=None)
     password: str = field(default=None)
     hostname: str = field(default='jira.service.anz')
+    last_updated: str = field(default=None)
+
+    def write_to_disk(self):
+        config_dir = os.path.join(
+            os.environ.get('XDG_CONFIG_HOME', os.path.join(Path.home(), '.config')), 'jira-cli'
+        )
+        config_filepath = os.path.join(config_dir, 'app.json')
+        json.dump(asdict(self), open(config_filepath, 'w'))
+
 
 def load_config():
     config_dir = os.path.join(
@@ -45,7 +54,7 @@ def load_config():
             Jira()._connect(config)  # pylint: disable=protected-access
 
             # on successful connect to JIRA API; write config to local file
-            json.dump(config.__dict__, open(config_filepath, 'w'))
+            config.write_to_disk()
 
         except requests.exceptions.ConnectionError:
             logger.error('Failed connecting to %s', config.hostname)

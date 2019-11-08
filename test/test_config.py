@@ -12,6 +12,7 @@ from jira_cli.config import AppConfig, load_config
     ('username', 'test'),
     ('password', 'egg'),
     ('hostname', 'jira'),
+    ('last_updated', 2019),
 ])
 @mock.patch('jira_cli.config.json')
 @mock.patch('jira_cli.config.os')
@@ -32,13 +33,12 @@ def test_load_config__config_file_exists(mock_open, mock_os, mock_json, config_p
     assert getattr(conf, config_property) == value
 
 
+@mock.patch('jira_cli.config.AppConfig', spec=AppConfig)
 @mock.patch('jira_cli.config.Jira')
 @mock.patch('jira_cli.config.getpass')
-@mock.patch('jira_cli.config.json')
 @mock.patch('jira_cli.config.os')
 @mock.patch('builtins.input')
-@mock.patch('builtins.open')
-def test_load_config__not_config_file_exists_input_ok(mock_open, mock_input, mock_os, mock_json, mock_getpass, mock_jira_class):
+def test_load_config__not_config_file_exists_input_ok(mock_input, mock_os, mock_getpass, mock_jira_class, mock_appconfig_class):
     """
     Test no config file exists triggers:
         - input calls
@@ -56,19 +56,19 @@ def test_load_config__not_config_file_exists_input_ok(mock_open, mock_input, moc
     assert mock_getpass.getpass.called
     assert mock_jira_class.called  # class instantiated
     assert mock_jira_class.return_value._connect.called
-    assert mock_json.dump.called
+    assert mock_appconfig_class.called  # class instantiated
+    assert mock_appconfig_class.return_value.write_to_disk.called
     assert conf.username == 'test'
     assert conf.password == 'egg'
     assert conf.hostname == 'jira.service.anz'
 
 
+@mock.patch('jira_cli.config.AppConfig', spec=AppConfig)
 @mock.patch('jira_cli.config.Jira')
 @mock.patch('jira_cli.config.getpass')
-@mock.patch('jira_cli.config.json')
 @mock.patch('jira_cli.config.os')
 @mock.patch('builtins.input')
-@mock.patch('builtins.open')
-def test_load_config__not_config_file_exists_input_bad(mock_open, mock_input, mock_os, mock_json, mock_getpass, mock_jira_class):
+def test_load_config__not_config_file_exists_input_bad(mock_input, mock_os, mock_getpass, mock_jira_class, mock_appconfig_class):
     """
     Test no config file exists triggers:
         - input calls
@@ -89,5 +89,6 @@ def test_load_config__not_config_file_exists_input_bad(mock_open, mock_input, mo
     assert mock_getpass.getpass.called
     assert mock_jira_class.called  # class instantiated
     assert mock_jira_class.return_value._connect.called
-    assert not mock_json.dump.called
+    assert mock_appconfig_class.called  # class instantiated
+    assert not mock_appconfig_class.return_value.write_to_disk.called
     assert conf.hostname is None

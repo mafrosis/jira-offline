@@ -157,18 +157,27 @@ class Jira(collections.abc.MutableMapping):
     def pull_issues(self):
         self._connect()
 
-        # load existing issue data from cache
-        self.load_issues()
+        if self.config.last_updated is None:
+            # first/forced load; cache must be empty
+            last_updated = '2010-01-01 00:00'
+            logger.info('Querying for all Jira issues')
+        else:
+            # load existing issue data from cache
+            self.load_issues()
+            last_updated = self.config.last_updated
+            logger.info('Querying for Jira issues since %s', last_updated)
 
         page = 0
 
+        jql = f'project=CNPS AND updated > "{last_updated}"'
+
         # single quick query to get total number of issues
-        head = self._jira.search_issues(f'project=CNPS', maxResults=1)
+        head = self._jira.search_issues(jql, maxResults=1)
 
         with tqdm(total=head.total, unit=' issues') as pbar:
             while True:
-                start = page * 20
-                issues = self._jira.search_issues(f'project=CNPS', start, 20)
+                start = page * 25
+                issues = self._jira.search_issues(jql, start, 25)
                 if len(issues) == 0:
                     break
                 page += 1
@@ -187,6 +196,11 @@ class Jira(collections.abc.MutableMapping):
             {k:v.serialize() for k,v in self.items()},
             open('issue_cache.json', 'w')
         )
+
+        # cache the last_updated value
+        self.config.last_updated = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
+        self.config.write_to_disk()
+
         return self
 
     def _raw_issue_to_object(self, issue):  # pylint: disable=no-self-use
