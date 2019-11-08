@@ -14,6 +14,8 @@ import pandas as pd
 
 import jira as mod_jira
 
+from tqdm import tqdm
+
 
 CUSTOM_FIELD_EPIC_LINK = 'customfield_14182'
 CUSTOM_FIELD_EPIC_NAME = 'customfield_14183'
@@ -158,22 +160,27 @@ class Jira(collections.abc.MutableMapping):
         # load existing issue data from cache
         self.load_issues()
 
-        data = []
         page = 0
 
-        while True:
-            start = page * 50
-            issues = self._jira.search_issues(f'project=CNPS', start, 50)
-            if len(issues) == 0:
-                break
-            data += issues
-            page += 1
+        # single quick query to get total number of issues
+        head = self._jira.search_issues(f'project=CNPS', maxResults=1)
 
-        logger.info(f'Retrieved {len(data)} tickets')
+        with tqdm(total=head.total, unit=' issues') as pbar:
+            while True:
+                start = page * 20
+                issues = self._jira.search_issues(f'project=CNPS', start, 20)
+                if len(issues) == 0:
+                    break
+                page += 1
 
-        # add/update all issues into self
-        for issue in data:
-            self[issue.key] = self._raw_issue_to_object(issue)
+                # add/update all issues into self
+                for issue in issues:
+                    self[issue.key] = self._raw_issue_to_object(issue)
+
+                # update progress
+                pbar.update(len(issues))
+
+        logger.info('Retrieved %s issues', pbar.total)
 
         # dump issues to JSON cache
         json.dump(

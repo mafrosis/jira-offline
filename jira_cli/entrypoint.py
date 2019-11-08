@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-import datetime
 import logging
 
 import click
@@ -39,11 +38,9 @@ def cli(verbose: bool=False, debug: bool=False):
 @cli.command(name='pull')
 def cli_pull():
     '''Fetch and cache all JIRA issues'''
-    dtstart = datetime.datetime.now()
     jira = Jira()
     jira.config = load_config()
     jira.pull_issues()
-    print('Query time: {}'.format(datetime.datetime.now() - dtstart))
 
 @cli.group(name='stats')
 def cli_group_stats():
