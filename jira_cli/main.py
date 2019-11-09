@@ -245,9 +245,10 @@ class Jira(collections.abc.MutableMapping):
             for k,v in json.load(open('issue_cache.json')).items():
                 self.__setitem__(k, Issue.deserialize(v))
 
-        return self.to_frame()
+        return self.df
 
-    def to_frame(self) -> pd.DataFrame:
+    @property
+    def df(self) -> pd.DataFrame:
         """
         Convert self (aka a dict) into pandas DataFrame
         """
