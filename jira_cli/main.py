@@ -192,10 +192,7 @@ class Jira(collections.abc.MutableMapping):
         logger.info('Retrieved %s issues', pbar.total)
 
         # dump issues to JSON cache
-        json.dump(
-            {k:v.serialize() for k,v in self.items()},
-            open('issue_cache.json', 'w')
-        )
+        self.write_issues()
 
         # cache the last_updated value
         self.config.last_updated = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
@@ -243,9 +240,18 @@ class Jira(collections.abc.MutableMapping):
         else:
             # load from cache file
             for k,v in json.load(open('issue_cache.json')).items():
-                self.__setitem__(k, Issue.deserialize(v))
+                self[k] = Issue.deserialize(v)
 
         return self.df
+
+    def write_issues(self):
+        """
+        Dump issues to JSON cache file
+        """
+        json.dump(
+            {k:v.serialize() for k,v in self.items()},
+            open('issue_cache.json', 'w')
+        )
 
     @property
     def df(self) -> pd.DataFrame:
