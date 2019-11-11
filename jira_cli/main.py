@@ -154,10 +154,10 @@ class Jira(collections.abc.MutableMapping):
         )
         return self._jira
 
-    def pull_issues(self):
+    def pull_issues(self, force=False):
         self._connect()
 
-        if self.config.last_updated is None:
+        if force or self.config.last_updated is None:
             # first/forced load; cache must be empty
             last_updated = '2010-01-01 00:00'
             logger.info('Querying for all Jira issues')
@@ -239,7 +239,7 @@ class Jira(collections.abc.MutableMapping):
         """
         if not os.path.exists('issue_cache.json'):
             # first run; cache file doesn't exist
-            self.pull_issues()
+            self.pull_issues(force=True)
         else:
             # load from cache file
             for k,v in json.load(open('issue_cache.json')).items():
