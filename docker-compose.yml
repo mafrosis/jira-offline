@@ -5,8 +5,7 @@ services:
     image: mafrosis/jira:dev
     build:
       context: .
-    entrypoint: python3 jira-auto.py
-    working_dir: /srv/app
     volumes:
-      - ./:/srv/app
-      - /srv/app/.git
+      - ./:/app
+      - /app/.git
+      - /app/jira_cli.egg-info
