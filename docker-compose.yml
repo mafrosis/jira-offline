@@ -7,5 +7,6 @@ services:
       context: .
     volumes:
       - ./:/app
+      - ./config:/root/.config/jira-cli
       - /app/.git
       - /app/jira_cli.egg-info
