@@ -10,6 +10,7 @@ import logging
 import os
 import urllib3
 
+import dictdiffer
 import pandas as pd
 
 import jira as mod_jira
@@ -46,6 +47,13 @@ class Issue:
     epic_ref: str = field(default=None)
     epic_name: str = field(default=None)
 
+    # local-only dict which represents serialized Issue last seen on JIRA server
+    # this property is not written to cache and is created at runtme from diff_to_upstream
+    server_object: dict = field(default=None, repr=False)
+
+    # patch of current Issue to dict last seen on JIRA server
+    diff_to_upstream: list = field(default=None, repr=False)
+
     @classmethod
     def deserialize(cls, attrs: dict) -> object:
         """
@@ -73,7 +81,16 @@ class Issue:
             elif f.type is set:
                 data[f.name] = set(v)
 
-        return cls(**data)
+        issue = cls(**data)
+
+        if issue.diff_to_upstream is None:
+            issue.diff_to_upstream = []
+
+        # apply the diff_to_upstream patch to the serialized version of the issue, which recreates
+        # the issue dict as last seen on the JIRA server
+        issue.server_object = dictdiffer.patch(issue.diff_to_upstream, issue.serialize())
+
+        return issue
 
     def serialize(self) -> dict:
         """
@@ -104,6 +121,11 @@ class Issue:
                 data[f.name] = list(v)
             else:
                 data[f.name] = v
+
+        if self.server_object:
+            # if this Issue object has a server_object property set, render the diff between self and
+            # the server_object property. This is written to storage to track changes made offline.
+            data['diff_to_upstream'] = list(dictdiffer.diff(data, self.server_object))
 
         return data
 
@@ -259,5 +281,8 @@ class Jira(collections.abc.MutableMapping):
         Convert self (aka a dict) into pandas DataFrame
         """
         df = pd.DataFrame.from_dict({k:v.__dict__ for k,v in self.items()}, orient='index')
+        if df.empty:
+            return df
+        df = df.drop(['server_object', 'diff_to_upstream'], axis=1)
         df = df[ (df.issuetype != 'Delivery Risk') & (df.issuetype != 'Ops/Introduced Risk') ]
         return df

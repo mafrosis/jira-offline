@@ -1,4 +1,5 @@
 click
+dictdiffer
 jira
 pandas
 pytest
