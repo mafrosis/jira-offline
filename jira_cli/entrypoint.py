@@ -35,6 +35,15 @@ def cli(verbose: bool=False, debug: bool=False):
     sh.setFormatter(formatter)
 
 
+@cli.command(name='show')
+@click.argument('key')
+def cli_show(key):
+    '''Pretty print an Issue on the CLI'''
+    jira = Jira()
+    jira.load_issues()
+    print(jira[key])
+
+
 @cli.command(name='pull')
 def cli_pull():
     '''Fetch and cache all JIRA issues'''

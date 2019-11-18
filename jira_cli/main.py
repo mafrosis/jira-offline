@@ -8,6 +8,7 @@ import enum
 import json
 import logging
 import os
+import textwrap
 import urllib3
 
 import dictdiffer
@@ -15,6 +16,7 @@ import pandas as pd
 
 import jira as mod_jira
 
+from tabulate import tabulate
 from tqdm import tqdm
 
 
@@ -128,6 +130,31 @@ class Issue:
             data['diff_to_upstream'] = list(dictdiffer.diff(data, self.server_object))
 
         return data
+
+    def __str__(self):
+        '''Pretty print this Issue'''
+        if self.issuetype == 'Epic':
+            epicdetails = ('Epic Short Name', f'{self.epic_name}')
+        else:
+            epicdetails = ('Epic Ref', f'{self.epic_ref}')
+
+        return tabulate([
+            ('Summary', f'[{self.key}] {self.summary}'),
+            ('Type', self.issuetype),
+            epicdetails,
+            ('Status', self.status),
+            ('Priority', self.priority),
+            ('Assignee', self.assignee),
+            ('Estimate', self.estimate),
+            ('Description', '\n'.join(textwrap.wrap(self.description, width=100))),
+            ('Fix Version', tabulate([('-', v) for v in self.fixVersions], tablefmt='plain')),
+            ('Labels', tabulate([('-', l) for l in self.labels], tablefmt='plain')),
+            ('Reporter', self.reporter),
+            ('Creator', self.creator),
+            ('Created', self.created),
+            ('Updated', self.updated),
+            ('LastViewed', self.lastViewed),
+        ])
 
 
 class Jira(collections.abc.MutableMapping):
