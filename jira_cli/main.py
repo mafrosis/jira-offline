@@ -27,35 +27,8 @@ CUSTOM_FIELD_ESTIMATE = 'customfield_10002'
 logger = logging.getLogger('jira')
 
 
-# pylint: disable=too-many-instance-attributes
 @dataclass
-class Issue:
-    assignee: str
-    created: str
-    creator: str
-    description: str
-    fixVersions: set
-    issuetype: str
-    key: str
-    labels: set
-    lastViewed: str
-    priority: str
-    project: str
-    reporter: str
-    status: str
-    summary: str
-    updated: str
-    estimate: int = field(default=None)
-    epic_ref: str = field(default=None)
-    epic_name: str = field(default=None)
-
-    # local-only dict which represents serialized Issue last seen on JIRA server
-    # this property is not written to cache and is created at runtme from diff_to_upstream
-    server_object: dict = field(default=None, repr=False)
-
-    # patch of current Issue to dict last seen on JIRA server
-    diff_to_upstream: list = field(default=None, repr=False)
-
+class DataclassSerializer:
     @classmethod
     def deserialize(cls, attrs: dict) -> object:
         """
@@ -83,16 +56,7 @@ class Issue:
             elif f.type is set:
                 data[f.name] = set(v)
 
-        issue = cls(**data)
-
-        if issue.diff_to_upstream is None:
-            issue.diff_to_upstream = []
-
-        # apply the diff_to_upstream patch to the serialized version of the issue, which recreates
-        # the issue dict as last seen on the JIRA server
-        issue.server_object = dictdiffer.patch(issue.diff_to_upstream, issue.serialize())
-
-        return issue
+        return cls(**data)
 
     def serialize(self) -> dict:
         """
@@ -123,6 +87,56 @@ class Issue:
                 data[f.name] = list(v)
             else:
                 data[f.name] = v
+
+        return data
+
+
+# pylint: disable=too-many-instance-attributes
+@dataclass
+class Issue(DataclassSerializer):
+    assignee: str
+    created: str
+    creator: str
+    description: str
+    fixVersions: set
+    issuetype: str
+    key: str
+    labels: set
+    lastViewed: str
+    priority: str
+    project: str
+    reporter: str
+    status: str
+    summary: str
+    updated: str
+    estimate: int = field(default=None)
+    epic_ref: str = field(default=None)
+    epic_name: str = field(default=None)
+
+    # local-only dict which represents serialized Issue last seen on JIRA server
+    # this property is not written to cache and is created at runtme from diff_to_upstream
+    server_object: object = field(default=None, repr=False)
+
+    # patch of current Issue to dict last seen on JIRA server
+    diff_to_upstream: list = field(default=None, repr=False)
+
+    @classmethod
+    def deserialize(cls, attrs: dict) -> object:
+        # deserialize supplied dict into an Issue object
+        issue = super().deserialize(attrs)
+
+        if issue.diff_to_upstream is None:
+            issue.diff_to_upstream = []
+
+        # apply the diff_to_upstream patch to the serialized version of the issue, which recreates
+        # the issue dict as last seen on the JIRA server
+        issue.server_object = dictdiffer.patch(issue.diff_to_upstream, issue.serialize())
+
+        return issue
+
+    def serialize(self) -> dict:
+        # serialize self (Issue object) into a dict
+        data = super().serialize()
 
         if self.server_object:
             # if this Issue object has a server_object property set, render the diff between self and
