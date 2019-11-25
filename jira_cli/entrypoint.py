@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 import logging
 
 import click
+import pandas as pd
 from tabulate import tabulate
 
 from jira_cli.config import load_config
@@ -139,6 +140,21 @@ def cli_group_lint_fixversions(ctx):
         print('There are {} issues missing the fixVersions field'.format(
             len(df[df['fixVersions'].apply(lambda x: len(x) == 0)])
         ))
+
+
+@cli.command(name='ls')
+def cli_ls():
+    '''List Issues on the CLI'''
+    jira = Jira()
+    jira.load_issues()
+    _print_list(jira.df)
+
+
+def _print_list(df: pd.DataFrame, width=100):
+    '''Helper to print abbreviated list of issues'''
+    # shorten the summary field for printing
+    df['summary'] = df.loc[:]['summary'].str.slice(0, width)
+    _print_table(df[['issuetype', 'summary', 'assignee', 'updated']])
 
 
 def _print_table(df):
