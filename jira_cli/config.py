@@ -1,4 +1,4 @@
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 import json
 import os
 import getpass
@@ -8,14 +8,14 @@ import sys
 
 import requests
 
-from jira_cli.main import Jira
+from jira_cli.main import DataclassSerializer, Jira
 
 
 logger = logging.getLogger('jira')
 
 
 @dataclass
-class AppConfig:
+class AppConfig(DataclassSerializer):
     username: str = field(default=None)
     password: str = field(default=None)
     hostname: str = field(default='jira.service.anz')
@@ -26,7 +26,9 @@ class AppConfig:
             os.environ.get('XDG_CONFIG_HOME', os.path.join(Path.home(), '.config')), 'jira-cli'
         )
         config_filepath = os.path.join(config_dir, 'app.json')
-        json.dump(asdict(self), open(config_filepath, 'w'))
+
+        with open(config_filepath, 'w') as f:
+            json.dump(self.serialize(), f)
 
 
 def load_config():
@@ -40,7 +42,7 @@ def load_config():
     if os.path.exists(config_filepath):
         try:
             with open(config_filepath) as f:
-                config = AppConfig(**json.load(f))
+                config = AppConfig.deserialize(json.load(f))
         except IsADirectoryError:
             logger.error('There is directory at config path (%s)!', config_filepath)
             sys.exit(1)
