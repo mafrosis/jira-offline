@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import logging
 
 import click
@@ -14,10 +14,21 @@ logger.addHandler(sh)
 logger.setLevel(logging.ERROR)
 
 
+@dataclass
+class LintParams:
+    fix: bool
+
+@dataclass
+class CliParams:
+    verbose: bool = field(default=False)
+    debug: bool = field(default=False)
+    lint: LintParams = field(default=None)
+
 @click.group()
 @click.option('--verbose', '-v', is_flag=True, help='Display INFO level logging')
 @click.option('--debug', '-d', is_flag=True, help='Display DEBUG level logging')
-def cli(verbose: bool=False, debug: bool=False):
+@click.pass_context
+def cli(ctx, verbose: bool=False, debug: bool=False):
     '''Base CLI options'''
     # setup the logger
     formatter = logging.Formatter('%(levelname)s: %(message)s')
@@ -33,6 +44,7 @@ def cli(verbose: bool=False, debug: bool=False):
         formatter = logging.Formatter(f'%(levelname)s: {__name__}:%(lineno)s - %(message)s')
 
     sh.setFormatter(formatter)
+    ctx.obj = CliParams(verbose=verbose, debug=debug)
 
 
 @cli.command(name='show')
@@ -84,16 +96,13 @@ def cli_stats_fixversions():
     aggregated_fixVersions = df.groupby([df['fixVersions']]).size().to_frame(name='count')
     _print_table(aggregated_fixVersions)
 
-@dataclass
-class LintParams:
-    fix: bool
 
 @cli.group(name='lint')
 @click.option('--fix', is_flag=True, help='Attempt to fix the errors automatically')
 @click.pass_context
 def cli_group_lint(ctx, fix=False):
     'Report on common mistakes in JIRA issues'
-    ctx.obj = LintParams(fix=fix)
+    ctx.obj.lint = LintParams(fix=fix)
 
 @cli_group_lint.command(name='fixversions')
 @click.pass_context
@@ -102,7 +111,7 @@ def cli_group_lint_fixversions(ctx):
     jira = Jira()
     df = jira.load_issues()
 
-    if ctx.obj.fix:
+    if ctx.obj.lint.fix:
         # count of all issues missing the fixVersions field
         initial_missing_count = len(df[df.fixVersions.apply(lambda x: len(x) == 0)])
 
