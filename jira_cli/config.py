@@ -4,6 +4,7 @@ import os
 import getpass
 import logging
 from pathlib import Path
+import sys
 
 import requests
 
@@ -40,8 +41,11 @@ def load_config():
         try:
             with open(config_filepath) as f:
                 config = AppConfig(**json.load(f))
-        except (IsADirectoryError, ValueError):
-            pass
+        except IsADirectoryError:
+            logger.error('There is directory at config path (%s)!', config_filepath)
+            sys.exit(1)
+        except ValueError:
+            logger.error('Bad JSON in config file; ignoring')
 
     if not config:
         config = AppConfig()
