@@ -137,9 +137,10 @@ def cli_group_lint_fixversions(ctx):
             initial_missing_count - len(df[df.fixVersions.apply(lambda x: len(x) == 0)])
         ))
     else:
-        print('There are {} issues missing the fixVersions field'.format(
-            len(df[df['fixVersions'].apply(lambda x: len(x) == 0)])
-        ))
+        df_missing = df[df['fixVersions'].apply(lambda x: len(x) == 0)]
+        print(f'There are {len(df_missing)} issues missing the fixVersions field')
+        if ctx.obj.verbose:
+            _print_list(df_missing)
 
 
 @cli.command(name='ls')
