@@ -217,7 +217,7 @@ class Jira(collections.abc.MutableMapping):
         )
         return self._jira
 
-    def pull_issues(self, force=False):
+    def pull_issues(self, force=False, verbose=False):
         self._connect()
 
         if not self.config.projects:
@@ -233,29 +233,51 @@ class Jira(collections.abc.MutableMapping):
             last_updated = self.config.last_updated
             logger.info('Querying for Jira issues since %s', last_updated)
 
-        page = 0
-
         jql = f'project IN ({",".join(self.config.projects)}) AND updated > "{last_updated}"'
 
         # single quick query to get total number of issues
         head = self._jira.search_issues(jql, maxResults=1)
 
-        with tqdm(total=head.total, unit=' issues') as pbar:
+        pbar = None
+
+        def _run(jql, pbar=None):
+            page = 0
+            total = 0
+
             while True:
                 start = page * 25
                 issues = self._jira.search_issues(jql, start, 25)
                 if len(issues) == 0:
                     break
                 page += 1
+                total += len(issues)
 
                 # add/update all issues into self
                 for issue in issues:
                     self[issue.key] = self._raw_issue_to_object(issue)
 
-                # update progress
-                pbar.update(len(issues))
+                if pbar:
+                    # update progress
+                    pbar.update(len(issues))
+                else:
+                    logger.info('Page number %s', page)
+                    df = pd.DataFrame.from_dict(
+                        {issue.key:self._raw_issue_to_object(issue).serialize() for issue in issues},
+                        orient='index'
+                    )
+                    df['summary'] = df.loc[:]['summary'].str.slice(0, 100)
+                    print(tabulate(df[['issuetype', 'summary', 'assignee', 'updated']], headers='keys', tablefmt='psql'))
 
-        logger.info('Retrieved %s issues', pbar.total)
+            return total
+
+        if verbose:
+            total = _run(jql)
+        else:
+            # show progress bar
+            with tqdm(total=head.total, unit=' issues') as pbar:
+                total = _run(jql, pbar)
+
+        logger.info('Retrieved %s issues', total)
 
         # dump issues to JSON cache
         self.write_issues()

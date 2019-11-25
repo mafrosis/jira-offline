@@ -59,14 +59,15 @@ def cli_show(key):
 
 @cli.command(name='pull')
 @click.option('--projects', help='Jira project keys')
-def cli_pull(projects: list=None):
+@click.pass_context
+def cli_pull(ctx, projects: list=None):
     '''Fetch and cache all JIRA issues'''
     if projects:
         projects = set(projects.split(','))
 
     jira = Jira()
     jira.config = load_config(projects)
-    jira.pull_issues()
+    jira.pull_issues(verbose=ctx.obj.verbose)
 
 @cli.group(name='stats')
 def cli_group_stats():
