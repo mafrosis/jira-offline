@@ -45,10 +45,14 @@ def cli_show(key):
 
 
 @cli.command(name='pull')
-def cli_pull():
+@click.option('--projects', help='Jira project keys')
+def cli_pull(projects: list=None):
     '''Fetch and cache all JIRA issues'''
+    if projects:
+        projects = set(projects.split(','))
+
     jira = Jira()
-    jira.config = load_config()
+    jira.config = load_config(projects)
     jira.pull_issues()
 
 @cli.group(name='stats')

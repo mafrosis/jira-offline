@@ -16,8 +16,9 @@ from jira_cli.config import AppConfig, load_config
 ])
 @mock.patch('jira_cli.config.json')
 @mock.patch('jira_cli.config.os')
+@mock.patch('jira_cli.config.sys')
 @mock.patch('builtins.open')
-def test_load_config__config_file_exists(mock_open, mock_os, mock_json, config_property, value):
+def test_load_config__config_file_exists(mock_open, mock_sys, mock_os, mock_json, config_property, value):
     """
     Test existing config file loads correctly into dataclass AppConfig
     """
@@ -37,8 +38,9 @@ def test_load_config__config_file_exists(mock_open, mock_os, mock_json, config_p
 @mock.patch('jira_cli.config.Jira')
 @mock.patch('jira_cli.config.getpass')
 @mock.patch('jira_cli.config.os')
+@mock.patch('jira_cli.config.sys')
 @mock.patch('builtins.input')
-def test_load_config__not_config_file_exists_input_ok(mock_input, mock_os, mock_getpass, mock_jira_class, mock_appconfig_class):
+def test_load_config__not_config_file_exists_input_ok(mock_input, mock_sys, mock_os, mock_getpass, mock_jira_class, mock_appconfig_class):
     """
     Test no config file exists triggers:
         - input calls
@@ -67,8 +69,9 @@ def test_load_config__not_config_file_exists_input_ok(mock_input, mock_os, mock_
 @mock.patch('jira_cli.config.Jira')
 @mock.patch('jira_cli.config.getpass')
 @mock.patch('jira_cli.config.os')
+@mock.patch('jira_cli.config.sys')
 @mock.patch('builtins.input')
-def test_load_config__not_config_file_exists_input_bad(mock_input, mock_os, mock_getpass, mock_jira_class, mock_appconfig_class):
+def test_load_config__not_config_file_exists_input_bad(mock_input, mock_sys, mock_os, mock_getpass, mock_jira_class, mock_appconfig_class):
     """
     Test no config file exists triggers:
         - input calls
@@ -92,3 +95,24 @@ def test_load_config__not_config_file_exists_input_bad(mock_input, mock_os, mock
     assert mock_appconfig_class.called  # class instantiated
     assert not mock_appconfig_class.return_value.write_to_disk.called
     assert conf.hostname is None
+
+
+@mock.patch('jira_cli.config.json')
+@mock.patch('jira_cli.config.os')
+@mock.patch('jira_cli.config.sys')
+@mock.patch('builtins.open')
+def test_load_config__projects_arg_extends_projects_config(mock_open, mock_sys, mock_os, mock_json):
+    """
+    Ensure project IDs passed with --projects param on CLI are merged into the existing
+    config.projects set
+    """
+    # config file already exists
+    mock_os.path.exists.return_value = True
+
+    # projects field is serialized as list type (for JSON-compatibility)
+    mock_json.load.return_value = {'projects': ['CNTS']}
+
+    # pass new project as set type
+    conf = load_config({'EGG'})
+
+    assert conf.projects == {'CNTS', 'EGG'}

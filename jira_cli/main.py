@@ -220,6 +220,9 @@ class Jira(collections.abc.MutableMapping):
     def pull_issues(self, force=False):
         self._connect()
 
+        if not self.config.projects:
+            raise Exception('No projects configured, cannot continue')
+
         if force or self.config.last_updated is None:
             # first/forced load; cache must be empty
             last_updated = '2010-01-01 00:00'
@@ -232,7 +235,7 @@ class Jira(collections.abc.MutableMapping):
 
         page = 0
 
-        jql = f'project=CNPS AND updated > "{last_updated}"'
+        jql = f'project IN ({",".join(self.config.projects)}) AND updated > "{last_updated}"'
 
         # single quick query to get total number of issues
         head = self._jira.search_issues(jql, maxResults=1)

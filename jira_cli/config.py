@@ -20,18 +20,18 @@ class AppConfig(DataclassSerializer):
     password: str = field(default=None)
     hostname: str = field(default='jira.service.anz')
     last_updated: str = field(default=None)
+    projects: set = field(default_factory=set)
 
     def write_to_disk(self):
         config_dir = os.path.join(
             os.environ.get('XDG_CONFIG_HOME', os.path.join(Path.home(), '.config')), 'jira-cli'
         )
         config_filepath = os.path.join(config_dir, 'app.json')
-
         with open(config_filepath, 'w') as f:
             json.dump(self.serialize(), f)
 
 
-def load_config():
+def load_config(projects: set=None):
     config_dir = os.path.join(
         os.environ.get('XDG_CONFIG_HOME', os.path.join(Path.home(), '.config')), 'jira-cli'
     )
@@ -53,6 +53,16 @@ def load_config():
         config = AppConfig()
         config.username = input('Username: ')
         config.password = getpass.getpass('Password: ')
+
+    if projects:
+        # if projects is passed on the CLI, merge it into the config
+        config.projects.update(projects)
+        logger.info('Working with projects %s', ','.join(config.projects))
+
+    if not config.projects:
+        # abort if when there are no projects to work with!
+        logger.error('No projects cached, or passed with --projects')
+        sys.exit(1)
 
     # validate Jira connection details
     if config.username and config.password:
