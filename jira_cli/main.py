@@ -11,6 +11,7 @@ import os
 import textwrap
 import urllib3
 
+import arrow
 import dictdiffer
 import pandas as pd
 
@@ -50,9 +51,9 @@ class DataclassSerializer:
                 # convert string to Enum instance
                 data[f.name] = f.type(v)
             elif f.type is datetime.date:
-                data[f.name] = datetime.datetime.strptime(v, '%Y-%m-%d').date()
+                data[f.name] = arrow.get(v).datetime.date()
             elif f.type is datetime.datetime:
-                data[f.name] = datetime.datetime.strptime(v, '%Y-%m-%dT%H:%M:%S.%f')
+                data[f.name] = arrow.get(v).datetime
             elif f.type is set:
                 data[f.name] = set(v)
 
@@ -95,20 +96,20 @@ class DataclassSerializer:
 @dataclass
 class Issue(DataclassSerializer):
     assignee: str
-    created: str
+    created: datetime.datetime
     creator: str
     description: str
     fixVersions: set
     issuetype: str
     key: str
     labels: set
-    lastViewed: str
+    lastViewed: datetime.datetime
     priority: str
     project: str
     reporter: str
     status: str
     summary: str
-    updated: str
+    updated: datetime.datetime
     estimate: int = field(default=None)
     epic_ref: str = field(default=None)
     epic_name: str = field(default=None)
