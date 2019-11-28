@@ -19,3 +19,25 @@ ISSUE_1 = {
     "epic_name": "",
     "diff_to_upstream": []
 }
+
+ISSUE_2 = {
+    "assignee": "danil1",
+    "created": "2018-09-24T08:44:06.000+1000",
+    "creator": "danil1",
+    "description": "This is a story or issue",
+    "fixVersions": ["0.1"],
+    "issuetype": "Story",
+    "key": "CNTS-72",
+    "labels": [],
+    "lastViewed": None,
+    "priority": "Normal",
+    "project": "CNTS",
+    "reporter": "danil1",
+    "status": "Backlog",
+    "summary": "This is the story summary",
+    "updated": "2019-08-20T16:41:19.000+1000",
+    "estimate": None,
+    "epic_ref": "EPIC-60",
+    "epic_name": "",
+    "diff_to_upstream": []
+}
