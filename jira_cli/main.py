@@ -1,13 +1,12 @@
 from dataclasses import dataclass, field
-import datetime
 import json
 import os
 import urllib3
 
-import click
 import pandas as pd
 
 import jira
+
 
 USERNAME = ''
 PASSWORD = ''
@@ -144,15 +143,3 @@ class Jira:
         )
         df = df[ (df.issuetype != 'Delivery Risk') & (df.issuetype != 'Ops/Introduced Risk') ]
         return df
-
-
-@click.group()
-def cli():
-    '''Base CLI options'''
-
-@cli.command(name='pull')
-def cli_pull():
-    '''Fetch and cache all JIRA issues'''
-    dtstart = datetime.datetime.now()
-    Jira.pull_issues()
-    print('Query time: {}'.format(datetime.datetime.now() - dtstart))

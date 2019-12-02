@@ -31,7 +31,7 @@ setup(
     license=open('LICENSE').read(),
     entry_points={
         'console_scripts': [
-            'jira=jira_cli.main:cli'
+            'jira=jira_cli.entrypoint:cli'
         ]
     },
     classifiers=(
