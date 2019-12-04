@@ -4,6 +4,9 @@ dictdiffer
 jira
 pandas
 pytest
+pytest-cov
+pytest-sugar
+pytest-xdist
 requests
 tabulate
 tqdm
