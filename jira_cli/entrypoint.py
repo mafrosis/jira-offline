@@ -108,12 +108,21 @@ def cli_group_lint(ctx, fix=False):
     ctx.obj.lint = LintParams(fix=fix)
 
 @cli_group_lint.command(name='fixversions')
+@click.option('--words', help='Words to look for in an Epic name, and set in fixVersions. Used with --fix.')
 @click.pass_context
-def cli_group_lint_fixversions(ctx):
+def cli_group_lint_fixversions(ctx, words=None):
     '''
     Lint on missing fixVersions field
     '''
-    initial_missing_count, df = lint_fixversions(fix=ctx.obj.lint.fix)
+    if ctx.obj.lint.fix and not words:
+        raise click.BadParameter('You must pass --words with --fix', ctx)
+
+    if words:
+        if not ctx.obj.lint.fix:
+            logger.warning('Passing --words without --fix has no effect')
+        words = set(words.split(','))
+
+    initial_missing_count, df = lint_fixversions(ctx.obj.lint.fix, words)
 
     if ctx.obj.lint.fix:
         print(f'Updated fixVersions on {initial_missing_count - len(df)} issues')
