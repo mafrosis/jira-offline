@@ -1,4 +1,3 @@
-from typing import Tuple
 import logging
 
 import pandas as pd
@@ -9,9 +8,9 @@ from jira_cli.main import Jira
 logger = logging.getLogger('jira')
 
 
-def fixversions(fix: bool=False, words: list=None) -> Tuple[int, pd.DataFrame]:
+def fixversions(fix: bool=False, words: list=None) -> pd.DataFrame:
     '''
-    Lint on missing fixVersions field
+    Lint on issues missing fixVersions field
 
     Params:
         fix     Flag to indicate if a fix should be applied
@@ -20,12 +19,7 @@ def fixversions(fix: bool=False, words: list=None) -> Tuple[int, pd.DataFrame]:
     jira = Jira()
     df = jira.load_issues()
 
-    initial_missing_count = None
-
     if fix:
-        # count of all issues missing the fixVersions field
-        initial_missing_count = len(df[df.fixVersions.apply(lambda x: len(x) == 0)])
-
         # set arbitrary fixVersion on all relevant epics
         for word in words:
             # add word to fixVersions field on Epics if their epic_name matches
@@ -42,10 +36,8 @@ def fixversions(fix: bool=False, words: list=None) -> Tuple[int, pd.DataFrame]:
                         lambda x: x.add(word)  # pylint: disable=cell-var-from-loop
                     )
 
-        # Write changes to local cache
+        # write updates to disk
         jira.write_issues()
 
     # return dataframe of issues with empty fixversions field
-    df_missing = df[df.fixVersions.apply(lambda x: len(x) == 0)]
-
-    return initial_missing_count, df_missing
+    return df[df.fixVersions.apply(lambda x: len(x) == 0)]

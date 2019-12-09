@@ -16,7 +16,7 @@ ISSUE_1 = {
     "updated": "2019-08-20T16:41:19.000+1000",
     "estimate": None,
     "epic_ref": "EPIC-60",
-    "epic_name": "",
+    "epic_name": "0.1: Epic in version 0.1",
     "diff_to_upstream": []
 }
 
@@ -25,7 +25,7 @@ ISSUE_2 = {
     "created": "2018-09-24T08:44:06.000+1000",
     "creator": "danil1",
     "description": "This is a story or issue",
-    "fixVersions": ["0.1"],
+    "fixVersions": [],
     "issuetype": "Story",
     "key": "CNTS-72",
     "labels": [],
@@ -38,6 +38,6 @@ ISSUE_2 = {
     "updated": "2019-08-20T16:41:19.000+1000",
     "estimate": None,
     "epic_ref": "EPIC-60",
-    "epic_name": "",
+    "epic_name": "0.1: Epic in version 0.1",
     "diff_to_upstream": []
 }

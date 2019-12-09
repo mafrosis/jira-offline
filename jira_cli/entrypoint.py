@@ -122,9 +122,13 @@ def cli_group_lint_fixversions(ctx, words=None):
             logger.warning('Passing --words without --fix has no effect')
         words = set(words.split(','))
 
-    initial_missing_count, df = lint_fixversions(ctx.obj.lint.fix, words)
+    # query issues missing the fixVersions field
+    df = lint_fixversions(fix=False)
+    initial_missing_count = len(df)
 
     if ctx.obj.lint.fix:
+        df = lint_fixversions(ctx.obj.lint.fix, words)
+
         print(f'Updated fixVersions on {initial_missing_count - len(df)} issues')
     else:
         print(f'There are {len(df)} issues missing the fixVersions field')
