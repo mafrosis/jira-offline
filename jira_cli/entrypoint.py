@@ -6,6 +6,7 @@ import pandas as pd
 from tabulate import tabulate
 
 from jira_cli.config import load_config
+from jira_cli.linters import fixversions as lint_fixversions
 from jira_cli.main import Jira
 
 
@@ -109,39 +110,18 @@ def cli_group_lint(ctx, fix=False):
 @cli_group_lint.command(name='fixversions')
 @click.pass_context
 def cli_group_lint_fixversions(ctx):
-    '''Lint on missing fixVersions field'''
-    jira = Jira()
-    df = jira.load_issues()
+    '''
+    Lint on missing fixVersions field
+    '''
+    initial_missing_count, df = lint_fixversions(fix=ctx.obj.lint.fix)
 
     if ctx.obj.lint.fix:
-        # count of all issues missing the fixVersions field
-        initial_missing_count = len(df[df.fixVersions.apply(lambda x: len(x) == 0)])
-
-        # set PI5/PI6 on all relevant epics
-        for PI in ('PI5', 'PI6'):
-            # set PI into fixVersions field on Epics if their name matches
-            df[df.epic_name.str.contains(PI)].fixVersions.apply(lambda x: x.add(PI))  # pylint: disable=cell-var-from-loop
-
-            # iterate epics
-            for epic_ref in df[df.issuetype == 'Epic'].index:
-                # if PI value is set in fixVersions on the epic
-                if PI in jira[epic_ref].fixVersions:
-                    # filter all issues under this epic, and add PI to fixVersions
-                    df[df.epic_ref == jira[epic_ref].key].fixVersions.apply(
-                        lambda x: x.add(PI)  # pylint: disable=cell-var-from-loop
-                    )
-
-        # Write changes to local cache
-        jira.write_issues()
-
-        print('Updated fixVersions on {} issues'.format(
-            initial_missing_count - len(df[df.fixVersions.apply(lambda x: len(x) == 0)])
-        ))
+        print(f'Updated fixVersions on {initial_missing_count - len(df)} issues')
     else:
-        df_missing = df[df['fixVersions'].apply(lambda x: len(x) == 0)]
-        print(f'There are {len(df_missing)} issues missing the fixVersions field')
-        if ctx.obj.verbose:
-            _print_list(df_missing)
+        print(f'There are {len(df)} issues missing the fixVersions field')
+
+    if ctx.obj.verbose:
+        _print_list(df)
 
 
 @cli.command(name='ls')
