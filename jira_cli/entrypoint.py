@@ -78,25 +78,25 @@ def cli_group_stats():
 def cli_stats_issuetype():
     '''Stats on issue type'''
     jira = Jira()
-    df = jira.load_issues()
-    aggregated_issuetype = df.groupby([df['issuetype']]).size().to_frame(name='count')
+    jira.load_issues()
+    aggregated_issuetype = jira.df.groupby([jira.df.issuetype]).size().to_frame(name='count')
     _print_table(aggregated_issuetype)
 
 @cli_group_stats.command(name='status')
 def cli_stats_status():
     '''Stats on ticket status'''
     jira = Jira()
-    df = jira.load_issues()
-    aggregated_status = df.groupby([df['status']]).size().to_frame(name='count')
+    jira.load_issues()
+    aggregated_status = jira.df.groupby([jira.df.status]).size().to_frame(name='count')
     _print_table(aggregated_status)
 
 @cli_group_stats.command(name='fixversions')
 def cli_stats_fixversions():
     '''Stats on ticket fixversions'''
     jira = Jira()
-    df = jira.load_issues()
-    df['fixVersions'] = df['fixVersions'].apply(lambda x: ','.join(x) if x else '')
-    aggregated_fixVersions = df.groupby([df['fixVersions']]).size().to_frame(name='count')
+    jira.load_issues()
+    jira.df.fixVersions = jira.df.fixVersions.apply(lambda x: ','.join(x) if x else '')
+    aggregated_fixVersions = jira.df.groupby([jira.df.fixVersions]).size().to_frame(name='count')
     _print_table(aggregated_fixVersions)
 
 

@@ -25,6 +25,5 @@ def mock_jira():
     jira._connect = mock.Mock()
     jira._jira = mock.Mock(spec=mod_jira.JIRA)
     jira.write_issues = mock.Mock()
-    # monkey patch load_issues to only return the DataFrame representation of current dict
-    jira.load_issues = lambda: jira.df
+    jira.load_issues = mock.Mock()
     return jira

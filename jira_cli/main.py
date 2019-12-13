@@ -174,6 +174,7 @@ class Issue(DataclassSerializer):
 
 class Jira(collections.abc.MutableMapping):
     _jira = None
+    _df = None
     config = None
 
     def __init__(self, *args, **kwargs):
@@ -315,7 +316,7 @@ class Jira(collections.abc.MutableMapping):
             'updated': issue.fields.updated,
         })
 
-    def load_issues(self) -> pd.DataFrame:
+    def load_issues(self) -> None:
         """
         Load issues from JSON cache file, and store as class variable
         return DataFrame of entire dataset
@@ -327,8 +328,6 @@ class Jira(collections.abc.MutableMapping):
             # load from cache file
             for k,v in json.load(open('issue_cache.json')).items():
                 self[k] = Issue.deserialize(v)
-
-        return self.df
 
     def write_issues(self):
         """
@@ -343,14 +342,25 @@ class Jira(collections.abc.MutableMapping):
         with open('issue_cache.json', 'w') as f:
             f.write(issues_json)
 
+    def invalidate_df(self):
+        '''Invalidate internal dataframe, so it's recreated on next access'''
+        self._df = None
+
     @property
     def df(self) -> pd.DataFrame:
-        """
+        '''
         Convert self (aka a dict) into pandas DataFrame
-        """
-        df = pd.DataFrame.from_dict({k:v.__dict__ for k,v in self.items()}, orient='index')
-        if df.empty:
-            return df
-        df = df.drop(['server_object', 'diff_to_upstream'], axis=1)
-        df = df[ (df.issuetype != 'Delivery Risk') & (df.issuetype != 'Ops/Introduced Risk') ]
-        return df
+
+        - Drop original, diff_to_original fields
+        - Drop any issue with issuetype of Risk
+        '''
+        if self._df is None:
+            items = {}
+            for key, issue in self.items():
+                if issue.issuetype not in ('Delivery Risk', 'Ops/Introduced Risk'):
+                    items[key] = {
+                        k:v for k,v in issue.__dict__.items()
+                        if k not in ('server_object', 'diff_to_upstream')
+                    }
+            self._df = pd.DataFrame.from_dict(items, orient='index')
+        return self._df
