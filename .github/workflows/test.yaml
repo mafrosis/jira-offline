@@ -1,0 +1,48 @@
+name: Test
+on:
+- push
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+
+    steps:
+    - uses: actions/checkout@v1
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Setup pylint
+      run: |
+        pip install pylint
+
+    - name: Lint with pylint
+      run: |
+        pylint jira_cli
+      if: matrix.python-version >= 3.6
+
+    - name: Build with docker
+      run: |
+        docker-compose build --build-arg PYTHON_VERSION=${{ matrix.python-version }}
+
+    - name: Install dataclasses from pypi for 3.6
+      if: matrix.python-version < 3.7
+      run: |
+        # Build an updated Docker image including dataclasses lib
+        tee Dockerfile.36 > /dev/null <<EOF
+        FROM mafrosis/jiracli
+        RUN pip install dataclasses
+        EOF
+        docker build -f Dockerfile.36 -t mafrosis/jiracli .
+
+    - name: Test with pytest
+      run: |
+        make test
