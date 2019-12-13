@@ -126,11 +126,13 @@ class Issue(DataclassSerializer):
         # deserialize supplied dict into an Issue object
         issue = super().deserialize(attrs)
 
+        # pylint: disable=no-member
         if issue.diff_to_upstream is None:
             issue.diff_to_upstream = []
 
         # apply the diff_to_upstream patch to the serialized version of the issue, which recreates
         # the issue dict as last seen on the JIRA server
+        # pylint: disable=no-member
         issue.server_object = dictdiffer.patch(issue.diff_to_upstream, issue.serialize())
 
         return issue
