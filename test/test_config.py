@@ -34,7 +34,7 @@ def test_load_config__config_file_exists(mock_open, mock_sys, mock_os, mock_json
     assert getattr(conf, config_property) == value
 
 
-@mock.patch('jira_cli.config.AppConfig', spec=AppConfig)
+@mock.patch('jira_cli.config.AppConfig')
 @mock.patch('jira_cli.config.Jira')
 @mock.patch('jira_cli.config.getpass')
 @mock.patch('jira_cli.config.os')
@@ -62,10 +62,9 @@ def test_load_config__not_config_file_exists_input_ok(mock_input, mock_sys, mock
     assert mock_appconfig_class.return_value.write_to_disk.called
     assert conf.username == 'test'
     assert conf.password == 'egg'
-    assert conf.hostname == 'jira.service.anz'
 
 
-@mock.patch('jira_cli.config.AppConfig', spec=AppConfig)
+@mock.patch('jira_cli.config.AppConfig')
 @mock.patch('jira_cli.config.Jira')
 @mock.patch('jira_cli.config.getpass')
 @mock.patch('jira_cli.config.os')
