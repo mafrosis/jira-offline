@@ -8,4 +8,4 @@ Jira setup.
 Quickstart
 ----------
 
-    docker-compose run --rm jira
+    docker-compose rm --rm jiracli

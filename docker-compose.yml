@@ -1,8 +1,8 @@
 version: '3'
 
 services:
-  jira:
-    image: mafrosis/jira:dev
+  jiracli:
+    image: mafrosis/jiracli
     build:
       context: .
     volumes:
