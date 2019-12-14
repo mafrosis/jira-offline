@@ -116,7 +116,7 @@ class Issue(DataclassSerializer):
 
     # local-only dict which represents serialized Issue last seen on JIRA server
     # this property is not written to cache and is created at runtme from diff_to_upstream
-    server_object: object = field(default=None, repr=False)
+    server_object: dict = field(default=None, repr=False)
 
     # patch of current Issue to dict last seen on JIRA server
     diff_to_upstream: list = field(default=None, repr=False)
