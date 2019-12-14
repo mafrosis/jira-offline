@@ -25,6 +25,27 @@ CUSTOM_FIELD_EPIC_LINK = 'customfield_14182'
 CUSTOM_FIELD_EPIC_NAME = 'customfield_14183'
 CUSTOM_FIELD_ESTIMATE = 'customfield_10002'
 
+
+class IssueStatus(enum.Enum):
+    Backlog = 'Backlog'
+    ToDo = 'To Do'
+    InProgress = 'In Progress'
+    StoryInProgress = 'Story in Progress'
+    EpicInProgress = 'Epic in Progress'
+    EpicWithSquad = 'Epic with Squad'
+    EpicReadyforSquad = 'Epic Ready for Squad'
+    InRelease = 'In Release'
+    Done = 'Done'
+    StoryDone = 'Story Done'
+    EpicDone = 'Epic Done'
+    Closed = 'Closed'
+    RiskClosed = 'Risk Closed'
+    RiskIdentified = 'Risk Identified'
+    NotAssessed = 'Not Assessed'
+    Resolved = 'Resolved'
+    Accepted = 'Accepted'
+
+
 logger = logging.getLogger('jira')
 
 
@@ -107,7 +128,7 @@ class Issue(DataclassSerializer):
     priority: str
     project: str
     reporter: str
-    status: str
+    status: IssueStatus
     summary: str
     updated: datetime.datetime
     estimate: int = field(default=None)
@@ -120,6 +141,34 @@ class Issue(DataclassSerializer):
 
     # patch of current Issue to dict last seen on JIRA server
     diff_to_upstream: list = field(default=None, repr=False)
+
+    @property
+    def is_todo(self) -> bool:
+        if self.status in (IssueStatus.Backlog, IssueStatus.ToDo, IssueStatus.RiskIdentified,
+                           IssueStatus.NotAssessed, IssueStatus.EpicReadyforSquad):
+            return True
+        return False
+
+    @property
+    def is_inprogress(self) -> bool:
+        if self.status in (IssueStatus.InProgress, IssueStatus.InRelease, IssueStatus.Accepted,
+                           IssueStatus.EpicInProgress, IssueStatus.StoryInProgress,
+                           IssueStatus.EpicWithSquad):
+            return True
+        return False
+
+    @property
+    def is_done(self) -> bool:
+        if self.status in (IssueStatus.Done, IssueStatus.StoryDone, IssueStatus.EpicDone,
+                           IssueStatus.Resolved):
+            return True
+        return False
+
+    @property
+    def is_closed(self) -> bool:
+        if self.is_done or self.status in (IssueStatus.Closed, IssueStatus.RiskClosed):
+            return True
+        return False
 
     @classmethod
     def deserialize(cls, attrs: dict) -> object:
@@ -159,7 +208,7 @@ class Issue(DataclassSerializer):
             ('Summary', f'[{self.key}] {self.summary}'),
             ('Type', self.issuetype),
             epicdetails,
-            ('Status', self.status),
+            ('Status', self.status.value),
             ('Priority', self.priority),
             ('Assignee', self.assignee),
             ('Estimate', self.estimate),
@@ -355,6 +404,7 @@ class Jira(collections.abc.MutableMapping):
 
         - Drop original, diff_to_original fields
         - Drop any issue with issuetype of Risk
+        - Include issue.status as a string
         '''
         if self._df is None:
             items = {}
@@ -364,5 +414,7 @@ class Jira(collections.abc.MutableMapping):
                         k:v for k,v in issue.__dict__.items()
                         if k not in ('server_object', 'diff_to_upstream')
                     }
+                    # convert IssueStatus enum to string
+                    items[key]['status'] = issue.status.value
             self._df = pd.DataFrame.from_dict(items, orient='index')
         return self._df
