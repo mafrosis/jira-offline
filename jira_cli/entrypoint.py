@@ -7,6 +7,7 @@ from tabulate import tabulate
 
 from jira_cli.config import load_config
 from jira_cli.linters import fixversions as lint_fixversions
+from jira_cli.linters import issues_missing_epic as lint_issues_missing_epic
 from jira_cli.main import Jira
 
 
@@ -132,6 +133,31 @@ def cli_group_lint_fixversions(ctx, words=None):
         print(f'Updated fixVersions on {initial_missing_count - len(df)} issues')
     else:
         print(f'There are {len(df)} issues missing the fixVersions field')
+
+    if ctx.obj.verbose:
+        _print_list(df)
+
+@cli_group_lint.command(name='issues-without-epic')
+@click.option('--epic-ref', help='Epic to set on issues with no epic. Used with --fix.')
+@click.pass_context
+def cli_group_lint_issues_missing_epic(ctx, epic_ref=None):
+    '''
+    Lint issues without an epic set
+    '''
+    if epic_ref:
+        if not ctx.obj.lint.fix:
+            logger.warning('Passing --epic-ref without --fix has no effect')
+
+    # query issues missing the epic field
+    df = lint_issues_missing_epic(fix=False)
+    initial_missing_count = len(df)
+
+    if ctx.obj.lint.fix:
+        df = lint_issues_missing_epic(ctx.obj.lint.fix, epic_ref)
+
+        print(f'Set epic to {epic_ref} on {initial_missing_count - len(df)} issues')
+    else:
+        print(f'There are {len(df)} issues missing an epic')
 
     if ctx.obj.verbose:
         _print_list(df)

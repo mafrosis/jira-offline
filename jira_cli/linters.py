@@ -42,3 +42,27 @@ def fixversions(fix: bool=False, words: list=None) -> pd.DataFrame:
 
     # return dataframe of issues with empty fixversions field
     return jira.df[jira.df.fixVersions.apply(lambda x: len(x) == 0)]
+
+
+def issues_missing_epic(fix: bool=False, epic_ref: str=None) -> pd.DataFrame:
+    '''
+    Lint issues without an epic set, default to Open issues only.
+
+    Params:
+        fix        Flag to indicate if a fix should be applied
+        epic_ref   Epic to set on issues with no epic (only applicable when fix=True)
+    '''
+    jira = Jira()
+    jira.load_issues()
+
+    if fix:
+        # iterate issue keys and update issue.epic_ref
+        for key in jira.df[(jira.df.issuetype != 'Epic') & jira.df.epic_ref.isnull() & jira.df.is_open].index:
+            jira[key].epic_ref = epic_ref
+
+        # write updates to disk & invalidate current DataFrame representation
+        jira.write_issues()
+        jira.invalidate_df()
+
+    # return dataframe of open issues missing an epic
+    return jira.df[(jira.df.issuetype != 'Epic') & jira.df.epic_ref.isnull() & jira.df.is_open]
