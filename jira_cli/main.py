@@ -143,6 +143,15 @@ class Issue(DataclassSerializer):
     diff_to_upstream: list = field(default=None, repr=False)
 
     @property
+    def is_open(self) -> bool:
+        if self.is_inprogress or self.is_todo:
+            return True
+        elif self.is_done or self.is_closed:
+            return False
+        else:
+            raise AttributeError('Issue cannot be determined open or closed!')
+
+    @property
     def is_todo(self) -> bool:
         if self.status in (IssueStatus.Backlog, IssueStatus.ToDo, IssueStatus.RiskIdentified,
                            IssueStatus.NotAssessed, IssueStatus.EpicReadyforSquad):
@@ -405,6 +414,7 @@ class Jira(collections.abc.MutableMapping):
         - Drop original, diff_to_original fields
         - Drop any issue with issuetype of Risk
         - Include issue.status as a string
+        - Include issue.is_open flag
         '''
         if self._df is None:
             items = {}
@@ -416,5 +426,6 @@ class Jira(collections.abc.MutableMapping):
                     }
                     # convert IssueStatus enum to string
                     items[key]['status'] = issue.status.value
+                    items[key]['is_open'] = issue.is_open
             self._df = pd.DataFrame.from_dict(items, orient='index')
         return self._df
