@@ -16,9 +16,9 @@ def test_set_deserialize():
     assert isinstance(obj.s, set)
     assert obj.s == {1, 2, 3}
 
-def test_set_deserialize_rounsrip():
+def test_set_deserialize_roundtrip():
     """
-    Test set deserializes/serializes in a loss-less rounsrip
+    Test set deserializes/serializes in a loss-less roundtrip
     """
     json = Test.deserialize({'s': [1, 2, 3]}).serialize()
     assert json['s'] == [1, 2, 3]
@@ -30,9 +30,9 @@ def test_set_serialize():
     json = Test(s={1, 2, 3}).serialize()
     assert json['s'] == [1, 2, 3]
 
-def test_set_serialize_rounsrip():
+def test_set_serialize_roundtrip():
     """
-    Test set serializes/deserializes in a loss-less rounsrip
+    Test set serializes/deserializes in a loss-less roundtrip
     """
     obj = Test.deserialize(
         Test(s={1, 2, 3}).serialize()
