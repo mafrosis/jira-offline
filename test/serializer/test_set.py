@@ -12,29 +12,29 @@ def test_set_deserialize():
     """
     Test set deserializes
     """
-    obj = Test.deserialize({'s': [1, 2, 3]})
+    obj = Test.deserialize({'s': ['1', '2', '3']})
     assert isinstance(obj.s, set)
-    assert obj.s == {1, 2, 3}
+    assert obj.s == {'1', '2', '3'}
 
 def test_set_deserialize_roundtrip():
     """
     Test set deserializes/serializes in a loss-less roundtrip
     """
-    json = Test.deserialize({'s': [1, 2, 3]}).serialize()
-    assert json['s'] == [1, 2, 3]
+    json = Test.deserialize({'s': ['1', '2', '3']}).serialize()
+    assert json['s'] == ['1', '2', '3']
 
 def test_set_serialize():
     """
     Test set serializes
     """
-    json = Test(s={1, 2, 3}).serialize()
-    assert json['s'] == [1, 2, 3]
+    json = Test(s={'1', '2', '3'}).serialize()
+    assert json['s'] == ['1', '2', '3']
 
 def test_set_serialize_roundtrip():
     """
     Test set serializes/deserializes in a loss-less roundtrip
     """
     obj = Test.deserialize(
-        Test(s={1, 2, 3}).serialize()
+        Test(s={'1', '2', '3'}).serialize()
     )
-    assert obj.s == {1, 2, 3}
+    assert obj.s == {'1', '2', '3'}

@@ -106,7 +106,7 @@ class DataclassSerializer:
             elif isinstance(v, (datetime.date, datetime.datetime)):
                 data[f.name] = v.isoformat()
             elif isinstance(v, set):
-                data[f.name] = list(v)
+                data[f.name] = sorted(list(v))
             else:
                 data[f.name] = v
 
