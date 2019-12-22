@@ -1,7 +1,17 @@
+# python
 *.egg-info
 __pycache__
 .coverage
 
+# jiracli config
 config/
 
+# actual Jira issue data
 issue_cache.json
+
+# pycov report
+cov_html
+
+# osx / vim
+.DS_Store
+.undodir
