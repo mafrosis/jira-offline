@@ -1,11 +1,11 @@
 from dataclasses import dataclass, field
 import json
 import os
-import getpass
 import logging
 from pathlib import Path
 import sys
 
+import click
 import requests
 
 from jira_cli.main import DataclassSerializer, Jira
@@ -51,8 +51,8 @@ def load_config(projects: set=None):
 
     if not config:
         config = AppConfig()
-        config.username = input('Username: ')
-        config.password = getpass.getpass('Password: ')
+        config.username = click.prompt('Username', type=str)
+        config.password = click.prompt('Password', type=str, hide_input=True)
 
     if projects:
         # if projects is passed on the CLI, merge it into the config
