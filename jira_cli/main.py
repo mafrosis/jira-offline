@@ -136,11 +136,11 @@ class Issue(DataclassSerializer):
     epic_name: str = field(default=None)
 
     # local-only dict which represents serialized Issue last seen on JIRA server
-    # this property is not written to cache and is created at runtme from diff_to_upstream
-    server_object: dict = field(default=None, repr=False)
+    # this property is not written to cache and is created at runtme from diff_to_original
+    original: dict = field(default=None, repr=False)
 
     # patch of current Issue to dict last seen on JIRA server
-    diff_to_upstream: list = field(default=None, repr=False)
+    diff_to_original: list = field(default=None, repr=False)
 
     @property
     def is_open(self) -> bool:
@@ -181,28 +181,38 @@ class Issue(DataclassSerializer):
 
     @classmethod
     def deserialize(cls, attrs: dict) -> object:
+        '''
+        Deserialize a dict into an Issue object. Inflate the original Jira issue from the
+        diff_to_original property
+        '''
         # deserialize supplied dict into an Issue object
         issue = super().deserialize(attrs)
 
         # pylint: disable=no-member
-        if issue.diff_to_upstream is None:
-            issue.diff_to_upstream = []
+        if issue.diff_to_original is None:
+            issue.diff_to_original = []
 
-        # apply the diff_to_upstream patch to the serialized version of the issue, which recreates
+        # apply the diff_to_original patch to the serialized version of the issue, which recreates
         # the issue dict as last seen on the JIRA server
         # pylint: disable=no-member
-        issue.server_object = dictdiffer.patch(issue.diff_to_upstream, issue.serialize())
+        issue.original = dictdiffer.patch(issue.diff_to_original, issue.serialize())
 
         return issue
 
     def serialize(self) -> dict:
+        '''
+        Serialize this Issue object to a dict. Generate the diff_to_original field which enables
+        local changes to be written to the offline cache file.
+        '''
         # serialize self (Issue object) into a dict
         data = super().serialize()
 
-        if self.server_object:
-            # if this Issue object has a server_object property set, render the diff between self and
-            # the server_object property. This is written to storage to track changes made offline.
-            data['diff_to_upstream'] = list(dictdiffer.diff(data, self.server_object))
+        if self.original:
+            # if this Issue object has the original property set, render the diff between self and
+            # the original property. This is written to storage to track changes made offline.
+            data['diff_to_original'] = list(
+                dictdiffer.diff(data, self.original, ignore=set(['diff_to_original']))
+            )
 
         return data
 
@@ -422,7 +432,7 @@ class Jira(collections.abc.MutableMapping):
                 if issue.issuetype not in ('Delivery Risk', 'Ops/Introduced Risk'):
                     items[key] = {
                         k:v for k,v in issue.__dict__.items()
-                        if k not in ('server_object', 'diff_to_upstream')
+                        if k not in ('original', 'diff_to_original')
                     }
                     # convert IssueStatus enum to string
                     items[key]['status'] = issue.status.value
