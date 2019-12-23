@@ -4,7 +4,7 @@ FROM python:$PYTHON_VERSION
 RUN pip install ipdb
 WORKDIR /app
 
-ADD README.md LICENSE MANIFEST.in requirements.txt Dockerfile setup.py /app/
+ADD README.md LICENSE MANIFEST.in requirements.txt setup.py /app/
 ADD jira_cli /app/jira_cli
 RUN pip install -e .
 
