@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 import json
 import os
 import logging
-from pathlib import Path
 import sys
 
 import click
@@ -23,19 +22,13 @@ class AppConfig(DataclassSerializer):
     projects: set = field(default_factory=set)
 
     def write_to_disk(self):
-        config_dir = os.path.join(
-            os.environ.get('XDG_CONFIG_HOME', os.path.join(Path.home(), '.config')), 'jira-cli'
-        )
-        config_filepath = os.path.join(config_dir, 'app.json')
+        config_filepath = os.path.join(click.get_app_dir('jira-cli'), 'app.json')
         with open(config_filepath, 'w') as f:
             json.dump(self.serialize(), f)
 
 
 def load_config(projects: set=None):
-    config_dir = os.path.join(
-        os.environ.get('XDG_CONFIG_HOME', os.path.join(Path.home(), '.config')), 'jira-cli'
-    )
-    config_filepath = os.path.join(config_dir, 'app.json')
+    config_filepath = os.path.join(click.get_app_dir('jira-cli'), 'app.json')
 
     config = None
 
