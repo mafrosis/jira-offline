@@ -37,8 +37,8 @@ class Issue(DataclassSerializer):
     created: datetime.datetime
     creator: str
     description: str
-    fixVersions: set
-    issuetype: str
+    fixVersions: set = field(metadata={'friendly': 'Fix Version'})
+    issuetype: str = field(metadata={'friendly': 'Type'})
     key: str
     labels: set
     priority: str
@@ -49,7 +49,7 @@ class Issue(DataclassSerializer):
     updated: datetime.datetime
     estimate: int = field(default=None)
     epic_ref: str = field(default=None)
-    epic_name: str = field(default=None)
+    epic_name: str = field(default=None, metadata={'friendly': 'Epic Short Name'})
 
     # local-only dict which represents serialized Issue last seen on JIRA server
     # this property is not written to cache and is created at runtme from diff_to_original
@@ -133,25 +133,64 @@ class Issue(DataclassSerializer):
         return data
 
     def __str__(self):
-        '''Pretty print this Issue'''
+        '''
+        Pretty print this Issue
+        '''
+        # create dict of Issue dataclass fields
+        issue_fields = {f.name:f for f in dataclasses.fields(Issue)}
+
+        def fmt(field_name, prefix: str=None) -> Tuple[str, str]:
+            '''
+            Pretty formatting for various types
+
+            Params:
+                field_name: Dataclass field to render
+                prefix:     Arbitrary prefix to prepend during string format
+            Returns:
+                tuple:      Pretty field title, formatted value
+            '''
+            try:
+                title = issue_fields[field_name].metadata['friendly']
+            except KeyError:
+                title = field_name.replace('_', ' ').title()
+
+            value = getattr(self, field_name)
+
+            if value is None:
+                value = ''
+            elif issue_fields[field_name].type is set:
+                value = tabulate([('-', v) for v in value], tablefmt='plain')
+            elif issue_fields[field_name].type is datetime.datetime:
+                dt = arrow.get(self.created)
+                value = f'{dt.humanize()} [{dt.format()}]'
+            elif issubclass(issue_fields[field_name].type, enum.Enum):
+                value = value.value
+            elif value and issue_fields[field_name].type is str and len(value) > 100:
+                value = '\n'.join(textwrap.wrap(value, width=100))
+
+            if prefix:
+                value = f'{prefix} {value}'
+
+            return title, value
+
         if self.issuetype == 'Epic':
-            epicdetails = ('Epic Short Name', f'{self.epic_name}')
+            epicdetails = fmt('epic_name')
         else:
-            epicdetails = ('Epic Ref', f'{self.epic_ref}')
+            epicdetails = fmt('epic_ref')
 
         return tabulate([
-            ('Summary', f'[{self.key}] {self.summary}'),
-            ('Type', self.issuetype),
+            fmt('summary', prefix=f'[{self.key}]'),
+            fmt('issuetype'),
             epicdetails,
-            ('Status', self.status.value),
-            ('Priority', self.priority),
-            ('Assignee', self.assignee),
-            ('Estimate', self.estimate),
-            ('Description', '\n'.join(textwrap.wrap(self.description, width=100))),
-            ('Fix Version', tabulate([('-', v) for v in self.fixVersions], tablefmt='plain')),
-            ('Labels', tabulate([('-', l) for l in self.labels], tablefmt='plain')),
-            ('Reporter', self.reporter),
-            ('Creator', self.creator),
-            ('Created', self.created),
-            ('Updated', self.updated),
+            fmt('status'),
+            fmt('priority'),
+            fmt('assignee'),
+            fmt('estimate'),
+            fmt('description'),
+            fmt('fixVersions'),
+            fmt('labels'),
+            fmt('reporter'),
+            fmt('creator'),
+            fmt('created'),
+            fmt('updated'),
         ])
