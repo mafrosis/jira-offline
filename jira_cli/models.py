@@ -135,19 +135,44 @@ class Issue(DataclassSerializer):
 
         return data
 
-    def __str__(self):
+    def __str__(self, conflicts: dict=None):
         '''
         Pretty print this Issue
+
+        Params:
+            conflicts:  A conflict object
         '''
         # create dict of Issue dataclass fields
         issue_fields = {f.name:f for f in dataclasses.fields(Issue)}
 
-        def fmt(field_name, prefix: str=None) -> Tuple[str, str]:
+        def fmt(field_name, prefix: str=None) -> Tuple[Tuple]:
             '''
-            Pretty formatting for various types
+            Pretty formatting with support for conflicts
+
+            Params:
+                field_name: Dataclass field being formatted
+                prefix:     Arbitrary prefix to prepend during string format
+            Returns:
+                tuple:      Tuple of formatted-pair tuples
+            '''
+            if conflicts and field_name in conflicts:
+                return (
+                    ('<<<<<<< base', ''),
+                    render(field_name, conflicts[field_name]['base'], prefix),
+                    ('=======', ''),
+                    render(field_name, conflicts[field_name]['updated'], prefix),
+                    ('>>>>>>> updated', ''),
+                )
+            else:
+                return (render(field_name, getattr(self, field_name), prefix),)
+
+        def render(field_name, value: str=None, prefix: str=None) -> Tuple[str, str]:
+            '''
+            Single-field pretty formatting function supporting various types
 
             Params:
                 field_name: Dataclass field to render
+                value:      Data to be rendered according to format
                 prefix:     Arbitrary prefix to prepend during string format
             Returns:
                 tuple:      Pretty field title, formatted value
@@ -178,19 +203,20 @@ class Issue(DataclassSerializer):
         else:
             epicdetails = fmt('epic_ref')
 
-        return tabulate([
-            fmt('summary', prefix=f'[{self.key}]'),
-            fmt('issuetype'),
-            epicdetails,
-            fmt('status'),
-            fmt('priority'),
-            fmt('assignee'),
-            fmt('estimate'),
-            fmt('description'),
-            fmt('fixVersions'),
-            fmt('labels'),
-            fmt('reporter'),
-            fmt('creator'),
-            fmt('created'),
-            fmt('updated'),
-        ])
+        attrs = [
+            *fmt('summary', prefix=f'[{self.key}]'),
+            *fmt('issuetype'),
+            *epicdetails,
+            *fmt('status'),
+            *fmt('priority'),
+            *fmt('assignee'),
+            *fmt('estimate'),
+            *fmt('description'),
+            *fmt('fixVersions'),
+            *fmt('labels'),
+            *fmt('reporter'),
+            *fmt('creator'),
+            *fmt('created'),
+            *fmt('updated'),
+        ]
+        return tabulate(attrs)
