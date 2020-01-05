@@ -1,12 +1,15 @@
+import dataclasses
 from dataclasses import dataclass, field
 import datetime
 import enum
 import textwrap
+from typing import Tuple
 
+import arrow
 import dictdiffer
 from tabulate import tabulate
 
-from jira_cli.utils import DataclassSerializer
+from jira_cli.utils import DataclassSerializer, friendly_title
 
 
 class IssueStatus(enum.Enum):
@@ -149,10 +152,7 @@ class Issue(DataclassSerializer):
             Returns:
                 tuple:      Pretty field title, formatted value
             '''
-            try:
-                title = issue_fields[field_name].metadata['friendly']
-            except KeyError:
-                title = field_name.replace('_', ' ').title()
+            title = friendly_title(field_name)
 
             value = getattr(self, field_name)
 
