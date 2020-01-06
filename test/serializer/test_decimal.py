@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import decimal
 
-from jira_cli.main import DataclassSerializer
+from jira_cli.utils import DataclassSerializer
 
 
 @dataclass

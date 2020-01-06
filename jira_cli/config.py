@@ -7,7 +7,8 @@ import sys
 import click
 import requests
 
-from jira_cli.main import DataclassSerializer, Jira
+from jira_cli.main import Jira
+from jira_cli.models import DataclassSerializer
 
 
 logger = logging.getLogger('jira')

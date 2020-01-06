@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from jira_cli.main import DataclassSerializer
+from jira_cli.utils import DataclassSerializer
 
 
 @dataclass

@@ -1,5 +1,5 @@
 from fixtures import ISSUE_1
-from jira_cli.main import Issue
+from jira_cli.models import Issue
 
 
 def test_issue_deserialize_setup():
