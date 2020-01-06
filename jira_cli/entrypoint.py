@@ -71,31 +71,39 @@ def cli_pull(ctx, projects: list=None):
     jira.config = load_config(projects)
     jira.pull_issues(verbose=ctx.obj.verbose)
 
-@cli.group(name='stats')
-def cli_group_stats():
-    'Generate stats on JIRA data'
+
+@cli.group(name='stats', invoke_without_command=True)
+@click.pass_context
+def cli_group_stats(ctx):
+    '''Generate stats on JIRA data'''
+    ctx.obj.jira = Jira()
+    ctx.obj.jira.load_issues()
+
+    if ctx.invoked_subcommand is None:
+        for subcommand in (cli_stats_issuetype, cli_stats_status, cli_stats_fixversions):
+            ctx.invoke(subcommand)
 
 @cli_group_stats.command(name='issuetype')
-def cli_stats_issuetype():
+@click.pass_context
+def cli_stats_issuetype(ctx):
     '''Stats on issue type'''
-    jira = Jira()
-    jira.load_issues()
+    jira = ctx.obj.jira
     aggregated_issuetype = jira.df.groupby([jira.df.issuetype]).size().to_frame(name='count')
     _print_table(aggregated_issuetype)
 
 @cli_group_stats.command(name='status')
-def cli_stats_status():
+@click.pass_context
+def cli_stats_status(ctx):
     '''Stats on ticket status'''
-    jira = Jira()
-    jira.load_issues()
+    jira = ctx.obj.jira
     aggregated_status = jira.df.groupby([jira.df.status]).size().to_frame(name='count')
     _print_table(aggregated_status)
 
 @cli_group_stats.command(name='fixversions')
-def cli_stats_fixversions():
+@click.pass_context
+def cli_stats_fixversions(ctx):
     '''Stats on ticket fixversions'''
-    jira = Jira()
-    jira.load_issues()
+    jira = ctx.obj.jira
     jira.df.fixVersions = jira.df.fixVersions.apply(lambda x: ','.join(x) if x else '')
     aggregated_fixVersions = jira.df.groupby([jira.df.fixVersions]).size().to_frame(name='count')
     _print_table(aggregated_fixVersions)
