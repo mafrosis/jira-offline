@@ -48,7 +48,7 @@ jobs:
         make test
 
     - name: Publish dev docker image
-      if: matrix.python-version == 3.7
+      if: matrix.python-version == 3.7 && github.ref == 'refs/heads/master'
       run: |
         echo "$GITHUB_TOKEN" | docker login -u mafrosis --password-stdin docker.pkg.github.com
         docker tag mafrosis/jiracli docker.pkg.github.com/mafrosis/jiracli/jiracli:dev
