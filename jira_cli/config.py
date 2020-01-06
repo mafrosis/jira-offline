@@ -1,11 +1,10 @@
 from dataclasses import dataclass, field
 import json
 import os
-import getpass
 import logging
-from pathlib import Path
 import sys
 
+import click
 import requests
 
 from jira_cli.main import DataclassSerializer, Jira
@@ -23,19 +22,13 @@ class AppConfig(DataclassSerializer):
     projects: set = field(default_factory=set)
 
     def write_to_disk(self):
-        config_dir = os.path.join(
-            os.environ.get('XDG_CONFIG_HOME', os.path.join(Path.home(), '.config')), 'jira-cli'
-        )
-        config_filepath = os.path.join(config_dir, 'app.json')
+        config_filepath = os.path.join(click.get_app_dir('jira-cli'), 'app.json')
         with open(config_filepath, 'w') as f:
             json.dump(self.serialize(), f)
 
 
 def load_config(projects: set=None):
-    config_dir = os.path.join(
-        os.environ.get('XDG_CONFIG_HOME', os.path.join(Path.home(), '.config')), 'jira-cli'
-    )
-    config_filepath = os.path.join(config_dir, 'app.json')
+    config_filepath = os.path.join(click.get_app_dir('jira-cli'), 'app.json')
 
     config = None
 
@@ -51,8 +44,8 @@ def load_config(projects: set=None):
 
     if not config:
         config = AppConfig()
-        config.username = input('Username: ')
-        config.password = getpass.getpass('Password: ')
+        config.username = click.prompt('Username', type=str)
+        config.password = click.prompt('Password', type=str, hide_input=True)
 
     if projects:
         # if projects is passed on the CLI, merge it into the config

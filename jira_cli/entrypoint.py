@@ -56,7 +56,7 @@ def cli_show(key):
     '''Pretty print an Issue on the CLI'''
     jira = Jira()
     jira.load_issues()
-    print(jira[key])
+    click.echo(jira[key])
 
 
 @cli.command(name='pull')
@@ -138,9 +138,9 @@ def cli_group_lint_fixversions(ctx, words=None):
     if ctx.obj.lint.fix:
         df = lint_fixversions(ctx.obj.lint.fix, words)
 
-        print(f'Updated fixVersions on {initial_missing_count - len(df)} issues')
+        click.echo(f'Updated fixVersions on {initial_missing_count - len(df)} issues')
     else:
-        print(f'There are {len(df)} issues missing the fixVersions field')
+        click.echo(f'There are {len(df)} issues missing the fixVersions field')
 
     if ctx.obj.verbose:
         _print_list(df)
@@ -163,9 +163,9 @@ def cli_group_lint_issues_missing_epic(ctx, epic_ref=None):
     if ctx.obj.lint.fix:
         df = lint_issues_missing_epic(ctx.obj.lint.fix, epic_ref)
 
-        print(f'Set epic to {epic_ref} on {initial_missing_count - len(df)} issues')
+        click.echo(f'Set epic to {epic_ref} on {initial_missing_count - len(df)} issues')
     else:
-        print(f'There are {len(df)} issues missing an epic')
+        click.echo(f'There are {len(df)} issues missing an epic')
 
     if ctx.obj.verbose:
         _print_list(df)
@@ -188,4 +188,4 @@ def _print_list(df: pd.DataFrame, width=100):
 
 def _print_table(df):
     '''Helper to pretty print dataframes'''
-    print(tabulate(df, headers='keys', tablefmt='psql'))
+    click.echo(tabulate(df, headers='keys', tablefmt='psql'))
