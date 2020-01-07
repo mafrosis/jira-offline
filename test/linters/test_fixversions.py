@@ -1,6 +1,6 @@
 from unittest import mock
 
-from jira_cli.main import Issue
+from jira_cli.models import Issue
 from jira_cli.linters import fixversions
 from test.fixtures import ISSUE_1, ISSUE_2
 

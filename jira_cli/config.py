@@ -7,7 +7,8 @@ import sys
 import click
 import requests
 
-from jira_cli.main import DataclassSerializer, Jira
+from jira_cli.main import Jira
+from jira_cli.models import DataclassSerializer
 
 
 logger = logging.getLogger('jira')
@@ -60,7 +61,7 @@ def load_config(projects: set=None):
     # validate Jira connection details
     if config.username and config.password:
         try:
-            Jira()._connect(config)  # pylint: disable=protected-access
+            Jira().connect(config)  # pylint: disable=protected-access
 
             # on successful connect to JIRA API; write config to local file
             config.write_to_disk()

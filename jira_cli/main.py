@@ -1,235 +1,18 @@
 import collections.abc
-import copy
-import dataclasses
-from dataclasses import dataclass, field
-import datetime
-import decimal
-import enum
 import json
 import logging
 import os
-import textwrap
 import urllib3
 
-import arrow
-import dictdiffer
+import jira as mod_jira
 import pandas as pd
 
-import jira as mod_jira
-
-from tabulate import tabulate
-from tqdm import tqdm
-
-
-CUSTOM_FIELD_EPIC_LINK = 'customfield_14182'
-CUSTOM_FIELD_EPIC_NAME = 'customfield_14183'
-CUSTOM_FIELD_ESTIMATE = 'customfield_10002'
-
-
-class IssueStatus(enum.Enum):
-    Backlog = 'Backlog'
-    ToDo = 'To Do'
-    InProgress = 'In Progress'
-    StoryInProgress = 'Story in Progress'
-    EpicInProgress = 'Epic in Progress'
-    EpicWithSquad = 'Epic with Squad'
-    EpicReadyforSquad = 'Epic Ready for Squad'
-    InRelease = 'In Release'
-    Done = 'Done'
-    StoryDone = 'Story Done'
-    EpicDone = 'Epic Done'
-    Closed = 'Closed'
-    RiskClosed = 'Risk Closed'
-    RiskIdentified = 'Risk Identified'
-    NotAssessed = 'Not Assessed'
-    Resolved = 'Resolved'
-    Accepted = 'Accepted'
+from jira_cli.models import Issue
+from jira_cli.sync import pull_issues
 
 
 logger = logging.getLogger('jira')
 
-
-@dataclass
-class DataclassSerializer:
-    @classmethod
-    def deserialize(cls, attrs: dict) -> object:
-        """
-        Deserialize JIRA API dict to dataclass
-        Support decimal, date/datetime, enum & set
-        """
-        data = copy.deepcopy(attrs)
-
-        for f in dataclasses.fields(cls):
-            v = attrs.get(f.name)
-            if v is None:
-                continue
-
-            if dataclasses.is_dataclass(f.type):
-                data[f.name] = f.type.deserialize(v)
-            elif f.type is decimal.Decimal:
-                data[f.name] = decimal.Decimal(v)
-            elif issubclass(f.type, enum.Enum):
-                # convert string to Enum instance
-                data[f.name] = f.type(v)
-            elif f.type is datetime.date:
-                data[f.name] = arrow.get(v).datetime.date()
-            elif f.type is datetime.datetime:
-                data[f.name] = arrow.get(v).datetime
-            elif f.type is set:
-                data[f.name] = set(v)
-
-        return cls(**data)
-
-    def serialize(self) -> dict:
-        """
-        Serialize dataclass to JIRA API dict
-        Support decimal, date/datetime, enum & set
-        Include only fields with repr=True (dataclass.field default)
-        """
-        data = {}
-
-        for f in dataclasses.fields(self):
-            if f.repr is False:
-                continue
-
-            v = self.__dict__.get(f.name)
-
-            if v is None:
-                data[f.name] = None
-            elif dataclasses.is_dataclass(f.type):
-                data[f.name] = v.serialize()
-            elif isinstance(v, decimal.Decimal):
-                data[f.name] = str(v)
-            elif issubclass(f.type, enum.Enum):
-                # convert Enum to raw string
-                data[f.name] = v.value
-            elif isinstance(v, (datetime.date, datetime.datetime)):
-                data[f.name] = v.isoformat()
-            elif isinstance(v, set):
-                data[f.name] = sorted(list(v))
-            else:
-                data[f.name] = v
-
-        return data
-
-
-# pylint: disable=too-many-instance-attributes
-@dataclass
-class Issue(DataclassSerializer):
-    assignee: str
-    created: datetime.datetime
-    creator: str
-    description: str
-    fixVersions: set
-    issuetype: str
-    key: str
-    labels: set
-    lastViewed: datetime.datetime
-    priority: str
-    project: str
-    reporter: str
-    status: IssueStatus
-    summary: str
-    updated: datetime.datetime
-    estimate: int = field(default=None)
-    epic_ref: str = field(default=None)
-    epic_name: str = field(default=None)
-
-    # local-only dict which represents serialized Issue last seen on JIRA server
-    # this property is not written to cache and is created at runtme from diff_to_upstream
-    server_object: dict = field(default=None, repr=False)
-
-    # patch of current Issue to dict last seen on JIRA server
-    diff_to_upstream: list = field(default=None, repr=False)
-
-    @property
-    def is_open(self) -> bool:
-        if self.is_inprogress or self.is_todo:
-            return True
-        elif self.is_done or self.is_closed:
-            return False
-        else:
-            raise AttributeError('Issue cannot be determined open or closed!')
-
-    @property
-    def is_todo(self) -> bool:
-        if self.status in (IssueStatus.Backlog, IssueStatus.ToDo, IssueStatus.RiskIdentified,
-                           IssueStatus.NotAssessed, IssueStatus.EpicReadyforSquad):
-            return True
-        return False
-
-    @property
-    def is_inprogress(self) -> bool:
-        if self.status in (IssueStatus.InProgress, IssueStatus.InRelease, IssueStatus.Accepted,
-                           IssueStatus.EpicInProgress, IssueStatus.StoryInProgress,
-                           IssueStatus.EpicWithSquad):
-            return True
-        return False
-
-    @property
-    def is_done(self) -> bool:
-        if self.status in (IssueStatus.Done, IssueStatus.StoryDone, IssueStatus.EpicDone,
-                           IssueStatus.Resolved):
-            return True
-        return False
-
-    @property
-    def is_closed(self) -> bool:
-        if self.is_done or self.status in (IssueStatus.Closed, IssueStatus.RiskClosed):
-            return True
-        return False
-
-    @classmethod
-    def deserialize(cls, attrs: dict) -> object:
-        # deserialize supplied dict into an Issue object
-        issue = super().deserialize(attrs)
-
-        # pylint: disable=no-member
-        if issue.diff_to_upstream is None:
-            issue.diff_to_upstream = []
-
-        # apply the diff_to_upstream patch to the serialized version of the issue, which recreates
-        # the issue dict as last seen on the JIRA server
-        # pylint: disable=no-member
-        issue.server_object = dictdiffer.patch(issue.diff_to_upstream, issue.serialize())
-
-        return issue
-
-    def serialize(self) -> dict:
-        # serialize self (Issue object) into a dict
-        data = super().serialize()
-
-        if self.server_object:
-            # if this Issue object has a server_object property set, render the diff between self and
-            # the server_object property. This is written to storage to track changes made offline.
-            data['diff_to_upstream'] = list(dictdiffer.diff(data, self.server_object))
-
-        return data
-
-    def __str__(self):
-        '''Pretty print this Issue'''
-        if self.issuetype == 'Epic':
-            epicdetails = ('Epic Short Name', f'{self.epic_name}')
-        else:
-            epicdetails = ('Epic Ref', f'{self.epic_ref}')
-
-        return tabulate([
-            ('Summary', f'[{self.key}] {self.summary}'),
-            ('Type', self.issuetype),
-            epicdetails,
-            ('Status', self.status.value),
-            ('Priority', self.priority),
-            ('Assignee', self.assignee),
-            ('Estimate', self.estimate),
-            ('Description', '\n'.join(textwrap.wrap(self.description, width=100))),
-            ('Fix Version', tabulate([('-', v) for v in self.fixVersions], tablefmt='plain')),
-            ('Labels', tabulate([('-', l) for l in self.labels], tablefmt='plain')),
-            ('Reporter', self.reporter),
-            ('Creator', self.creator),
-            ('Created', self.created),
-            ('Updated', self.updated),
-            ('LastViewed', self.lastViewed),
-        ])
 
 
 class Jira(collections.abc.MutableMapping):
@@ -256,7 +39,7 @@ class Jira(collections.abc.MutableMapping):
     def __len__(self):
         return len(self.store)
 
-    def _connect(self, config=None):
+    def connect(self, config=None):
         if config is None and self.config is None:
             raise Exception('Jira object not configured')
 
@@ -276,106 +59,6 @@ class Jira(collections.abc.MutableMapping):
         )
         return self._jira
 
-    def pull_issues(self, force=False, verbose=False):
-        self._connect()
-
-        if not self.config.projects:
-            raise Exception('No projects configured, cannot continue')
-
-        if force or self.config.last_updated is None:
-            # first/forced load; cache must be empty
-            last_updated = '2010-01-01 00:00'
-            logger.info('Querying for all Jira issues')
-        else:
-            # load existing issue data from cache
-            self.load_issues()
-            last_updated = self.config.last_updated
-            logger.info('Querying for Jira issues since %s', last_updated)
-
-        jql = f'project IN ({",".join(self.config.projects)}) AND updated > "{last_updated}"'
-
-        # single quick query to get total number of issues
-        head = self._jira.search_issues(jql, maxResults=1)
-
-        pbar = None
-
-        def _run(jql, pbar=None):
-            page = 0
-            total = 0
-
-            while True:
-                start = page * 25
-                issues = self._jira.search_issues(jql, start, 25)
-                if len(issues) == 0:
-                    break
-                page += 1
-                total += len(issues)
-
-                # add/update all issues into self
-                for issue in issues:
-                    self[issue.key] = self._raw_issue_to_object(issue)
-
-                if pbar:
-                    # update progress
-                    pbar.update(len(issues))
-                else:
-                    logger.info('Page number %s', page)
-                    df = pd.DataFrame.from_dict(
-                        {issue.key:self._raw_issue_to_object(issue).serialize() for issue in issues},
-                        orient='index'
-                    )
-                    df['summary'] = df.loc[:]['summary'].str.slice(0, 100)
-                    print(tabulate(df[['issuetype', 'summary', 'assignee', 'updated']], headers='keys', tablefmt='psql'))
-
-            return total
-
-        if verbose:
-            total = _run(jql)
-        else:
-            # show progress bar
-            with tqdm(total=head.total, unit=' issues') as pbar:
-                total = _run(jql, pbar)
-
-        logger.info('Retrieved %s issues', total)
-
-        # dump issues to JSON cache
-        self.write_issues()
-
-        # cache the last_updated value
-        self.config.last_updated = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
-        self.config.write_to_disk()
-
-        return self
-
-    def _raw_issue_to_object(self, issue):  # pylint: disable=no-self-use
-        """
-        Convert raw JSON from JIRA API to a dataclass object
-        """
-        fixVersions = set()
-        if issue.fields.fixVersions:
-            fixVersions = {f.name for f in issue.fields.fixVersions}
-
-        return Issue.deserialize({
-            'assignee': issue.fields.assignee.name if issue.fields.assignee else None,
-            'created': issue.fields.created,
-            'creator': issue.fields.creator.name,
-            'epic_ref': getattr(issue.fields, CUSTOM_FIELD_EPIC_LINK),
-            'epic_name': getattr(issue.fields, CUSTOM_FIELD_EPIC_NAME, ''),
-            'estimate': getattr(issue.fields, CUSTOM_FIELD_ESTIMATE),
-            'description': issue.fields.description,
-            'fixVersions': fixVersions,
-            'issuetype': issue.fields.issuetype.name,
-            'key': issue.key,
-            'labels': issue.fields.labels,
-            'lastViewed': issue.fields.lastViewed,
-            'priority': issue.fields.priority.name,
-            'project': issue.fields.project.key,
-            'reporter': issue.fields.reporter.name,
-            'status': issue.fields.status.name,
-            'summary': issue.fields.summary,
-            'updated': issue.fields.updated,
-        })
-
     def load_issues(self) -> None:
         """
         Load issues from JSON cache file, and store as class variable
@@ -383,7 +66,7 @@ class Jira(collections.abc.MutableMapping):
         """
         if not os.path.exists('issue_cache.json'):
             # first run; cache file doesn't exist
-            self.pull_issues(force=True)
+            pull_issues(self, force=True)
         else:
             # load from cache file
             for k,v in json.load(open('issue_cache.json')).items():
@@ -422,7 +105,7 @@ class Jira(collections.abc.MutableMapping):
                 if issue.issuetype not in ('Delivery Risk', 'Ops/Introduced Risk'):
                     items[key] = {
                         k:v for k,v in issue.__dict__.items()
-                        if k not in ('server_object', 'diff_to_upstream')
+                        if k not in ('original', 'diff_to_original')
                     }
                     # convert IssueStatus enum to string
                     items[key]['status'] = issue.status.value

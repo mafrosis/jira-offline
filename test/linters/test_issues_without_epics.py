@@ -1,6 +1,6 @@
 from unittest import mock
 
-from jira_cli.main import Issue
+from jira_cli.models import Issue
 from jira_cli.linters import issues_missing_epic
 from test.fixtures import ISSUE_2, ISSUE_3
 

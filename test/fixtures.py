@@ -17,7 +17,7 @@ ISSUE_1 = {
     "estimate": None,
     "epic_ref": "EPIC-60",
     "epic_name": "0.1: Epic in version 0.1",
-    "diff_to_upstream": []
+    "diff_to_original": []
 }
 
 ISSUE_2 = {
@@ -39,7 +39,7 @@ ISSUE_2 = {
     "estimate": None,
     "epic_ref": "EPIC-60",
     "epic_name": "0.1: Epic in version 0.1",
-    "diff_to_upstream": []
+    "diff_to_original": []
 }
 
 ISSUE_3 = {
@@ -61,5 +61,5 @@ ISSUE_3 = {
     "estimate": None,
     "epic_ref": None,
     "epic_name": None,
-    "diff_to_upstream": []
+    "diff_to_original": []
 }

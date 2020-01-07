@@ -3,7 +3,7 @@ from enum import Enum
 
 import pytest
 
-from jira_cli.main import DataclassSerializer
+from jira_cli.utils import DataclassSerializer
 
 
 class TestEnum(Enum):
