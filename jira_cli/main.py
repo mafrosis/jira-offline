@@ -1,23 +1,14 @@
 import collections.abc
-import datetime
 import json
 import logging
 import os
 import urllib3
 
+import jira as mod_jira
 import pandas as pd
 
-import jira as mod_jira
-
-from tabulate import tabulate
-from tqdm import tqdm
-
 from jira_cli.models import Issue
-
-
-CUSTOM_FIELD_EPIC_LINK = 'customfield_14182'
-CUSTOM_FIELD_EPIC_NAME = 'customfield_14183'
-CUSTOM_FIELD_ESTIMATE = 'customfield_10002'
+from jira_cli.sync import pull_issues
 
 
 logger = logging.getLogger('jira')
@@ -48,7 +39,7 @@ class Jira(collections.abc.MutableMapping):
     def __len__(self):
         return len(self.store)
 
-    def _connect(self, config=None):
+    def connect(self, config=None):
         if config is None and self.config is None:
             raise Exception('Jira object not configured')
 
@@ -68,106 +59,6 @@ class Jira(collections.abc.MutableMapping):
         )
         return self._jira
 
-    def pull_issues(self, force=False, verbose=False):
-        self._connect()
-
-        if not self.config.projects:
-            raise Exception('No projects configured, cannot continue')
-
-        if force or self.config.last_updated is None:
-            # first/forced load; cache must be empty
-            last_updated = '2010-01-01 00:00'
-            logger.info('Querying for all Jira issues')
-        else:
-            # load existing issue data from cache
-            self.load_issues()
-            last_updated = self.config.last_updated
-            logger.info('Querying for Jira issues since %s', last_updated)
-
-        jql = f'project IN ({",".join(self.config.projects)}) AND updated > "{last_updated}"'
-
-        # single quick query to get total number of issues
-        head = self._jira.search_issues(jql, maxResults=1)
-
-        pbar = None
-
-        def _run(jql, pbar=None):
-            page = 0
-            total = 0
-
-            while True:
-                start = page * 25
-                issues = self._jira.search_issues(jql, start, 25)
-                if len(issues) == 0:
-                    break
-                page += 1
-                total += len(issues)
-
-                # add/update all issues into self
-                for issue in issues:
-                    self[issue.key] = self._raw_issue_to_object(issue)
-
-                if pbar:
-                    # update progress
-                    pbar.update(len(issues))
-                else:
-                    logger.info('Page number %s', page)
-                    df = pd.DataFrame.from_dict(
-                        {issue.key:self._raw_issue_to_object(issue).serialize() for issue in issues},
-                        orient='index'
-                    )
-                    df['summary'] = df.loc[:]['summary'].str.slice(0, 100)
-                    print(tabulate(df[['issuetype', 'summary', 'assignee', 'updated']], headers='keys', tablefmt='psql'))
-
-            return total
-
-        if verbose:
-            total = _run(jql)
-        else:
-            # show progress bar
-            with tqdm(total=head.total, unit=' issues') as pbar:
-                total = _run(jql, pbar)
-
-        logger.info('Retrieved %s issues', total)
-
-        # dump issues to JSON cache
-        self.write_issues()
-
-        # cache the last_updated value
-        self.config.last_updated = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
-        self.config.write_to_disk()
-
-        return self
-
-    def _raw_issue_to_object(self, issue):  # pylint: disable=no-self-use
-        """
-        Convert raw JSON from JIRA API to a dataclass object
-        """
-        fixVersions = set()
-        if issue.fields.fixVersions:
-            fixVersions = {f.name for f in issue.fields.fixVersions}
-
-        return Issue.deserialize({
-            'assignee': issue.fields.assignee.name if issue.fields.assignee else None,
-            'created': issue.fields.created,
-            'creator': issue.fields.creator.name,
-            'epic_ref': getattr(issue.fields, CUSTOM_FIELD_EPIC_LINK),
-            'epic_name': getattr(issue.fields, CUSTOM_FIELD_EPIC_NAME, ''),
-            'estimate': getattr(issue.fields, CUSTOM_FIELD_ESTIMATE),
-            'description': issue.fields.description,
-            'fixVersions': fixVersions,
-            'issuetype': issue.fields.issuetype.name,
-            'key': issue.key,
-            'labels': issue.fields.labels,
-            'lastViewed': issue.fields.lastViewed,
-            'priority': issue.fields.priority.name,
-            'project': issue.fields.project.key,
-            'reporter': issue.fields.reporter.name,
-            'status': issue.fields.status.name,
-            'summary': issue.fields.summary,
-            'updated': issue.fields.updated,
-        })
-
     def load_issues(self) -> None:
         """
         Load issues from JSON cache file, and store as class variable
@@ -175,7 +66,7 @@ class Jira(collections.abc.MutableMapping):
         """
         if not os.path.exists('issue_cache.json'):
             # first run; cache file doesn't exist
-            self.pull_issues(force=True)
+            pull_issues(self, force=True)
         else:
             # load from cache file
             for k,v in json.load(open('issue_cache.json')).items():

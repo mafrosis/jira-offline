@@ -9,6 +9,7 @@ from jira_cli.config import load_config
 from jira_cli.linters import fixversions as lint_fixversions
 from jira_cli.linters import issues_missing_epic as lint_issues_missing_epic
 from jira_cli.main import Jira
+from jira_cli.sync import pull_issues
 
 
 logger = logging.getLogger('jira')
@@ -69,7 +70,7 @@ def cli_pull(ctx, projects: list=None):
 
     jira = Jira()
     jira.config = load_config(projects)
-    jira.pull_issues(verbose=ctx.obj.verbose)
+    pull_issues(jira, verbose=ctx.obj.verbose)
 
 
 @cli.group(name='stats', invoke_without_command=True)

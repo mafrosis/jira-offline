@@ -54,7 +54,7 @@ def test_load_config__not_config_file_exists_input_ok(mock_click, mock_sys, mock
 
     assert mock_click.prompt.call_count == 2
     assert mock_jira_class.called  # class instantiated
-    assert mock_jira_class.return_value._connect.called
+    assert mock_jira_class.return_value.connect.called
     assert mock_appconfig_class.called  # class instantiated
     assert mock_appconfig_class.return_value.write_to_disk.called
     assert conf.username == 'test'
@@ -77,14 +77,14 @@ def test_load_config__not_config_file_exists_input_bad(mock_click, mock_sys, moc
     mock_os.path.exists.return_value = False
     mock_click.prompt.side_effect = ['test', 'badpassword']
 
-    # Jira._connect to fail
-    mock_jira_class.return_value._connect.side_effect = requests.exceptions.ConnectionError
+    # Jira.connect to fail
+    mock_jira_class.return_value.connect.side_effect = requests.exceptions.ConnectionError
 
     conf = load_config()
 
     assert mock_click.prompt.call_count == 2
     assert mock_jira_class.called  # class instantiated
-    assert mock_jira_class.return_value._connect.called
+    assert mock_jira_class.return_value.connect.called
     assert mock_appconfig_class.called  # class instantiated
     assert not mock_appconfig_class.return_value.write_to_disk.called
     assert conf.hostname is None
