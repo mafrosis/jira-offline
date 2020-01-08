@@ -11,10 +11,10 @@ import arrow
 class DataclassSerializer:
     @classmethod
     def deserialize(cls, attrs: dict) -> object:
-        """
+        '''
         Deserialize JIRA API dict to dataclass
         Support decimal, date/datetime, enum & set
-        """
+        '''
         data = copy.deepcopy(attrs)
 
         for f in dataclasses.fields(cls):
@@ -39,11 +39,11 @@ class DataclassSerializer:
         return cls(**data)
 
     def serialize(self) -> dict:
-        """
+        '''
         Serialize dataclass to JIRA API dict
         Support decimal, date/datetime, enum & set
         Include only fields with repr=True (dataclass.field default)
-        """
+        '''
         data = {}
 
         for f in dataclasses.fields(self):
