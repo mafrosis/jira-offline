@@ -3,7 +3,7 @@ from enum import Enum
 
 import pytest
 
-from jira_cli.utils import DataclassSerializer
+from jira_cli.utils import DeserializeError, DataclassSerializer
 
 
 class TestEnum(Enum):
@@ -52,3 +52,10 @@ def test_enum_serialize_roundrip():
         Test(e=TestEnum.Egg).serialize()
     )
     assert obj.e == TestEnum.Egg
+
+def test_enum_bad_deserialize():
+    '''
+    Test bad enum deserialize raises exception
+    '''
+    with pytest.raises(DeserializeError):
+        Test.deserialize({'e': 'Egx'})

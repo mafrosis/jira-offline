@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 import datetime
 
-from jira_cli.utils import DataclassSerializer
+import pytest
+
+from jira_cli.utils import DeserializeError, DataclassSerializer
 
 
 @dataclass
@@ -43,3 +45,10 @@ def test_date_serialize_roundtrip():
     assert obj.dt.year == 2018
     assert obj.dt.month == 9
     assert obj.dt.day == 24
+
+def test_date_bad_deserialize():
+    '''
+    Test bad date deserialize raises exception
+    '''
+    with pytest.raises(DeserializeError):
+        Test.deserialize({'dt': '2018-09-2x'})

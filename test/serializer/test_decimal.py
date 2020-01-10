@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 import decimal
 
-from jira_cli.utils import DataclassSerializer
+import pytest
+
+from jira_cli.utils import DeserializeError, DataclassSerializer
 
 
 @dataclass
@@ -39,3 +41,10 @@ def test_decimal_serialize_roundrip():
         Test(d=decimal.Decimal('123.45')).serialize()
     )
     assert obj.d == decimal.Decimal('123.45')
+
+def test_decimal_bad_deserialize():
+    '''
+    Test bad decimal deserialize raises exception
+    '''
+    with pytest.raises(DeserializeError):
+        Test.deserialize({'d': 'Egx'})

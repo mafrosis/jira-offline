@@ -7,12 +7,18 @@ import enum
 import arrow
 
 
+class DeserializeError(ValueError):
+    pass
+
+
 @dataclasses.dataclass
 class DataclassSerializer:
     @classmethod
+    # pylint: disable=too-many-branches
     def deserialize(cls, attrs: dict) -> object:
         '''
-        Deserialize JIRA API dict to dataclass
+        Deserialize JSON-compatible dict to dataclass
+
         Support decimal, date/datetime, enum & set
         '''
         data = copy.deepcopy(attrs)
@@ -25,23 +31,38 @@ class DataclassSerializer:
             if dataclasses.is_dataclass(f.type):
                 data[f.name] = f.type.deserialize(v)
             elif f.type is decimal.Decimal:
-                data[f.name] = decimal.Decimal(v)
+                try:
+                    data[f.name] = decimal.Decimal(v)
+                except decimal.InvalidOperation:
+                    raise DeserializeError(f'Failed deserializing "{v}" to {f.type}')
             elif issubclass(f.type, enum.Enum):
-                # convert string to Enum instance
-                data[f.name] = f.type(v)
+                try:
+                    # convert string to Enum instance
+                    data[f.name] = f.type(v)
+                except ValueError:
+                    raise DeserializeError(f'Failed deserializing "{v}" to {f.type}')
             elif f.type is datetime.date:
-                data[f.name] = arrow.get(v).datetime.date()
+                try:
+                    data[f.name] = arrow.get(v).datetime.date()
+                except arrow.parser.ParserError:
+                    raise DeserializeError(f'Failed deserializing "{v}" to Arrow datetime.date')
             elif f.type is datetime.datetime:
-                data[f.name] = arrow.get(v).datetime
+                try:
+                    data[f.name] = arrow.get(v).datetime
+                except arrow.parser.ParserError:
+                    raise DeserializeError(f'Failed deserializing "{v}" to Arrow datetime.datetime')
             elif f.type is set:
+                if not isinstance(v, list):
+                    raise DeserializeError(f'Value passed to set type must be JSON list')
                 data[f.name] = set(v)
 
         return cls(**data)
 
     def serialize(self) -> dict:
         '''
-        Serialize dataclass to JIRA API dict
-        Support decimal, date/datetime, enum & set
+        Serialize dataclass to JSON-compatible dict
+
+        Supports decimal, date/datetime, enum & set
         Include only fields with repr=True (dataclass.field default)
         '''
         data = {}
