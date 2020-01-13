@@ -19,7 +19,7 @@ class DataclassSerializer:
         '''
         Deserialize JSON-compatible dict to dataclass
 
-        Support decimal, date/datetime, enum & set
+        Support int, decimal, date/datetime, enum & set
         '''
         data = copy.deepcopy(attrs)
 
@@ -55,6 +55,11 @@ class DataclassSerializer:
                 if not isinstance(v, list):
                     raise DeserializeError(f'Value passed to set type must be JSON list')
                 data[f.name] = set(v)
+            elif f.type is int:
+                try:
+                    data[f.name] = int(v)
+                except ValueError:
+                    raise DeserializeError(f'Failed deserializing "{v}" to {f.type}')
 
         return cls(**data)
 
@@ -62,8 +67,9 @@ class DataclassSerializer:
         '''
         Serialize dataclass to JSON-compatible dict
 
-        Supports decimal, date/datetime, enum & set
+        Supports int, decimal, date/datetime, enum & set
         Include only fields with repr=True (dataclass.field default)
+        Int-type does not need serializing for JSON
         '''
         data = {}
 
