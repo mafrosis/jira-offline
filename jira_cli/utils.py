@@ -52,8 +52,8 @@ class DataclassSerializer:
                 except arrow.parser.ParserError:
                     raise DeserializeError(f'Failed deserializing "{v}" to Arrow datetime.datetime')
             elif f.type is set:
-                if not isinstance(v, list):
-                    raise DeserializeError(f'Value passed to set type must be JSON list')
+                if not isinstance(v, set) and not isinstance(v, list):
+                    raise DeserializeError(f'Value passed to set type must be JSON set or list')
                 data[f.name] = set(v)
             elif f.type is int:
                 try:
