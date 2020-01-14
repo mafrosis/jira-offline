@@ -146,7 +146,7 @@ def cli_group_lint_fixversions(ctx, words=None):
     if ctx.obj.verbose:
         _print_list(df)
 
-@cli_group_lint.command(name='issues-without-epic')
+@cli_group_lint.command(name='issues-missing-epic')
 @click.option('--epic-ref', help='Epic to set on issues with no epic. Used with --fix.')
 @click.pass_context
 def cli_group_lint_issues_missing_epic(ctx, epic_ref=None):
