@@ -60,10 +60,10 @@ class Jira(collections.abc.MutableMapping):
         return self._jira
 
     def load_issues(self) -> None:
-        """
+        '''
         Load issues from JSON cache file, and store as class variable
         return DataFrame of entire dataset
-        """
+        '''
         if not os.path.exists('issue_cache.json'):
             # first run; cache file doesn't exist
             pull_issues(self, force=True)
@@ -73,9 +73,9 @@ class Jira(collections.abc.MutableMapping):
                 self[k] = Issue.deserialize(v)
 
     def write_issues(self):
-        """
+        '''
         Dump issues to JSON cache file
-        """
+        '''
         try:
             issues_json = json.dumps({k:v.serialize() for k,v in self.items()})
         except TypeError:

@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 
-from jira_cli.utils import DataclassSerializer
+import pytest
+
+from jira_cli.utils import DeserializeError, DataclassSerializer
 
 
 @dataclass
@@ -38,3 +40,10 @@ def test_set_serialize_roundtrip():
         Test(s={'1', '2', '3'}).serialize()
     )
     assert obj.s == {'1', '2', '3'}
+
+def test_set_bad_deserialize():
+    '''
+    Test bad set deserialize raises exception (exception raised when passed value is not a list)
+    '''
+    with pytest.raises(DeserializeError):
+        Test.deserialize({'s': 'Egx'})

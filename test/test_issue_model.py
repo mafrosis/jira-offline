@@ -3,9 +3,9 @@ from jira_cli.models import Issue
 
 
 def test_issue_deserialize_setup():
-    """
+    '''
     Test deserialize sets the diff tracking fields on the Issue object
-    """
+    '''
     issue1 = Issue.deserialize(ISSUE_1)
     assert isinstance(issue1, Issue)
     assert isinstance(issue1.diff_to_original, list)
@@ -13,9 +13,9 @@ def test_issue_deserialize_setup():
 
 
 def test_issue_serialize_without_change_does_not_create_diff_property():
-    """
+    '''
     Test serialize of unchanged Issue object results in NO diff_to_original property
-    """
+    '''
     issue1 = Issue.deserialize(ISSUE_1)
     obj = issue1.serialize()
 
@@ -24,9 +24,9 @@ def test_issue_serialize_without_change_does_not_create_diff_property():
 
 
 def test_issue_serialize_with_change_creates_diff_property():
-    """
+    '''
     Test serialize of changed Issue object results in a diff_to_original property
-    """
+    '''
     issue1 = Issue.deserialize(ISSUE_1)
     # update a field on the Issue
     issue1.summary = 'TEST SUMMARY UPDATE'
@@ -37,9 +37,9 @@ def test_issue_serialize_with_change_creates_diff_property():
 
 
 def test_issue_serialized_original_matches_when_no_diff():
-    """
+    '''
     Test original property is same as Issue object if Issue is unchanged
-    """
+    '''
     issue1 = Issue.deserialize(ISSUE_1)
     obj = issue1.serialize()
 
@@ -50,9 +50,9 @@ def test_issue_serialized_original_matches_when_no_diff():
 
 
 def test_issue_serialized_original_does_not_match_when_diff():
-    """
+    '''
     Test original property is NOT same as Issue object if Issue is changed
-    """
+    '''
     issue1 = Issue.deserialize(ISSUE_1)
     # update a field on the Issue
     issue1.summary = 'TEST SUMMARY UPDATE'

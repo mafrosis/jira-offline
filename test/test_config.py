@@ -19,9 +19,9 @@ from jira_cli.config import AppConfig, load_config
 @mock.patch('jira_cli.config.sys')
 @mock.patch('builtins.open')
 def test_load_config__config_file_exists(mock_open, mock_sys, mock_os, mock_json, config_property, value):
-    """
+    '''
     Test existing config file loads correctly into dataclass AppConfig
-    """
+    '''
     # config file already exists
     mock_os.path.exists.return_value = True
     mock_json.load.return_value = {config_property: value}
@@ -40,12 +40,12 @@ def test_load_config__config_file_exists(mock_open, mock_sys, mock_os, mock_json
 @mock.patch('jira_cli.config.sys')
 @mock.patch('jira_cli.config.click')
 def test_load_config__not_config_file_exists_input_ok(mock_click, mock_sys, mock_os, mock_jira_class, mock_appconfig_class):
-    """
+    '''
     Test no config file exists triggers:
         - input calls
         - successful Jira.connect
         - file write
-    """
+    '''
     # config file does not exist
     mock_os.path.exists.return_value = False
     mock_click.prompt.side_effect = ['test', 'egg']
@@ -67,12 +67,12 @@ def test_load_config__not_config_file_exists_input_ok(mock_click, mock_sys, mock
 @mock.patch('jira_cli.config.sys')
 @mock.patch('jira_cli.config.click')
 def test_load_config__not_config_file_exists_input_bad(mock_click, mock_sys, mock_os, mock_jira_class, mock_appconfig_class):
-    """
+    '''
     Test no config file exists triggers:
         - input calls
         - FAILED Jira.connect
         - NO file write
-    """
+    '''
     # config file does not exist
     mock_os.path.exists.return_value = False
     mock_click.prompt.side_effect = ['test', 'badpassword']
@@ -95,10 +95,10 @@ def test_load_config__not_config_file_exists_input_bad(mock_click, mock_sys, moc
 @mock.patch('jira_cli.config.sys')
 @mock.patch('builtins.open')
 def test_load_config__projects_arg_extends_projects_config(mock_open, mock_sys, mock_os, mock_json):
-    """
+    '''
     Ensure project IDs passed with --projects param on CLI are merged into the existing
     config.projects set
-    """
+    '''
     # config file already exists
     mock_os.path.exists.return_value = True
 
