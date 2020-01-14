@@ -153,6 +153,9 @@ def cli_group_lint_issues_missing_epic(ctx, epic_ref=None):
     '''
     Lint issues without an epic set
     '''
+    if ctx.obj.lint.fix and not epic_ref:
+        raise click.BadParameter('You must pass --epic_ref with --fix', ctx)
+
     if epic_ref:
         if not ctx.obj.lint.fix:
             logger.warning('Passing --epic-ref without --fix has no effect')
