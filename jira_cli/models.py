@@ -41,7 +41,6 @@ class Issue(DataclassSerializer):
     issuetype: str
     key: str
     labels: set
-    lastViewed: datetime.datetime
     priority: str
     project: str
     reporter: str
@@ -155,5 +154,4 @@ class Issue(DataclassSerializer):
             ('Creator', self.creator),
             ('Created', self.created),
             ('Updated', self.updated),
-            ('LastViewed', self.lastViewed),
         ])

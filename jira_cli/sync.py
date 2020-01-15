@@ -114,7 +114,6 @@ def _raw_issue_to_object(issue: dict) -> Issue:
         'issuetype': issue.fields.issuetype.name,
         'key': issue.key,
         'labels': issue.fields.labels,
-        'lastViewed': issue.fields.lastViewed,
         'priority': issue.fields.priority.name,
         'project': issue.fields.project.key,
         'reporter': issue.fields.reporter.name,
