@@ -1,6 +1,24 @@
-from fixtures import ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF, ISSUE_1_WITH_FIXVERSIONS_DIFF
+from fixtures import (ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF, ISSUE_1_WITH_FIXVERSIONS_DIFF,
+                      ISSUE_1_WITH_UPDATED_DIFF)
 from jira_cli.models import Issue
 from jira_cli.sync import Conflict, _build_update
+
+
+def test_build_update__ignores_readonly_fields():
+    '''
+    Modified readonly fields must be ignored during build_update
+    '''
+    # create unmodified base Issue fixture
+    base_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
+    # create modified issue as upstream (readonly field is only one modified)
+    updated_issue = Issue.deserialize(ISSUE_1_WITH_UPDATED_DIFF)
+
+    update_obj = _build_update(base_issue, updated_issue)
+
+    assert update_obj.modified == {'assignee'}
+    assert not update_obj.conflicts
+    assert update_obj.merged_issue.assignee == 'hoganp'
+    assert update_obj.merged_issue.updated == base_issue.updated
 
 
 def test_build_update__base_unmodified_and_updated_modified():

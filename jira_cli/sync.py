@@ -220,12 +220,16 @@ def _build_update(base_issue: Issue, updated_issue: Issue) -> IssueUpdate:
                 ret[i] = item
         return tuple(ret)
 
+    # fields to ignore during dictdiffer.diff
+    readonly_fields = [f.name for f in dataclasses.fields(Issue) if f.metadata.get('readonly')]
+    ignore_fields = set(['diff_to_original'] + readonly_fields)
+
     # generate two diffs to original Issue
     diff_original_to_base: set = set(make_hashable(list(dictdiffer.diff(
-        base_issue.original, base_issue_dict, ignore=set(['diff_to_original'])
+        base_issue.original, base_issue_dict, ignore=ignore_fields
     ))))
     diff_original_to_updated: set = set(make_hashable(list(dictdiffer.diff(
-        base_issue.original, updated_issue_dict, ignore=set(['diff_to_original'])
+        base_issue.original, updated_issue_dict, ignore=ignore_fields
     ))))
 
     # create mapping of modified field_name to a count

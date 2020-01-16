@@ -37,19 +37,19 @@ class IssueStatus(enum.Enum):
 @dataclass
 class Issue(DataclassSerializer):
     assignee: str
-    created: datetime.datetime
-    creator: str
+    created: datetime.datetime = field(metadata={'readonly': True})
+    creator: str = field(metadata={'readonly': True})
     description: str
     fixVersions: set = field(metadata={'friendly': 'Fix Version'})
     issuetype: str = field(metadata={'friendly': 'Type'})
-    key: str
+    key: str = field(metadata={'readonly': True})
     labels: set
     priority: str
     project: str
     reporter: str
     status: IssueStatus
     summary: str
-    updated: datetime.datetime
+    updated: datetime.datetime = field(metadata={'readonly': True})
     estimate: int = field(default=None)
     epic_ref: str = field(default=None)
     epic_name: str = field(default=None, metadata={'friendly': 'Epic Short Name'})
