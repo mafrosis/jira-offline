@@ -1,0 +1,27 @@
+APP: manual testing of 43f6835
+
+APP: add --verbose to push
+APP: config branch 401 tests
+APP: set/edit command
+APP: assign command?
+APP: workflow command? (can we pull the legal status changes?)
+
+APP: docs
+APP: handle 401 and prompt for password change
+APP: colour with click -- pip install colorama
+APP: externally customizable custom_field_ values
+APP: allow inclusion of client cert
+APP: --include-risks option globally
+APP: GHA release workflow
+
+STATS: Epics -> points done / outstanding
+STATS: Top ticket creators
+STATS: wontfix/closed points in the PI
+
+LINT: Done & LightsOn & no estimate
+LINT: Backlog & Not LightsOn & no estimate
+LINT: Backlog & LightsOn -> move to ToDo
+LINT: issues without "Acceptance Criteria"
+LINT: no subtasks!
+LINT: no description
+

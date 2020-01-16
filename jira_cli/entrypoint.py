@@ -27,6 +27,11 @@ sh = logging.StreamHandler()
 logger.addHandler(sh)
 logger.setLevel(logging.ERROR)
 
+import sys, pdb
+stdin, stdout = sys.stdin, sys.stdout
+def set_trace():
+    pdb.Pdb(stdin=stdin, stdout=stdout).set_trace()
+
 
 @dataclasses.dataclass
 class LintParams:

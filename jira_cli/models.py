@@ -10,6 +10,7 @@ import hashlib
 import os
 import textwrap
 from typing import Any, Dict, Optional, Set, Tuple
+from urllib.parse import urlparse
 
 import click
 import arrow
@@ -72,6 +73,11 @@ class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-att
     @property
     def id(self) -> str:
         return hashlib.sha1(self.project_uri.encode('utf8')).hexdigest()
+
+    @classmethod
+    def factory(cls, project_uri: str) -> 'ProjectMeta':
+        uri = urlparse(project_uri)
+        return ProjectMeta(key=uri.path[1:], protocol=uri.scheme, hostname=uri.netloc)
 
 
 @dataclass

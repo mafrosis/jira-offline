@@ -42,3 +42,19 @@ def critical_logger(logger_):
     logger_.setLevel(logging.CRITICAL)
     yield logger_
     logger_.setLevel(log_level)
+
+
+@contextlib.contextmanager
+def profile(fname=None):
+    import cProfile  # pylint: disable=import-outside-toplevel
+    pr = cProfile.Profile()
+    pr.enable()
+
+    yield
+
+    pr.disable()
+
+    if fname:
+        pr.dump_stats(fname)
+    else:
+        pr.print_stats(sort='cumtime')
