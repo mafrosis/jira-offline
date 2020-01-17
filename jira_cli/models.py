@@ -15,6 +15,7 @@ class IssueStatus(enum.Enum):
     InProgress = 'In Progress'
     StoryInProgress = 'Story in Progress'
     EpicInProgress = 'Epic in Progress'
+    EpicInReview = 'Epic in Review'
     EpicWithSquad = 'Epic with Squad'
     EpicReadyforSquad = 'Epic Ready for Squad'
     InRelease = 'In Release'
@@ -40,7 +41,6 @@ class Issue(DataclassSerializer):
     issuetype: str
     key: str
     labels: set
-    lastViewed: datetime.datetime
     priority: str
     project: str
     reporter: str
@@ -78,7 +78,7 @@ class Issue(DataclassSerializer):
     def is_inprogress(self) -> bool:
         if self.status in (IssueStatus.InProgress, IssueStatus.InRelease, IssueStatus.Accepted,
                            IssueStatus.EpicInProgress, IssueStatus.StoryInProgress,
-                           IssueStatus.EpicWithSquad):
+                           IssueStatus.EpicWithSquad, IssueStatus.EpicInReview):
             return True
         return False
 
@@ -154,5 +154,4 @@ class Issue(DataclassSerializer):
             ('Creator', self.creator),
             ('Created', self.created),
             ('Updated', self.updated),
-            ('LastViewed', self.lastViewed),
         ])
