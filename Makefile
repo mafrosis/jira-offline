@@ -1,5 +1,5 @@
 .PHONY: all
-all: lint test
+all: lint typecheck test
 	@true
 
 .PHONY: test
@@ -9,3 +9,7 @@ test:
 .PHONY: lint
 lint:
 	docker-compose run --rm --entrypoint=pylint jiracli jira_cli/
+
+.PHONY: typecheck
+typecheck:
+	docker-compose run --rm --entrypoint pytest jiracli --mypy --mypy-ignore-missing-imports jira_cli/
