@@ -19,9 +19,12 @@ def fixversions(fix: bool=False, words: list=None) -> pd.DataFrame:
     jira = Jira()
     jira.load_issues()
 
+    if fix and not words:
+        raise Exception
+
     if fix:
         # set arbitrary fixVersion on all relevant epics
-        for word in words:
+        for word in words:  # type: ignore
             # add word to fixVersions field on Epics if their epic_name matches
             jira.df[jira.df.epic_name.str.contains(word)].fixVersions.apply(
                 lambda x: x.add(word)  # pylint: disable=cell-var-from-loop

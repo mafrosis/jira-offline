@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 import logging
+from typing import Optional, Set
 
 import click
 import pandas as pd
@@ -26,7 +27,7 @@ class LintParams:
 class CliParams:
     verbose: bool = field(default=False)
     debug: bool = field(default=False)
-    lint: LintParams = field(default=None)
+    lint: Optional[LintParams] = field(default=None)
 
 @click.group()
 @click.option('--verbose', '-v', is_flag=True, help='Display INFO level logging')
@@ -75,23 +76,24 @@ def cli_push(ctx):
 @click.option('--login', is_flag=True, help='Reset the current login credentials')
 @click.option('--reset-hard', is_flag=True, help='Force reload of all issues. This will destroy any local changes!')
 @click.pass_context
-def cli_pull(ctx, projects: list=None, login: bool=False, reset_hard: bool=False):
-    '''Fetch and cache all JIRA issues'''
+def cli_pull(ctx, projects: str=None, login: bool=False, reset_hard: bool=False):
+    '''Fetch and cache all Jira issues'''
+    projects_set: Optional[Set[str]] = None
     if projects:
-        projects = set(projects.split(','))
+        projects_set = set(projects.split(','))
 
     if reset_hard:
         click.confirm('Warning! This will destroy any local changes. Continue?', abort=True)
 
     jira = Jira()
-    jira.config = load_config(projects, prompt_for_creds=login)
+    jira.config = load_config(projects_set, prompt_for_creds=login)
     pull_issues(jira, force=reset_hard, verbose=ctx.obj.verbose)
 
 
 @cli.group(name='stats', invoke_without_command=True)
 @click.pass_context
 def cli_group_stats(ctx):
-    '''Generate stats on JIRA data'''
+    '''Generate stats on Jira data'''
     ctx.obj.jira = Jira()
     ctx.obj.jira.load_issues()
 
@@ -129,7 +131,7 @@ def cli_stats_fixversions(ctx):
 @click.option('--fix', is_flag=True, help='Attempt to fix the errors automatically')
 @click.pass_context
 def cli_group_lint(ctx, fix=False):
-    'Report on common mistakes in JIRA issues'
+    'Report on common mistakes in Jira issues'
     ctx.obj.lint = LintParams(fix=fix)
 
 @cli_group_lint.command(name='fixversions')

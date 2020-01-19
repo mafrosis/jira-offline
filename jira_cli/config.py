@@ -3,6 +3,7 @@ import json
 import os
 import logging
 import sys
+from typing import Optional
 
 import click
 import requests
@@ -17,10 +18,10 @@ logger = logging.getLogger('jira')
 
 @dataclass
 class AppConfig(DataclassSerializer):
-    username: str = field(default=None)
-    password: str = field(default=None)
-    hostname: str = field(default='jira.atlassian.com')
-    last_updated: str = field(default=None)
+    username: Optional[str] = field(default=None)
+    password: Optional[str] = field(default=None)
+    hostname: Optional[str] = field(default='jira.atlassian.com')
+    last_updated: Optional[str] = field(default=None)
     projects: set = field(default_factory=set)
 
     def write_to_disk(self):
@@ -39,7 +40,7 @@ def load_config(projects: set=None, prompt_for_creds: bool=False):
     '''
     config_filepath = os.path.join(click.get_app_dir(__title__), 'app.json')
 
-    config = None
+    config: Optional[AppConfig] = None
 
     if os.path.exists(config_filepath):
         try:
