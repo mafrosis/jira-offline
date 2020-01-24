@@ -7,6 +7,7 @@ import sys
 import click
 import requests
 
+from jira_cli import __title__
 from jira_cli.main import Jira
 from jira_cli.models import DataclassSerializer
 
@@ -23,7 +24,7 @@ class AppConfig(DataclassSerializer):
     projects: set = field(default_factory=set)
 
     def write_to_disk(self):
-        config_filepath = os.path.join(click.get_app_dir('jira-cli'), 'app.json')
+        config_filepath = os.path.join(click.get_app_dir(__title__), 'app.json')
         with open(config_filepath, 'w') as f:
             json.dump(self.serialize(), f)
 
@@ -36,7 +37,7 @@ def load_config(projects: set=None, prompt_for_creds: bool=False):
         projects:          List of Jira project keys
         prompt_for_creds:  Force a re-prompt for Jira credentials
     '''
-    config_filepath = os.path.join(click.get_app_dir('jira-cli'), 'app.json')
+    config_filepath = os.path.join(click.get_app_dir(__title__), 'app.json')
 
     config = None
 

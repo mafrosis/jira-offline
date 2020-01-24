@@ -22,7 +22,7 @@ setup(
     long_description=open('README.md').read(),
     author='Matt Black',
     author_email='dev@mafro.net',
-    url='http://github.com/mafrosis/jira-cli',
+    url='http://github.com/mafrosis/jiracli',
     packages=find_packages(exclude=['test']),
     package_data={'': ['LICENSE']},
     package_dir={'': '.'},
@@ -31,7 +31,7 @@ setup(
     license=open('LICENSE').read(),
     entry_points={
         'console_scripts': [
-            'jira=jira_cli.entrypoint:cli'
+            'jiracli=jira_cli.entrypoint:cli'
         ]
     },
     classifiers=(
