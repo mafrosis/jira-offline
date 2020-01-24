@@ -41,6 +41,7 @@ class Issue(DataclassSerializer):
     creator: str = field(metadata={'readonly': True})
     description: str
     fixVersions: set = field(metadata={'friendly': 'Fix Version'})
+    id: str = field(metadata={'readonly': True})
     issuetype: str = field(metadata={'friendly': 'Type'})
     key: str = field(metadata={'readonly': True})
     labels: set

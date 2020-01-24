@@ -139,6 +139,7 @@ def _raw_issue_to_object(issue: dict) -> Issue:
         'estimate': getattr(issue.fields, CUSTOM_FIELD_ESTIMATE),
         'description': issue.fields.description,
         'fixVersions': fixVersions,
+        'id': issue.id,
         'issuetype': issue.fields.issuetype.name,
         'key': issue.key,
         'labels': issue.fields.labels,
