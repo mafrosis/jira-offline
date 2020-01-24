@@ -36,24 +36,24 @@ class IssueStatus(enum.Enum):
 # pylint: disable=too-many-instance-attributes
 @dataclass
 class Issue(DataclassSerializer):
-    assignee: str
-    created: datetime.datetime = field(metadata={'readonly': True})
-    creator: str = field(metadata={'readonly': True})
-    description: str
-    fixVersions: set = field(metadata={'friendly': 'Fix Version'})
-    id: str = field(metadata={'readonly': True})
     issuetype: str = field(metadata={'friendly': 'Type'})
-    key: str = field(metadata={'readonly': True})
-    labels: set
-    priority: str
     project: str
-    reporter: str
-    status: IssueStatus
     summary: str
-    updated: datetime.datetime = field(metadata={'readonly': True})
-    estimate: int = field(default=None)
-    epic_ref: str = field(default=None)
+    assignee: str = field(default=None)
+    created: datetime.datetime = field(default=None, metadata={'readonly': True})
+    creator: str = field(default=None, metadata={'readonly': True})
     epic_name: str = field(default=None, metadata={'friendly': 'Epic Short Name'})
+    epic_ref: str = field(default=None)
+    estimate: int = field(default=None)
+    description: str = field(default=None)
+    fixVersions: set = field(default=None, metadata={'friendly': 'Fix Version'})
+    id: str = field(default=None, metadata={'readonly': True})
+    key: str = field(default=None, metadata={'readonly': True})
+    labels: set = field(default=None)
+    priority: str = field(default=None)
+    reporter: str = field(default=None)
+    status: IssueStatus = field(default=None)
+    updated: datetime.datetime = field(default=None, metadata={'readonly': True})
 
     # local-only dict which represents serialized Issue last seen on JIRA server
     # this property is not written to cache and is created at runtme from diff_to_original
