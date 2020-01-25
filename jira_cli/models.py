@@ -39,7 +39,7 @@ class IssueStatus(enum.Enum):
 @dataclass
 class Issue(DataclassSerializer):
     issuetype: str = field(metadata={'friendly': 'Type'})
-    project: str
+    project: str = field(metadata={'readonly': True})
     summary: str
     assignee: str = field(default=None)
     created: datetime.datetime = field(default=None, metadata={'readonly': True})
