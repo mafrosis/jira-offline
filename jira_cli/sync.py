@@ -6,6 +6,7 @@ import logging
 
 import click
 import dictdiffer
+from jira.resources import Issue as ApiIssue
 import pandas as pd
 from tabulate import tabulate
 from tqdm import tqdm
@@ -72,7 +73,7 @@ def pull_issues(jira: 'Jira', force: bool=False, verbose: bool=False):
 
             for api_issue in issues:
                 # convert from Jira object into Issue dataclass
-                issue = _raw_issue_to_object(api_issue)
+                issue = jiraapi_object_to_issue(api_issue)
 
                 try:
                     # determine if local changes have been made
@@ -92,7 +93,7 @@ def pull_issues(jira: 'Jira', force: bool=False, verbose: bool=False):
             else:
                 logger.info('Page number %s', page)
                 df = pd.DataFrame.from_dict(
-                    {issue.key:_raw_issue_to_object(issue).serialize() for issue in issues},
+                    {issue.key:jiraapi_object_to_issue(issue).serialize() for issue in issues},
                     orient='index'
                 )
                 df['summary'] = df.loc[:]['summary'].str.slice(0, 100)
@@ -122,9 +123,14 @@ def pull_issues(jira: 'Jira', force: bool=False, verbose: bool=False):
     jira.config.write_to_disk()
 
 
-def _raw_issue_to_object(issue: dict) -> Issue:
+def jiraapi_object_to_issue(issue: ApiIssue) -> Issue:
     '''
-    Convert raw JSON from JIRA API to a dataclass object
+    Convert raw JSON from Jira API to Issue object
+
+    Params:
+        issue:  Instance of the Issue class from the Jira library
+    Return:
+        An Issue dataclass instance
     '''
     fixVersions = set()
     if issue.fields.fixVersions:
