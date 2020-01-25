@@ -54,7 +54,7 @@ class Issue(DataclassSerializer):
     labels: set = field(default=None)
     priority: str = field(default=None)
     reporter: str = field(default=None)
-    status: IssueStatus = field(default=None)
+    status: IssueStatus = field(default=None, metadata={'readonly': True})
     updated: datetime.datetime = field(default=None, metadata={'readonly': True})
 
     # local-only dict which represents serialized Issue last seen on JIRA server
