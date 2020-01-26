@@ -38,7 +38,7 @@ class IssueStatus(enum.Enum):
 # pylint: disable=too-many-instance-attributes
 @dataclass
 class Issue(DataclassSerializer):
-    issuetype: str = field(metadata={'friendly': 'Type'})
+    issuetype: str = field(metadata={'friendly': 'Type', 'readonly': True})
     project: str = field(metadata={'readonly': True})
     summary: str
     assignee: str = field(default=None)
