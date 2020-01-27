@@ -3,6 +3,7 @@ import dataclasses
 from dataclasses import dataclass, field
 import datetime
 import logging
+from typing import List
 
 import click
 import dictdiffer
@@ -12,7 +13,7 @@ from tabulate import tabulate
 from tqdm import tqdm
 
 from jira_cli.models import Issue
-from jira_cli.utils import DeserializeError, friendly_title
+from jira_cli.utils import critical_logger, DeserializeError, friendly_title
 
 
 CUSTOM_FIELD_EPIC_LINK = 'customfield_14182'
@@ -168,6 +169,49 @@ class IssueUpdate:
     conflicts: dict = field(default_factory=dict)
 
 
+def issue_to_jiraapi_update(issue: Issue, modified: set) -> dict:
+    '''
+    Convert an Issue object to a JSON blob to update the Jira API. Handles both new and updated
+    Issues.
+
+    Params:
+        issue:     Issue model to create an update for
+        modified:  Set of modified fields (created by a call to _build_update)
+    Return:
+        A JSON-compatible Python dict
+    '''
+    # create a mapping of Issue keys (custom fields have a different key on Jira)
+    field_keys: dict = {f.name: f.name for f in dataclasses.fields(Issue)}
+    field_keys['epic_ref'] = CUSTOM_FIELD_EPIC_LINK
+    field_keys['epic_name'] = CUSTOM_FIELD_EPIC_NAME
+    field_keys['estimate'] = CUSTOM_FIELD_ESTIMATE
+
+    # serialize all Issue data to be JSON-compatible
+    issue_values: dict = issue.serialize()
+    # some fields require a different format via the Jira API
+    issue_values['project'] = {'key': issue_values['project']}
+
+    for field_name in ('assignee', 'issuetype', 'reporter'):
+        if field_name in issue_values:
+            issue_values[field_name] = {'name': issue_values[field_name]}
+
+    include_fields: set = set(modified).copy()
+
+    # currently the priority field is unhandled
+    if 'priority' in include_fields:
+        include_fields.remove('priority')
+
+    # don't send estimate field for Epics
+    if issue_values['issuetype'] == 'Epic':
+        include_fields.remove('estimate')
+
+    # build an update dict
+    return {
+        field_keys[field_name]: issue_values[field_name]
+        for field_name in include_fields
+    }
+
+
 def check_resolve_conflicts(base_issue: Issue, updated_issue: Issue) -> IssueUpdate:
     '''
     Check for and resolve conflicts on a single Issue
@@ -182,8 +226,17 @@ def check_resolve_conflicts(base_issue: Issue, updated_issue: Issue) -> IssueUpd
     update_object = _build_update(base_issue, updated_issue)
 
     if update_object.conflicts:
-        resolved_issue = manual_conflict_resolution(update_object)
+        resolved_issue: Issue = manual_conflict_resolution(update_object)
+    else:
+        resolved_issue: Issue = update_object.merged_issue
 
+    # set the original property to the latest updated version incoming from upstream
+    resolved_issue.original = updated_issue.serialize()
+
+    # refresh merged Issue's diff_to_original field
+    resolved_issue.diff_to_original = update_object.merged_issue.diff()
+
+    # refresh resolved Issue's diff_to_original field
     update_object.merged_issue = resolved_issue
     return update_object
 
@@ -396,3 +449,75 @@ def parse_editor_result(update_object: IssueUpdate, editor_result_raw: str) -> I
     edited_issue_dict.update(editor_result)
 
     return Issue.deserialize(edited_issue_dict)
+
+
+def push_issues(jira: 'Jira', verbose: bool=False):
+    '''
+    Push new/changed issues back to Jira server
+
+    Params:
+        jira:     Dependency-injected main.Jira object
+        verbose:  Verbose print all issues as they're pushed to Jira server (default is progress bar)
+    '''
+    def _run(issues: list, pbar=None) -> int:
+        count = 0
+
+        for local_issue in issues:
+            # retrieve the upstream issue
+            remote_issue = _fetch_single_issue(jira, local_issue.key)
+
+            # resolve any conflicts with upstream
+            update_object: IssueUpdate = check_resolve_conflicts(local_issue, remote_issue)
+
+            update_dict: dict = issue_to_jiraapi_update(
+                update_object.merged_issue, update_object.modified
+            )
+
+            if update_object.merged_issue.id:
+                jira.update_issue(update_object.merged_issue, update_dict)
+                logger.info('Updated issue %s', update_object.merged_issue.key)
+                count += 1
+            else:
+                # .. handle new issues
+                pass
+
+            if pbar:
+                # update progress
+                pbar.update(1)
+
+        return count
+
+
+    # Build up a list of issues to push in a specific order.
+    #  1. Push existing issues with local changes first
+    issues_to_push: List[Issue] = [i for i in jira.values() if i.diff_to_original and i.id]
+    #  2. Push new epics (new items have no Issue.id)
+    issues_to_push.extend(i for i in jira.values() if not i.id and i.status == 'Epic')
+    #  3. Push all other new issues
+    issues_to_push.extend(i for i in jira.values() if not i.id and i.status != 'Epic')
+
+    if verbose:
+        total = _run(issues_to_push)
+    else:
+        with critical_logger(logger):
+            # show progress bar
+            with tqdm(total=len(issues_to_push), unit=' issues') as pbar:
+                total = _run(issues_to_push, pbar)
+
+    # write any changes to disk
+    jira.write_issues()
+
+    logger.info('Pushed %s of %s issues', total, len(issues_to_push))
+
+
+def _fetch_single_issue(jira: 'Jira', key: str) -> Issue:
+    '''
+    Return a single Issue object from the Jira API by key
+
+    Params:
+        jira:   Dependency-injected main.Jira object
+        key:    Issue key to lookup
+    Returns:
+        Issue dataclass instance
+    '''
+    return jiraapi_object_to_issue(jira.connect().issue(key))

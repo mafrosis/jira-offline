@@ -9,7 +9,7 @@ from jira_cli.config import load_config
 from jira_cli.linters import fixversions as lint_fixversions
 from jira_cli.linters import issues_missing_epic as lint_issues_missing_epic
 from jira_cli.main import Jira
-from jira_cli.sync import pull_issues
+from jira_cli.sync import pull_issues, push_issues
 
 
 logger = logging.getLogger('jira')
@@ -58,6 +58,16 @@ def cli_show(key):
     jira = Jira()
     jira.load_issues()
     click.echo(jira[key])
+
+
+@cli.command(name='push')
+@click.pass_context
+def cli_push(ctx):
+    '''Synchronise changes back to Jira server'''
+    jira = Jira()
+    jira.config = load_config()
+    jira.load_issues()
+    push_issues(jira, verbose=ctx.obj.verbose)
 
 
 @cli.command(name='pull')

@@ -58,6 +58,7 @@ class Jira(collections.abc.MutableMapping):
         )
         return self._jira
 
+
     def load_issues(self) -> None:
         '''
         Load issues from JSON cache file, and store as class variable
@@ -71,6 +72,7 @@ class Jira(collections.abc.MutableMapping):
             for k,v in json.load(open('issue_cache.json')).items():
                 self[k] = Issue.deserialize(v)
 
+
     def write_issues(self):
         '''
         Dump issues to JSON cache file
@@ -83,6 +85,41 @@ class Jira(collections.abc.MutableMapping):
 
         with open('issue_cache.json', 'w') as f:
             f.write(issues_json)
+
+
+    def update_issue(self, issue: Issue, fields: dict) -> Issue:
+        '''
+        Update an issue on Jira via the API
+
+        WARNING: Uses a private API on the `pycontribs/jira` project.
+                 This was done to greatly simplify our interaction with the Jira API; the default
+                 API provided by the jira library does many clever things that are not useful for
+                 this application.
+
+        Params:
+            key:     Jira Issue key
+            fields:  JSON-compatible key-value pairs to update
+        '''
+        try:
+            api = self.connect()
+            logger.debug('PUT %s/rest/api/2/issue/%s %s', api._options['server'], issue.key, json.dumps(fields)) # pylint: disable=protected-access
+            resp = api._session.put( # pylint: disable=protected-access
+                f'{api._options["server"]}/rest/api/2/issue/{issue.key}/', # pylint: disable=protected-access
+                data=json.dumps({'fields': fields})
+            )
+            logger.debug(resp)
+
+            if bool(resp.status_code > 200 and resp.status_code < 300):
+                # Jira is now updated to match local; synchronize our local reference to the Jira object
+                issue.original = issue.serialize()
+                self[issue.key] = issue
+                return issue
+
+        except mod_jira.JIRAError as e:
+            logger.error('Failed updating %s with error "%s"', issue.key, e)
+
+        return None
+
 
     def invalidate_df(self):
         '''Invalidate internal dataframe, so it's recreated on next access'''

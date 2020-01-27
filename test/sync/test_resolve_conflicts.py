@@ -27,6 +27,18 @@ def test_check_resolve_conflicts__doesnt_call_conflict_resolution_on_NO_conflict
     assert mock_manual_conflict_resolution.called is False
 
 
+def test_check_resolve_conflicts__resolved_issue_has_diff_to_original():
+    '''
+    Ensure that the resolved Issue returned from check_resolve_conflicts has a diff_to_original attribute
+    '''
+    local_issue = Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF)
+    updated_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
+
+    update_obj = check_resolve_conflicts(local_issue, updated_issue)
+
+    assert update_obj.merged_issue.diff_to_original != []
+
+
 @mock.patch('jira_cli.sync.manual_conflict_resolution')
 @mock.patch('jira_cli.sync._build_update')
 def test_check_resolve_conflicts__returns_result_of_manual_conflict_resolution(mock_build_update, mock_manual_conflict_resolution):
