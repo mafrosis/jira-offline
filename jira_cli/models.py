@@ -31,6 +31,7 @@ class IssueStatus(enum.Enum):
     NotAssessed = 'Not Assessed'
     Resolved = 'Resolved'
     Accepted = 'Accepted'
+    Blocked = 'Blocked'
 
 
 # pylint: disable=too-many-instance-attributes
