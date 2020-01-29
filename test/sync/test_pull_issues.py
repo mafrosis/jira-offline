@@ -8,7 +8,7 @@ from jira_cli.sync import pull_issues
 @mock.patch('jira_cli.sync.tqdm')
 def test_pull_issues__calls_connect(mock_tqdm, mock_jira):
     '''
-    Ensure pull_issues() method calls connect()
+    Ensure pull_issues() calls connect()
     '''
     mock_jira._jira.search_issues.side_effect = [ mock.Mock(total=1), [] ]
 
@@ -17,12 +17,38 @@ def test_pull_issues__calls_connect(mock_tqdm, mock_jira):
 
 
 @mock.patch('jira_cli.sync.tqdm')
+def test_pull_issues__calls_load_issues_when_self_empty(mock_tqdm, mock_jira):
+    '''
+    Ensure pull_issues() calls load_issues() when self (a dict) is empty
+    '''
+    mock_jira.config.last_updated = '2019-01-01 00:00'
+    mock_jira._jira.search_issues.side_effect = [ mock.Mock(total=1), [] ]
+
+    pull_issues(mock_jira)
+    assert mock_jira.load_issues.called
+
+
+@mock.patch('jira_cli.sync.tqdm')
+def test_pull_issues__calls_NOT_load_issues_when_self_populated(mock_tqdm, mock_jira):
+    '''
+    Ensure pull_issues() doesn't call load_issues() when self (a dict) already has issues
+    '''
+    # add an Issue fixture to the Jira dict
+    mock_jira['issue1'] = Issue.deserialize(ISSUE_1)
+
+    mock_jira.config.last_updated = '2019-01-01 00:00'
+    mock_jira._jira.search_issues.side_effect = [ mock.Mock(total=1), [] ]
+
+    pull_issues(mock_jira)
+    assert not mock_jira.load_issues.called
+
+
+@mock.patch('jira_cli.sync.tqdm')
 def test_pull_issues__last_updated_field_creates_filter_query(mock_tqdm, mock_jira):
     '''
     Test config.last_updated being set causes a filtered query from value of last_updated
     '''
     mock_jira.config.last_updated = '2019-01-01 00:00'
-    mock_jira.load_issues = mock.Mock()
     mock_jira._jira.search_issues.side_effect = [ mock.Mock(total=1), [] ]
 
     pull_issues(mock_jira)

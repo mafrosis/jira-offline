@@ -43,8 +43,10 @@ def pull_issues(jira: 'Jira', force: bool=False, verbose: bool=False):
         last_updated = '2010-01-01 00:00'
         logger.info('Querying for all Jira issues')
     else:
-        # load existing issue data from cache
-        jira.load_issues()
+        if not jira:
+            # load existing issue data from cache
+            jira.load_issues()
+
         last_updated = jira.config.last_updated
         logger.info('Querying for Jira issues since %s', last_updated)
 
