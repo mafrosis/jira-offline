@@ -1,12 +1,13 @@
 from unittest import mock
 import logging
 
+import click
 from click.testing import CliRunner
 import pandas as pd
 import pytest
 
-from jira_cli.main import Issue
 from jira_cli.entrypoint import cli
+from jira_cli.main import Issue
 from test.fixtures import ISSUE_1
 
 
@@ -64,10 +65,29 @@ def test_cli_pull_no_errors(mock_load_config, mock_jira_local, mock_pull_issues,
     mock_jira_local.return_value = mock_jira
 
     runner = CliRunner()
-    result = runner.invoke(cli, ['pull'], catch_exceptions=False)
+    result = runner.invoke(cli, ['pull'])
     assert result.exit_code == 0
     assert mock_load_config.called
     assert mock_pull_issues.called
+
+
+@mock.patch('jira_cli.entrypoint.pull_issues')
+@mock.patch('jira_cli.entrypoint.Jira')
+@mock.patch('jira_cli.entrypoint.load_config')
+def test_cli_pull_reset_hard_flag_calls_confirm_abort(mock_load_config, mock_jira_local, mock_pull_issues, mock_jira):
+    '''
+    Ensure pull --reset-hard calls click.confirm() with abort=True flag
+    '''
+    # set function-local instance of Jira class to our test mock
+    mock_jira_local.return_value = mock_jira
+
+    click.confirm = mock_click_confirm = mock.Mock(side_effect=click.exceptions.Abort)
+
+    runner = CliRunner()
+    runner.invoke(cli, ['pull', '--reset-hard'])
+    assert mock_click_confirm.called
+    assert mock_click_confirm.call_args_list[0][1] == {'abort': True}
+    assert not mock_pull_issues.called
 
 
 @pytest.mark.parametrize('subcommand', [

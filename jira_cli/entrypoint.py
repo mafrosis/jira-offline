@@ -63,15 +63,19 @@ def cli_show(key):
 @cli.command(name='pull')
 @click.option('--projects', help='Jira project keys')
 @click.option('--login', is_flag=True, help='Reset the current login credentials')
+@click.option('--reset-hard', is_flag=True, help='Force reload of all issues. This will destroy any local changes!')
 @click.pass_context
-def cli_pull(ctx, projects: list=None, login: bool=False):
+def cli_pull(ctx, projects: list=None, login: bool=False, reset_hard: bool=False):
     '''Fetch and cache all JIRA issues'''
     if projects:
         projects = set(projects.split(','))
 
+    if reset_hard:
+        click.confirm('Warning! This will destroy any local changes. Continue?', abort=True)
+
     jira = Jira()
     jira.config = load_config(projects, prompt_for_creds=login)
-    pull_issues(jira, verbose=ctx.obj.verbose)
+    pull_issues(jira, force=reset_hard, verbose=ctx.obj.verbose)
 
 
 @cli.group(name='stats', invoke_without_command=True)
