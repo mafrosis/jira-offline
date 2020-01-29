@@ -22,6 +22,7 @@ class IssueStatus(enum.Enum):
     EpicWithSquad = 'Epic with Squad'
     EpicReadyforSquad = 'Epic Ready for Squad'
     InRelease = 'In Release'
+    InTest = 'In Test'
     Done = 'Done'
     StoryDone = 'Story Done'
     EpicDone = 'Epic Done'
