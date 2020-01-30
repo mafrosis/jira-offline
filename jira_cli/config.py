@@ -18,7 +18,7 @@ logger = logging.getLogger('jira')
 class AppConfig(DataclassSerializer):
     username: str = field(default=None)
     password: str = field(default=None)
-    hostname: str = field(default='jira.service.anz')
+    hostname: str = field(default='jira.atlassian.com')
     last_updated: str = field(default=None)
     projects: set = field(default_factory=set)
 
