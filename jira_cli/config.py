@@ -28,7 +28,14 @@ class AppConfig(DataclassSerializer):
             json.dump(self.serialize(), f)
 
 
-def load_config(projects: set=None):
+def load_config(projects: set=None, prompt_for_creds: bool=False):
+    '''
+    Load app configuration from local JSON file
+
+    Params:
+        projects:          List of Jira project keys
+        prompt_for_creds:  Force a re-prompt for Jira credentials
+    '''
     config_filepath = os.path.join(click.get_app_dir('jira-cli'), 'app.json')
 
     config = None
@@ -45,8 +52,10 @@ def load_config(projects: set=None):
 
     if not config:
         config = AppConfig()
-        config.username = click.prompt('Username', type=str)
-        config.password = click.prompt('Password', type=str, hide_input=True)
+        prompt_for_creds = True
+
+    if prompt_for_creds:
+        _get_user_creds(config)
 
     if projects:
         # if projects is passed on the CLI, merge it into the config
@@ -58,7 +67,14 @@ def load_config(projects: set=None):
         logger.error('No projects cached, or passed with --projects')
         sys.exit(1)
 
-    # validate Jira connection details
+    return config
+
+
+def _get_user_creds(config: AppConfig):
+    config.username = click.prompt('Username', type=str)
+    config.password = click.prompt('Password', type=str, hide_input=True)
+
+    # validate Jira connection details, when creds change
     if config.username and config.password:
         try:
             Jira().connect(config)  # pylint: disable=protected-access
@@ -69,5 +85,3 @@ def load_config(projects: set=None):
         except requests.exceptions.ConnectionError:
             logger.error('Failed connecting to %s', config.hostname)
             config.hostname = None
-
-    return config

@@ -3,9 +3,7 @@ from unittest import mock
 import requests
 import pytest
 
-from jira_cli.config import AppConfig, load_config
-
-# pylint: disable=unused-argument,protected-access
+from jira_cli.config import AppConfig, load_config, _get_user_creds
 
 
 @pytest.mark.parametrize('config_property,value', [
@@ -109,3 +107,55 @@ def test_load_config__projects_arg_extends_projects_config(mock_open, mock_sys, 
     conf = load_config({'EGG'})
 
     assert conf.projects == {'CNTS', 'EGG'}
+
+
+@mock.patch('jira_cli.config.AppConfig')
+@mock.patch('jira_cli.config.Jira')
+@mock.patch('jira_cli.config._get_user_creds')
+@mock.patch('jira_cli.config.os')
+def test_load_config__no_config_file_missing_causes_call_to_get_user_creds(mock_os, mock_get_user_creds, mock_jira_class, mock_appconfig_class):
+    '''
+    Ensure a missing config file causes a constructor call on AppConfig and a call to _get_user_creds()
+    '''
+    # config file NOT exist
+    mock_os.path.exists.return_value = False
+
+    load_config(prompt_for_creds=True)
+
+    assert mock_appconfig_class.called
+    assert mock_get_user_creds.called
+
+
+@mock.patch('jira_cli.config.Jira')
+@mock.patch('jira_cli.config._get_user_creds')
+def test_load_config__prompt_for_creds_param_causes_call_to_get_user_creds(mock_get_user_creds, mock_jira_class):
+    '''
+    Ensure that passing the prompt_for_creds param causes a call to _get_user_creds()
+    '''
+    load_config({'EGG'}, prompt_for_creds=True)
+
+    assert mock_get_user_creds.called
+
+
+@pytest.mark.parametrize('app_config', [
+    AppConfig(),
+    AppConfig(username='test', password='dummy', projects={'CNTS'}),
+])
+@mock.patch('jira_cli.config.Jira')
+@mock.patch('jira_cli.config.click')
+def test_get_user_creds__calls_click_prompt_and_jira_connect(mock_click, mock_jira_class, app_config):
+    '''
+    Ensure that _get_user_creds() causes calls to click.prompt and Jira.connect()
+    '''
+    # mock return from user CLI prompts
+    mock_click.prompt.return_value = 'egg'
+
+    # mock AppConfig.write_to_disk calls
+    app_config.write_to_disk = mock.Mock()
+
+    _get_user_creds(app_config)
+
+    assert mock_click.prompt.call_count == 2
+    assert app_config.username == 'egg'
+    assert app_config.password == 'egg'
+    assert mock_jira_class.return_value.connect.called

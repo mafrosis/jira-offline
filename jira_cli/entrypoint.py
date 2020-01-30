@@ -62,14 +62,15 @@ def cli_show(key):
 
 @cli.command(name='pull')
 @click.option('--projects', help='Jira project keys')
+@click.option('--login', is_flag=True, help='Reset the current login credentials')
 @click.pass_context
-def cli_pull(ctx, projects: list=None):
+def cli_pull(ctx, projects: list=None, login: bool=False):
     '''Fetch and cache all JIRA issues'''
     if projects:
         projects = set(projects.split(','))
 
     jira = Jira()
-    jira.config = load_config(projects)
+    jira.config = load_config(projects, prompt_for_creds=login)
     pull_issues(jira, verbose=ctx.obj.verbose)
 
 
