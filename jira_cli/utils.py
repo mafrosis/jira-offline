@@ -11,6 +11,8 @@ import uuid
 import arrow
 import typing_inspect
 
+from jira_cli.exceptions import DeserializeError
+
 
 @functools.lru_cache()
 def friendly_title(field_name):
@@ -27,8 +29,9 @@ def friendly_title(field_name):
         return field_name.replace('_', ' ').title()
 
 
-class DeserializeError(ValueError):
-    pass
+class classproperty(property):
+    def __get__(self, cls, owner):
+        return classmethod(self.fget).__get__(None, owner)()
 
 
 def get_type_class(type_):

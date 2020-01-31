@@ -9,10 +9,12 @@ from typing import Optional
 import urllib3
 
 import jira as mod_jira
+from jira.resources import Issue as ApiIssue
 import pandas as pd
 
+from jira_cli.exceptions import EpicNotFound, EstimateFieldUnavailable
 from jira_cli.models import Issue
-from jira_cli.sync import pull_issues
+from jira_cli.sync import jiraapi_object_to_issue, pull_issues
 
 
 logger = logging.getLogger('jira')
@@ -89,6 +91,51 @@ class Jira(collections.abc.MutableMapping):
 
         with open('issue_cache.json', 'w') as f:
             f.write(issues_json)
+
+
+    def new_issue(self, fields: dict) -> Issue:
+        '''
+        Create a new issue on a Jira project via the API
+
+        Params:
+            fields:  JSON-compatible key-value pairs to create as new Issue
+        Returns:
+            The new Issue, including the Jira-generated key field
+        '''
+        try:
+            # create a new Issue and store in self
+            api = self.connect()
+
+            # key/status are set by Jira server; remove them
+            temp_key = fields['key']
+            del fields['key']
+            del fields['status']
+
+            # create new issue in Jira and update self
+            issue: ApiIssue = api.create_issue(fields=fields)
+
+        except mod_jira.JIRAError as e:
+            err: str = 'Failed creating new {} "{}" with error "{}"'.format(
+                fields['issuetype']['name'],
+                fields['summary'],
+                e.text
+            )
+            if e.text == 'gh.epic.error.not.found':
+                raise EpicNotFound(err)
+            if "Field 'estimate' cannot be set" in e.text:
+                raise EstimateFieldUnavailable(err)
+
+        # transform the API response and add to self
+        new_issue: Issue = jiraapi_object_to_issue(issue)
+        self[new_issue.key] = new_issue  # pylint: disable=no-member
+
+        # remove the placeholder Issue
+        del self[temp_key]
+
+        # write changes to disk
+        self.write_issues()
+
+        return new_issue
 
 
     def update_issue(self, issue: Issue, fields: dict) -> Optional[Issue]:

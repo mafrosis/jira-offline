@@ -6,6 +6,7 @@ from click.testing import CliRunner
 import pandas as pd
 import pytest
 
+from jira_cli.config import AppConfig
 from jira_cli.entrypoint import cli
 from jira_cli.main import Issue
 from test.fixtures import ISSUE_1
@@ -90,6 +91,25 @@ def test_cli_pull_reset_hard_flag_calls_confirm_abort(mock_load_config, mock_jir
     assert not mock_pull_issues.called
 
 
+@mock.patch('jira_cli.entrypoint.Jira')
+@mock.patch('jira_cli.entrypoint.load_config')
+def test_cli_new_error_when_passed_project_not_in_config(mock_load_config, mock_jira_local, mock_jira):
+    '''
+    Ensure an error happens when the passed --project is missing from config.projects
+    '''
+    # set function-local instance of Jira class to our test mock
+    mock_jira_local.return_value = mock_jira
+
+    # create a config fixture for an existing configured project
+    mock_load_config.return_value = AppConfig(projects=set(['TEST']))
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ['new', 'EGG', 'Story', 'Summary of issue'])
+    assert result.exit_code == 1
+    assert mock_load_config.called
+    assert not mock_jira.new_issue.called
+
+
 @pytest.mark.parametrize('subcommand', [
     'issuetype', 'status', 'fixversions',
 ])
@@ -110,6 +130,59 @@ def test_cli_stats_no_errors(mock_print_table, mock_jira_local, mock_jira, subco
     assert result.exit_code == 0
     assert mock_print_table.called
     assert isinstance(mock_print_table.call_args_list[0][0][0], pd.DataFrame)
+
+
+@mock.patch('jira_cli.entrypoint.Jira')
+@mock.patch('jira_cli.entrypoint.load_config')
+def test_cli_new_error_when_not_passed_epic_name_for_epic(mock_load_config, mock_jira_local, mock_jira):
+    '''
+    Ensure an error happens when --epic-name is not passed for Epic creation
+    '''
+    # set function-local instance of Jira class to our test mock
+    mock_jira_local.return_value = mock_jira
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ['new', 'TEST', 'Epic', 'Summary of issue'])
+    assert result.exit_code == 1
+    assert not mock_jira.new_issue.called
+
+
+@mock.patch('jira_cli.entrypoint.Jira')
+@mock.patch('jira_cli.entrypoint.load_config')
+def test_cli_new_error_when_passed_epic_ref_for_epic(mock_load_config, mock_jira_local, mock_jira):
+    '''
+    Ensure an error happens when --epic-ref is passed for Epic creation
+    '''
+    # set function-local instance of Jira class to our test mock
+    mock_jira_local.return_value = mock_jira
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ['new', 'TEST', 'Epic', 'Summary of issue', '--epic-ref', 'TEST-1'])
+    assert result.exit_code == 1
+    assert not mock_jira.new_issue.called
+
+
+@mock.patch('jira_cli.entrypoint.Jira')
+@mock.patch('jira_cli.entrypoint.create_issue')
+@mock.patch('jira_cli.entrypoint.load_config')
+def test_cli_new_fixversions_param_key_is_modified(mock_load_config, mock_create_issue, mock_jira_local, mock_jira):
+    '''
+    Ensure the --fixversions param is passed into create_issue() as fixVersions
+    '''
+    # set function-local instance of Jira class to our test mock
+    mock_jira_local.return_value = mock_jira
+
+    # create a config fixture for an existing configured project
+    mock_load_config.return_value = AppConfig(projects={'TEST': None})
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ['new', 'TEST', 'Story', 'Summary of issue', '--fix-versions', '0.1'])
+    assert result.exit_code == 0
+    mock_create_issue.assert_called_with(
+        mock_jira, 'TEST', 'Story', 'Summary of issue', assignee=None, description=None,
+        epic_name=None, epic_ref=None, estimate=None, fixVersions={'0.1'}, labels=None,
+        priority=None, reporter=None
+    )
 
 
 @mock.patch('jira_cli.entrypoint.Jira')

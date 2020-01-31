@@ -1,20 +1,35 @@
 from unittest import mock
 
-from fixtures import ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF, ISSUE_1_WITH_FIXVERSIONS_DIFF
+from fixtures import ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF, ISSUE_1_WITH_FIXVERSIONS_DIFF, ISSUE_NEW
 from jira_cli.models import Issue
 from jira_cli.sync import _fetch_single_issue, IssueUpdate, push_issues
 
 
 @mock.patch('jira_cli.sync.check_resolve_conflicts')
 @mock.patch('jira_cli.sync.jiraapi_object_to_issue')
-def test_fetch_single_issue__does_not_error(mock_jiraapi_object_to_issue, mock_check_resolve_conflicts, mock_jira):
+def test_fetch_single_issue__returns_output_from_jiraapi_object_to_issue(mock_jiraapi_object_to_issue, mock_check_resolve_conflicts, mock_jira):
     '''
-    Call a mocked _fetch_single_issue() to ensure no stupid errors
+    Ensure _fetch_single_issue() returns the output directly from jiraapi_object_to_issue()
     '''
-    _fetch_single_issue(mock_jira, 'CNTS-101')
+    mock_jiraapi_object_to_issue.return_value = 1
+
+    ret = _fetch_single_issue(mock_jira, Issue.deserialize(ISSUE_1))
+    assert ret == 1
 
     assert mock_jiraapi_object_to_issue.called
-    assert mock_jira.connect.called
+    assert mock_jira.connect.return_value.issue.called
+
+
+@mock.patch('jira_cli.sync.check_resolve_conflicts')
+@mock.patch('jira_cli.sync.jiraapi_object_to_issue')
+def test_fetch_single_issue__returns_none_when_issue_is_new(mock_jiraapi_object_to_issue, mock_check_resolve_conflicts, mock_jira):
+    '''
+    Ensure _fetch_single_issue() returns None when the passed Issue is new
+    '''
+    ret = _fetch_single_issue(mock_jira, Issue.deserialize(ISSUE_NEW))
+    assert ret is None
+
+    assert not mock_jiraapi_object_to_issue.called
 
 
 @mock.patch('jira_cli.sync.check_resolve_conflicts')
@@ -57,3 +72,25 @@ def test_push_issues__calls_update_issue_when_issue_has_an_id(
     push_issues(mock_jira)
 
     assert mock_jira.update_issue.called
+    assert not mock_jira.new_issue.called
+
+
+@mock.patch('jira_cli.sync.check_resolve_conflicts')
+@mock.patch('jira_cli.sync.issue_to_jiraapi_update')
+@mock.patch('jira_cli.sync._fetch_single_issue')
+def test_push_issues__calls_new_issue_when_issue_doesnt_have_an_id(
+        mock_fetch_single_issue, mock_issue_to_jiraapi_update, mock_check_resolve_conflicts, mock_jira
+    ):
+    '''
+    When Issue.id is NOT set, ensure new_issue() is called, and update_issue() is NOT called
+    '''
+    # add a modified Issue to the Jira dict
+    mock_jira['issue1'] = Issue.deserialize(ISSUE_NEW)
+
+    # mock check_resolve_conflicts to return NO conflicts
+    mock_check_resolve_conflicts.return_value = IssueUpdate(merged_issue=mock_jira['issue1'])
+
+    push_issues(mock_jira)
+
+    assert not mock_jira.update_issue.called
+    assert mock_jira.new_issue.called

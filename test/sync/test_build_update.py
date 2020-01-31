@@ -1,5 +1,5 @@
 from fixtures import (ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF, ISSUE_1_WITH_FIXVERSIONS_DIFF,
-                      ISSUE_1_WITH_UPDATED_DIFF)
+                      ISSUE_1_WITH_UPDATED_DIFF, ISSUE_NEW)
 from jira_cli.models import Issue
 from jira_cli.sync import Conflict, _build_update
 
@@ -220,3 +220,20 @@ def test_build_update__base_modified_on_single_field_and_updated_modified_on_mul
     assert not update_obj.conflicts
     assert update_obj.merged_issue.summary == 'This is a test'
     assert update_obj.merged_issue.assignee == 'hoganp'
+
+
+def test_build_update__new_issue():
+    '''
+    Validate return when calling _build_update with NEW issue
+    '''
+    # create a new Issue fixture
+    new_issue = Issue.deserialize(ISSUE_NEW)
+
+    # for new Issues created offline, the updated_issue is None
+    update_obj = _build_update(new_issue, None)
+
+    # modified fields should match all non-readonly fields
+    assert update_obj.modified == set(['key', 'description', 'epic_ref', 'fixVersions', 'issuetype', 'project', 'reporter', 'summary'])
+    assert not update_obj.conflicts
+    for field in update_obj.modified:
+        assert getattr(update_obj.merged_issue, field) == getattr(new_issue, field)

@@ -2,6 +2,7 @@ import dataclasses
 from dataclasses import dataclass, field
 import datetime
 import enum
+import functools
 import textwrap
 from typing import Any, Dict, Optional, Tuple
 
@@ -9,7 +10,7 @@ import arrow
 import dictdiffer
 from tabulate import tabulate
 
-from jira_cli.utils import DataclassSerializer, friendly_title, get_enum
+from jira_cli.utils import DataclassSerializer, classproperty, friendly_title, get_enum
 
 
 class IssueStatus(enum.Enum):
@@ -33,6 +34,7 @@ class IssueStatus(enum.Enum):
     Resolved = 'Resolved'
     Accepted = 'Accepted'
     Blocked = 'Blocked'
+    Unspecified = 'n/a'
 
 
 # pylint: disable=too-many-instance-attributes
@@ -64,11 +66,21 @@ class Issue(DataclassSerializer):
     # patch of current Issue to dict last seen on Jira server
     diff_to_original: Optional[list] = field(default=None, repr=False)
 
+    @classproperty
+    @functools.lru_cache(maxsize=1)
+    def blank(self):
+        '''
+        Static class property returning a blank/empty Issue
+        '''
+        blank_issue = Issue(project='', issuetype='', summary='', description='')
+        blank_issue.original = blank_issue.serialize()
+        return blank_issue
+
     @property
     def is_open(self) -> bool:
         if self.is_inprogress or self.is_todo:
             return True
-        elif self.is_done or self.is_closed:
+        elif self.is_done or self.is_closed or self.status == IssueStatus.Unspecified:
             return False
         else:
             raise AttributeError('Issue cannot be determined open or closed!')

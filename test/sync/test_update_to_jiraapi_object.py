@@ -31,3 +31,23 @@ def test_issue_to_jiraapi_update__fields_are_formatted_correctly(modified):
     '''
     issue_dict = issue_to_jiraapi_update(Issue.deserialize(ISSUE_1), modified)
     assert 'name' in issue_dict[modified.pop()]
+
+
+def test_issue_to_jiraapi_update__all_fields_are_returned_for_new_issue():
+    '''
+    Ensure issue_to_jiraapi_update returns all mandatory and new fields for a new Issue
+    '''
+    issue_dict = issue_to_jiraapi_update(
+        Issue.deserialize(ISSUE_1),
+        {'issuetype', 'project', 'summary', 'epic_ref', 'description', 'fixVersions', 'reporter'}
+    )
+
+    assert issue_dict == {
+        'customfield_14182': 'TEST-1',
+        'description': 'This is a story or issue',
+        'fixVersions': ['0.1'],
+        'issuetype': {'name': 'Story'},
+        'project': {'key': 'CNTS'},
+        'reporter': {'name': 'danil1'},
+        'summary': 'This is the story summary',
+    }
