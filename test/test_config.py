@@ -88,27 +88,6 @@ def test_load_config__not_config_file_exists_input_bad(mock_click, mock_sys, moc
     assert conf.hostname is None
 
 
-@mock.patch('jira_cli.config.json')
-@mock.patch('jira_cli.config.os')
-@mock.patch('jira_cli.config.sys')
-@mock.patch('builtins.open')
-def test_load_config__projects_arg_extends_projects_config(mock_open, mock_sys, mock_os, mock_json):
-    '''
-    Ensure project IDs passed with --projects param on CLI are merged into the existing
-    config.projects set
-    '''
-    # config file already exists
-    mock_os.path.exists.return_value = True
-
-    # projects field is serialized as list type (for JSON-compatibility)
-    mock_json.load.return_value = {'projects': ['CNTS']}
-
-    # pass new project as set type
-    conf = load_config({'EGG'})
-
-    assert conf.projects == {'CNTS', 'EGG'}
-
-
 @mock.patch('jira_cli.config.AppConfig')
 @mock.patch('jira_cli.config.Jira')
 @mock.patch('jira_cli.config._get_user_creds')

@@ -52,6 +52,10 @@ def pull_issues(jira: 'Jira', projects: set=None, force: bool=False, verbose: bo
     if not projects:
         raise Exception('No projects configured, cannot continue')
 
+    for project_key in projects:
+        if project_key not in jira.config.projects:
+            jira.config.projects[project_key] = jira.get_project_meta(project_key)
+
     if force or jira.config.last_updated is None:
         # first/forced load; cache must be empty
         last_updated = '2010-01-01 00:00'

@@ -96,6 +96,26 @@ def test_pull_issues__no_projects_param_and_empty_projects_config_raises_excepti
         pull_issues(mock_jira)
 
 
+@pytest.mark.parametrize('config_projects', [
+    ({'TEST': {}}),
+    ({}),
+])
+@mock.patch('jira_cli.sync.tqdm')
+def test_pull_issues__calls_get_project_meta_twice_with_two_new_projects(mock_tqdm, mock_jira, config_projects):
+    '''
+    Ensure get_project_meta() is called twice with two new projects
+    '''
+    # mock Jira API to return nothing
+    mock_jira._jira.search_issues.side_effect = [ mock.Mock(total=0), [], [] ]
+
+    # set app config from parametrize
+    mock_jira.config.projects = config_projects
+
+    pull_issues(mock_jira, projects=['TEST1', 'TEST2'])
+
+    assert mock_jira.get_project_meta.call_count == 2
+
+
 @mock.patch('jira_cli.sync.tqdm')
 def test_pull_issues__write_issues_and_config_called(mock_tqdm, mock_jira):
     '''

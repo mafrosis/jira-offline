@@ -91,7 +91,7 @@ def cli_clone(ctx, project: str, login: bool=False):
         raise click.Abort
 
     jira = Jira()
-    jira.config = load_config(projects={project}, prompt_for_creds=login)
+    jira.config = load_config(prompt_for_creds=login)
 
     # pull the single project
     pull_issues(jira, projects={project}, verbose=ctx.obj.verbose)
@@ -112,8 +112,8 @@ def cli_pull(ctx, projects: str=None, login: bool=False, reset_hard: bool=False)
         click.confirm('Warning! This will destroy any local changes. Continue?', abort=True)
 
     jira = Jira()
-    jira.config = load_config(projects_set, prompt_for_creds=login)
-    pull_issues(jira, force=reset_hard, verbose=ctx.obj.verbose)
+    jira.config = load_config(prompt_for_creds=login)
+    pull_issues(jira, projects=projects_set, force=reset_hard, verbose=ctx.obj.verbose)
 
 
 @cli.command(name='new')

@@ -33,12 +33,11 @@ class AppConfig(DataclassSerializer):
             json.dump(self.serialize(), f)
 
 
-def load_config(projects: set=None, prompt_for_creds: bool=False):
+def load_config(prompt_for_creds: bool=False):
     '''
     Load app configuration from local JSON file
 
     Params:
-        projects:          List of Jira project keys
         prompt_for_creds:  Force a re-prompt for Jira credentials
     '''
     config_filepath = os.path.join(click.get_app_dir(__title__), 'app.json')
@@ -50,7 +49,7 @@ def load_config(projects: set=None, prompt_for_creds: bool=False):
             with open(config_filepath) as f:
                 config = AppConfig.deserialize(json.load(f))
         except IsADirectoryError:
-            logger.error('There is directory at config path (%s)!', config_filepath)
+            logger.error('There is a directory at config path (%s)!', config_filepath)
             sys.exit(1)
         except ValueError:
             logger.error('Bad JSON in config file; ignoring')
@@ -61,16 +60,6 @@ def load_config(projects: set=None, prompt_for_creds: bool=False):
 
     if prompt_for_creds:
         _get_user_creds(config)
-
-    if projects:
-        # if projects is passed on the CLI, merge it into the config
-        config.projects.update(projects)
-        logger.info('Working with projects %s', ','.join(config.projects))
-
-    if not config.projects:
-        # abort if when there are no projects to work with!
-        logger.error('No projects cached, or passed with --projects')
-        sys.exit(1)
 
     return config
 
