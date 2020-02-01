@@ -36,16 +36,20 @@ class Conflict(Exception):
     pass
 
 
-def pull_issues(jira: 'Jira', force: bool=False, verbose: bool=False):  # pylint: disable=too-many-statements
+def pull_issues(jira: 'Jira', projects: set=None, force: bool=False, verbose: bool=False):  # pylint: disable=too-many-statements
     '''
     Pull changed issues from upstream Jira API
 
     Params:
-        jira:     Dependency-injected main.Jira object
-        force:    Force reload of *all* issues, not just changed since `last_updated` value
-        verbose:  Verbose print all issues as they're pulled from the API (default is progress bar)
+        jira:      Dependency-injected main.Jira object
+        projects:  Project keys to pull, if None then pull all configured projects
+        force:     Force reload of *all* issues, not just changed since `last_updated` value
+        verbose:   Verbose print all issues as they're pulled from the API (default is progress bar)
     '''
-    if not jira.config.projects:
+    if projects is None:
+        projects = jira.config.projects
+
+    if not projects:
         raise Exception('No projects configured, cannot continue')
 
     if force or jira.config.last_updated is None:
@@ -60,7 +64,7 @@ def pull_issues(jira: 'Jira', force: bool=False, verbose: bool=False):  # pylint
         last_updated = jira.config.last_updated
         logger.info('Querying for Jira issues since %s', last_updated)
 
-    jql = f'project IN ({",".join(jira.config.projects)}) AND updated > "{last_updated}"'
+    jql = f'project IN ({",".join(projects)}) AND updated > "{last_updated}"'
 
     # single quick query to get total number of issues
     api = jira.connect()

@@ -84,7 +84,7 @@ class Jira(collections.abc.MutableMapping):
         Dump issues to JSON cache file
         '''
         try:
-            issues_json = json.dumps({k:v.serialize() for k,v in self.items()})
+            issues_json = json.dumps({str(k):v.serialize() for k,v in self.items()})
         except TypeError:
             logger.exception('Cannot write issues cache! Please report this bug..')
             return

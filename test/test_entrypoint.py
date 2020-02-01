@@ -91,6 +91,23 @@ def test_cli_pull_reset_hard_flag_calls_confirm_abort(mock_load_config, mock_jir
     assert not mock_pull_issues.called
 
 
+@mock.patch('jira_cli.entrypoint.pull_issues')
+@mock.patch('jira_cli.entrypoint.Jira')
+@mock.patch('jira_cli.entrypoint.load_config')
+def test_cli_clone_no_errors(mock_load_config, mock_jira_local, mock_pull_issues, mock_jira):
+    '''
+    Ensure clone extends click.confirm() with abort=True flag
+    '''
+    # set function-local instance of Jira class to our test mock
+    mock_jira_local.return_value = mock_jira
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ['clone', 'EGG'])
+    assert result.exit_code == 0
+    assert mock_load_config.called
+    assert mock_pull_issues.called
+
+
 @mock.patch('jira_cli.entrypoint.Jira')
 @mock.patch('jira_cli.entrypoint.load_config')
 def test_cli_new_error_when_passed_project_not_in_config(mock_load_config, mock_jira_local, mock_jira):

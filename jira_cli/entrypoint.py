@@ -76,6 +76,27 @@ def cli_push(ctx):
     push_issues(jira, verbose=ctx.obj.verbose)
 
 
+@cli.command(name='clone')
+@click.argument('project')
+@click.option('--login', is_flag=True, help='Reset the current login credentials')
+@click.pass_context
+def cli_clone(ctx, project: str, login: bool=False):
+    '''
+    Clone a Jira project to offline
+
+    PROJECT - Jira project key to configure and pull
+    '''
+    if ',' in project:
+        click.echo('You should pass only a single project key')
+        raise click.Abort
+
+    jira = Jira()
+    jira.config = load_config(projects={project}, prompt_for_creds=login)
+
+    # pull the single project
+    pull_issues(jira, projects={project}, verbose=ctx.obj.verbose)
+
+
 @cli.command(name='pull')
 @click.option('--projects', help='Jira project keys')
 @click.option('--login', is_flag=True, help='Reset the current login credentials')
@@ -124,10 +145,8 @@ def cli_new(project: str, issuetype: str, summary: str, **kwargs):
 
     if jira.config and project not in jira.config.projects:
         msg = (
-            'The project {new} is not currently configured! You must first pull the '
-            'project, with this command:\n\n  jiracli pull --projects {new},{existing}\n'.format(
-                new=project, existing=','.join(jira.config.projects)
-            )
+            'The project {new} is not currently configured! You must first load the project with '
+            'this command:\n\n  jiracli clone {new}\n'.format(new=project)
         )
         click.echo(msg)
         raise click.Abort
