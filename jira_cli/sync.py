@@ -1,3 +1,7 @@
+'''
+Functions related to pull & push of Issues to/from the Jira API. Also includes conflict analysis and
+resolution functions.
+'''
 import copy
 import dataclasses
 from dataclasses import dataclass, field
