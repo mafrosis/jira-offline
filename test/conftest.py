@@ -5,27 +5,30 @@ import pytest
 
 from jira_cli.config import AppConfig
 from jira_cli.main import Jira
+from jira_cli.models import ProjectMeta
 
 
 @pytest.fixture()
-def mock_jira():
+def mock_jira_core():
     '''
-    Return a basic mock for the core Jira class.
-
-    - Mock the config object with some dummy data
-    - Mock the config object from writing to disk
-    - Mock the pypi jira module's Jira object. Consuming tests can mock individual methods as
-      necessary
-    - Mock the connect method
-    - Mock the write_issues method
+    Return a Jira class instance with connect method and underlying Jira lib mocked
     '''
     jira = Jira()
-    jira.config = AppConfig(username='test', password='dummy', projects={'CNTS'})
+    jira.config = AppConfig(username='test', password='dummy', projects={'TEST': ProjectMeta()})
     jira.config.write_to_disk = mock.Mock()
     jira._jira = mock.Mock(spec=mod_jira.JIRA)
     jira.connect = mock.Mock(return_value=jira._jira)
-    jira.write_issues = mock.Mock()
-    jira.load_issues = mock.Mock()
-    jira.update_issue = mock.Mock()
-    jira.new_issue = mock.Mock()
     return jira
+
+
+@pytest.fixture()
+def mock_jira(mock_jira_core):
+    '''
+    Mock additional methods of Jira class
+    '''
+    mock_jira_core.load_issues = mock.Mock()
+    mock_jira_core.write_issues = mock.Mock()
+    mock_jira_core.update_issue = mock.Mock()
+    mock_jira_core.new_issue = mock.Mock()
+    mock_jira_core.get_project_meta = mock.Mock()
+    return mock_jira_core

@@ -55,7 +55,7 @@ def test_pull_issues__last_updated_field_creates_filter_query(mock_tqdm, mock_ji
     pull_issues(mock_jira)
 
     # first calls, args (not kwargs), first arg
-    assert mock_jira._jira.search_issues.call_args_list[0][0][0] == 'project IN (CNTS) AND updated > "2019-01-01 00:00"'
+    assert mock_jira._jira.search_issues.call_args_list[0][0][0] == 'project IN (TEST) AND updated > "2019-01-01 00:00"'
 
 
 @mock.patch('jira_cli.sync.tqdm')
@@ -68,7 +68,7 @@ def test_pull_issues__last_updated_field_causes_filter_from_waaay_back(mock_tqdm
     pull_issues(mock_jira)
 
     # first calls, args (not kwargs), first arg
-    assert mock_jira._jira.search_issues.call_args_list[0][0][0] == 'project IN (CNTS) AND updated > "2010-01-01 00:00"'
+    assert mock_jira._jira.search_issues.call_args_list[0][0][0] == 'project IN (TEST) AND updated > "2010-01-01 00:00"'
 
 
 @mock.patch('jira_cli.sync.tqdm')
@@ -78,7 +78,7 @@ def test_pull_issues__projects_param_used_over_projects_config(mock_tqdm, mock_j
     '''
     mock_jira._jira.search_issues.side_effect = [ mock.Mock(total=1), [] ]
 
-    mock_jira.config.projects = {'CNTS'}
+    mock_jira.config.projects = {'CNTS': None}
 
     pull_issues(mock_jira, projects={'EGG'})
 
@@ -90,7 +90,7 @@ def test_pull_issues__no_projects_param_and_empty_projects_config_raises_excepti
     '''
     Test projects param is None and config.projects raises Exception
     '''
-    mock_jira.config.projects = set()
+    mock_jira.config.projects = {}
 
     with pytest.raises(Exception):
         pull_issues(mock_jira)

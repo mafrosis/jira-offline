@@ -144,7 +144,7 @@ def test_load_config__prompt_for_creds_param_causes_call_to_get_user_creds(mock_
 
 @pytest.mark.parametrize('app_config', [
     AppConfig(),
-    AppConfig(username='test', password='dummy', projects={'CNTS'}),
+    AppConfig(username='test', password='dummy', projects={'TEST': None}),
 ])
 @mock.patch('jira_cli.config.Jira')
 @mock.patch('jira_cli.config.click')

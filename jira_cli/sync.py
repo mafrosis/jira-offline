@@ -47,7 +47,7 @@ def pull_issues(jira: 'Jira', projects: set=None, force: bool=False, verbose: bo
         verbose:   Verbose print all issues as they're pulled from the API (default is progress bar)
     '''
     if projects is None:
-        projects = jira.config.projects
+        projects = jira.config.projects.keys()
 
     if not projects:
         raise Exception('No projects configured, cannot continue')

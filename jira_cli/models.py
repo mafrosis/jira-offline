@@ -13,6 +13,12 @@ from tabulate import tabulate
 from jira_cli.utils import DataclassSerializer, classproperty, friendly_title, get_enum
 
 
+@dataclass
+class ProjectMeta(DataclassSerializer):
+    name: Optional[str] = field(default=None)
+    issuetypes: set = field(default_factory=set)
+
+
 class IssueStatus(enum.Enum):
     Backlog = 'Backlog'
     ToDo = 'To Do'

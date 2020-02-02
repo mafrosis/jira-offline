@@ -1,16 +1,19 @@
+'''
+This module contains functions and data structures for managing application config
+'''
 from dataclasses import dataclass, field
 import json
 import os
 import logging
 import sys
-from typing import Optional
+from typing import Dict, Optional
 
 import click
 import requests
 
 from jira_cli import __title__
 from jira_cli.main import Jira
-from jira_cli.models import DataclassSerializer
+from jira_cli.models import DataclassSerializer, ProjectMeta
 
 
 logger = logging.getLogger('jira')
@@ -22,7 +25,7 @@ class AppConfig(DataclassSerializer):
     password: Optional[str] = field(default=None)
     hostname: Optional[str] = field(default='jira.atlassian.com')
     last_updated: Optional[str] = field(default=None)
-    projects: set = field(default_factory=set)
+    projects: Dict[str, ProjectMeta] = field(default_factory=dict)
 
     def write_to_disk(self):
         config_filepath = os.path.join(click.get_app_dir(__title__), 'app.json')
