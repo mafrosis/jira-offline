@@ -90,7 +90,20 @@ class DataclassSerializer:
 
 
         for f in dataclasses.fields(cls):
-            raw_value = attrs.get(f.name)
+            raw_value = None
+
+            try:
+                raw_value = attrs[f.name]
+
+            except KeyError as e:
+                # handle key missing from passed dict
+                # pylint: disable=protected-access
+                if isinstance(f.default, dataclasses._MISSING_TYPE) and isinstance(f.default_factory, dataclasses._MISSING_TYPE):
+                    # raise exception if field has no defaults defined
+                    raise DeserializeError(f'Missing input data for mandatory key {f.name}')
+
+            except TypeError as e:
+                raise DeserializeError(f'Fatal TypeError for key {f.name} ({e})')
 
             if raw_value is None:
                 data[f.name] = None
