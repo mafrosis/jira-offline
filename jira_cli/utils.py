@@ -34,86 +34,116 @@ class DataclassSerializer:
     # pylint: disable=too-many-branches
     def deserialize(cls, attrs: dict) -> object:
         '''
-        Deserialize JSON-compatible dict to dataclass
-
-        Support int, decimal, date/datetime, enum & set
+        Deserialize JSON-compatible dict to dataclass. Supports the following types:
+            - int
+            - decimal.Decimal
+            - datetime.date
+            - datetime.datetime
+            - enum.Enum
+            - set
+            - dataclass
         '''
         data = {}
 
+        # pylint: disable=too-many-return-statements
+        def deserialize_value(type_: type, value: Any) -> Any:
+            if dataclasses.is_dataclass(type_):
+                return type_.deserialize(value)
+
+            elif type_ is decimal.Decimal:
+                try:
+                    return decimal.Decimal(value)
+                except decimal.InvalidOperation:
+                    raise DeserializeError(f'Failed deserializing "{value}" to {type_}')
+
+            elif issubclass(type_, enum.Enum):
+                try:
+                    # convert string to Enum instance
+                    return type_(value)
+                except ValueError:
+                    raise DeserializeError(f'Failed deserializing "{value}" to {type_}')
+
+            elif type_ is datetime.date:
+                try:
+                    return arrow.get(value).datetime.date()
+                except arrow.parser.ParserError:
+                    raise DeserializeError(f'Failed deserializing "{value}" to Arrow datetime.date')
+
+            elif type_ is datetime.datetime:
+                try:
+                    return arrow.get(value).datetime
+                except arrow.parser.ParserError:
+                    raise DeserializeError(f'Failed deserializing "{value}" to Arrow datetime.datetime')
+
+            elif type_ is set:
+                if not isinstance(value, set) and not isinstance(value, list):
+                    raise DeserializeError(f'Value passed to set type must be JSON set or list')
+                return set(value)
+
+            elif type_ is int:
+                try:
+                    return int(value)
+                except ValueError:
+                    raise DeserializeError(f'Failed deserializing "{value}" to {type_}')
+            else:
+                return value
+
+
         for f in dataclasses.fields(cls):
-            v = attrs.get(f.name)
-            if v is None:
+            raw_value = attrs.get(f.name)
+
+            if raw_value is None:
                 data[f.name] = None
                 continue
 
-            if dataclasses.is_dataclass(f.type):
-                data[f.name] = f.type.deserialize(v)
-            elif f.type is decimal.Decimal:
-                try:
-                    data[f.name] = decimal.Decimal(v)
-                except decimal.InvalidOperation:
-                    raise DeserializeError(f'Failed deserializing "{v}" to {f.type}')
-            elif issubclass(f.type, enum.Enum):
-                try:
-                    # convert string to Enum instance
-                    data[f.name] = f.type(v)
-                except ValueError:
-                    raise DeserializeError(f'Failed deserializing "{v}" to {f.type}')
-            elif f.type is datetime.date:
-                try:
-                    data[f.name] = arrow.get(v).datetime.date()
-                except arrow.parser.ParserError:
-                    raise DeserializeError(f'Failed deserializing "{v}" to Arrow datetime.date')
-            elif f.type is datetime.datetime:
-                try:
-                    data[f.name] = arrow.get(v).datetime
-                except arrow.parser.ParserError:
-                    raise DeserializeError(f'Failed deserializing "{v}" to Arrow datetime.datetime')
-            elif f.type is set:
-                if not isinstance(v, set) and not isinstance(v, list):
-                    raise DeserializeError(f'Value passed to set type must be JSON set or list')
-                data[f.name] = set(v)
-            elif f.type is int:
-                try:
-                    data[f.name] = int(v)
-                except ValueError:
-                    raise DeserializeError(f'Failed deserializing "{v}" to {f.type}')
-            else:
-                data[f.name] = v
+            data[f.name] = deserialize_value(f.type, raw_value)
 
         return cls(**data)
 
+
     def serialize(self) -> dict:
         '''
-        Serialize dataclass to JSON-compatible dict
+        Serialize dataclass to JSON-compatible dict. Supports the following types:
+            - int
+            - decimal.Decimal
+            - datetime.date
+            - datetime.datetime
+            - enum.Enum
+            - set
+            - dataclass
 
-        Supports int, decimal, date/datetime, enum & set
-        Include only fields with repr=True (dataclass.field default)
-        Int-type does not need serializing for JSON
+        Notes:
+            - includes only fields with repr=True (the dataclass.field default)
+            - int type does not need serializing for JSON
         '''
         data = {}
+
+        # pylint: disable=too-many-return-statements
+        def serialize_value(type_: type, value: Any) -> Any:
+            if value is None:
+                return None
+            elif dataclasses.is_dataclass(type_):
+                return value.serialize()
+            elif isinstance(value, decimal.Decimal):
+                return str(value)
+            elif issubclass(type_, enum.Enum):
+                # convert Enum to raw string
+                return value.value
+            elif isinstance(value, (datetime.date, datetime.datetime)):
+                return value.isoformat()
+            elif isinstance(value, set):
+                return sorted(list(value))
+            else:
+                return value
+
 
         for f in dataclasses.fields(self):
             if f.repr is False:
                 continue
 
-            v = self.__dict__.get(f.name)
+            raw_value = self.__dict__.get(f.name)
 
-            if v is None:
-                data[f.name] = None
-            elif dataclasses.is_dataclass(f.type):
-                data[f.name] = v.serialize()
-            elif isinstance(v, decimal.Decimal):
-                data[f.name] = str(v)
-            elif issubclass(f.type, enum.Enum):
-                # convert Enum to raw string
-                data[f.name] = v.value
-            elif isinstance(v, (datetime.date, datetime.datetime)):
-                data[f.name] = v.isoformat()
-            elif isinstance(v, set):
-                data[f.name] = sorted(list(v))
-            else:
-                data[f.name] = v
+            data[f.name] = serialize_value(f.type, raw_value)
 
         return data
 
