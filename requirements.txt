@@ -6,4 +6,5 @@ pandas
 requests
 tabulate
 tqdm
+typing_inspect
 urllib3

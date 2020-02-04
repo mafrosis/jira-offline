@@ -5,8 +5,10 @@ import decimal
 import enum
 import functools
 import logging
+from typing import Any
 
 import arrow
+from typing_inspect import is_generic_type
 
 
 @functools.lru_cache()
@@ -26,6 +28,17 @@ def friendly_title(field_name):
 
 class DeserializeError(ValueError):
     pass
+
+
+def get_type_class(typ):
+    '''
+    Get the origin class for a Generic type, supporting older pythons
+    This is called `get_origin(typ)` in `typing_inspect` lib
+    '''
+    try:
+        return typ.__extra__  # Python 3.5 / 3.6
+    except AttributeError:
+        return typ.__origin__  # Python 3.7+
 
 
 @dataclasses.dataclass
@@ -109,7 +122,20 @@ class DataclassSerializer:
                 data[f.name] = None
                 continue
 
-            data[f.name] = deserialize_value(f.type, raw_value)
+            # determine if type is a Generic Dict
+            if is_generic_type(f.type) and get_type_class(f.type) is dict:
+                # extract key and value types for the Dict
+                dict_key_type, dict_value_type = f.type.__args__[0], f.type.__args__[1]
+                try:
+                    # deserialize keys and values individually into a new dict
+                    data[f.name] = {
+                        deserialize_value(dict_key_type, item_key): deserialize_value(dict_value_type, item_value)
+                        for item_key, item_value in raw_value.items()
+                    }
+                except AttributeError:
+                    raise DeserializeError(f'Failed serializing "{raw_value}" to {f.type}')
+            else:
+                data[f.name] = deserialize_value(f.type, raw_value)
 
         return cls(**data)
 
@@ -156,7 +182,18 @@ class DataclassSerializer:
 
             raw_value = self.__dict__.get(f.name)
 
-            data[f.name] = serialize_value(f.type, raw_value)
+            # determine if type is a Generic Dict
+            if is_generic_type(f.type) and get_type_class(f.type) is dict:
+                # extract key and value types for the Dict
+                dict_key_type, dict_value_type = f.type.__args__[0], f.type.__args__[1]
+                # deserialize keys and values individually into a new dict
+                data[f.name] = {
+                    serialize_value(dict_key_type, item_key):
+                        serialize_value(dict_value_type, item_value)
+                    for item_key, item_value in raw_value.items()
+                }
+            else:
+                data[f.name] = serialize_value(f.type, raw_value)
 
         return data
 
