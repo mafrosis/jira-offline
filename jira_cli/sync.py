@@ -144,26 +144,32 @@ def jiraapi_object_to_issue(issue: ApiIssue) -> Issue:
     if issue.fields.fixVersions:
         fixVersions = {f.name for f in issue.fields.fixVersions}
 
-    return Issue.deserialize({
-        'assignee': issue.fields.assignee.name if issue.fields.assignee else None,
+    jiraapi_object = {
         'created': issue.fields.created,
         'creator': issue.fields.creator.name,
-        'epic_ref': getattr(issue.fields, CUSTOM_FIELD_EPIC_LINK),
         'epic_name': getattr(issue.fields, CUSTOM_FIELD_EPIC_NAME, ''),
-        'estimate': getattr(issue.fields, CUSTOM_FIELD_ESTIMATE),
         'description': issue.fields.description,
         'fixVersions': fixVersions,
         'id': issue.id,
         'issuetype': issue.fields.issuetype.name,
         'key': issue.key,
-        'labels': issue.fields.labels,
         'priority': issue.fields.priority.name,
         'project': issue.fields.project.key,
         'reporter': issue.fields.reporter.name,
         'status': issue.fields.status.name,
         'summary': issue.fields.summary,
         'updated': issue.fields.updated,
-    })
+    }
+    if issue.fields.assignee:
+        jiraapi_object['assignee'] = issue.fields.assignee.name
+    if getattr(issue.fields, CUSTOM_FIELD_EPIC_LINK):
+        jiraapi_object['epic_ref'] = getattr(issue.fields, CUSTOM_FIELD_EPIC_LINK)
+    if getattr(issue.fields, CUSTOM_FIELD_ESTIMATE):
+        jiraapi_object['estimate'] = getattr(issue.fields, CUSTOM_FIELD_ESTIMATE)
+    if issue.fields.labels:
+        jiraapi_object['labels'] = issue.fields.labels
+
+    return Issue.deserialize(jiraapi_object)
 
 
 @dataclass
