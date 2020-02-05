@@ -115,12 +115,10 @@ class DataclassSerializer:
                     # raise exception if field has no defaults defined
                     raise DeserializeError(f'Missing input data for mandatory key {f.name}')
 
+                continue
+
             except TypeError as e:
                 raise DeserializeError(f'Fatal TypeError for key {f.name} ({e})')
-
-            if raw_value is None:
-                data[f.name] = None
-                continue
 
             # determine if type is a Generic Dict
             if is_generic_type(f.type) and get_type_class(f.type) is dict:
@@ -193,7 +191,9 @@ class DataclassSerializer:
                     for item_key, item_value in raw_value.items()
                 }
             else:
-                data[f.name] = serialize_value(f.type, raw_value)
+                serialized_value = serialize_value(f.type, raw_value)
+                if serialized_value:
+                    data[f.name] = serialized_value
 
         return data
 
