@@ -3,7 +3,6 @@ import logging
 
 import click
 from click.testing import CliRunner
-import pandas as pd
 import pytest
 
 from jira_cli.config import AppConfig
@@ -38,38 +37,65 @@ def test_debug_flag_sets_logger_to_debug_level(mock_jira_local, mock_jira):
     assert logging.getLogger('jira').level == logging.DEBUG
 
 
+CLI_COMMAND_MAPPING = [
+    ('ls', tuple(), 1),
+    ('show', ('issue1',), 1),
+    ('clone', ('TEST',), 0),
+    ('new', ('TEST', 'Story', 'Summary'), 1),
+    ('pull', tuple(), 0),
+    ('push', tuple(), 1),
+    ('stats', ('issuetype',), 1),
+    ('stats', ('status',), 1),
+    ('stats', ('fixversions',), 1),
+    ('lint', ('fixversions',), 1),
+    ('lint', ('issues-missing-epic',), 1),
+]
+
+
+@pytest.mark.parametrize('command,params,_', CLI_COMMAND_MAPPING)
 @mock.patch('jira_cli.entrypoint.Jira')
-def test_cli_show_no_errors(mock_jira_local, mock_jira):
+@mock.patch('jira_cli.entrypoint.pull_issues')
+@mock.patch('jira_cli.entrypoint.push_issues')
+@mock.patch('jira_cli.entrypoint.load_config')
+def test_cli_smoketest(mock_load_config, mock_push_issues, mock_pull_issues, mock_jira_local, mock_jira, command, params, _):
     '''
-    Ensure no exceptions arise from the show command
+    Dumb smoke test function to check for errors in application CLI
+    Failures here often uncover untested parts of the codebase
+
+    This function tests when the jiracli issue cache has a single issue
     '''
     # set function-local instance of Jira class to our test mock
     mock_jira_local.return_value = mock_jira
+    mock_load_config.return_value = mock_jira.config
 
     # add fixture to Jira dict
     mock_jira['issue1'] = Issue.deserialize(ISSUE_1)
 
     runner = CliRunner()
-    result = runner.invoke(cli, ['show', 'issue1'])
+    result = runner.invoke(cli, [command, *params])
+    # CLI should always exit zero
     assert result.exit_code == 0
-    assert mock_jira.load_issues.called
 
 
-@mock.patch('jira_cli.entrypoint.pull_issues')
+@pytest.mark.parametrize('command,params,exit_code', CLI_COMMAND_MAPPING)
 @mock.patch('jira_cli.entrypoint.Jira')
-@mock.patch('jira_cli.entrypoint.load_config')
-def test_cli_pull_no_errors(mock_load_config, mock_jira_local, mock_pull_issues, mock_jira):
+@mock.patch('jira_cli.entrypoint.pull_issues')
+@mock.patch('jira_cli.entrypoint.push_issues')
+@mock.patch('jira_cli.entrypoint.load_config', return_value=AppConfig())
+def test_cli_smoketest_empty(mock_load_config, mock_push_issues, mock_pull_issues, mock_jira_local, mock_jira, command, params, exit_code):
     '''
-    Ensure no exceptions arise from the pull command
+    Dumb smoke test function to check for errors in application CLI
+    Failures here often uncover untested parts of the codebase
+
+    This function tests when the jiracli issue cache is empty
     '''
     # set function-local instance of Jira class to our test mock
     mock_jira_local.return_value = mock_jira
 
     runner = CliRunner()
-    result = runner.invoke(cli, ['pull'])
-    assert result.exit_code == 0
-    assert mock_load_config.called
-    assert mock_pull_issues.called
+    result = runner.invoke(cli, [command, *params])
+    # some CLI commands will exit with error, others will not..
+    assert result.exit_code == exit_code
 
 
 @mock.patch('jira_cli.entrypoint.pull_issues')
@@ -91,23 +117,6 @@ def test_cli_pull_reset_hard_flag_calls_confirm_abort(mock_load_config, mock_jir
     assert not mock_pull_issues.called
 
 
-@mock.patch('jira_cli.entrypoint.pull_issues')
-@mock.patch('jira_cli.entrypoint.Jira')
-@mock.patch('jira_cli.entrypoint.load_config')
-def test_cli_clone_no_errors(mock_load_config, mock_jira_local, mock_pull_issues, mock_jira):
-    '''
-    Ensure clone extends click.confirm() with abort=True flag
-    '''
-    # set function-local instance of Jira class to our test mock
-    mock_jira_local.return_value = mock_jira
-
-    runner = CliRunner()
-    result = runner.invoke(cli, ['clone', 'EGG'])
-    assert result.exit_code == 0
-    assert mock_load_config.called
-    assert mock_pull_issues.called
-
-
 @mock.patch('jira_cli.entrypoint.Jira')
 @mock.patch('jira_cli.entrypoint.load_config')
 def test_cli_new_error_when_passed_project_not_in_config(mock_load_config, mock_jira_local, mock_jira):
@@ -118,35 +127,13 @@ def test_cli_new_error_when_passed_project_not_in_config(mock_load_config, mock_
     mock_jira_local.return_value = mock_jira
 
     # create a config fixture for an existing configured project
-    mock_load_config.return_value = AppConfig(projects=set(['TEST']))
+    mock_load_config.return_value = AppConfig(projects={'TEST': None})
 
     runner = CliRunner()
     result = runner.invoke(cli, ['new', 'EGG', 'Story', 'Summary of issue'])
     assert result.exit_code == 1
     assert mock_load_config.called
     assert not mock_jira.new_issue.called
-
-
-@pytest.mark.parametrize('subcommand', [
-    'issuetype', 'status', 'fixversions',
-])
-@mock.patch('jira_cli.entrypoint.Jira')
-@mock.patch('jira_cli.entrypoint._print_table')
-def test_cli_stats_no_errors(mock_print_table, mock_jira_local, mock_jira, subcommand):
-    '''
-    Ensure no exceptions arise from the stats subcommands
-    '''
-    # set function-local instance of Jira class to our test mock
-    mock_jira_local.return_value = mock_jira
-
-    # add fixture to Jira dict
-    mock_jira['issue1'] = Issue.deserialize(ISSUE_1)
-
-    runner = CliRunner()
-    result = runner.invoke(cli, ['stats', subcommand])
-    assert result.exit_code == 0
-    assert mock_print_table.called
-    assert isinstance(mock_print_table.call_args_list[0][0][0], pd.DataFrame)
 
 
 @mock.patch('jira_cli.entrypoint.Jira')
@@ -204,7 +191,7 @@ def test_cli_new_fixversions_param_key_is_modified(mock_load_config, mock_create
 
 @mock.patch('jira_cli.entrypoint.Jira')
 @mock.patch('jira_cli.entrypoint._print_table')
-def test_cli_stats_no_errors_no_subcommand(mock_print_table, mock_jira_local, mock_jira):
+def test_cli_stats_no_errors_when_no_subcommand_passed(mock_print_table, mock_jira_local, mock_jira):
     '''
     Ensure no exceptions arise from the stats subcommands when no subcommand passed, and print table
     is called three times (as there are three subcommands to be invoked)

@@ -73,6 +73,11 @@ def cli_push(ctx):
     jira = Jira()
     jira.config = load_config()
     jira.load_issues()
+
+    if not jira:
+        click.echo('No issues in the cache')
+        raise click.Abort
+
     push_issues(jira, verbose=ctx.obj.verbose)
 
 
@@ -293,13 +298,15 @@ def cli_ls():
     jira.load_issues()
     _print_list(jira.df)
 
-
 def _print_list(df: pd.DataFrame, width=100):
     '''Helper to print abbreviated list of issues'''
+    if df.empty:
+        click.echo('No issues in the cache')
+        raise click.Abort
+
     # shorten the summary field for printing
     df['summary'] = df.loc[:]['summary'].str.slice(0, width)
     _print_table(df[['issuetype', 'summary', 'assignee', 'updated']])
-
 
 def _print_table(df):
     '''Helper to pretty print dataframes'''
