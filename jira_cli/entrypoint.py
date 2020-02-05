@@ -63,6 +63,11 @@ def cli_show(key):
     '''Pretty print an Issue on the CLI'''
     jira = Jira()
     jira.load_issues()
+
+    if key not in jira:
+        click.echo('Unknown issue key')
+        raise click.Abort
+
     click.echo(jira[key])
 
 

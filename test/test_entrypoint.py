@@ -98,6 +98,21 @@ def test_cli_smoketest_empty(mock_load_config, mock_push_issues, mock_pull_issue
     assert result.exit_code == exit_code
 
 
+@mock.patch('jira_cli.entrypoint.Jira')
+@mock.patch('jira_cli.entrypoint.click')
+def test_cli_show_invalid_issue_key(mock_click, mock_jira_local, mock_jira):
+    '''
+    Ensure show command errors when passed an invalid/missing Issue key
+    '''
+    # set function-local instance of Jira class to our test mock
+    mock_jira_local.return_value = mock_jira
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ['show', 'issue1'])
+    assert result.exit_code == 1
+    mock_click.echo.assert_called_once_with('Unknown issue key')
+
+
 @mock.patch('jira_cli.entrypoint.pull_issues')
 @mock.patch('jira_cli.entrypoint.Jira')
 @mock.patch('jira_cli.entrypoint.load_config')
