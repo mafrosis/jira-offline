@@ -33,13 +33,13 @@ jobs:
       run: |
         docker-compose build --build-arg PYTHON_VERSION=${{ matrix.python-version }}
 
-    - name: Install dataclasses from pypi for 3.6
+    - name: Install dataclasses & typing from pypi for 3.6
       if: matrix.python-version < 3.7
       run: |
         # Build an updated Docker image including dataclasses lib
         tee Dockerfile.36 > /dev/null <<EOF
         FROM mafrosis/jiracli
-        RUN pip install dataclasses
+        RUN pip install dataclasses typing
         EOF
         docker build -f Dockerfile.36 -t mafrosis/jiracli .
 
