@@ -237,12 +237,15 @@ def cli_group_lint_fixversions(ctx, words=None):
             logger.warning('Passing --words without --fix has no effect')
         words = set(words.split(','))
 
+    jira = Jira()
+    jira.load_issues()
+
     # query issues missing the fixVersions field
-    df = lint_fixversions(fix=False)
+    df = lint_fixversions(jira, fix=False)
     initial_missing_count = len(df)
 
     if ctx.obj.lint.fix:
-        df = lint_fixversions(ctx.obj.lint.fix, words)
+        df = lint_fixversions(jira, fix=ctx.obj.lint.fix, words=words)
 
         click.echo(f'Updated fixVersions on {initial_missing_count - len(df)} issues')
     else:
@@ -265,12 +268,15 @@ def cli_group_lint_issues_missing_epic(ctx, epic_ref=None):
         if not ctx.obj.lint.fix:
             logger.warning('Passing --epic-ref without --fix has no effect')
 
+    jira = Jira()
+    jira.load_issues()
+
     # query issues missing the epic field
-    df = lint_issues_missing_epic(fix=False)
+    df = lint_issues_missing_epic(jira, fix=False)
     initial_missing_count = len(df)
 
     if ctx.obj.lint.fix:
-        df = lint_issues_missing_epic(ctx.obj.lint.fix, epic_ref)
+        df = lint_issues_missing_epic(jira, fix=ctx.obj.lint.fix, epic_ref=epic_ref)
 
         click.echo(f'Set epic to {epic_ref} on {initial_missing_count - len(df)} issues')
     else:

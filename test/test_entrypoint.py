@@ -221,11 +221,15 @@ def test_cli_stats_no_errors_no_subcommand(mock_print_table, mock_jira_local, mo
     assert mock_print_table.call_count == 3
 
 
+@mock.patch('jira_cli.entrypoint.Jira')
 @mock.patch('jira_cli.entrypoint.lint_fixversions')
-def test_cli_lint_fixversions_echo(mock_lint_fixversions):
+def test_cli_lint_fixversions_echo(mock_lint_fixversions, mock_jira_local, mock_jira):
     '''
     Ensure lint fixversions command calls click.echo without error
     '''
+    # set function-local instance of Jira class to our test mock
+    mock_jira_local.return_value = mock_jira
+
     runner = CliRunner()
     result = runner.invoke(cli, ['lint', 'fixversions'])
     assert result.exit_code == 0
@@ -244,22 +248,30 @@ def test_cli_lint_fixversions_fix_requires_words(mock_lint_fixversions):
     assert result.output.endswith('You must pass --words with --fix\n')
 
 
+@mock.patch('jira_cli.entrypoint.Jira')
 @mock.patch('jira_cli.entrypoint.lint_fixversions')
-def test_cli_lint_fixversions_fix_passes_words_to_lint_func(mock_lint_fixversions):
+def test_cli_lint_fixversions_fix_passes_words_to_lint_func(mock_lint_fixversions, mock_jira_local, mock_jira):
     '''
     Ensure lint fixversions with --fix and --words correctly calls lint_fixversions
     '''
+    # set function-local instance of Jira class to our test mock
+    mock_jira_local.return_value = mock_jira
+
     runner = CliRunner()
     result = runner.invoke(cli, ['lint', '--fix', 'fixversions', '--words', 'CNTS,TEST'])
     assert result.exit_code == 0
-    mock_lint_fixversions.assert_called_with(True, {'CNTS', 'TEST'})
+    mock_lint_fixversions.assert_called_with(mock_jira, fix=True, words={'CNTS', 'TEST'})
 
 
+@mock.patch('jira_cli.entrypoint.Jira')
 @mock.patch('jira_cli.entrypoint.lint_issues_missing_epic')
-def test_cli_lint_issues_missing_epic_echo(mock_lint_issues_missing_epic):
+def test_cli_lint_issues_missing_epic_echo(mock_lint_issues_missing_epic, mock_jira_local, mock_jira):
     '''
     Ensure lint issues_missing_epic command calls click.echo without error
     '''
+    # set function-local instance of Jira class to our test mock
+    mock_jira_local.return_value = mock_jira
+
     runner = CliRunner()
     result = runner.invoke(cli, ['lint', 'issues-missing-epic'])
     assert result.exit_code == 0
@@ -278,12 +290,16 @@ def test_cli_lint_issues_missing_epic_fix_requires_epic_ref(mock_lint_issues_mis
     assert result.output.endswith('You must pass --epic_ref with --fix\n')
 
 
+@mock.patch('jira_cli.entrypoint.Jira')
 @mock.patch('jira_cli.entrypoint.lint_issues_missing_epic')
-def test_cli_lint_issues_missing_epic_fix_passes_epic_ref_to_lint_func(mock_lint_issues_missing_epic):
+def test_cli_lint_issues_missing_epic_fix_passes_epic_ref_to_lint_func(mock_lint_issues_missing_epic, mock_jira_local, mock_jira):
     '''
     Ensure lint issues-missing-epic with --fix and --epic_ref correctly calls lint_issues_missing_epic
     '''
+    # set function-local instance of Jira class to our test mock
+    mock_jira_local.return_value = mock_jira
+
     runner = CliRunner()
     result = runner.invoke(cli, ['lint', '--fix', 'issues-missing-epic', '--epic-ref', 'CNTS'])
     assert result.exit_code == 0
-    mock_lint_issues_missing_epic.assert_called_with(True, 'CNTS')
+    mock_lint_issues_missing_epic.assert_called_with(mock_jira, fix=True, epic_ref='CNTS')

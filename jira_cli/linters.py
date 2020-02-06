@@ -1,24 +1,24 @@
 import logging
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
-from jira_cli.main import Jira
+if TYPE_CHECKING:
+    import Jira
 
 
 logger = logging.getLogger('jira')
 
 
-def fixversions(fix: bool=False, words: list=None) -> pd.DataFrame:
+def fixversions(jira: 'Jira', fix: bool=False, words: list=None) -> pd.DataFrame:
     '''
     Lint on issues missing fixVersions field
 
     Params:
-        fix     Flag to indicate if a fix should be applied
-        words   Words to look for in an Epic name, and set in fixVersions
+        jira:   Dependency-injected main.Jira object
+        fix:    Flag to indicate if a fix should be applied
+        words:  Words to look for in an Epic name, and set in fixVersions
     '''
-    jira = Jira()
-    jira.load_issues()
-
     if fix and not words:
         raise Exception
 
@@ -47,17 +47,15 @@ def fixversions(fix: bool=False, words: list=None) -> pd.DataFrame:
     return jira.df[jira.df.fixVersions.apply(lambda x: len(x) == 0)]
 
 
-def issues_missing_epic(fix: bool=False, epic_ref: str=None) -> pd.DataFrame:
+def issues_missing_epic(jira: 'Jira', fix: bool=False, epic_ref: str=None) -> pd.DataFrame:
     '''
     Lint issues without an epic set, default to Open issues only.
 
     Params:
-        fix        Flag to indicate if a fix should be applied
-        epic_ref   Epic to set on issues with no epic (only applicable when fix=True)
+        jira:      Dependency-injected main.Jira object
+        fix:       Flag to indicate if a fix should be applied
+        epic_ref:  Epic to set on issues with no epic (only applicable when fix=True)
     '''
-    jira = Jira()
-    jira.load_issues()
-
     if fix:
         # iterate issue keys and update issue.epic_ref
         for key in jira.df[(jira.df.issuetype != 'Epic') & jira.df.epic_ref.isnull() & jira.df.is_open].index:
