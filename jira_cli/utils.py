@@ -6,6 +6,7 @@ import enum
 import functools
 import logging
 from typing import Any
+import uuid
 
 import arrow
 from typing_inspect import is_generic_type
@@ -67,14 +68,20 @@ class DataclassSerializer:
                 try:
                     return decimal.Decimal(value)
                 except decimal.InvalidOperation:
-                    raise DeserializeError(f'Failed deserializing "{value}" to {type_}')
+                    raise DeserializeError(f'Failed deserializing "{value}" to Decimal')
+
+            elif type_ is uuid.UUID:
+                try:
+                    return uuid.UUID(value)
+                except ValueError:
+                    raise DeserializeError(f'Failed deserializing "{value}" to UUID')
 
             elif issubclass(type_, enum.Enum):
                 try:
                     # convert string to Enum instance
                     return type_(value)
                 except ValueError:
-                    raise DeserializeError(f'Failed deserializing "{value}" to {type_}')
+                    raise DeserializeError(f'Failed deserializing {value} to {type_}')
 
             elif type_ is datetime.date:
                 try:
@@ -96,8 +103,8 @@ class DataclassSerializer:
             elif type_ is int:
                 try:
                     return int(value)
-                except ValueError:
-                    raise DeserializeError(f'Failed deserializing "{value}" to {type_}')
+                except (TypeError, ValueError):
+                    raise DeserializeError(f'Failed deserializing {value} to int')
             else:
                 return value
 
@@ -161,7 +168,7 @@ class DataclassSerializer:
                 return None
             elif dataclasses.is_dataclass(type_):
                 return value.serialize()
-            elif isinstance(value, decimal.Decimal):
+            elif isinstance(value, (decimal.Decimal, uuid.UUID)):
                 return str(value)
             elif issubclass(type_, enum.Enum):
                 # convert Enum to raw string
