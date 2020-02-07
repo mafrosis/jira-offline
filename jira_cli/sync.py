@@ -36,7 +36,7 @@ class Conflict(Exception):
     pass
 
 
-def pull_issues(jira: 'Jira', force: bool=False, verbose: bool=False):
+def pull_issues(jira: 'Jira', force: bool=False, verbose: bool=False):  # pylint: disable=too-many-statements
     '''
     Pull changed issues from upstream Jira API
 
