@@ -10,6 +10,7 @@ import urllib3
 
 import jira as mod_jira
 from jira.resources import Issue as ApiIssue
+import jsonlines
 import pandas as pd
 
 from jira_cli.exceptions import EpicNotFound, EstimateFieldUnavailable
@@ -67,16 +68,21 @@ class Jira(collections.abc.MutableMapping):
 
     def load_issues(self) -> None:
         '''
-        Load issues from JSON cache file, and store as class variable
-        return DataFrame of entire dataset
+        Load issues from JSON cache file, and store in self (as class implements dict interface)
         '''
-        if not os.path.exists('issue_cache.json'):
+        if not os.path.exists('issue_cache.jsonl') or os.stat('issue_cache.jsonl').st_size == 0:
             # first run; cache file doesn't exist
             pull_issues(self, force=True)
         else:
-            # load from cache file
-            for k,v in json.load(open('issue_cache.json')).items():
-                self[k] = Issue.deserialize(v)
+            try:
+                # load from cache file
+                with open('issue_cache.jsonl') as f:
+                    for obj in jsonlines.Reader(f.readlines()).iter(type=dict):
+                        self[obj['key']] = Issue.deserialize(obj)
+
+            except (KeyError, TypeError, jsonlines.Error):
+                logger.exception('Cannot read issues cache! Please report this bug.')
+                return
 
 
     def write_issues(self):
@@ -84,13 +90,15 @@ class Jira(collections.abc.MutableMapping):
         Dump issues to JSON cache file
         '''
         try:
-            issues_json = json.dumps({str(k):v.serialize() for k,v in self.items()})
+            issues_json = [v.serialize() for k,v in self.items()]
         except TypeError:
-            logger.exception('Cannot write issues cache! Please report this bug..')
+            # an error here means the DataclassSerializer output is incompatible with JSON
+            logger.exception('Cannot write issues cache! Please report this bug.')
             return
 
-        with open('issue_cache.json', 'w') as f:
-            f.write(issues_json)
+        with open('issue_cache.jsonl', 'w') as f:
+            writer = jsonlines.Writer(f)
+            writer.write_all(issues_json)
 
 
     def get_project_meta(self, project_key: str) -> Optional[ProjectMeta]:

@@ -2,6 +2,7 @@ arrow
 click
 dictdiffer
 jira
+jsonlines
 pandas
 requests
 tabulate
