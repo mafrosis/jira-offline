@@ -7,6 +7,7 @@ import logging
 from typing import Optional, Set
 
 import click
+import arrow
 import pandas as pd
 from tabulate import tabulate
 
@@ -262,7 +263,7 @@ def cli_group_lint_fixversions(ctx, words=None):
         click.echo(f'There are {len(df)} issues missing the fixVersions field')
 
     if ctx.obj.verbose:
-        _print_list(df)
+        _print_list(df, verbose=ctx.obj.verbose)
 
 @cli_group_lint.command(name='issues-missing-epic')
 @click.option('--epic-ref', help='Epic to set on issues with no epic. Used with --fix.')
@@ -293,25 +294,62 @@ def cli_group_lint_issues_missing_epic(ctx, epic_ref=None):
         click.echo(f'There are {len(df)} issues missing an epic')
 
     if ctx.obj.verbose:
-        _print_list(df)
+        _print_list(df, verbose=ctx.obj.verbose)
 
 
 @cli.command(name='ls')
-def cli_ls():
+@click.pass_context
+def cli_ls(ctx):
     '''List Issues on the CLI'''
     jira = Jira()
     jira.load_issues()
-    _print_list(jira.df)
+    _print_list(jira.df, verbose=ctx.obj.verbose)
 
-def _print_list(df: pd.DataFrame, width=100):
-    '''Helper to print abbreviated list of issues'''
+
+def _print_list(df: pd.DataFrame, width: int=60, verbose: bool=False):
+    '''
+    Helper to print abbreviated list of issues
+
+    Params:
+        df:       Issues to display in a DataFrame
+        width:    Crop width for the summary string
+        verbose:  Display more information
+    '''
     if df.empty:
         click.echo('No issues in the cache')
         raise click.Abort
 
+    fields = ['issuetype', 'epic_ref', 'summary', 'assignee', 'updated']
+
+    if verbose:
+        width = 200
+
+    # pretty dates for non-verbose
+    def format_datetime(raw):
+        if not raw or pd.isnull(raw):
+            return ''
+        dt = arrow.get(raw)
+        if verbose:
+            return f'{dt.format()}'
+        else:
+            return f'{dt.humanize()}'
+    df.updated = df.updated.apply(format_datetime)
+
     # shorten the summary field for printing
-    df['summary'] = df.loc[:]['summary'].str.slice(0, width)
-    _print_table(df[['issuetype', 'summary', 'assignee', 'updated']])
+    df.summary = df.loc[:]['summary'].str.slice(0, width)
+
+    # abbreviate UUID issue keys (these are on offline-created Issues)
+    def abbrev_key(key):
+        if key is None:
+            return ''
+        if len(key) == 36:
+            return key[0:8]
+        return key
+    df.set_index(df.key.apply(abbrev_key), inplace=True)
+    df.epic_ref = df.epic_ref.apply(abbrev_key)
+
+    _print_table(df[fields])
+
 
 def _print_table(df):
     '''Helper to pretty print dataframes'''
