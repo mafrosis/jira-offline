@@ -10,3 +10,34 @@ services:
       - ./config:/root/.config/jiracli
       - /app/.git
       - /app/jira_cli.egg-info
+
+  jira:
+    restart: always
+    image: atlassian/jira-software
+    ports:
+      - 8666:8080
+    volumes:
+      - ./jira_data:/var/atlassian/application-data/jira
+    environment:
+      ATL_DB_DRIVER: org.postgresql.Driver
+      ATL_JDBC_USER: postgres
+      ATL_JDBC_PASSWORD: postgres
+      ATL_DB_TYPE: postgres72
+      ATL_JDBC_URL: jdbc:postgresql://postgres:5432/jira
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:9.6-alpine
+    ports:
+      - 40699:5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: jira
+      LANG: POSIX.UTF-8
+
+volumes:
+  postgres_data: {}
