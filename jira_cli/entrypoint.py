@@ -329,9 +329,11 @@ def _print_list(df: pd.DataFrame, width: int=60, verbose: bool=False):
         click.echo('No issues in the cache')
         raise click.Abort
 
-    fields = ['issuetype', 'epic_ref', 'summary', 'assignee', 'updated']
-
-    if verbose:
+    if not verbose:
+        fields = ['issuetype', 'epic_ref', 'summary', 'assignee', 'updated']
+    else:
+        fields = ['issuetype', 'epic_ref', 'epic_name', 'summary', 'assignee', 'fixVersions',
+                  'updated']
         width = 200
 
     # pretty dates for non-verbose
@@ -357,6 +359,9 @@ def _print_list(df: pd.DataFrame, width: int=60, verbose: bool=False):
         return key
     df.set_index(df.key.apply(abbrev_key), inplace=True)
     df.epic_ref = df.epic_ref.apply(abbrev_key)
+
+    if verbose:
+        df.fixVersions = df.fixVersions.apply(lambda x: '' if not x else ','.join(x))
 
     _print_table(df[fields])
 
