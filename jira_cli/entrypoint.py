@@ -119,11 +119,22 @@ def cli_pull(ctx, projects: str=None, login: bool=False, reset_hard: bool=False)
     if projects:
         projects_set = set(projects.split(','))
 
-    if reset_hard:
-        click.confirm('Warning! This will destroy any local changes. Continue?', abort=True)
-
     jira = Jira()
     jira.config = load_config(prompt_for_creds=login)
+
+    if reset_hard:
+        reset_warning = None
+        if projects:
+            reset_warning = f'{projects}'
+        elif jira.config and jira.config.projects:
+            reset_warning = f'{jira.config.projects}'
+
+        if reset_warning:
+            click.confirm(
+                f'Warning! This will destroy any local changes for project(s) {reset_warning}. Continue?',
+                abort=True
+            )
+
     pull_issues(jira, projects=projects_set, force=reset_hard, verbose=ctx.obj.verbose)
 
 
