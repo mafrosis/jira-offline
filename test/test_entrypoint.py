@@ -242,27 +242,27 @@ def test_cli_lint_fixversions_echo(mock_lint_fixversions, mock_jira_local, mock_
 @mock.patch('jira_cli.entrypoint.lint_fixversions')
 def test_cli_lint_fixversions_fix_requires_words(mock_lint_fixversions):
     '''
-    Ensure lint fixversions with --fix param errors without --words
+    Ensure lint fixversions with --fix param errors without --value
     '''
     runner = CliRunner()
     result = runner.invoke(cli, ['lint', '--fix', 'fixversions'])
     assert result.exit_code != 0
-    assert result.output.endswith('You must pass --words with --fix\n')
+    assert result.output.endswith('You must pass --value with --fix\n')
 
 
 @mock.patch('jira_cli.entrypoint.Jira')
 @mock.patch('jira_cli.entrypoint.lint_fixversions')
 def test_cli_lint_fixversions_fix_passes_words_to_lint_func(mock_lint_fixversions, mock_jira_local, mock_jira):
     '''
-    Ensure lint fixversions with --fix and --words correctly calls lint_fixversions
+    Ensure lint fixversions with --fix and --value correctly calls lint_fixversions
     '''
     # set function-local instance of Jira class to our test mock
     mock_jira_local.return_value = mock_jira
 
     runner = CliRunner()
-    result = runner.invoke(cli, ['lint', '--fix', 'fixversions', '--words', 'CNTS,TEST'])
+    result = runner.invoke(cli, ['lint', '--fix', 'fixversions', '--value', '0.1'])
     assert result.exit_code == 0
-    mock_lint_fixversions.assert_called_with(mock_jira, fix=True, words={'CNTS', 'TEST'})
+    mock_lint_fixversions.assert_called_with(mock_jira, fix=True, value='0.1')
 
 
 @mock.patch('jira_cli.entrypoint.Jira')

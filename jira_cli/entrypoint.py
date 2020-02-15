@@ -245,19 +245,18 @@ def cli_group_lint(ctx, fix=False):
     ctx.obj.lint = LintParams(fix=fix)
 
 @cli_group_lint.command(name='fixversions')
-@click.option('--words', help='Words to look for in an Epic name, and set in fixVersions. Used with --fix.')
+@click.option('--value', help='Value set in fixVersions. Used with --fix.')
 @click.pass_context
-def cli_group_lint_fixversions(ctx, words=None):
+def cli_group_lint_fixversions(ctx, value=None):
     '''
     Lint on missing fixVersions field
     '''
-    if ctx.obj.lint.fix and not words:
-        raise click.BadParameter('You must pass --words with --fix', ctx)
+    if ctx.obj.lint.fix and not value:
+        raise click.BadParameter('You must pass --value with --fix', ctx)
 
-    if words:
+    if value:
         if not ctx.obj.lint.fix:
-            logger.warning('Passing --words without --fix has no effect')
-        words = set(words.split(','))
+            logger.warning('Passing --value without --fix has no effect')
 
     jira = Jira()
     jira.load_issues()
@@ -267,7 +266,7 @@ def cli_group_lint_fixversions(ctx, words=None):
     initial_missing_count = len(df)
 
     if ctx.obj.lint.fix:
-        df = lint_fixversions(jira, fix=ctx.obj.lint.fix, words=words)
+        df = lint_fixversions(jira, fix=ctx.obj.lint.fix, value=value)
 
         click.echo(f'Updated fixVersions on {initial_missing_count - len(df)} issues')
     else:

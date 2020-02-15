@@ -15,7 +15,6 @@ ISSUE_1 = {
     'summary': 'This is the story summary',
     'updated': '2019-08-20T16:41:19.000+10:00',
     'epic_ref': 'TEST-1',
-    'epic_name': '0.1: Epic in version 0.1',
     'diff_to_original': []
 }
 
@@ -36,7 +35,6 @@ ISSUE_1_WITH_UPDATED_DIFF = {
     'summary': 'This is the story summary',
     'updated': '2000-08-20T00:00:00.000+10:00',
     'epic_ref': 'TEST-1',
-    'epic_name': '0.1: Epic in version 0.1',
     'diff_to_original': [('change', 'updated', ('2000-08-20T00:00:00.000+10:00', '2019-08-20T16:41:19+10:00'))]
 }
 
@@ -57,7 +55,6 @@ ISSUE_1_WITH_ASSIGNEE_DIFF = {
     'summary': 'This is the story summary',
     'updated': '2019-08-20T16:41:19.000+10:00',
     'epic_ref': 'TEST-1',
-    'epic_name': '0.1: Epic in version 0.1',
     'diff_to_original': [('change', 'assignee', ('hoganp', 'danil1'))]
 }
 
@@ -78,7 +75,6 @@ ISSUE_1_WITH_FIXVERSIONS_DIFF = {
     'summary': 'This is the story summary',
     'updated': '2019-08-20T16:41:19.000+10:00',
     'epic_ref': 'TEST-1',
-    'epic_name': '0.1: Epic in version 0.1',
     'diff_to_original': [('remove', 'fixVersions', [(1, '0.2')])]
 }
 
@@ -99,15 +95,14 @@ ISSUE_2 = {
     'summary': 'This is the story summary',
     'updated': '2019-08-20T16:41:19.000+10:00',
     'epic_ref': 'TEST-1',
-    'epic_name': '0.1: Epic in version 0.1',
     'diff_to_original': []
 }
 
-ISSUE_3 = {
+ISSUE_MISSING_EPIC = {
     'created': '2018-09-24T08:44:06.000+10:00',
     'creator': 'danil1',
     'description': 'This is a story or issue',
-    'fixVersions': ['0.1'],
+    'fixVersions': [],
     'issuetype': 'Story',
     'id': '1236',
     'key': 'CNTS-73',
@@ -135,6 +130,7 @@ ISSUE_NEW = {
 EPIC_1 = {
     'created': '2018-09-24T08:44:06.000+10:00',
     'creator': 'danil1',
+    'fixVersions': ['0.1'],
     'issuetype': 'Epic',
     'id': '2345',
     'key': 'TEST-1',
