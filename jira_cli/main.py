@@ -14,7 +14,6 @@ from jira_cli.sync import pull_issues
 logger = logging.getLogger('jira')
 
 
-
 class Jira(collections.abc.MutableMapping):
     _jira = None
     _df = None

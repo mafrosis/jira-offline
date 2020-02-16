@@ -126,13 +126,18 @@ def test_load_config__no_config_file_missing_causes_call_to_get_user_creds(mock_
     assert mock_get_user_creds.called
 
 
+@mock.patch('jira_cli.config.AppConfig')
 @mock.patch('jira_cli.config.Jira')
 @mock.patch('jira_cli.config._get_user_creds')
-def test_load_config__prompt_for_creds_param_causes_call_to_get_user_creds(mock_get_user_creds, mock_jira_class):
+@mock.patch('jira_cli.config.os')
+def test_load_config__prompt_for_creds_param_causes_call_to_get_user_creds(mock_os, mock_get_user_creds, mock_jira_class, mock_appconfig_class):
     '''
     Ensure that passing the prompt_for_creds param causes a call to _get_user_creds()
     '''
-    load_config({'EGG'}, prompt_for_creds=True)
+    # config file doesn't exist
+    mock_os.path.exists.return_value = False
+
+    load_config(prompt_for_creds=True)
 
     assert mock_get_user_creds.called
 

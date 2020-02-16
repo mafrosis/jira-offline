@@ -1,12 +1,15 @@
+import dataclasses
 from dataclasses import dataclass, field
 import datetime
 import enum
 import textwrap
+from typing import Tuple
 
+import arrow
 import dictdiffer
 from tabulate import tabulate
 
-from jira_cli.utils import DataclassSerializer
+from jira_cli.utils import DataclassSerializer, friendly_title
 
 
 class IssueStatus(enum.Enum):
@@ -34,22 +37,22 @@ class IssueStatus(enum.Enum):
 @dataclass
 class Issue(DataclassSerializer):
     assignee: str
-    created: datetime.datetime
-    creator: str
+    created: datetime.datetime = field(metadata={'readonly': True})
+    creator: str = field(metadata={'readonly': True})
     description: str
-    fixVersions: set
-    issuetype: str
-    key: str
+    fixVersions: set = field(metadata={'friendly': 'Fix Version'})
+    issuetype: str = field(metadata={'friendly': 'Type'})
+    key: str = field(metadata={'readonly': True})
     labels: set
     priority: str
     project: str
     reporter: str
     status: IssueStatus
     summary: str
-    updated: datetime.datetime
+    updated: datetime.datetime = field(metadata={'readonly': True})
     estimate: int = field(default=None)
     epic_ref: str = field(default=None)
-    epic_name: str = field(default=None)
+    epic_name: str = field(default=None, metadata={'friendly': 'Epic Short Name'})
 
     # local-only dict which represents serialized Issue last seen on JIRA server
     # this property is not written to cache and is created at runtme from diff_to_original
@@ -132,26 +135,88 @@ class Issue(DataclassSerializer):
 
         return data
 
-    def __str__(self):
-        '''Pretty print this Issue'''
-        if self.issuetype == 'Epic':
-            epicdetails = ('Epic Short Name', f'{self.epic_name}')
-        else:
-            epicdetails = ('Epic Ref', f'{self.epic_ref}')
+    def __str__(self, conflicts: dict=None):
+        '''
+        Pretty print this Issue
 
-        return tabulate([
-            ('Summary', f'[{self.key}] {self.summary}'),
-            ('Type', self.issuetype),
-            epicdetails,
-            ('Status', self.status.value),
-            ('Priority', self.priority),
-            ('Assignee', self.assignee),
-            ('Estimate', self.estimate),
-            ('Description', '\n'.join(textwrap.wrap(self.description, width=100))),
-            ('Fix Version', tabulate([('-', v) for v in self.fixVersions], tablefmt='plain')),
-            ('Labels', tabulate([('-', l) for l in self.labels], tablefmt='plain')),
-            ('Reporter', self.reporter),
-            ('Creator', self.creator),
-            ('Created', self.created),
-            ('Updated', self.updated),
-        ])
+        Params:
+            conflicts:  A conflict object
+        '''
+        # create dict of Issue dataclass fields
+        issue_fields = {f.name:f for f in dataclasses.fields(Issue)}
+
+        def fmt(field_name, prefix: str=None) -> Tuple[Tuple]:
+            '''
+            Pretty formatting with support for conflicts
+
+            Params:
+                field_name: Dataclass field being formatted
+                prefix:     Arbitrary prefix to prepend during string format
+            Returns:
+                tuple:      Tuple of formatted-pair tuples
+            '''
+            if conflicts and field_name in conflicts:
+                return (
+                    ('<<<<<<< base', ''),
+                    render(field_name, conflicts[field_name]['base'], prefix),
+                    ('=======', ''),
+                    render(field_name, conflicts[field_name]['updated'], prefix),
+                    ('>>>>>>> updated', ''),
+                )
+            else:
+                return (render(field_name, getattr(self, field_name), prefix),)
+
+        def render(field_name, value: str=None, prefix: str=None) -> Tuple[str, str]:
+            '''
+            Single-field pretty formatting function supporting various types
+
+            Params:
+                field_name: Dataclass field to render
+                value:      Data to be rendered according to format
+                prefix:     Arbitrary prefix to prepend during string format
+            Returns:
+                tuple:      Pretty field title, formatted value
+            '''
+            title = friendly_title(field_name)
+
+            value = getattr(self, field_name)
+
+            if value is None:
+                value = ''
+            elif issue_fields[field_name].type is set:
+                value = tabulate([('-', v) for v in value], tablefmt='plain')
+            elif issue_fields[field_name].type is datetime.datetime:
+                dt = arrow.get(self.created)
+                value = f'{dt.humanize()} [{dt.format()}]'
+            elif issubclass(issue_fields[field_name].type, enum.Enum):
+                value = value.value
+            elif value and issue_fields[field_name].type is str and len(value) > 100:
+                value = '\n'.join(textwrap.wrap(value, width=100))
+
+            if prefix:
+                value = f'{prefix} {value}'
+
+            return title, value
+
+        if self.issuetype == 'Epic':
+            epicdetails = fmt('epic_name')
+        else:
+            epicdetails = fmt('epic_ref')
+
+        attrs = [
+            *fmt('summary', prefix=f'[{self.key}]'),
+            *fmt('issuetype'),
+            *epicdetails,
+            *fmt('status'),
+            *fmt('priority'),
+            *fmt('assignee'),
+            *fmt('estimate'),
+            *fmt('description'),
+            *fmt('fixVersions'),
+            *fmt('labels'),
+            *fmt('reporter'),
+            *fmt('creator'),
+            *fmt('created'),
+            *fmt('updated'),
+        ]
+        return tabulate(attrs)

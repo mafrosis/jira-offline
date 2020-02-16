@@ -2,8 +2,24 @@ import dataclasses
 import datetime
 import decimal
 import enum
+import functools
 
 import arrow
+
+
+@functools.lru_cache()
+def friendly_title(field_name):
+    '''
+    Util function to convert a dataclass field name into a friendly title
+    '''
+    # late import prevents circular dependency
+    from jira_cli.models import Issue  # pylint: disable=import-outside-toplevel,cyclic-import
+    try:
+        for f in dataclasses.fields(Issue):
+            if f.name == field_name:
+                return f.metadata['friendly']
+    except KeyError:
+        return field_name.replace('_', ' ').title()
 
 
 class DeserializeError(ValueError):
