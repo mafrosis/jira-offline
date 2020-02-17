@@ -2,6 +2,7 @@ from unittest import mock
 import pytest
 
 from fixtures import ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF, ISSUE_1_WITH_FIXVERSIONS_DIFF, ISSUE_2
+from jira_cli.exceptions import FailedPullingProjectMeta, JiraApiError
 from jira_cli.models import Issue
 from jira_cli.sync import IssueUpdate, pull_issues
 
@@ -114,6 +115,20 @@ def test_pull_issues__calls_get_project_meta_twice_with_two_new_projects(mock_tq
     pull_issues(mock_jira, projects=['TEST1', 'TEST2'])
 
     assert mock_jira.get_project_meta.call_count == 2
+
+
+@mock.patch('jira_cli.sync.tqdm')
+def test_pull_issues__error_handled_when_api_raises_jira_exception(mock_tqdm, mock_jira):
+    '''
+    Ensure an exception is raised and handled when the API raises a Jira exception
+    '''
+    mock_jira.get_project_meta.side_effect = JiraApiError
+
+    with pytest.raises(FailedPullingProjectMeta):
+        pull_issues(mock_jira, projects=['TEST1'])
+
+    # exception should be raised before call to connect()
+    assert not mock_jira.connect.called
 
 
 @mock.patch('jira_cli.sync.tqdm')

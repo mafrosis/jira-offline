@@ -13,7 +13,7 @@ from jira.resources import Issue as ApiIssue
 import jsonlines
 import pandas as pd
 
-from jira_cli.exceptions import EpicNotFound, EstimateFieldUnavailable
+from jira_cli.exceptions import EpicNotFound, EstimateFieldUnavailable, JiraApiError
 from jira_cli.models import Issue, ProjectMeta
 from jira_cli.sync import jiraapi_object_to_issue, pull_issues
 
@@ -109,7 +109,7 @@ class Jira(collections.abc.MutableMapping):
             writer.write_all(issues_json)
 
 
-    def get_project_meta(self, project_key: str) -> Optional[ProjectMeta]:
+    def get_project_meta(self, project_key: str) -> ProjectMeta:
         '''
         Load additional Jira project meta data from Jira's createmeta API
 
@@ -127,10 +127,9 @@ class Jira(collections.abc.MutableMapping):
             )
 
         except (IndexError, KeyError) as e:
-            logger.error('Missing or bad project meta returned for %s with error "%s"', project_key, e)
+            raise JiraApiError(f'Missing or bad project meta returned for {project_key} with error "{e}"')
         except mod_jira.JIRAError as e:
-            logger.error('Failed retrieving project meta for %s with error "%s"', project_key, e)
-        return None
+            raise JiraApiError(f'Failed retrieving project meta for {project_key} with error "{e}"')
 
 
     def new_issue(self, fields: dict) -> Issue:

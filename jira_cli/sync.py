@@ -16,7 +16,8 @@ import pandas as pd
 from tabulate import tabulate
 from tqdm import tqdm
 
-from jira_cli.exceptions import EpicNotFound, EstimateFieldUnavailable
+from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, FailedPullingProjectMeta,
+                                 JiraApiError)
 from jira_cli.models import Issue
 from jira_cli.utils import critical_logger, DeserializeError, friendly_title, is_optional_type
 
@@ -52,9 +53,14 @@ def pull_issues(jira: 'Jira', projects: set=None, force: bool=False, verbose: bo
     if not projects:
         raise Exception('No projects configured, cannot continue')
 
-    for project_key in projects:
-        if project_key not in jira.config.projects:
-            jira.config.projects[project_key] = jira.get_project_meta(project_key)
+    try:
+        # pull project metadata for each project key, and merge into config.projects
+        for project_key in projects:
+            if project_key not in jira.config.projects:
+                jira.config.projects[project_key] = jira.get_project_meta(project_key)
+
+    except JiraApiError as e:
+        raise FailedPullingProjectMeta(e)
 
     if force or jira.config.last_updated is None:
         # first/forced load; cache must be empty
