@@ -482,11 +482,20 @@ def parse_editor_result(update_object: IssueUpdate, editor_result_raw: str) -> I
 
         editor_result[current_field.name].append(line[len(parsed_token):].strip())
 
+    summary_prefix = f'[{update_object.merged_issue.key}]'
+
     def preprocess_field_value(field_name, val):
         if is_optional_type(issue_fields[field_name].type, set):
             return [item[1:].strip() for item in val]
         else:
-            return ''.join(val)
+            output = ''.join(val)
+
+            if field_name == 'summary':
+                # special case to strip the key prefix from the summary
+                if output.startswith(summary_prefix):
+                    output = output[len(summary_prefix):].strip()
+
+            return output
 
     # fields need additional preprocessing before being passed to Issue.deserialize()
     editor_result = {k: preprocess_field_value(k, v) for k, v in editor_result.items()}

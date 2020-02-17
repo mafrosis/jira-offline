@@ -34,6 +34,19 @@ def test_parse_editor_result__handles_str_type_over_100_chars():
     assert edited_issue.description == str('This is a story or issue '*5).strip()
 
 
+def test_parse_editor_result__parses_summary_str():
+    '''
+    Ensure editor text parser handles unique summary string formatting
+    '''
+    editor_result_raw = '# Conflict(s) on Issue CNTS-71\n\n----------------  --------------------------------------\nSummary           [CNTS-71] This is the story summary\nType              Story\nEpic Ref          EPIC-60\nStatus            Story Done\nPriority          Normal\nAssignee          danil1\nEstimate\nDescription       This is a story or issue\nFix Version       -  0.1\nLabels\nReporter          danil1\nCreator           danil1\nCreated           a year ago [2018-09-24 08:44:06+10:00]\nUpdated           a year ago [2018-09-24 08:44:06+10:00]\nLast Viewed       a year ago [2018-09-24 08:44:06+10:00]\n----------------  --------------------------------------\n'
+
+    edited_issue = parse_editor_result(
+        IssueUpdate(merged_issue=Issue.deserialize(ISSUE_1), conflicts={'summary'}),
+        editor_result_raw,
+    )
+    assert edited_issue.summary == 'This is the story summary'
+
+
 def test_parse_editor_result__handles_set_type():
     '''
     Ensure editor text parser handles set type
