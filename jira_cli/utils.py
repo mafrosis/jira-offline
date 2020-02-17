@@ -81,6 +81,11 @@ class DataclassSerializer:
             - enum.Enum
             - set
             - dataclass
+
+        Params:
+            attrs:  Dict to deserialize into an instance of cls
+        Returns:
+            An instance of cls
         '''
         data = {}
 
@@ -192,6 +197,9 @@ class DataclassSerializer:
         Notes:
             - includes only fields with repr=True (the dataclass.field default)
             - int type does not need serializing for JSON
+
+        Returns:
+            A JSON-compatible dict
         '''
         data = {}
 

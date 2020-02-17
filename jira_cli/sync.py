@@ -529,7 +529,7 @@ def push_issues(jira: 'Jira', verbose: bool=False):
                 update_object.merged_issue, update_object.modified
             )
 
-            if update_object.merged_issue.id:
+            if update_object.merged_issue.exists:
                 jira.update_issue(update_object.merged_issue.key, update_dict)
                 logger.info('Updated issue %s', update_object.merged_issue.key)
                 count += 1
@@ -550,11 +550,11 @@ def push_issues(jira: 'Jira', verbose: bool=False):
 
     # Build up a list of issues to push in a specific order.
     #  1. Push existing issues with local changes first
-    issues_to_push: List[Issue] = [i for i in jira.values() if i.diff_to_original and i.id]
-    #  2. Push new epics (new items have no Issue.id)
-    issues_to_push.extend(i for i in jira.values() if not i.id and i.status == 'Epic')
+    issues_to_push: List[Issue] = [i for i in jira.values() if i.diff_to_original and i.exists]
+    #  2. Push new epics
+    issues_to_push.extend(i for i in jira.values() if not i.exists and i.status == 'Epic')
     #  3. Push all other new issues
-    issues_to_push.extend(i for i in jira.values() if not i.id and i.status != 'Epic')
+    issues_to_push.extend(i for i in jira.values() if not i.exists and i.status != 'Epic')
 
     if verbose:
         total = _run(issues_to_push)
@@ -580,7 +580,7 @@ def _fetch_single_issue(jira: 'Jira', issue: Issue) -> Optional[Issue]:
     Returns:
         Issue dataclass instance
     '''
-    # new issues will have an absent id attrib
-    if not bool(issue.id):
+    # new issues return False for exists
+    if not issue.exists:
         return None
     return jiraapi_object_to_issue(jira.connect().issue(issue.key))

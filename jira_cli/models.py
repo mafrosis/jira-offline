@@ -83,6 +83,13 @@ class Issue(DataclassSerializer):
         return blank_issue
 
     @property
+    def exists(self) -> bool:
+        '''
+        Return True if Issue exists on Jira, or False if it's local only
+        '''
+        return bool(self.id)
+
+    @property
     def is_open(self) -> bool:
         if self.is_inprogress or self.is_todo:
             return True
@@ -125,9 +132,9 @@ class Issue(DataclassSerializer):
         the original property. This is written to storage to track changes made offline.
 
         Params:
-            data (optional):  Serialized dict of self
+            data (optional):  Serialized dict of self (can be passed to avoid double-call to serialize)
         Returns:
-            List from dictdiffer.diff for Issue.diff_to_original property
+            Return from dictdiffer.diff to be stored in Issue.diff_to_original property
         '''
         if not self.original:
             return None
@@ -161,21 +168,6 @@ class Issue(DataclassSerializer):
         issue.original = dictdiffer.patch(issue.diff_to_original, issue.serialize())
 
         return issue
-
-    def serialize(self) -> dict:
-        '''
-        Serialize this Issue object to a dict. Generate the diff_to_original field which enables
-        local changes to be written to the offline cache file.
-
-        Returns:
-            This Issue object as a serialized dict
-        '''
-        # serialize self (Issue object) into a dict
-        data = super().serialize()
-        diff_to_original = self.diff(data)
-        if diff_to_original:
-            data['diff_to_original'] = diff_to_original
-        return data
 
     def __str__(self, conflicts: dict=None):
         '''

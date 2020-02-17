@@ -90,7 +90,15 @@ class Jira(collections.abc.MutableMapping):
         Dump issues to JSON cache file
         '''
         try:
-            issues_json = [v.serialize() for k,v in self.items()]
+            issues_json = []
+            for issue in self.values():
+                data = issue.serialize()
+
+                # calculate the diff to the original Issue on Jira for existing Issues
+                if issue.exists:
+                    data['diff_to_original'] = issue.diff(data)
+
+                issues_json.append(data)
         except TypeError:
             # an error here means the DataclassSerializer output is incompatible with JSON
             logger.exception('Cannot write issues cache! Please report this bug.')
