@@ -58,7 +58,7 @@ def test_create__create_issue__NO_error_on_existing_summary_for_different_projec
     # add an Issue fixture to the Jira dict
     mock_jira['issue1'] = Issue.deserialize(ISSUE_1)
 
-    offline_issue = create_issue(mock_jira, 'TEST', 'Story', mock_jira['issue1'].summary)
+    offline_issue = create_issue(mock_jira, 'UNKN', 'Story', mock_jira['issue1'].summary)
     assert len(offline_issue.key) == 36  # UUID
 
 

@@ -79,7 +79,7 @@ def test_pull_issues__projects_param_used_over_projects_config(mock_tqdm, mock_j
     '''
     mock_jira._jira.search_issues.side_effect = [ mock.Mock(total=1), [] ]
 
-    mock_jira.config.projects = {'CNTS': None}
+    mock_jira.config.projects = {'TEST': None}
 
     pull_issues(mock_jira, projects={'EGG'})
 
@@ -193,7 +193,7 @@ def test_pull_issues__check_resolve_conflicts_called_when_local_issue_is_modifie
     Check that check_resolve_conflict is called when the Jira object has the Issue already
     '''
     # preload the local cache with a modified issue
-    mock_jira['CNTS-71'] = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
 
     # mock search_issues to return single object
     issues = [Issue.deserialize(ISSUE_1)]
@@ -218,7 +218,7 @@ def test_pull_issues__return_from_check_resolve_conflicts_added_to_self(
     Check that return from check_resolve_conflict is added to Jira object (which implements dict)
     '''
     # preload the local cache with a modified issue
-    mock_jira['CNTS-71'] = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
 
     # mock search_issues to return single object
     issues = [Issue.deserialize(ISSUE_1)]
@@ -236,5 +236,5 @@ def test_pull_issues__return_from_check_resolve_conflicts_added_to_self(
 
     pull_issues(mock_jira)
 
-    # validate that return from check_resolve_conflicts is added as CNTS-71
-    assert mock_jira['CNTS-71'].assignee == 'undertest'
+    # validate that return from check_resolve_conflicts is added as TEST-71
+    assert mock_jira['TEST-71'].assignee == 'undertest'

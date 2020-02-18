@@ -302,6 +302,6 @@ def test_cli_lint_issues_missing_epic_fix_passes_epic_ref_to_lint_func(mock_lint
     mock_jira_local.return_value = mock_jira
 
     runner = CliRunner()
-    result = runner.invoke(cli, ['lint', '--fix', 'issues-missing-epic', '--epic-ref', 'CNTS'])
+    result = runner.invoke(cli, ['lint', '--fix', 'issues-missing-epic', '--epic-ref', 'TEST'])
     assert result.exit_code == 0
-    mock_lint_issues_missing_epic.assert_called_with(mock_jira, fix=True, epic_ref='CNTS')
+    mock_lint_issues_missing_epic.assert_called_with(mock_jira, fix=True, epic_ref='TEST')

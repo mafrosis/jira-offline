@@ -47,7 +47,7 @@ def test_issue_to_jiraapi_update__all_fields_are_returned_for_new_issue():
         'description': 'This is a story or issue',
         'fixVersions': ['0.1'],
         'issuetype': {'name': 'Story'},
-        'project': {'key': 'CNTS'},
+        'project': {'key': 'TEST'},
         'reporter': {'name': 'danil1'},
         'summary': 'This is the story summary',
     }
