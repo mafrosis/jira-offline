@@ -60,7 +60,7 @@ class Jira(collections.abc.MutableMapping):
             self.config = config
 
         self._jira = mod_jira.JIRA(
-            options={'server': 'https://{}'.format(self.config.hostname), 'verify': False},
+            options={'server': f'{self.config.protocol}://{self.config.hostname}', 'verify': False},
             basic_auth=(self.config.username, self.config.password),
         )
         return self._jira
