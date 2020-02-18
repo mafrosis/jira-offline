@@ -3,9 +3,8 @@ from unittest import mock
 import jira as mod_jira
 import pytest
 
-from jira_cli.config import AppConfig
 from jira_cli.main import Jira
-from jira_cli.models import ProjectMeta
+from jira_cli.models import AppConfig, CustomFields, ProjectMeta
 
 
 @pytest.fixture()
@@ -14,7 +13,15 @@ def mock_jira_core():
     Return a Jira class instance with connect method and underlying Jira lib mocked
     '''
     jira = Jira()
-    jira.config = AppConfig(username='test', password='dummy', projects={'TEST': ProjectMeta()})
+    jira.config = AppConfig(
+        username='test',
+        password='dummy',
+        projects={
+            'TEST': ProjectMeta(
+                custom_fields=CustomFields(epic_ref='1', epic_name='2', estimate='3')
+            )
+        }
+    )
     jira.config.write_to_disk = mock.Mock()
     jira._jira = mock.Mock(spec=mod_jira.JIRA)
     jira.connect = mock.Mock(return_value=jira._jira)

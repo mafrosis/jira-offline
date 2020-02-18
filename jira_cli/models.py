@@ -1,22 +1,51 @@
+'''
+Application data structures. Mostly dataclasses inheriting from utils.DataclassSerializer.
+'''
 import dataclasses
 from dataclasses import dataclass, field
 import datetime
 import enum
 import functools
+import json
+import os
 import textwrap
 from typing import Any, Dict, Optional, Tuple
 
+import click
 import arrow
 import dictdiffer
 from tabulate import tabulate
 
+from jira_cli import __title__
 from jira_cli.utils import DataclassSerializer, classproperty, friendly_title, get_enum
 
+
+@dataclass
+class CustomFields(DataclassSerializer):
+    epic_ref: str = field(default='')
+    epic_name: str = field(default='')
+    estimate: str = field(default='')
 
 @dataclass
 class ProjectMeta(DataclassSerializer):
     name: Optional[str] = field(default=None)
     issuetypes: set = field(default_factory=set)
+    custom_fields: CustomFields = field(default_factory=CustomFields)  # type: ignore
+
+
+@dataclass
+class AppConfig(DataclassSerializer):
+    username: Optional[str] = field(default=None)
+    password: Optional[str] = field(default=None)
+    protocol: Optional[str] = field(default='https')
+    hostname: Optional[str] = field(default='jira.atlassian.com')
+    last_updated: Optional[str] = field(default=None)
+    projects: Dict[str, ProjectMeta] = field(default_factory=dict)
+
+    def write_to_disk(self):
+        config_filepath = os.path.join(click.get_app_dir(__title__), 'app.json')
+        with open(config_filepath, 'w') as f:
+            json.dump(self.serialize(), f)
 
 
 class IssueStatus(enum.Enum):

@@ -14,7 +14,7 @@ import jsonlines
 import pandas as pd
 
 from jira_cli.exceptions import EpicNotFound, EstimateFieldUnavailable, JiraApiError
-from jira_cli.models import Issue, ProjectMeta
+from jira_cli.models import AppConfig, CustomFields, Issue, ProjectMeta
 from jira_cli.sync import jiraapi_object_to_issue, pull_issues
 
 
@@ -22,9 +22,9 @@ logger = logging.getLogger('jira')
 
 
 class Jira(collections.abc.MutableMapping):
-    _jira = None
-    _df = None
-    config = None
+    _jira: mod_jira.JIRA = None
+    _df: Optional[pd.DataFrame] = None
+    config: AppConfig
 
     def __init__(self, *args, **kwargs):
         self.store = dict()
@@ -124,6 +124,7 @@ class Jira(collections.abc.MutableMapping):
             return ProjectMeta(
                 name=data['projects'][0]['name'],
                 issuetypes={x['name'] for x in data['projects'][0]['issuetypes']},
+                custom_fields=CustomFields(),
             )
 
         except (IndexError, KeyError) as e:
@@ -165,7 +166,7 @@ class Jira(collections.abc.MutableMapping):
                 raise EstimateFieldUnavailable(err)
 
         # transform the API response and add to self
-        new_issue: Issue = jiraapi_object_to_issue(issue)
+        new_issue: Issue = jiraapi_object_to_issue(self.config, issue)
         self[new_issue.key] = new_issue  # pylint: disable=no-member
 
         # remove the placeholder Issue

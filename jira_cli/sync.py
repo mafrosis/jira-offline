@@ -18,16 +18,11 @@ from tqdm import tqdm
 
 from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, FailedPullingProjectMeta,
                                  JiraApiError)
-from jira_cli.models import Issue
+from jira_cli.models import AppConfig, Issue
 from jira_cli.utils import critical_logger, DeserializeError, friendly_title, is_optional_type
 
 if TYPE_CHECKING:
     import Jira
-
-
-CUSTOM_FIELD_EPIC_LINK = 'customfield_14182'
-CUSTOM_FIELD_EPIC_NAME = 'customfield_14183'
-CUSTOM_FIELD_ESTIMATE = 'customfield_10002'
 
 
 logger = logging.getLogger('jira')
@@ -96,7 +91,7 @@ def pull_issues(jira: 'Jira', projects: set=None, force: bool=False, verbose: bo
 
             for api_issue in issues:
                 # convert from Jira object into Issue dataclass
-                issue = jiraapi_object_to_issue(api_issue)
+                issue = jiraapi_object_to_issue(jira.config, api_issue)
 
                 try:
                     # determine if local changes have been made
@@ -116,7 +111,10 @@ def pull_issues(jira: 'Jira', projects: set=None, force: bool=False, verbose: bo
             else:
                 logger.info('Page number %s', page)
                 df = pd.DataFrame.from_dict(
-                    {issue.key:jiraapi_object_to_issue(issue).serialize() for issue in issues},
+                    {
+                        issue.key: jiraapi_object_to_issue(jira.config, issue).serialize()
+                        for issue in issues
+                    },
                     orient='index'
                 )
                 df['summary'] = df.loc[:]['summary'].str.slice(0, 100)
@@ -146,15 +144,18 @@ def pull_issues(jira: 'Jira', projects: set=None, force: bool=False, verbose: bo
     jira.config.write_to_disk()
 
 
-def jiraapi_object_to_issue(issue: ApiIssue) -> Issue:
+def jiraapi_object_to_issue(config: AppConfig, issue: ApiIssue) -> Issue:
     '''
     Convert raw JSON from Jira API to Issue object
 
     Params:
-        issue:  Instance of the Issue class from the Jira library
+        config:  App config object containing project-specific Jira settings
+        issue:   Instance of the Issue class from the Jira library
     Return:
         An Issue dataclass instance
     '''
+    custom_fields = config.projects[issue.fields.project.key].custom_fields
+
     fixVersions = set()
     if issue.fields.fixVersions:
         fixVersions = {f.name for f in issue.fields.fixVersions}
@@ -162,7 +163,7 @@ def jiraapi_object_to_issue(issue: ApiIssue) -> Issue:
     jiraapi_object = {
         'created': issue.fields.created,
         'creator': issue.fields.creator.name,
-        'epic_name': getattr(issue.fields, CUSTOM_FIELD_EPIC_NAME, ''),
+        'epic_name': getattr(issue.fields, custom_fields.epic_name, ''),
         'description': issue.fields.description,
         'fixVersions': fixVersions,
         'id': issue.id,
@@ -177,10 +178,10 @@ def jiraapi_object_to_issue(issue: ApiIssue) -> Issue:
     }
     if issue.fields.assignee:
         jiraapi_object['assignee'] = issue.fields.assignee.name
-    if getattr(issue.fields, CUSTOM_FIELD_EPIC_LINK):
-        jiraapi_object['epic_ref'] = getattr(issue.fields, CUSTOM_FIELD_EPIC_LINK)
-    if getattr(issue.fields, CUSTOM_FIELD_ESTIMATE):
-        jiraapi_object['estimate'] = getattr(issue.fields, CUSTOM_FIELD_ESTIMATE)
+    if getattr(issue.fields, f'customfield_{custom_fields.epic_ref}'):
+        jiraapi_object['epic_ref'] = getattr(issue.fields, f'customfield_{custom_fields.epic_ref}')
+    if getattr(issue.fields, f'customfield_{custom_fields.estimate}'):
+        jiraapi_object['estimate'] = getattr(issue.fields, f'customfield_{custom_fields.estimate}')
     if issue.fields.labels:
         jiraapi_object['labels'] = issue.fields.labels
 
@@ -197,12 +198,13 @@ class IssueUpdate:
     conflicts: dict = field(default_factory=dict)
 
 
-def issue_to_jiraapi_update(issue: Issue, modified: set) -> dict:
+def issue_to_jiraapi_update(config: AppConfig, issue: Issue, modified: set) -> dict:
     '''
     Convert an Issue object to a JSON blob to update the Jira API. Handles both new and updated
     Issues.
 
     Params:
+        config:    App config object containing project-specific Jira settings
         issue:     Issue model to create an update for
         modified:  Set of modified fields (created by a call to _build_update)
     Return:
@@ -210,9 +212,9 @@ def issue_to_jiraapi_update(issue: Issue, modified: set) -> dict:
     '''
     # create a mapping of Issue keys (custom fields have a different key on Jira)
     field_keys: dict = {f.name: f.name for f in dataclasses.fields(Issue)}
-    field_keys['epic_ref'] = CUSTOM_FIELD_EPIC_LINK
-    field_keys['epic_name'] = CUSTOM_FIELD_EPIC_NAME
-    field_keys['estimate'] = CUSTOM_FIELD_ESTIMATE
+    field_keys['epic_ref'] = f'customfield_{config.projects[issue.project].custom_fields.epic_ref}'
+    field_keys['epic_name'] = f'customfield_{config.projects[issue.project].custom_fields.epic_name}'
+    field_keys['estimate'] = f'customfield_{config.projects[issue.project].custom_fields.estimate}'
 
     # serialize all Issue data to be JSON-compatible
     issue_values: dict = issue.serialize()
@@ -532,7 +534,7 @@ def push_issues(jira: 'Jira', verbose: bool=False):
             update_object: IssueUpdate = check_resolve_conflicts(local_issue, remote_issue)
 
             update_dict: dict = issue_to_jiraapi_update(
-                update_object.merged_issue, update_object.modified
+                jira.config, update_object.merged_issue, update_object.modified
             )
 
             if update_object.merged_issue.exists:
@@ -589,4 +591,4 @@ def _fetch_single_issue(jira: 'Jira', issue: Issue) -> Optional[Issue]:
     # new issues return False for exists
     if not issue.exists:
         return None
-    return jiraapi_object_to_issue(jira.connect().issue(issue.key))
+    return jiraapi_object_to_issue(jira.config, jira.connect().issue(issue.key))
