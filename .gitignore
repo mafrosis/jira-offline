@@ -7,7 +7,7 @@ __pycache__
 config/
 
 # actual Jira issue data
-issue_cache.json
+issue_cache.*
 
 # pycov report
 cov_html
