@@ -166,7 +166,7 @@ class Issue(DataclassSerializer):
             else:
                 return (render(field_name, getattr(self, field_name), prefix),)
 
-        def render(field_name, value: str=None, prefix: str=None) -> Tuple[str, str]:
+        def render(field_name, value: str, prefix: str) -> Tuple[str, str]:
             '''
             Single-field pretty formatting function supporting various types
 
@@ -178,8 +178,6 @@ class Issue(DataclassSerializer):
                 tuple:      Pretty field title, formatted value
             '''
             title = friendly_title(field_name)
-
-            value = getattr(self, field_name)
 
             if value is None:
                 value = ''
