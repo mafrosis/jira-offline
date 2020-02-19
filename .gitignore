@@ -7,7 +7,7 @@ __pycache__
 config/
 
 # actual Jira issue data
-issue_cache.json
+issue_cache.*
 
 # pycov report
 cov_html
@@ -15,3 +15,6 @@ cov_html
 # osx / vim
 .DS_Store
 .undodir
+
+# jira in docker
+jira_data/

@@ -26,7 +26,7 @@ def test_enum_deserialize_fail_on_not_valid():
     """
     Test enum deserialize fails when value not defined in Enum
     """
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(DeserializeError) as e:
         Test.deserialize({'e': 'Bacon'})
         assert str(e) == "'Bacon' is not a valid TestEnum"
 
@@ -52,10 +52,3 @@ def test_enum_serialize_roundrip():
         Test(e=TestEnum.Egg).serialize()
     )
     assert obj.e == TestEnum.Egg
-
-def test_enum_bad_deserialize():
-    '''
-    Test bad enum deserialize raises exception
-    '''
-    with pytest.raises(DeserializeError):
-        Test.deserialize({'e': 'Egx'})

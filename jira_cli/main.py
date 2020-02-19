@@ -1,3 +1,6 @@
+'''
+The Jira class in this module is the primary abstraction around the Jira API.
+'''
 import collections.abc
 import json
 import logging

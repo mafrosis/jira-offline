@@ -15,33 +15,23 @@ jobs:
     steps:
     - uses: actions/checkout@v1
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v1
-      with:
-        python-version: ${{ matrix.python-version }}
-
-    - name: Setup pylint
-      run: |
-        pip install pylint
-
-    - name: Lint with pylint
-      run: |
-        pylint jira_cli
-      if: matrix.python-version >= 3.6
-
-    - name: Build with docker
+    - name: Build for python ${{ matrix.python-version }}
       run: |
         docker-compose build --build-arg PYTHON_VERSION=${{ matrix.python-version }}
 
-    - name: Install dataclasses from pypi for 3.6
+    - name: Extra build step for python 3.6 (include dataclasses & typing from pypi)
       if: matrix.python-version < 3.7
       run: |
         # Build an updated Docker image including dataclasses lib
         tee Dockerfile.36 > /dev/null <<EOF
         FROM mafrosis/jiracli
-        RUN pip install dataclasses
+        RUN pip install dataclasses typing
         EOF
         docker build -f Dockerfile.36 -t mafrosis/jiracli .
+
+    - name: Lint with pylint
+      run: |
+        make lint
 
     - name: Test with pytest
       run: |

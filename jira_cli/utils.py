@@ -5,8 +5,11 @@ import decimal
 import enum
 import functools
 import logging
+from typing import Any
+import uuid
 
 import arrow
+from typing_inspect import is_generic_type
 
 
 @functools.lru_cache()
@@ -28,92 +31,176 @@ class DeserializeError(ValueError):
     pass
 
 
+def get_type_class(typ):
+    '''
+    Get the origin class for a Generic type, supporting older pythons
+    This is called `get_origin(typ)` in `typing_inspect` lib
+    '''
+    try:
+        return typ.__extra__  # Python 3.5 / 3.6
+    except AttributeError:
+        return typ.__origin__  # Python 3.7+
+
+
 @dataclasses.dataclass
 class DataclassSerializer:
     @classmethod
     # pylint: disable=too-many-branches
     def deserialize(cls, attrs: dict) -> object:
         '''
-        Deserialize JSON-compatible dict to dataclass
-
-        Support int, decimal, date/datetime, enum & set
+        Deserialize JSON-compatible dict to dataclass. Supports the following types:
+            - int
+            - decimal.Decimal
+            - datetime.date
+            - datetime.datetime
+            - enum.Enum
+            - set
+            - dataclass
         '''
         data = {}
 
-        for f in dataclasses.fields(cls):
-            v = attrs.get(f.name)
-            if v is None:
-                data[f.name] = None
-                continue
+        # pylint: disable=too-many-return-statements
+        def deserialize_value(type_: type, value: Any) -> Any:
+            if dataclasses.is_dataclass(type_):
+                return type_.deserialize(value)
 
-            if dataclasses.is_dataclass(f.type):
-                data[f.name] = f.type.deserialize(v)
-            elif f.type is decimal.Decimal:
+            elif type_ is decimal.Decimal:
                 try:
-                    data[f.name] = decimal.Decimal(v)
+                    return decimal.Decimal(value)
                 except decimal.InvalidOperation:
-                    raise DeserializeError(f'Failed deserializing "{v}" to {f.type}')
-            elif issubclass(f.type, enum.Enum):
+                    raise DeserializeError(f'Failed deserializing "{value}" to Decimal')
+
+            elif type_ is uuid.UUID:
+                try:
+                    return uuid.UUID(value)
+                except ValueError:
+                    raise DeserializeError(f'Failed deserializing "{value}" to UUID')
+
+            elif issubclass(type_, enum.Enum):
                 try:
                     # convert string to Enum instance
-                    data[f.name] = f.type(v)
+                    return type_(value)
                 except ValueError:
-                    raise DeserializeError(f'Failed deserializing "{v}" to {f.type}')
-            elif f.type is datetime.date:
+                    raise DeserializeError(f'Failed deserializing {value} to {type_}')
+
+            elif type_ is datetime.date:
                 try:
-                    data[f.name] = arrow.get(v).datetime.date()
+                    return arrow.get(value).datetime.date()
                 except arrow.parser.ParserError:
-                    raise DeserializeError(f'Failed deserializing "{v}" to Arrow datetime.date')
-            elif f.type is datetime.datetime:
+                    raise DeserializeError(f'Failed deserializing "{value}" to Arrow datetime.date')
+
+            elif type_ is datetime.datetime:
                 try:
-                    data[f.name] = arrow.get(v).datetime
+                    return arrow.get(value).datetime
                 except arrow.parser.ParserError:
-                    raise DeserializeError(f'Failed deserializing "{v}" to Arrow datetime.datetime')
-            elif f.type is set:
-                if not isinstance(v, set) and not isinstance(v, list):
+                    raise DeserializeError(f'Failed deserializing "{value}" to Arrow datetime.datetime')
+
+            elif type_ is set:
+                if not isinstance(value, set) and not isinstance(value, list):
                     raise DeserializeError(f'Value passed to set type must be JSON set or list')
-                data[f.name] = set(v)
-            elif f.type is int:
+                return set(value)
+
+            elif type_ is int:
                 try:
-                    data[f.name] = int(v)
-                except ValueError:
-                    raise DeserializeError(f'Failed deserializing "{v}" to {f.type}')
+                    return int(value)
+                except (TypeError, ValueError):
+                    raise DeserializeError(f'Failed deserializing {value} to int')
             else:
-                data[f.name] = v
+                return value
+
+
+        for f in dataclasses.fields(cls):
+            raw_value = None
+
+            try:
+                raw_value = attrs[f.name]
+
+            except KeyError as e:
+                # handle key missing from passed dict
+                # pylint: disable=protected-access
+                if isinstance(f.default, dataclasses._MISSING_TYPE) and isinstance(f.default_factory, dataclasses._MISSING_TYPE):
+                    # raise exception if field has no defaults defined
+                    raise DeserializeError(f'Missing input data for mandatory key {f.name}')
+
+                continue
+
+            except TypeError as e:
+                raise DeserializeError(f'Fatal TypeError for key {f.name} ({e})')
+
+            # determine if type is a Generic Dict
+            if is_generic_type(f.type) and get_type_class(f.type) is dict:
+                # extract key and value types for the Dict
+                dict_key_type, dict_value_type = f.type.__args__[0], f.type.__args__[1]
+                try:
+                    # deserialize keys and values individually into a new dict
+                    data[f.name] = {
+                        deserialize_value(dict_key_type, item_key): deserialize_value(dict_value_type, item_value)
+                        for item_key, item_value in raw_value.items()
+                    }
+                except AttributeError:
+                    raise DeserializeError(f'Failed serializing "{raw_value}" to {f.type}')
+            else:
+                data[f.name] = deserialize_value(f.type, raw_value)
 
         return cls(**data)
 
+
     def serialize(self) -> dict:
         '''
-        Serialize dataclass to JSON-compatible dict
+        Serialize dataclass to JSON-compatible dict. Supports the following types:
+            - int
+            - decimal.Decimal
+            - datetime.date
+            - datetime.datetime
+            - enum.Enum
+            - set
+            - dataclass
 
-        Supports int, decimal, date/datetime, enum & set
-        Include only fields with repr=True (dataclass.field default)
-        Int-type does not need serializing for JSON
+        Notes:
+            - includes only fields with repr=True (the dataclass.field default)
+            - int type does not need serializing for JSON
         '''
         data = {}
+
+        # pylint: disable=too-many-return-statements
+        def serialize_value(type_: type, value: Any) -> Any:
+            if value is None:
+                return None
+            elif dataclasses.is_dataclass(type_):
+                return value.serialize()
+            elif isinstance(value, (decimal.Decimal, uuid.UUID)):
+                return str(value)
+            elif issubclass(type_, enum.Enum):
+                # convert Enum to raw string
+                return value.value
+            elif isinstance(value, (datetime.date, datetime.datetime)):
+                return value.isoformat()
+            elif isinstance(value, set):
+                return sorted(list(value))
+            else:
+                return value
+
 
         for f in dataclasses.fields(self):
             if f.repr is False:
                 continue
 
-            v = self.__dict__.get(f.name)
+            raw_value = self.__dict__.get(f.name)
 
-            if v is None:
-                data[f.name] = None
-            elif dataclasses.is_dataclass(f.type):
-                data[f.name] = v.serialize()
-            elif isinstance(v, decimal.Decimal):
-                data[f.name] = str(v)
-            elif issubclass(f.type, enum.Enum):
-                # convert Enum to raw string
-                data[f.name] = v.value
-            elif isinstance(v, (datetime.date, datetime.datetime)):
-                data[f.name] = v.isoformat()
-            elif isinstance(v, set):
-                data[f.name] = sorted(list(v))
+            # determine if type is a Generic Dict
+            if is_generic_type(f.type) and get_type_class(f.type) is dict:
+                # extract key and value types for the Dict
+                dict_key_type, dict_value_type = f.type.__args__[0], f.type.__args__[1]
+                # deserialize keys and values individually into a new dict
+                data[f.name] = {
+                    serialize_value(dict_key_type, item_key):
+                        serialize_value(dict_value_type, item_value)
+                    for item_key, item_value in raw_value.items()
+                }
             else:
-                data[f.name] = v
+                serialized_value = serialize_value(f.type, raw_value)
+                if serialized_value:
+                    data[f.name] = serialized_value
 
         return data
 
