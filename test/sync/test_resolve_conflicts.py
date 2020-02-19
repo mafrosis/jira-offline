@@ -33,12 +33,12 @@ def test_check_resolve_conflicts__returns_result_of_manual_conflict_resolution(m
     '''
     Ensure that result of manual_conflict_resolution is returned
     '''
-    merged_issue = Issue.deserialize(ISSUE_1)
+    local_issue = Issue.deserialize(ISSUE_1)
     updated_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
 
     # mock _build_update to return conflicts
     update_obj = IssueUpdate(
-        merged_issue=merged_issue,
+        merged_issue=local_issue,
         modified={'assignee'},
         conflicts={'assignee': {'original': 'danil1', 'updated': 'hoganp', 'base': 'danil1'}}
     )
@@ -47,19 +47,19 @@ def test_check_resolve_conflicts__returns_result_of_manual_conflict_resolution(m
     # mock manual_conflict_resolution to return updated issue
     mock_manual_conflict_resolution.return_value = updated_issue
 
-    resolved_issue = check_resolve_conflicts(merged_issue, updated_issue)
+    update_obj = check_resolve_conflicts(local_issue, updated_issue)
 
     # ensure build_update AND manual_conflict_resolution are called
-    mock_build_update.assert_called_once_with(merged_issue, updated_issue)
+    mock_build_update.assert_called_once_with(local_issue, updated_issue)
     mock_manual_conflict_resolution.assert_called_with(update_obj)
 
     # return value should match return from manual_conflict_resolution
-    assert resolved_issue == updated_issue
+    assert update_obj.merged_issue == updated_issue
 
 
 @mock.patch('jira_cli.sync.click')
 @mock.patch('jira_cli.sync.parse_editor_result')
-def test_manual_conflict_resolution_retries_three_times_on_none_return(mock_parse_editor_result, mock_click):
+def test_manual_conflict_resolution__retries_three_times_on_none_return(mock_parse_editor_result, mock_click):
     '''
     A return of None from click.edit() should result in three retries
     '''
@@ -83,7 +83,7 @@ def test_manual_conflict_resolution_retries_three_times_on_none_return(mock_pars
 
 @mock.patch('jira_cli.sync.click')
 @mock.patch('jira_cli.sync.parse_editor_result')
-def test_manual_conflict_resolution_retries_three_times_on_blank_return(mock_parse_editor_result, mock_click):
+def test_manual_conflict_resolution__retries_three_times_on_blank_return(mock_parse_editor_result, mock_click):
     '''
     A return of blank from click.edit() should result in three retries
     '''
@@ -107,7 +107,7 @@ def test_manual_conflict_resolution_retries_three_times_on_blank_return(mock_par
 
 @mock.patch('jira_cli.sync.click')
 @mock.patch('jira_cli.sync.parse_editor_result')
-def test_manual_conflict_resolution_handles_three_error_strings_in_editor_return(mock_parse_editor_result, mock_click):
+def test_manual_conflict_resolution__handles_three_error_strings_in_editor_return(mock_parse_editor_result, mock_click):
     '''
     There are three strings which indicate failure in a conflict resolution string edit
     Ensure they all raise correctly
@@ -132,7 +132,7 @@ def test_manual_conflict_resolution_handles_three_error_strings_in_editor_return
 
 @mock.patch('jira_cli.sync.click')
 @mock.patch('jira_cli.sync.parse_editor_result')
-def test_manual_conflict_resolution_contrived_success_case(mock_parse_editor_result, mock_click):
+def test_manual_conflict_resolution__contrived_success_case(mock_parse_editor_result, mock_click):
     '''
     If click.edit() returns a non-error, manual_conflict_resolution() should return the same Issue
     returned from parse_editor_result()

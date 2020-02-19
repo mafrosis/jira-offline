@@ -2,7 +2,7 @@ from unittest import mock
 
 from fixtures import ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF, ISSUE_1_WITH_FIXVERSIONS_DIFF, ISSUE_2
 from jira_cli.models import Issue
-from jira_cli.sync import pull_issues
+from jira_cli.sync import IssueUpdate, pull_issues
 
 
 @mock.patch('jira_cli.sync.tqdm')
@@ -171,7 +171,7 @@ def test_pull_issues__return_from_check_resolve_conflicts_added_to_self(
     modified_issue.assignee = 'undertest'
 
     # mock resolve_conflicts function to return modified_issue
-    mock_check_resolve_conflicts.return_value = modified_issue
+    mock_check_resolve_conflicts.return_value = IssueUpdate(merged_issue=modified_issue)
 
     pull_issues(mock_jira)
 

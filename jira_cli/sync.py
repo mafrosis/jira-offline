@@ -78,7 +78,8 @@ def pull_issues(jira: 'Jira', force: bool=False, verbose: bool=False):
                     # determine if local changes have been made
                     if jira[api_issue.key].diff_to_original:
                         # when pulling, the remote Issue is considered the base
-                        issue = check_resolve_conflicts(issue, jira[api_issue.key])
+                        update_object: IssueUpdate = check_resolve_conflicts(jira[api_issue.key], issue)
+                        issue = update_object.merged_issue
                 except KeyError:
                     pass
 
@@ -160,7 +161,7 @@ class IssueUpdate:
     conflicts: dict = field(default_factory=dict)
 
 
-def check_resolve_conflicts(base_issue: Issue, updated_issue: Issue) -> Issue:
+def check_resolve_conflicts(base_issue: Issue, updated_issue: Issue) -> IssueUpdate:
     '''
     Check for and resolve conflicts on a single Issue
 
@@ -168,15 +169,16 @@ def check_resolve_conflicts(base_issue: Issue, updated_issue: Issue) -> Issue:
         base_issue:     Base Issue to which we are comparing (has an .original property)
         updated_issue:  Incoming updated Issue
     Returns:
-        Resolved issue
+        An IssueUpdate object created by _build_update
     '''
     # construct an object representing changes/conflicts
     update_object = _build_update(base_issue, updated_issue)
 
-    if not update_object.conflicts:
-        return update_object.merged_issue
+    if update_object.conflicts:
+        resolved_issue = manual_conflict_resolution(update_object)
 
-    return manual_conflict_resolution(update_object)
+    update_object.merged_issue = resolved_issue
+    return update_object
 
 
 def _build_update(base_issue: Issue, updated_issue: Issue) -> IssueUpdate:
