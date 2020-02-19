@@ -26,4 +26,5 @@ def mock_jira():
     jira.connect = mock.Mock(return_value=jira._jira)
     jira.write_issues = mock.Mock()
     jira.load_issues = mock.Mock()
+    jira.update_issue = mock.Mock()
     return jira

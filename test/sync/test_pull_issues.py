@@ -2,7 +2,7 @@ from unittest import mock
 
 from fixtures import ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF, ISSUE_1_WITH_FIXVERSIONS_DIFF, ISSUE_2
 from jira_cli.models import Issue
-from jira_cli.sync import pull_issues
+from jira_cli.sync import IssueUpdate, pull_issues
 
 
 @mock.patch('jira_cli.sync.tqdm')
@@ -82,9 +82,9 @@ def test_pull_issues__write_issues_and_config_called(mock_tqdm, mock_jira):
     assert mock_jira.config.write_to_disk.called
 
 
-@mock.patch('jira_cli.sync._raw_issue_to_object')
+@mock.patch('jira_cli.sync.jiraapi_object_to_issue')
 @mock.patch('jira_cli.sync.tqdm')
-def test_pull_issues__adds_issues_to_self(mock_tqdm, mock_raw_issue_to_object, mock_jira):
+def test_pull_issues__adds_issues_to_self(mock_tqdm, mock_jiraapi_object_to_issue, mock_jira):
     '''
     Ensure that issues returned by search_issues(), are added to the Jira object (which implements dict)
     '''
@@ -93,7 +93,7 @@ def test_pull_issues__adds_issues_to_self(mock_tqdm, mock_raw_issue_to_object, m
     mock_jira._jira.search_issues.side_effect = [ mock.Mock(total=2), issues, [] ]
 
     # mock conversion function to return two Issues
-    mock_raw_issue_to_object.side_effect = issues
+    mock_jiraapi_object_to_issue.side_effect = issues
 
     assert len(mock_jira.keys()) == 0
     pull_issues(mock_jira)
@@ -101,10 +101,10 @@ def test_pull_issues__adds_issues_to_self(mock_tqdm, mock_raw_issue_to_object, m
 
 
 @mock.patch('jira_cli.sync.check_resolve_conflicts')
-@mock.patch('jira_cli.sync._raw_issue_to_object')
+@mock.patch('jira_cli.sync.jiraapi_object_to_issue')
 @mock.patch('jira_cli.sync.click')
 def test_pull_issues__check_resolve_conflicts_NOT_called_when_updated_issue_NOT_changed(
-        mock_click, mock_raw_issue_to_object, mock_check_resolve_conflicts, mock_jira
+        mock_click, mock_jiraapi_object_to_issue, mock_check_resolve_conflicts, mock_jira
     ):
     '''
     Check that check_resolve_conflict is NOT called when the Jira object is empty (ie have no issues)
@@ -114,7 +114,7 @@ def test_pull_issues__check_resolve_conflicts_NOT_called_when_updated_issue_NOT_
     mock_jira._jira.search_issues.side_effect = [ mock.Mock(total=1), issues, [] ]
 
     # mock conversion function to return single Issue
-    mock_raw_issue_to_object.side_effect = [Issue.deserialize(ISSUE_1)]
+    mock_jiraapi_object_to_issue.side_effect = [Issue.deserialize(ISSUE_1)]
 
     pull_issues(mock_jira)
 
@@ -123,10 +123,10 @@ def test_pull_issues__check_resolve_conflicts_NOT_called_when_updated_issue_NOT_
 
 
 @mock.patch('jira_cli.sync.check_resolve_conflicts')
-@mock.patch('jira_cli.sync._raw_issue_to_object')
+@mock.patch('jira_cli.sync.jiraapi_object_to_issue')
 @mock.patch('jira_cli.sync.click')
 def test_pull_issues__check_resolve_conflicts_called_when_local_issue_is_modified(
-        mock_click, mock_raw_issue_to_object, mock_check_resolve_conflicts, mock_jira
+        mock_click, mock_jiraapi_object_to_issue, mock_check_resolve_conflicts, mock_jira
     ):
     '''
     Check that check_resolve_conflict is called when the Jira object has the Issue already
@@ -139,7 +139,7 @@ def test_pull_issues__check_resolve_conflicts_called_when_local_issue_is_modifie
     mock_jira._jira.search_issues.side_effect = [ mock.Mock(total=1), issues, [] ]
 
     # mock conversion function to return single Issue
-    mock_raw_issue_to_object.side_effect = [Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF)]
+    mock_jiraapi_object_to_issue.side_effect = [Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF)]
 
     pull_issues(mock_jira)
 
@@ -148,10 +148,10 @@ def test_pull_issues__check_resolve_conflicts_called_when_local_issue_is_modifie
 
 
 @mock.patch('jira_cli.sync.check_resolve_conflicts')
-@mock.patch('jira_cli.sync._raw_issue_to_object')
+@mock.patch('jira_cli.sync.jiraapi_object_to_issue')
 @mock.patch('jira_cli.sync.click')
 def test_pull_issues__return_from_check_resolve_conflicts_added_to_self(
-        mock_click, mock_raw_issue_to_object, mock_check_resolve_conflicts, mock_jira
+        mock_click, mock_jiraapi_object_to_issue, mock_check_resolve_conflicts, mock_jira
     ):
     '''
     Check that return from check_resolve_conflict is added to Jira object (which implements dict)
@@ -166,12 +166,12 @@ def test_pull_issues__return_from_check_resolve_conflicts_added_to_self(
     modified_issue = Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF)
 
     # mock conversion function to return single Issue
-    mock_raw_issue_to_object.side_effect = [modified_issue]
+    mock_jiraapi_object_to_issue.side_effect = [modified_issue]
 
     modified_issue.assignee = 'undertest'
 
     # mock resolve_conflicts function to return modified_issue
-    mock_check_resolve_conflicts.return_value = modified_issue
+    mock_check_resolve_conflicts.return_value = IssueUpdate(merged_issue=modified_issue)
 
     pull_issues(mock_jira)
 

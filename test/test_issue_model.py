@@ -20,7 +20,7 @@ def test_issue_serialize_without_change_does_not_create_diff_property():
     obj = issue1.serialize()
 
     # test diff_to_original field is NOT set
-    assert not obj['diff_to_original']
+    assert 'diff_to_original' not in obj
 
 
 def test_issue_serialize_with_change_creates_diff_property():
@@ -43,8 +43,6 @@ def test_issue_serialized_original_matches_when_no_diff():
     issue1 = Issue.deserialize(ISSUE_1)
     obj = issue1.serialize()
 
-    # remove diff_to_original property, as the reinflated original field does not have this ..
-    del obj['diff_to_original']
     # .. everything else can be compared
     assert obj == issue1.original
 
@@ -58,7 +56,5 @@ def test_issue_serialized_original_does_not_match_when_diff():
     issue1.summary = 'TEST SUMMARY UPDATE'
     obj = issue1.serialize()
 
-    # remove diff_to_original property, as the reinflated original field does not have this ..
-    assert obj['diff_to_original']
     # .. everything else can be compared
     assert obj != issue1.original

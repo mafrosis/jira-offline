@@ -1,8 +1,10 @@
+import contextlib
 import dataclasses
 import datetime
 import decimal
 import enum
 import functools
+import logging
 
 import arrow
 
@@ -114,3 +116,17 @@ class DataclassSerializer:
                 data[f.name] = v
 
         return data
+
+
+@contextlib.contextmanager
+def critical_logger(logger_):
+    '''
+    Context manager to set a logger to CRITICAL level only for the duration of the with block.
+
+    with set_logger_level_critical(logger):
+        ...
+    '''
+    log_level = logger_.level
+    logger_.setLevel(logging.CRITICAL)
+    yield logger_
+    logger_.setLevel(log_level)
