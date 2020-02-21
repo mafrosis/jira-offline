@@ -5,6 +5,7 @@ import collections.abc
 import json
 import logging
 import os
+from typing import Optional
 import urllib3
 
 import jira as mod_jira
@@ -90,7 +91,7 @@ class Jira(collections.abc.MutableMapping):
             f.write(issues_json)
 
 
-    def update_issue(self, issue: Issue, fields: dict) -> Issue:
+    def update_issue(self, issue: Issue, fields: dict) -> Optional[Issue]:
         '''
         Update an issue on Jira via the API
 

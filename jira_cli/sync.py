@@ -7,7 +7,7 @@ import dataclasses
 from dataclasses import dataclass, field
 import datetime
 import logging
-from typing import List
+from typing import Dict, List, TYPE_CHECKING
 
 import click
 import dictdiffer
@@ -17,7 +17,10 @@ from tabulate import tabulate
 from tqdm import tqdm
 
 from jira_cli.models import Issue
-from jira_cli.utils import critical_logger, DeserializeError, friendly_title
+from jira_cli.utils import critical_logger, DeserializeError, friendly_title, is_optional_type
+
+if TYPE_CHECKING:
+    import Jira
 
 
 CUSTOM_FIELD_EPIC_LINK = 'customfield_14182'
@@ -230,9 +233,9 @@ def check_resolve_conflicts(base_issue: Issue, updated_issue: Issue) -> IssueUpd
     update_object = _build_update(base_issue, updated_issue)
 
     if update_object.conflicts:
-        resolved_issue: Issue = manual_conflict_resolution(update_object)
+        resolved_issue = manual_conflict_resolution(update_object)
     else:
-        resolved_issue: Issue = update_object.merged_issue
+        resolved_issue = update_object.merged_issue
 
     # set the original property to the latest updated version incoming from upstream
     resolved_issue.original = updated_issue.serialize()
@@ -301,12 +304,12 @@ def _build_update(base_issue: Issue, updated_issue: Issue) -> IssueUpdate:
     ))))
 
     # create mapping of modified field_name to a count
-    grouped_modified = {}
+    grouped_modified: Dict[str, int] = {}
 
     # union base and updated changes to make complete set
     for _, field_name, value in diff_original_to_updated | diff_original_to_base:
         if not value:
-            return
+            continue
         if field_name not in grouped_modified:
             grouped_modified[field_name] = 0
         grouped_modified[field_name] += 1
@@ -337,7 +340,7 @@ def _build_update(base_issue: Issue, updated_issue: Issue) -> IssueUpdate:
     # return object modelling this update
     return IssueUpdate(
         merged_issue=merged_issue,
-        modified=grouped_modified.keys(),
+        modified=set(grouped_modified.keys()),
         conflicts=conflict_fields,
     )
 
@@ -416,7 +419,7 @@ def parse_editor_result(update_object: IssueUpdate, editor_result_raw: str) -> I
         friendly_title(f.name):f for f in dataclasses.fields(Issue)
     }
 
-    editor_result = {}
+    editor_result: Dict[str, List[str]] = {}
 
     # Process the raw input into a dict. Only conflicted fields are extracted as entries in the
     # dict, and the value is a list of lines from the raw input
@@ -440,7 +443,7 @@ def parse_editor_result(update_object: IssueUpdate, editor_result_raw: str) -> I
         editor_result[current_field.name].append(line[len(parsed_token):].strip())
 
     def preprocess_field_value(field_name, val):
-        if issue_fields[field_name].type is set:
+        if is_optional_type(issue_fields[field_name].type, set):
             return [item[1:].strip() for item in val]
         else:
             return ''.join(val)

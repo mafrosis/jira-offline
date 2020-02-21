@@ -3,13 +3,13 @@ from dataclasses import dataclass, field
 import datetime
 import enum
 import textwrap
-from typing import Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import arrow
 import dictdiffer
 from tabulate import tabulate
 
-from jira_cli.utils import DataclassSerializer, friendly_title
+from jira_cli.utils import DataclassSerializer, friendly_title, get_enum
 
 
 class IssueStatus(enum.Enum):
@@ -41,28 +41,28 @@ class Issue(DataclassSerializer):
     issuetype: str = field(metadata={'friendly': 'Type', 'readonly': True})
     project: str = field(metadata={'readonly': True})
     summary: str
-    assignee: str = field(default=None)
-    created: datetime.datetime = field(default=None, metadata={'readonly': True})
-    creator: str = field(default=None, metadata={'readonly': True})
-    epic_name: str = field(default=None, metadata={'friendly': 'Epic Short Name'})
-    epic_ref: str = field(default=None)
-    estimate: int = field(default=None)
-    description: str = field(default=None)
-    fixVersions: set = field(default=None, metadata={'friendly': 'Fix Version'})
-    id: str = field(default=None, metadata={'readonly': True})
-    key: str = field(default=None, metadata={'readonly': True})
-    labels: set = field(default=None)
-    priority: str = field(default=None)
-    reporter: str = field(default=None)
-    status: IssueStatus = field(default=None, metadata={'readonly': True})
-    updated: datetime.datetime = field(default=None, metadata={'readonly': True})
+    assignee: Optional[str] = field(default=None)
+    created: Optional[datetime.datetime] = field(default=None, metadata={'readonly': True})
+    creator: Optional[str] = field(default=None, metadata={'readonly': True})
+    epic_name: Optional[str] = field(default=None, metadata={'friendly': 'Epic Short Name'})
+    epic_ref: Optional[str] = field(default=None)
+    estimate: Optional[int] = field(default=None)
+    description: Optional[str] = field(default=None)
+    fixVersions: Optional[set] = field(default=None, metadata={'friendly': 'Fix Version'})
+    id: Optional[str] = field(default=None, metadata={'readonly': True})
+    key: Optional[str] = field(default=None, metadata={'readonly': True})
+    labels: Optional[set] = field(default=None)
+    priority: Optional[str] = field(default=None)
+    reporter: Optional[str] = field(default=None)
+    status: Optional[IssueStatus] = field(default=None, metadata={'readonly': True})
+    updated: Optional[datetime.datetime] = field(default=None, metadata={'readonly': True})
 
-    # local-only dict which represents serialized Issue last seen on JIRA server
+    # local-only dict which represents serialized Issue last seen on Jira server
     # this property is not written to cache and is created at runtme from diff_to_original
-    original: dict = field(default=None, repr=False)
+    original: Dict[str, Any] = field(default_factory=dict, repr=False)
 
-    # patch of current Issue to dict last seen on JIRA server
-    diff_to_original: list = field(default=None, repr=False)
+    # patch of current Issue to dict last seen on Jira server
+    diff_to_original: Optional[list] = field(default=None, repr=False)
 
     @property
     def is_open(self) -> bool:
@@ -101,7 +101,7 @@ class Issue(DataclassSerializer):
             return True
         return False
 
-    def diff(self, data: dict=None) -> list:
+    def diff(self, data: dict=None) -> Optional[list]:
         '''
         If this Issue object has the original property set, render the diff between self and
         the original property. This is written to storage to track changes made offline.
@@ -112,7 +112,7 @@ class Issue(DataclassSerializer):
             List from dictdiffer.diff for Issue.diff_to_original property
         '''
         if not self.original:
-            return
+            return None
 
         if not data:
             data = self.serialize()
@@ -120,7 +120,7 @@ class Issue(DataclassSerializer):
         return list(dictdiffer.diff(data, self.original, ignore=set(['diff_to_original'])))
 
     @classmethod
-    def deserialize(cls, attrs: dict) -> object:
+    def deserialize(cls, attrs: dict) -> 'Issue':
         '''
         Deserialize a dict into an Issue object. Inflate the original Jira issue from the
         diff_to_original property.
@@ -169,7 +169,7 @@ class Issue(DataclassSerializer):
         # create dict of Issue dataclass fields
         issue_fields = {f.name:f for f in dataclasses.fields(Issue)}
 
-        def fmt(field_name, prefix: str=None) -> Tuple[Tuple]:
+        def fmt(field_name: str, prefix: str=None) -> Tuple:
             '''
             Pretty formatting with support for conflicts
 
@@ -177,7 +177,7 @@ class Issue(DataclassSerializer):
                 field_name: Dataclass field being formatted
                 prefix:     Arbitrary prefix to prepend during string format
             Returns:
-                tuple:      Tuple of formatted-pair tuples
+                Tuple of formatted-pair tuples
             '''
             if conflicts and field_name in conflicts:
                 return (
@@ -190,7 +190,7 @@ class Issue(DataclassSerializer):
             else:
                 return (render(field_name, getattr(self, field_name), prefix),)
 
-        def render(field_name, value: str, prefix: str) -> Tuple[str, str]:
+        def render(field_name: str, value: Any, prefix: str=None) -> Tuple[str, str]:
             '''
             Single-field pretty formatting function supporting various types
 
@@ -199,7 +199,7 @@ class Issue(DataclassSerializer):
                 value:      Data to be rendered according to format
                 prefix:     Arbitrary prefix to prepend during string format
             Returns:
-                tuple:      Pretty field title, formatted value
+                Pretty field title, formatted value
             '''
             title = friendly_title(field_name)
 
@@ -210,7 +210,7 @@ class Issue(DataclassSerializer):
             elif issue_fields[field_name].type is datetime.datetime:
                 dt = arrow.get(self.created)
                 value = f'{dt.humanize()} [{dt.format()}]'
-            elif issubclass(issue_fields[field_name].type, enum.Enum):
+            elif get_enum(issue_fields[field_name].type):
                 value = value.value
             elif value and issue_fields[field_name].type is str and len(value) > 100:
                 value = '\n'.join(textwrap.wrap(value, width=100))
