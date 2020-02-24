@@ -13,7 +13,7 @@ from jira.resources import Issue as ApiIssue
 import jsonlines
 import pandas as pd
 
-from jira_cli.exceptions import EpicNotFound, EstimateFieldUnavailable, JiraApiError
+from jira_cli.exceptions import EpicNotFound, EstimateFieldUnavailable, MissingFieldsForNewIssue, JiraApiError
 from jira_cli.models import AppConfig, CustomFields, Issue, ProjectMeta
 from jira_cli.sync import jiraapi_object_to_issue, pull_issues
 
@@ -142,6 +142,9 @@ class Jira(collections.abc.MutableMapping):
         Returns:
             The new Issue, including the Jira-generated key field
         '''
+        if 'key' not in fields or 'issuetype' not in fields or 'summary' not in fields or 'status' not in fields:
+            raise MissingFieldsForNewIssue
+
         try:
             # create a new Issue and store in self
             api = self.connect()

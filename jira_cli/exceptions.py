@@ -20,6 +20,10 @@ class SummaryAlreadyExists(Exception):
     pass
 
 
+class MissingFieldsForNewIssue(Exception):
+    pass
+
+
 class DeserializeError(ValueError):
     pass
 
