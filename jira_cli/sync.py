@@ -16,8 +16,8 @@ import pandas as pd
 from tabulate import tabulate
 from tqdm import tqdm
 
-from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, FailedPullingProjectMeta,
-                                 JiraApiError)
+from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, FailedPullingIssues,
+                                 FailedPullingProjectMeta, JiraApiError)
 from jira_cli.models import AppConfig, Issue
 from jira_cli.utils import critical_logger, DeserializeError, friendly_title, is_optional_type
 
@@ -129,6 +129,9 @@ def pull_issues(jira: 'Jira', projects: set=None, force: bool=False, verbose: bo
             # show progress bar
             with tqdm(total=head.total, unit=' issues') as pbar:
                 total = _run(jql, pbar)
+
+    except JiraApiError as e:
+        raise FailedPullingIssues
 
     except ConflictResolutionFailed as e:
         logger.critical('Failed resolving conflict on %s during pull!', e)

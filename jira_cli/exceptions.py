@@ -36,3 +36,9 @@ class FailedPullingProjectMeta(ClickException):
     '''Jira library error pulling project meta data'''
     def format_message(self):
         return f'Failed pulling project meta data! ({self.message})'
+
+
+class FailedPullingIssues(ClickException):
+    '''Jira library error pulling project issues'''
+    def format_message(self):
+        return f'Failed pulling project issues. Please try again! ({self.message})'
