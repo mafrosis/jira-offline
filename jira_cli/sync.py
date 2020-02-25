@@ -117,6 +117,8 @@ def pull_issues(jira: 'Jira', projects: set=None, force: bool=False, verbose: bo
                     },
                     orient='index'
                 )
+                if 'assignee' not in df:
+                    df['assignee'] = ''
                 df['summary'] = df.loc[:]['summary'].str.slice(0, 100)
                 print(tabulate(df[['issuetype', 'summary', 'assignee', 'updated']], headers='keys', tablefmt='psql'))
 
