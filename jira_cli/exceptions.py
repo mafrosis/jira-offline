@@ -38,6 +38,12 @@ class BaseAppException(ClickException):
         super().__init__(msg)
 
 
+class NoProjectsSetup(BaseAppException):
+    '''Terminal. Raised when pull_issues is called without any projects setup to pull'''
+    def format_message(self):
+        return 'No projects setup, use the clone command.'
+
+
 class JiraNotConfigured(BaseAppException):
     '''Terminal. Raised if Jira is not setup correctly'''
     def format_message(self):

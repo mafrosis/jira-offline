@@ -17,7 +17,7 @@ from tabulate import tabulate
 from tqdm import tqdm
 
 from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, FailedPullingIssues,
-                                 FailedPullingProjectMeta, JiraApiError)
+                                 FailedPullingProjectMeta, JiraApiError, NoProjectsSetup)
 from jira_cli.models import AppConfig, Issue
 from jira_cli.utils import critical_logger, DeserializeError, friendly_title, is_optional_type
 
@@ -46,7 +46,7 @@ def pull_issues(jira: 'Jira', projects: set=None, force: bool=False, verbose: bo
         projects = jira.config.projects.keys()
 
     if not projects:
-        raise Exception('No projects configured, cannot continue')
+        raise NoProjectsSetup
 
     try:
         # pull project metadata for each project key, and merge into config.projects
