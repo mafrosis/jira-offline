@@ -55,12 +55,19 @@ def _get_user_creds(config: AppConfig):
 
     # validate Jira connection details, when creds change
     if config.username and config.password:
-        try:
-            Jira().connect(config)  # pylint: disable=protected-access
+        if _test_jira_connect(config):
 
             # on successful connect to JIRA API; write config to local file
             config.write_to_disk()
-
-        except requests.exceptions.ConnectionError:
+        else:
             logger.error('Failed connecting to %s', config.hostname)
             config.hostname = None
+
+
+def _test_jira_connect(config: AppConfig):
+    '''Test connection to Jira API to validate config object credentials'''
+    try:
+        Jira().connect(config)
+        return True
+    except requests.exceptions.ConnectionError:
+        return False
