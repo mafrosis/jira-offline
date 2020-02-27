@@ -13,7 +13,8 @@ from jira.resources import Issue as ApiIssue
 import jsonlines
 import pandas as pd
 
-from jira_cli.exceptions import EpicNotFound, EstimateFieldUnavailable, MissingFieldsForNewIssue, JiraApiError
+from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, JiraNotConfigured,
+                                 MissingFieldsForNewIssue, JiraApiError)
 from jira_cli.models import AppConfig, CustomFields, Issue, ProjectMeta
 from jira_cli.sync import jiraapi_object_to_issue, pull_issues
 
@@ -167,6 +168,8 @@ class Jira(collections.abc.MutableMapping):
                 raise EpicNotFound(err)
             if "Field 'estimate' cannot be set" in e.text:
                 raise EstimateFieldUnavailable(err)
+            if 'cannot be set. It is not on the appropriate screen, or unknown.' in e.text:
+                raise JiraNotConfigured(err)
 
         # transform the API response and add to self
         new_issue: Issue = jiraapi_object_to_issue(self.config, issue)

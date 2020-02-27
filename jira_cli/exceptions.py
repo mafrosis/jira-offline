@@ -28,6 +28,19 @@ class DeserializeError(ValueError):
     pass
 
 
+class JiraNotConfigured(ClickException):
+    '''Terminal. Raised if Jira is not setup correctly'''
+    def format_message(self):
+        return '''
+Jira screens are not configured correctly. Unable to continue.
+
+Go to your Jira project screens configuration:
+http://{}/plugins/servlet/project-config/{}/screens
+
+Ensure that "Story Points" is on the fields list.
+'''.strip()
+
+
 class JiraApiError(mod_jira.exceptions.JIRAError):
     '''Custom exception wrapping Jira library base exception'''
 
