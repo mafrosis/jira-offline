@@ -31,6 +31,7 @@ class CustomFields(DataclassSerializer):
             return True
         return False
 
+
 @dataclass
 class ProjectMeta(DataclassSerializer):
     name: Optional[str] = field(default=None)
@@ -77,8 +78,7 @@ class IssueStatus(enum.Enum):
     Unspecified = 'n/a'
 
 
-# pylint: disable=too-many-instance-attributes
-@dataclass
+@dataclass  # pylint: disable=too-many-instance-attributes
 class Issue(DataclassSerializer):
     issuetype: str = field(metadata={'friendly': 'Type', 'readonly': True})
     project: str = field(metadata={'readonly': True})
@@ -198,8 +198,7 @@ class Issue(DataclassSerializer):
 
         # apply the diff_to_original patch to the serialized version of the issue, which recreates
         # the issue dict as last seen on the Jira server
-        # pylint: disable=no-member
-        issue.original = dictdiffer.patch(issue.diff_to_original, issue.serialize())
+        issue.original = dictdiffer.patch(issue.diff_to_original, issue.serialize())  # pylint: disable=no-member
 
         return issue
 
