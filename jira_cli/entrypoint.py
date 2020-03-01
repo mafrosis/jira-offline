@@ -13,6 +13,7 @@ from tabulate import tabulate
 
 from jira_cli.config import get_user_creds
 from jira_cli.create import create_issue
+from jira_cli.exceptions import ProjectNotConfigured
 from jira_cli.linters import fixversions as lint_fixversions
 from jira_cli.linters import issues_missing_epic as lint_issues_missing_epic
 from jira_cli.main import Jira
@@ -169,12 +170,7 @@ def cli_new(project: str, issuetype: str, summary: str, **kwargs):
         raise click.Abort
 
     if jira.config and project not in jira.config.projects:
-        msg = (
-            'The project {new} is not currently configured! You must first load the project with '
-            'this command:\n\n  jiracli clone {new}\n'.format(new=project)
-        )
-        click.echo(msg)
-        raise click.Abort
+        raise ProjectNotConfigured(project)
 
     # validate epic parameters
     if issuetype == 'Epic':

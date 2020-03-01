@@ -50,6 +50,15 @@ class ProjectDoesntExist(BaseAppException):
         return f'Project {self.message} does not exist!'
 
 
+class ProjectNotConfigured(BaseAppException):
+    '''Terminal. Raised when trying to pull a project which has not been cloned'''
+    def format_message(self):
+        return (
+            'The project {key} is not currently configured! You must first load the project with '
+            'this command:\n\n  jiracli clone {key}\n'.format(key=self.message)
+        )
+
+
 class JiraNotConfigured(BaseAppException):
     '''Terminal. Raised if Jira is not setup correctly'''
     def format_message(self):
