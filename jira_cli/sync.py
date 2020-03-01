@@ -17,7 +17,7 @@ from tabulate import tabulate
 from tqdm import tqdm
 
 from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, FailedPullingIssues,
-                                 FailedPullingProjectMeta, JiraApiError, NoProjectsSetup)
+                                 JiraApiError, ProjectNotConfigured)
 from jira_cli.models import AppConfig, Issue
 from jira_cli.utils import critical_logger, DeserializeError, friendly_title, is_optional_type
 
@@ -32,21 +32,6 @@ class Conflict(Exception):
     pass
 
 
-def load_all_project_meta(jira: 'Jira', projects: Optional[set]):
-    if not projects:
-        raise NoProjectsSetup
-
-    try:
-        # pull project metadata for each project key, and merge into config.projects
-        for project_key in projects:
-            jira.config.projects[project_key] = jira.get_project_meta(project_key)
-
-    except JiraApiError as e:
-        raise FailedPullingProjectMeta(e)
-
-    jira.config.write_to_disk()
-
-
 def pull_issues(jira: 'Jira', projects: set=None, force: bool=False, verbose: bool=False):  # pylint: disable=too-many-statements
     '''
     Pull changed issues from upstream Jira API
@@ -59,8 +44,10 @@ def pull_issues(jira: 'Jira', projects: set=None, force: bool=False, verbose: bo
     '''
     if projects is None:
         projects = jira.config.projects.keys()
-
-    load_all_project_meta(jira, projects)
+    else:
+        for project_key in projects:
+            if project_key not in jira.config.projects:
+                raise ProjectNotConfigured(project_key)
 
     if force or jira.config.last_updated is None:
         # first/forced load; cache must be empty
@@ -75,12 +62,6 @@ def pull_issues(jira: 'Jira', projects: set=None, force: bool=False, verbose: bo
         logger.info('Querying for Jira issues since %s', last_updated)
 
     jql = f'project IN ({",".join(projects)}) AND updated > "{last_updated}"'
-
-    # single quick query to get total number of issues
-    api = jira.connect()
-    head = api.search_issues(jql, maxResults=1)
-
-    pbar = None
 
     def _run(jql: str, pbar=None) -> int:
         page = 0
@@ -130,6 +111,12 @@ def pull_issues(jira: 'Jira', projects: set=None, force: bool=False, verbose: bo
         return total
 
     try:
+        # single quick query to get total number of issues
+        api = jira.connect()
+        head = api.search_issues(jql, maxResults=1)
+
+        pbar = None
+
         if verbose:
             total = _run(jql)
         else:

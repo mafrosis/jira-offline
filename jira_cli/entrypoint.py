@@ -13,7 +13,7 @@ from tabulate import tabulate
 
 from jira_cli.config import get_user_creds
 from jira_cli.create import create_issue
-from jira_cli.exceptions import ProjectNotConfigured
+from jira_cli.exceptions import FailedPullingProjectMeta, JiraApiError, ProjectNotConfigured
 from jira_cli.linters import fixversions as lint_fixversions
 from jira_cli.linters import issues_missing_epic as lint_issues_missing_epic
 from jira_cli.main import Jira
@@ -106,7 +106,14 @@ def cli_clone(ctx, project: str, username: str=None):
     # always ask for credentials when cloning
     get_user_creds(jira.config, username)
 
-    # pull the single project
+    try:
+        # retrieve project metadata
+        jira.config.projects[project] = jira.get_project_meta(project)
+        jira.config.write_to_disk()
+    except JiraApiError as e:
+        raise FailedPullingProjectMeta(e)
+
+    # and finally pull all the project's issues
     pull_issues(jira, projects={project}, verbose=ctx.obj.verbose)
 
 

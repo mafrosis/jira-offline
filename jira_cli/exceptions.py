@@ -74,6 +74,8 @@ Ensure that "Story Points" is on the fields list.
 
 class FailedPullingProjectMeta(BaseAppException):
     '''Jira library error pulling project meta data'''
+    def format_message(self):
+        return f'Failed to clone the project. Please try again! ({self.message})'
 
 
 class FailedPullingIssues(BaseAppException):
