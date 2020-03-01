@@ -26,6 +26,11 @@ class CustomFields(DataclassSerializer):
     epic_name: str = field(default='')
     estimate: str = field(default='')
 
+    def __bool__(self):
+        if self.epic_ref and self.epic_name and self.estimate:
+            return True
+        return False
+
 @dataclass
 class ProjectMeta(DataclassSerializer):
     name: Optional[str] = field(default=None)

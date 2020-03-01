@@ -2,9 +2,60 @@ from unittest import mock
 import pytest
 
 from fixtures import ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF, ISSUE_1_WITH_FIXVERSIONS_DIFF, ISSUE_2
-from jira_cli.exceptions import FailedPullingProjectMeta, JiraApiError
-from jira_cli.models import Issue
-from jira_cli.sync import IssueUpdate, pull_issues
+from jira_cli.exceptions import FailedPullingProjectMeta, JiraApiError, NoProjectsSetup
+from jira_cli.models import CustomFields, Issue
+from jira_cli.sync import load_all_project_meta, IssueUpdate, pull_issues
+
+
+def test_load_all_project_meta__no_projects_param_and_empty_projects_config_raises_exception(mock_jira):
+    '''
+    Ensure when projects param is None and config.projects is empty an Exception is raised
+    '''
+    mock_jira.config.projects = {}
+
+    with pytest.raises(NoProjectsSetup):
+        load_all_project_meta(mock_jira, projects=None)
+
+
+@pytest.mark.parametrize('config_projects', [
+    ({'TEST': {}}),
+    ({}),
+])
+def test_load_all_project_meta__calls_get_project_meta_twice_with_two_new_projects(mock_jira, config_projects):
+    '''
+    Ensure get_project_meta() is called twice with two new projects
+    '''
+    # set app config from parametrize
+    mock_jira.config.projects = config_projects
+
+    load_all_project_meta(mock_jira, projects=['TEST1', 'TEST2'])
+
+    assert mock_jira.get_project_meta.call_count == 2
+
+
+def test_load_all_project_meta__calls_write_to_disk(mock_jira):
+    '''
+    Ensure config updates are written to disk
+    '''
+    load_all_project_meta(mock_jira, projects=['TEST1'])
+
+    assert mock_jira.config.write_to_disk.called
+
+
+@pytest.mark.parametrize('custom_fields', [
+    (CustomFields(epic_ref='1'),),
+    (CustomFields(epic_name='2'),),
+    (CustomFields(estimate='3'),),
+    (CustomFields(epic_ref='1', epic_name='2'),),
+])
+def test_load_all_project_meta__missing_custom_fields_raises_exception(mock_jira, custom_fields):
+    '''
+    Ensure when when a project has no custom fields configured an exception is raised
+    '''
+    mock_jira.config.projects['TEST'].custom_fields = custom_fields
+
+    with pytest.raises(NoProjectsSetup):
+        load_all_project_meta(mock_jira, projects=None)
 
 
 @mock.patch('jira_cli.sync.tqdm')
@@ -70,51 +121,6 @@ def test_pull_issues__last_updated_field_causes_filter_from_waaay_back(mock_tqdm
 
     # first calls, args (not kwargs), first arg
     assert mock_jira._jira.search_issues.call_args_list[0][0][0] == 'project IN (TEST) AND updated > "2010-01-01 00:00"'
-
-
-@mock.patch('jira_cli.sync.tqdm')
-def test_pull_issues__projects_param_used_over_projects_config(mock_tqdm, mock_jira):
-    '''
-    Ensure that when projects param is passed, it supersedes config.projects
-    '''
-    mock_jira._jira.search_issues.side_effect = [ mock.Mock(total=1), [] ]
-
-    mock_jira.config.projects = {'TEST': None}
-
-    pull_issues(mock_jira, projects={'EGG'})
-
-    # assert search_issues() called with single project key only
-    assert 'project IN (EGG)' in mock_jira._jira.search_issues.call_args_list[0][0][0]
-
-
-def test_pull_issues__no_projects_param_and_empty_projects_config_raises_exception(mock_jira):
-    '''
-    Test projects param is None and config.projects raises Exception
-    '''
-    mock_jira.config.projects = {}
-
-    with pytest.raises(Exception):
-        pull_issues(mock_jira)
-
-
-@pytest.mark.parametrize('config_projects', [
-    ({'TEST': {}}),
-    ({}),
-])
-@mock.patch('jira_cli.sync.tqdm')
-def test_pull_issues__calls_get_project_meta_twice_with_two_new_projects(mock_tqdm, mock_jira, config_projects):
-    '''
-    Ensure get_project_meta() is called twice with two new projects
-    '''
-    # mock Jira API to return nothing
-    mock_jira._jira.search_issues.side_effect = [ mock.Mock(total=0), [], [] ]
-
-    # set app config from parametrize
-    mock_jira.config.projects = config_projects
-
-    pull_issues(mock_jira, projects=['TEST1', 'TEST2'])
-
-    assert mock_jira.get_project_meta.call_count == 2
 
 
 @mock.patch('jira_cli.sync.tqdm')

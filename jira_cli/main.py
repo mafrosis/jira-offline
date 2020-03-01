@@ -14,8 +14,8 @@ import jsonlines
 import pandas as pd
 
 from jira_cli.config import load_config
-from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, JiraNotConfigured,
-                                 MissingFieldsForNewIssue, JiraApiError)
+from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, JiraApiError,
+                                 JiraNotConfigured, MissingFieldsForNewIssue, ProjectDoesntExist)
 from jira_cli.models import AppConfig, CustomFields, Issue, ProjectMeta
 from jira_cli.sync import jiraapi_object_to_issue, pull_issues
 
@@ -126,11 +126,34 @@ class Jira(collections.abc.MutableMapping):
         '''
         try:
             api = self.connect()
-            data: dict = api.createmeta(project_key)
+            data: dict = api.createmeta(project_key, expand='projects.issuetypes.fields')
+
+            if not data.get('projects'):
+                raise ProjectDoesntExist(project_key)
+
+            # extract set of issuetypes returned from the createmeta API
+            issuetypes: set = {x['name'] for x in data['projects'][0]['issuetypes']}
+
+            custom_fields = CustomFields()
+
+            # extract custom fields from the API
+            for issuetype in data['projects'][0]['issuetypes']:
+                if custom_fields:
+                    # exit loop when all custom field mappings have been extracted
+                    break
+
+                for field_props in issuetype['fields'].values():
+                    if not custom_fields.epic_name and field_props['name'] == 'Epic Name':
+                        custom_fields.epic_name = str(field_props['schema']['customId'])
+                    elif not custom_fields.epic_ref and field_props['name'] == 'Epic Link':
+                        custom_fields.epic_ref = str(field_props['schema']['customId'])
+                    elif not custom_fields.estimate and field_props['name'] == 'Story Points':
+                        custom_fields.estimate = str(field_props['schema']['customId'])
+
             return ProjectMeta(
                 name=data['projects'][0]['name'],
-                issuetypes={x['name'] for x in data['projects'][0]['issuetypes']},
-                custom_fields=CustomFields(),
+                issuetypes=issuetypes,
+                custom_fields=custom_fields,
             )
 
         except (IndexError, KeyError) as e:

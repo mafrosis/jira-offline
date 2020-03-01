@@ -10,8 +10,9 @@ import jira as mod_jira
 import pytest
 
 from fixtures import EPIC_1, ISSUE_1, ISSUE_MISSING_EPIC, ISSUE_NEW
-from jira_cli.exceptions import EpicNotFound, EstimateFieldUnavailable, JiraNotConfigured
-from jira_cli.models import Issue, ProjectMeta
+from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, JiraNotConfigured,
+                                 ProjectDoesntExist)
+from jira_cli.models import CustomFields, Issue, ProjectMeta
 
 
 @mock.patch('jira_cli.main.pull_issues')
@@ -118,6 +119,51 @@ def test_jira__get_project_meta__extracts_issuetypes(mock_jira_core):
     assert mock_jira_core.connect.called
     assert mock_jira_core._jira.createmeta.called
     assert result == ProjectMeta(name='Project EGG', issuetypes={'Epic', 'Party'})
+
+
+def test_jira__get_project_meta__extracts_custom_fields(mock_jira_core):
+    '''
+    Ensure get_project_meta() method parses the custom_fields for a project
+    '''
+    # mock return from Jira createmeta API call
+    mock_jira_core._jira.createmeta.return_value = {
+        'projects': [{
+            'id': '56120',
+            'key': 'EGG',
+            'name': 'Project EGG',
+            'issuetypes': [{
+                'self': 'https://example.com/rest/api/2/issuetype/5',
+                'id': '5',
+                'name': 'Epic',
+                'fields': {
+                    'customfield_10104': {
+                        'required': True,
+                        'schema': {
+                            'type': 'string',
+                            'customId': 10104
+                        },
+                        'name': 'Epic Name',
+                        'operations': ['set']
+                    },
+                },
+            }]
+        }]
+    }
+    result = mock_jira_core.get_project_meta('EGG')
+
+    assert mock_jira_core._jira.createmeta.called
+    assert result.custom_fields == CustomFields(epic_name='10104')
+
+
+def test_jira__get_project_meta__raises_project_doesnt_exist(mock_jira_core):
+    '''
+    Ensure ProjectDoesntExist exception is raised if nothing returned by API createmeta call
+    '''
+    # mock return from Jira createmeta API call
+    mock_jira_core._jira.createmeta.return_value = {'projects': []}
+
+    with pytest.raises(ProjectDoesntExist):
+        mock_jira_core.get_project_meta('EGG')
 
 
 @mock.patch('jira_cli.main.jiraapi_object_to_issue', return_value=Issue.deserialize(ISSUE_1))

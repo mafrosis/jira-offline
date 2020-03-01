@@ -44,6 +44,12 @@ class NoProjectsSetup(BaseAppException):
         return 'No projects setup, use the clone command.'
 
 
+class ProjectDoesntExist(BaseAppException):
+    '''Terminal. Raised when specified project key doesnt exist in Jira'''
+    def format_message(self):
+        return f'Project {self.message} does not exist!'
+
+
 class JiraNotConfigured(BaseAppException):
     '''Terminal. Raised if Jira is not setup correctly'''
     def format_message(self):
@@ -59,8 +65,6 @@ Ensure that "Story Points" is on the fields list.
 
 class FailedPullingProjectMeta(BaseAppException):
     '''Jira library error pulling project meta data'''
-    def format_message(self):
-        return f'Failed pulling project meta data! ({self.message})'
 
 
 class FailedPullingIssues(BaseAppException):
