@@ -1,7 +1,6 @@
+from fixtures import ISSUE_1
 from jira_cli.models import Issue, IssueStatus
 from jira_cli.sync import IssueUpdate, parse_editor_result
-
-from fixtures import ISSUE_1
 
 
 def test_parse_editor_result__handles_str_type():
@@ -16,7 +15,7 @@ def test_parse_editor_result__handles_str_type():
         IssueUpdate(merged_issue=Issue.deserialize(ISSUE_1), conflicts={'assignee'}),
         editor_result_raw,
     )
-    assert edited_issue.assignee == 'hoganp'
+    assert edited_issue.assignee == 'hoganp'  # pylint: disable=no-member
 
 
 def test_parse_editor_result__handles_str_type_over_100_chars():
@@ -31,7 +30,7 @@ def test_parse_editor_result__handles_str_type_over_100_chars():
         IssueUpdate(merged_issue=Issue.deserialize(ISSUE_1), conflicts={'description'}),
         editor_result_raw,
     )
-    assert edited_issue.description == str('This is a story or issue '*5).strip()
+    assert edited_issue.description == str('This is a story or issue '*5).strip()  # pylint: disable=no-member
 
 
 def test_parse_editor_result__parses_summary_str():
@@ -44,7 +43,7 @@ def test_parse_editor_result__parses_summary_str():
         IssueUpdate(merged_issue=Issue.deserialize(ISSUE_1), conflicts={'summary'}),
         editor_result_raw,
     )
-    assert edited_issue.summary == 'This is the story summary'
+    assert edited_issue.summary == 'This is the story summary'  # pylint: disable=no-member
 
 
 def test_parse_editor_result__handles_set_type():
@@ -59,7 +58,7 @@ def test_parse_editor_result__handles_set_type():
         IssueUpdate(merged_issue=Issue.deserialize(ISSUE_1), conflicts={'fixVersions'}),
         editor_result_raw,
     )
-    assert edited_issue.fixVersions == {'0.1', '0.3'}
+    assert edited_issue.fixVersions == {'0.1', '0.3'}  # pylint: disable=no-member
 
 
 def test_parse_editor_result__handles_enum_type():
@@ -74,7 +73,7 @@ def test_parse_editor_result__handles_enum_type():
         IssueUpdate(merged_issue=Issue.deserialize(ISSUE_1), conflicts={'status'}),
         editor_result_raw,
     )
-    assert edited_issue.status == IssueStatus.NotAssessed
+    assert edited_issue.status == IssueStatus.NotAssessed  # pylint: disable=no-member
 
 
 def test_parse_editor_result__handles_int_type():
@@ -89,4 +88,4 @@ def test_parse_editor_result__handles_int_type():
         IssueUpdate(merged_issue=Issue.deserialize(ISSUE_1), conflicts={'estimate'}),
         editor_result_raw,
     )
-    assert edited_issue.estimate == 99
+    assert edited_issue.estimate == 99  # pylint: disable=no-member

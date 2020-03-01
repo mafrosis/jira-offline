@@ -5,9 +5,9 @@ import click
 from click.testing import CliRunner
 import pytest
 
+from fixtures import ISSUE_1
 from jira_cli.entrypoint import cli
 from jira_cli.main import Issue
-from test.fixtures import ISSUE_1
 
 
 @mock.patch('jira_cli.entrypoint.Jira')

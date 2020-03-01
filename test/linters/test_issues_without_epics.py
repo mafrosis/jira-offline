@@ -1,6 +1,6 @@
+from fixtures import ISSUE_2, ISSUE_MISSING_EPIC
 from jira_cli.models import Issue
 from jira_cli.linters import issues_missing_epic
-from test.fixtures import ISSUE_2, ISSUE_MISSING_EPIC
 
 
 def test_lint_issues_missing_epic_finds_issues_missing_epic(mock_jira):

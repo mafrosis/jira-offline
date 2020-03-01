@@ -1,6 +1,6 @@
+from fixtures import EPIC_1, ISSUE_1
 from jira_cli.models import Issue
 from jira_cli.linters import fixversions
-from test.fixtures import EPIC_1, ISSUE_1
 
 
 def test_lint_fixversions_finds_empty_fixversions_field(mock_jira):

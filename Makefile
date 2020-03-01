@@ -9,6 +9,7 @@ test:
 .PHONY: lint
 lint:
 	docker-compose run --rm --entrypoint=pylint jiracli jira_cli/
+	docker-compose run --rm --entrypoint=pylint jiracli --rcfile=test/.pylintrc test/
 
 .PHONY: typecheck
 typecheck:
