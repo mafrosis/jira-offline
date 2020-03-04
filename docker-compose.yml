@@ -12,7 +12,6 @@ services:
       - /app/jira_cli.egg-info
 
   jira:
-    restart: always
     image: mafrosis/jira
     build:
       context: .
