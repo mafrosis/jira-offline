@@ -524,6 +524,14 @@ def push_issues(jira: 'Jira', verbose: bool=False):
         count = 0
 
         for local_issue in issues:
+            # skip issues which belong to unconfigured projects
+            if local_issue.project not in jira.config.projects:
+                logger.warning('Skipped issue for unconfigured project: %s', local_issue.summary)
+                if pbar:
+                    # update progress
+                    pbar.update(1)
+                continue
+
             # retrieve the upstream issue
             remote_issue = _fetch_single_issue(jira, local_issue)
 

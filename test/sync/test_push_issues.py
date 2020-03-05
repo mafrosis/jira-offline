@@ -94,3 +94,23 @@ def test_push_issues__calls_new_issue_when_issue_doesnt_have_an_id(
 
     assert not mock_jira.update_issue.called
     assert mock_jira.new_issue.called
+
+
+@mock.patch('jira_cli.sync.check_resolve_conflicts')
+@mock.patch('jira_cli.sync.issue_to_jiraapi_update')
+@mock.patch('jira_cli.sync._fetch_single_issue')
+def test_push_issues__skips_issues_from_unconfigured_projects(
+        mock_fetch_single_issue, mock_issue_to_jiraapi_update, mock_check_resolve_conflicts, mock_jira
+    ):
+    '''
+    Ensure issues from unconfigured projects are ignored
+    '''
+    mock_jira['issue1'] = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
+    mock_jira['issue2'] = Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF)
+    mock_jira['issue2'].project = 'TEST1'
+
+    push_issues(mock_jira)
+
+    assert mock_fetch_single_issue.call_count == 1
+    assert mock_check_resolve_conflicts.call_count == 1
+    assert mock_issue_to_jiraapi_update.call_count == 1
