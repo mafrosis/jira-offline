@@ -1,9 +1,12 @@
 arrow
 click
+cryptography
 dictdiffer
 jira
 jsonlines
+oauthlib
 pandas
+pyjwt
 requests
 tabulate
 tqdm

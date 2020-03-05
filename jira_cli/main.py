@@ -15,7 +15,8 @@ import pandas as pd
 
 from jira_cli.config import load_config
 from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, JiraApiError,
-                                 JiraNotConfigured, MissingFieldsForNewIssue, ProjectDoesntExist)
+                                 JiraNotConfigured, MissingFieldsForNewIssue, NoAuthenticationMethod,
+                                 ProjectDoesntExist)
 from jira_cli.models import AppConfig, CustomFields, Issue, ProjectMeta
 from jira_cli.sync import jiraapi_object_to_issue, pull_issues
 
@@ -62,9 +63,19 @@ class Jira(collections.abc.MutableMapping):
         if not config:
             config = self.config
 
+        basic_auth = oauth = None
+
+        if config.username:
+            basic_auth = (config.username, config.password)
+        elif config.oauth:
+            oauth = config.oauth.serialize()
+        else:
+            raise NoAuthenticationMethod
+
         self._jira = mod_jira.JIRA(
             options={'server': f'{config.protocol}://{config.hostname}', 'verify': False},
-            basic_auth=(config.username, config.password),
+            basic_auth=basic_auth,
+            oauth=oauth,
         )
         return self._jira
 

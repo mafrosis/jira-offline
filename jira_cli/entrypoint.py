@@ -91,14 +91,20 @@ def cli_push(ctx):
 @cli.command(name='clone')
 @click.argument('project_uri')
 @click.option('--username', help='Basic auth username to authenicate with')
+@click.option('--oauth-app', default='jiracli', help='Jira Application Link consumer name')
+@click.option('--oauth-private-key', help='oAuth private key', type=click.Path(exists=True))
 @click.pass_context
-def cli_clone(ctx, project_uri: str, username: str=None):
+def cli_clone(ctx, project_uri: str, username: str=None, oauth_app: str=None, oauth_private_key: str=None):
     '''
     Clone a Jira project to offline
 
     PROJECT - Jira project key to configure and pull
     '''
     uri = urlparse(project_uri)
+
+    if username and oauth_private_key:
+        click.echo('You cannot supply both username and oauth params together')
+        raise click.Abort
 
     if not uri.scheme or not uri.netloc or not uri.path:
         click.echo((
@@ -111,7 +117,7 @@ def cli_clone(ctx, project_uri: str, username: str=None):
     click.echo(f'Cloning project {project} from {uri.scheme}://{uri.netloc}')
 
     jira = Jira()
-    authenticate(jira.config, uri.scheme, uri.netloc, username)
+    authenticate(jira.config, uri.scheme, uri.netloc, username, oauth_app, oauth_private_key)
 
     try:
         # retrieve project metadata

@@ -33,6 +33,37 @@ Using the docker image published on Github, the following will get you going ver
     docker-compose run --rm jiracli
 
 
+Quick Start
+-----------
+
+**NB**: The following examples assume `jiracli` is available in `$PATH`
+
+### Clone
+
+The `clone` command is used to to setup a new project, which takes a single URI describing your
+project.
+
+### Authentication to Jira
+
+There are two auth options, basic and oAuth.
+
+#### Basic Auth
+
+Basic auth is quick and takes your existing username and password. Beware that this will *write your
+password into the config file on disk*.
+
+    jiracli clone --username benji https://jira.atlassian.com/PROJ
+
+You will be prompted for your password.
+
+#### oAuth
+
+oAuth is preferred, as it's token based and doesn't require your password. However it requires the
+setup of an `Application Link` on the Jira server.
+
+    jiracli clone --oauth-private-key=applink.pem https://jira.atlassian.com/PROJ
+
+
 How To Use
 ----------
 

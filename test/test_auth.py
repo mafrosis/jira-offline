@@ -8,9 +8,28 @@ from jira_cli.models import AppConfig
 
 
 @mock.patch('jira_cli.auth.get_user_creds')
+@mock.patch('jira_cli.auth.oauth_dance')
+@mock.patch('builtins.open')
+def test_authenticate__calls_oauth_dance_when_oauth_params_passed(mock_open, mock_oauth_dance, mock_get_user_creds):
+    '''
+    Ensure the private key file is opened and oauth_dance() is called when params passed
+    '''
+    app_config = AppConfig()
+    app_config.write_to_disk = mock.Mock()
+
+    authenticate(app_config, 'http', 'example.com', oauth_consumer_key='egg', oauth_private_key_path='pky')
+
+    mock_open.assert_called_with('pky')
+    mock_oauth_dance.assert_called_with('http://example.com', 'egg', mock_open.return_value.__enter__.return_value.read.return_value)
+    assert not mock_get_user_creds.called
+    assert app_config.write_to_disk.called
+
+
+@mock.patch('jira_cli.auth.get_user_creds')
+@mock.patch('jira_cli.auth.oauth_dance')
 @mock.patch('jira_cli.auth._test_jira_connect')
 @mock.patch('jira_cli.auth.click')
-def test_authenticate__calls_get_user_creds_when_username_passed(mock_click, mock_test_jira_connect, mock_get_user_creds):
+def test_authenticate__calls_get_user_creds_when_username_passed(mock_click, mock_test_jira_connect, mock_oauth_dance, mock_get_user_creds):
     '''
     Ensure get_user_creds() is called when params passed
     '''
@@ -19,6 +38,7 @@ def test_authenticate__calls_get_user_creds_when_username_passed(mock_click, moc
 
     authenticate(app_config, 'http', 'example.com', username='egg')
 
+    assert not mock_oauth_dance.called
     mock_get_user_creds.assert_called_with(app_config, 'egg')
     assert app_config.write_to_disk.called
 

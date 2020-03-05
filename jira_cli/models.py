@@ -40,6 +40,14 @@ class ProjectMeta(DataclassSerializer):
 
 
 @dataclass
+class OAuth(DataclassSerializer):
+    access_token: Optional[str] = field(default=None)
+    access_token_secret: Optional[str] = field(default=None)
+    consumer_key: Optional[str] = field(default=None)
+    key_cert: Optional[str] = field(default=None)
+
+
+@dataclass
 class AppConfig(DataclassSerializer):
     username: Optional[str] = field(default=None)
     password: Optional[str] = field(default=None)
@@ -47,6 +55,7 @@ class AppConfig(DataclassSerializer):
     hostname: Optional[str] = field(default='jira.atlassian.com')
     last_updated: Optional[str] = field(default=None)
     projects: Dict[str, ProjectMeta] = field(default_factory=dict)
+    oauth: Optional[OAuth] = field(default=None)
 
     def write_to_disk(self):
         config_filepath = os.path.join(click.get_app_dir(__title__), 'app.json')
