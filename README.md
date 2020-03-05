@@ -42,7 +42,7 @@ How To Use
 
 Use `clone` to add a project:
 
-    jiracli clone PROJ
+    jiracli clone https://jira.atlassian.com/PROJ
 
 
 Extending This Tool

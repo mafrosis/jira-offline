@@ -38,6 +38,10 @@ class BaseAppException(ClickException):
         super().__init__(msg)
 
 
+class UnreadableConfig(BaseAppException):
+    '''Terminal. Raised when load_config cannot read the config file'''
+
+
 class NoProjectsSetup(BaseAppException):
     '''Terminal. Raised when pull_issues is called without any projects setup to pull'''
     def format_message(self):
@@ -82,3 +86,21 @@ class FailedPullingIssues(BaseAppException):
     '''Jira library error pulling project issues'''
     def format_message(self):
         return f'Failed pulling project issues. Please try again! ({self.message})'
+
+
+class FailedAuthError(BaseAppException):
+    '''Failed oAuth flow'''
+    def format_message(self):
+        return f'Failed to authenticate with Jira ({self.message})'
+
+
+class JiraUnavailable(BaseAppException):
+    '''Couldnt talk to Jira'''
+    def format_message(self):
+        return f'Jira appears unavailable ({self.message})'
+
+
+class NoAuthenticationMethod(BaseAppException):
+    '''Jira.connect was called with no authentication method configured'''
+    def format_message(self):
+        return f'No way to authenticate!'

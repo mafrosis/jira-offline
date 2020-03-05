@@ -5,13 +5,14 @@ options and help text.
 from dataclasses import dataclass, field
 import logging
 from typing import Optional, Set
+from urllib.parse import urlparse
 
 import click
 import arrow
 import pandas as pd
 from tabulate import tabulate
 
-from jira_cli.config import get_user_creds
+from jira_cli.auth import authenticate, get_user_creds
 from jira_cli.create import create_issue
 from jira_cli.exceptions import FailedPullingProjectMeta, JiraApiError, ProjectNotConfigured
 from jira_cli.linters import fixversions as lint_fixversions
@@ -88,23 +89,29 @@ def cli_push(ctx):
 
 
 @cli.command(name='clone')
-@click.argument('project')
+@click.argument('project_uri')
 @click.option('--username', help='Basic auth username to authenicate with')
 @click.pass_context
-def cli_clone(ctx, project: str, username: str=None):
+def cli_clone(ctx, project_uri: str, username: str=None):
     '''
     Clone a Jira project to offline
 
     PROJECT - Jira project key to configure and pull
     '''
-    if ',' in project:
-        click.echo('You should pass only a single project key')
+    uri = urlparse(project_uri)
+
+    if not uri.scheme or not uri.netloc or not uri.path:
+        click.echo((
+            'Badly formed Jira project URI passed, must be of the form:\n'
+            '  https://jira.atlassian.com:8080/PROJ'
+        ))
         raise click.Abort
 
-    jira = Jira()
+    project: str = uri.path[1:]
+    click.echo(f'Cloning project {project} from {uri.scheme}://{uri.netloc}')
 
-    # always ask for credentials when cloning
-    get_user_creds(jira.config, username)
+    jira = Jira()
+    authenticate(jira.config, uri.scheme, uri.netloc, username)
 
     try:
         # retrieve project metadata
