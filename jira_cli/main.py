@@ -13,6 +13,7 @@ from jira.resources import Issue as ApiIssue
 import jsonlines
 import pandas as pd
 
+from jira_cli.config import load_config
 from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, JiraNotConfigured,
                                  MissingFieldsForNewIssue, JiraApiError)
 from jira_cli.models import AppConfig, CustomFields, Issue, ProjectMeta
@@ -25,11 +26,13 @@ logger = logging.getLogger('jira')
 class Jira(collections.abc.MutableMapping):
     _jira: mod_jira.JIRA = None
     _df: Optional[pd.DataFrame] = None
-    config: AppConfig
 
     def __init__(self, *args, **kwargs):
         self.store = dict()
         self.update(dict(*args, **kwargs))
+
+        # load application config without prompting
+        self.config: AppConfig = load_config()
 
     def __getitem__(self, key):
         return self.store[key]
@@ -46,7 +49,7 @@ class Jira(collections.abc.MutableMapping):
     def __len__(self):
         return len(self.store)
 
-    def connect(self, config=None):
+    def connect(self, config: Optional[AppConfig]=None):
         if config is None and self.config is None:
             raise Exception('Jira object not configured')
 
@@ -56,13 +59,12 @@ class Jira(collections.abc.MutableMapping):
         # no insecure cert warnings
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-        # cache config object
-        if config:
-            self.config = config
+        if not config:
+            config = self.config
 
         self._jira = mod_jira.JIRA(
-            options={'server': f'{self.config.protocol}://{self.config.hostname}', 'verify': False},
-            basic_auth=(self.config.username, self.config.password),
+            options={'server': f'{config.protocol}://{config.hostname}', 'verify': False},
+            basic_auth=(config.username, config.password),
         )
         return self._jira
 
@@ -72,6 +74,9 @@ class Jira(collections.abc.MutableMapping):
         Load issues from JSON cache file, and store in self (as class implements dict interface)
         '''
         if not os.path.exists('issue_cache.jsonl') or os.stat('issue_cache.jsonl').st_size == 0:
+            if not self.config:
+                self.config = load_config()
+
             # first run; cache file doesn't exist
             pull_issues(self, force=True)
         else:

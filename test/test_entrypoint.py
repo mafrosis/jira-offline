@@ -5,7 +5,6 @@ import click
 from click.testing import CliRunner
 import pytest
 
-from jira_cli.config import AppConfig
 from jira_cli.entrypoint import cli
 from jira_cli.main import Issue
 from test.fixtures import ISSUE_1
@@ -41,7 +40,7 @@ CLI_COMMAND_MAPPING = [
     ('ls', tuple(), 1),
     ('show', ('issue1',), 1),
     ('clone', ('TEST',), 0),
-    ('new', ('TEST', 'Story', 'Summary'), 1),
+    ('new', ('TEST', 'Story', 'Summary'), 0),
     ('pull', tuple(), 0),
     ('push', tuple(), 1),
     ('stats', ('issuetype',), 1),
@@ -56,8 +55,8 @@ CLI_COMMAND_MAPPING = [
 @mock.patch('jira_cli.entrypoint.Jira')
 @mock.patch('jira_cli.entrypoint.pull_issues')
 @mock.patch('jira_cli.entrypoint.push_issues')
-@mock.patch('jira_cli.entrypoint.load_config')
-def test_cli_smoketest(mock_load_config, mock_push_issues, mock_pull_issues, mock_jira_local, mock_jira, command, params, _):
+@mock.patch('jira_cli.entrypoint.get_user_creds')
+def test_cli_smoketest(mock_get_user_creds, mock_push_issues, mock_pull_issues, mock_jira_local, mock_jira, command, params, _):
     '''
     Dumb smoke test function to check for errors in application CLI
     Failures here often uncover untested parts of the codebase
@@ -66,7 +65,6 @@ def test_cli_smoketest(mock_load_config, mock_push_issues, mock_pull_issues, moc
     '''
     # set function-local instance of Jira class to our test mock
     mock_jira_local.return_value = mock_jira
-    mock_load_config.return_value = mock_jira.config
 
     # add fixture to Jira dict
     mock_jira['issue1'] = Issue.deserialize(ISSUE_1)
@@ -81,8 +79,8 @@ def test_cli_smoketest(mock_load_config, mock_push_issues, mock_pull_issues, moc
 @mock.patch('jira_cli.entrypoint.Jira')
 @mock.patch('jira_cli.entrypoint.pull_issues')
 @mock.patch('jira_cli.entrypoint.push_issues')
-@mock.patch('jira_cli.entrypoint.load_config', return_value=AppConfig())
-def test_cli_smoketest_empty(mock_load_config, mock_push_issues, mock_pull_issues, mock_jira_local, mock_jira, command, params, exit_code):
+@mock.patch('jira_cli.entrypoint.get_user_creds')
+def test_cli_smoketest_empty(mock_get_user_creds, mock_push_issues, mock_pull_issues, mock_jira_local, mock_jira, command, params, exit_code):
     '''
     Dumb smoke test function to check for errors in application CLI
     Failures here often uncover untested parts of the codebase
@@ -115,8 +113,7 @@ def test_cli_show_invalid_issue_key(mock_click, mock_jira_local, mock_jira):
 
 @mock.patch('jira_cli.entrypoint.pull_issues')
 @mock.patch('jira_cli.entrypoint.Jira')
-@mock.patch('jira_cli.entrypoint.load_config')
-def test_cli_pull_reset_hard_flag_calls_confirm_abort(mock_load_config, mock_jira_local, mock_pull_issues, mock_jira):
+def test_cli_pull_reset_hard_flag_calls_confirm_abort(mock_jira_local, mock_pull_issues, mock_jira):
     '''
     Ensure pull --reset-hard calls click.confirm() with abort=True flag
     '''
@@ -133,27 +130,21 @@ def test_cli_pull_reset_hard_flag_calls_confirm_abort(mock_load_config, mock_jir
 
 
 @mock.patch('jira_cli.entrypoint.Jira')
-@mock.patch('jira_cli.entrypoint.load_config')
-def test_cli_new_error_when_passed_project_not_in_config(mock_load_config, mock_jira_local, mock_jira):
+def test_cli_new_error_when_passed_project_not_in_config(mock_jira_local, mock_jira):
     '''
     Ensure an error happens when the passed --project is missing from config.projects
     '''
     # set function-local instance of Jira class to our test mock
     mock_jira_local.return_value = mock_jira
 
-    # create a config fixture for an existing configured project
-    mock_load_config.return_value = AppConfig(projects={'TEST': None})
-
     runner = CliRunner()
     result = runner.invoke(cli, ['new', 'EGG', 'Story', 'Summary of issue'])
     assert result.exit_code == 1
-    assert mock_load_config.called
     assert not mock_jira.new_issue.called
 
 
 @mock.patch('jira_cli.entrypoint.Jira')
-@mock.patch('jira_cli.entrypoint.load_config')
-def test_cli_new_error_when_not_passed_epic_name_for_epic(mock_load_config, mock_jira_local, mock_jira):
+def test_cli_new_error_when_not_passed_epic_name_for_epic(mock_jira_local, mock_jira):
     '''
     Ensure an error happens when --epic-name is not passed for Epic creation
     '''
@@ -167,8 +158,7 @@ def test_cli_new_error_when_not_passed_epic_name_for_epic(mock_load_config, mock
 
 
 @mock.patch('jira_cli.entrypoint.Jira')
-@mock.patch('jira_cli.entrypoint.load_config')
-def test_cli_new_error_when_passed_epic_ref_for_epic(mock_load_config, mock_jira_local, mock_jira):
+def test_cli_new_error_when_passed_epic_ref_for_epic(mock_jira_local, mock_jira):
     '''
     Ensure an error happens when --epic-ref is passed for Epic creation
     '''
@@ -183,16 +173,12 @@ def test_cli_new_error_when_passed_epic_ref_for_epic(mock_load_config, mock_jira
 
 @mock.patch('jira_cli.entrypoint.Jira')
 @mock.patch('jira_cli.entrypoint.create_issue')
-@mock.patch('jira_cli.entrypoint.load_config')
-def test_cli_new_fixversions_param_key_is_modified(mock_load_config, mock_create_issue, mock_jira_local, mock_jira):
+def test_cli_new_fixversions_param_key_is_modified(mock_create_issue, mock_jira_local, mock_jira):
     '''
     Ensure the --fixversions param is passed into create_issue() as fixVersions
     '''
     # set function-local instance of Jira class to our test mock
     mock_jira_local.return_value = mock_jira
-
-    # create a config fixture for an existing configured project
-    mock_load_config.return_value = AppConfig(projects={'TEST': None})
 
     runner = CliRunner()
     result = runner.invoke(cli, ['new', 'TEST', 'Story', 'Summary of issue', '--fix-versions', '0.1'])

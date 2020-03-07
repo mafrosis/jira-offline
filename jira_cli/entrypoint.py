@@ -11,7 +11,7 @@ import arrow
 import pandas as pd
 from tabulate import tabulate
 
-from jira_cli.config import load_config
+from jira_cli.config import get_user_creds
 from jira_cli.create import create_issue
 from jira_cli.linters import fixversions as lint_fixversions
 from jira_cli.linters import issues_missing_epic as lint_issues_missing_epic
@@ -77,7 +77,6 @@ def cli_show(key):
 def cli_push(ctx):
     '''Synchronise changes back to Jira server'''
     jira = Jira()
-    jira.config = load_config()
     jira.load_issues()
 
     if not jira:
@@ -89,9 +88,8 @@ def cli_push(ctx):
 
 @cli.command(name='clone')
 @click.argument('project')
-@click.option('--login', is_flag=True, help='Reset the current login credentials')
 @click.pass_context
-def cli_clone(ctx, project: str, login: bool=False):
+def cli_clone(ctx, project: str):
     '''
     Clone a Jira project to offline
 
@@ -102,7 +100,9 @@ def cli_clone(ctx, project: str, login: bool=False):
         raise click.Abort
 
     jira = Jira()
-    jira.config = load_config(prompt_for_creds=login)
+
+    # always ask for credentials when cloning
+    get_user_creds(jira.config)
 
     # pull the single project
     pull_issues(jira, projects={project}, verbose=ctx.obj.verbose)
@@ -120,13 +120,15 @@ def cli_pull(ctx, projects: str=None, login: bool=False, reset_hard: bool=False)
         projects_set = set(projects.split(','))
 
     jira = Jira()
-    jira.config = load_config(prompt_for_creds=login)
+    if login:
+        # refresh Jira credentials
+        get_user_creds(jira.config)
 
     if reset_hard:
         reset_warning = None
         if projects:
             reset_warning = f'{projects}'
-        elif jira.config and jira.config.projects:
+        else:
             reset_warning = f'{jira.config.projects}'
 
         if reset_warning:
@@ -159,7 +161,6 @@ def cli_new(project: str, issuetype: str, summary: str, **kwargs):
     SUMMARY    Mandatory free text oneliner for this issue
     '''
     jira = Jira()
-    jira.config = load_config()
 
     if ',' in project:
         click.echo('You should pass only a single project key')

@@ -11,19 +11,15 @@ import click
 import requests
 
 from jira_cli import __title__
-from jira_cli.main import Jira
 from jira_cli.models import AppConfig
 
 
 logger = logging.getLogger('jira')
 
 
-def load_config(prompt_for_creds: bool=False):
+def load_config():
     '''
     Load app configuration from local JSON file
-
-    Params:
-        prompt_for_creds:  Force a re-prompt for Jira credentials
     '''
     config_filepath = os.path.join(click.get_app_dir(__title__), 'app.json')
 
@@ -41,15 +37,17 @@ def load_config(prompt_for_creds: bool=False):
 
     if not config:
         config = AppConfig()
-        prompt_for_creds = True
-
-    if prompt_for_creds:
-        _get_user_creds(config)
 
     return config
 
 
-def _get_user_creds(config: AppConfig):
+def get_user_creds(config: AppConfig):
+    '''
+    Accept username/password and validate against Jira server
+
+    Params:
+        config:    Dependency-injected application config object
+    '''
     config.username = click.prompt('Username', type=str)
     config.password = click.prompt('Password', type=str, hide_input=True)
 
@@ -67,6 +65,8 @@ def _get_user_creds(config: AppConfig):
 def _test_jira_connect(config: AppConfig):
     '''Test connection to Jira API to validate config object credentials'''
     try:
+        # late import of Jira class to prevent cyclic-import
+        from jira_cli.main import Jira  # pylint: disable=import-outside-toplevel,cyclic-import
         Jira().connect(config)
         return True
     except requests.exceptions.ConnectionError:

@@ -8,7 +8,8 @@ from jira_cli.models import AppConfig, CustomFields, ProjectMeta
 
 
 @pytest.fixture()
-def mock_jira_core():
+@mock.patch('jira_cli.main.load_config')
+def mock_jira_core(mock_load_config):
     '''
     Return a Jira class instance with connect method and underlying Jira lib mocked
     '''
