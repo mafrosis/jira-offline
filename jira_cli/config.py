@@ -41,14 +41,18 @@ def load_config():
     return config
 
 
-def get_user_creds(config: AppConfig):
+def get_user_creds(config: AppConfig, username: Optional[str]=None):
     '''
     Accept username/password and validate against Jira server
 
     Params:
         config:    Dependency-injected application config object
+        username:  Basic auth username
     '''
-    config.username = click.prompt('Username', type=str)
+    config.username = username
+    if not config.username:
+        config.username = click.prompt('Username', type=str)
+
     config.password = click.prompt('Password', type=str, hide_input=True)
 
     # validate Jira connection details, when creds change

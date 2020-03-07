@@ -73,6 +73,27 @@ def test_get_user_creds__calls_click_prompt_and_jira_connect(mock_click, mock_te
 
 
 @mock.patch('jira_cli.config._test_jira_connect')
+@mock.patch('jira_cli.config.click')
+def test_get_user_creds__calls_prompt_only_once_when_username_passed(mock_click, mock_test_jira_connect):
+    '''
+    Ensure that get_user_creds() only calls click.prompt once when username param is passed
+    '''
+    app_config = AppConfig()
+
+    # mock return from user CLI prompts
+    mock_click.prompt.return_value = 'egg'
+
+    # mock AppConfig.write_to_disk calls
+    app_config.write_to_disk = mock.Mock()
+
+    get_user_creds(app_config, username='bacon')
+
+    assert mock_click.prompt.call_count == 1
+    assert app_config.username == 'bacon'
+    assert app_config.password == 'egg'
+
+
+@mock.patch('jira_cli.config._test_jira_connect')
 @mock.patch('jira_cli.config.os')
 @mock.patch('jira_cli.config.sys')
 @mock.patch('jira_cli.config.click')

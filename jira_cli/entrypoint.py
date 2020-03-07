@@ -88,8 +88,9 @@ def cli_push(ctx):
 
 @cli.command(name='clone')
 @click.argument('project')
+@click.option('--username', help='Basic auth username to authenicate with')
 @click.pass_context
-def cli_clone(ctx, project: str):
+def cli_clone(ctx, project: str, username: str=None):
     '''
     Clone a Jira project to offline
 
@@ -102,7 +103,7 @@ def cli_clone(ctx, project: str):
     jira = Jira()
 
     # always ask for credentials when cloning
-    get_user_creds(jira.config)
+    get_user_creds(jira.config, username)
 
     # pull the single project
     pull_issues(jira, projects={project}, verbose=ctx.obj.verbose)
@@ -110,19 +111,20 @@ def cli_clone(ctx, project: str):
 
 @cli.command(name='pull')
 @click.option('--projects', help='Jira project keys')
+@click.option('--username', help='Basic auth username to authenicate with')
 @click.option('--login', is_flag=True, help='Reset the current login credentials')
 @click.option('--reset-hard', is_flag=True, help='Force reload of all issues. This will destroy any local changes!')
 @click.pass_context
-def cli_pull(ctx, projects: str=None, login: bool=False, reset_hard: bool=False):
+def cli_pull(ctx, projects: str=None, username: str=None, login: bool=False, reset_hard: bool=False):
     '''Fetch and cache all Jira issues'''
     projects_set: Optional[Set[str]] = None
     if projects:
         projects_set = set(projects.split(','))
 
     jira = Jira()
-    if login:
+    if login or username:
         # refresh Jira credentials
-        get_user_creds(jira.config)
+        get_user_creds(jira.config, username)
 
     if reset_hard:
         reset_warning = None
