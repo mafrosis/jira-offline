@@ -18,7 +18,7 @@ from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, JiraApi
                                  JiraNotConfigured, MissingFieldsForNewIssue, NoAuthenticationMethod,
                                  ProjectDoesntExist)
 from jira_cli.models import AppConfig, CustomFields, Issue, ProjectMeta
-from jira_cli.sync import jiraapi_object_to_issue, pull_issues
+from jira_cli.sync import jiraapi_object_to_issue
 
 
 logger = logging.getLogger('jira')
@@ -84,15 +84,8 @@ class Jira(collections.abc.MutableMapping):
         '''
         Load issues from JSON cache file, and store in self (as class implements dict interface)
         '''
-        if not os.path.exists('issue_cache.jsonl') or os.stat('issue_cache.jsonl').st_size == 0:
-            if not self.config:
-                self.config = load_config()
-
-            # first run; cache file doesn't exist
-            pull_issues(self, force=True)
-        else:
+        if os.path.exists('issue_cache.jsonl') or os.stat('issue_cache.jsonl').st_size > 0:
             try:
-                # load from cache file
                 with open('issue_cache.jsonl') as f:
                     for obj in jsonlines.Reader(f.readlines()).iter(type=dict):
                         self[obj['key']] = Issue.deserialize(obj)

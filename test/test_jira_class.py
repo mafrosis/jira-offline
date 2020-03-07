@@ -15,21 +15,6 @@ from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, JiraNot
 from jira_cli.models import CustomFields, Issue, ProjectMeta
 
 
-@mock.patch('jira_cli.main.pull_issues')
-@mock.patch('jira_cli.main.jsonlines')
-@mock.patch('jira_cli.main.os')
-def test_jira__load_issues__calls_pull_issues_when_cache_missing(mock_os, mock_jsonlines, mock_pull_issues, mock_jira_core):
-    '''
-    Ensure load_issues calls pull_issues when the cache file is missing
-    '''
-    # issues cache is missing
-    mock_os.path.exists.return_value = False
-
-    mock_jira_core.load_issues()
-
-    assert mock_pull_issues.called
-
-
 @mock.patch('jira_cli.main.jsonlines')
 @mock.patch('jira_cli.main.os')
 @mock.patch('builtins.open')

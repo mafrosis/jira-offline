@@ -143,7 +143,6 @@ def cli_pull(ctx, projects: str=None, reset_hard: bool=False):
     jira = Jira()
 
     if reset_hard:
-        reset_warning = None
         if projects:
             reset_warning = f'{projects}'
         else:
