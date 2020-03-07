@@ -55,9 +55,8 @@ CLI_COMMAND_MAPPING = [
 @mock.patch('jira_cli.entrypoint.Jira')
 @mock.patch('jira_cli.entrypoint.pull_issues')
 @mock.patch('jira_cli.entrypoint.push_issues')
-@mock.patch('jira_cli.entrypoint.get_user_creds')
 @mock.patch('jira_cli.entrypoint.authenticate')
-def test_cli_smoketest(mock_authenticate, mock_get_user_creds, mock_push_issues, mock_pull_issues, mock_jira_local, mock_jira, command, params, _):
+def test_cli_smoketest(mock_authenticate, mock_push_issues, mock_pull_issues, mock_jira_local, mock_jira, command, params, _):
     '''
     Dumb smoke test function to check for errors in application CLI
     Failures here often uncover untested parts of the codebase
@@ -80,9 +79,8 @@ def test_cli_smoketest(mock_authenticate, mock_get_user_creds, mock_push_issues,
 @mock.patch('jira_cli.entrypoint.Jira')
 @mock.patch('jira_cli.entrypoint.pull_issues')
 @mock.patch('jira_cli.entrypoint.push_issues')
-@mock.patch('jira_cli.entrypoint.get_user_creds')
 @mock.patch('jira_cli.entrypoint.authenticate')
-def test_cli_smoketest_empty(mock_authenticate, mock_get_user_creds, mock_push_issues, mock_pull_issues, mock_jira_local, mock_jira, command, params, exit_code):
+def test_cli_smoketest_empty(mock_authenticate, mock_push_issues, mock_pull_issues, mock_jira_local, mock_jira, command, params, exit_code):
     '''
     Dumb smoke test function to check for errors in application CLI
     Failures here often uncover untested parts of the codebase

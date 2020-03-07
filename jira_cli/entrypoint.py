@@ -12,7 +12,7 @@ import arrow
 import pandas as pd
 from tabulate import tabulate
 
-from jira_cli.auth import authenticate, get_user_creds
+from jira_cli.auth import authenticate
 from jira_cli.create import create_issue
 from jira_cli.exceptions import FailedPullingProjectMeta, JiraApiError, ProjectNotConfigured
 from jira_cli.linters import fixversions as lint_fixversions
@@ -126,20 +126,15 @@ def cli_clone(ctx, project_uri: str, username: str=None):
 
 @cli.command(name='pull')
 @click.option('--projects', help='Jira project keys')
-@click.option('--username', help='Basic auth username to authenicate with')
-@click.option('--login', is_flag=True, help='Reset the current login credentials')
 @click.option('--reset-hard', is_flag=True, help='Force reload of all issues. This will destroy any local changes!')
 @click.pass_context
-def cli_pull(ctx, projects: str=None, username: str=None, login: bool=False, reset_hard: bool=False):
+def cli_pull(ctx, projects: str=None, reset_hard: bool=False):
     '''Fetch and cache all Jira issues'''
     projects_set: Optional[Set[str]] = None
     if projects:
         projects_set = set(projects.split(','))
 
     jira = Jira()
-    if login or username:
-        # refresh Jira credentials
-        get_user_creds(jira.config, username)
 
     if reset_hard:
         reset_warning = None
