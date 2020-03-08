@@ -12,7 +12,90 @@ import pytest
 from fixtures import EPIC_1, ISSUE_1, ISSUE_MISSING_EPIC, ISSUE_NEW
 from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, JiraNotConfigured,
                                  ProjectDoesntExist)
-from jira_cli.models import CustomFields, Issue, ProjectMeta
+from jira_cli.main import Jira
+from jira_cli.models import AppConfig, CustomFields, Issue, OAuth, ProjectMeta
+
+
+@mock.patch('jira_cli.main.load_config')
+@mock.patch('jira_cli.main.mod_jira')
+def test_jira__connect__returns_connection_from_cache(mock_mod_jira, mock_load_config, project):
+    '''
+    Ensure connect() returns and existing connection if cached
+    '''
+    jira = Jira()
+    jira.config = AppConfig(projects={project.id: project})
+    jira._connections = {project.id: mock_mod_jira.JIRA}
+
+    # pass a ProjectMeta object into connect
+    jira.connect(project)
+
+    # assert that a new connection is not created
+    assert not mock_mod_jira.JIRA.called
+
+
+@mock.patch('jira_cli.main.load_config')
+@mock.patch('jira_cli.main.mod_jira')
+def test_jira__connect__creates_a_new_connection(mock_mod_jira, mock_load_config, project):
+    '''
+    Ensure connect() returns and existing connection if cached
+    '''
+    jira = Jira()
+    jira.config = AppConfig()
+
+    # pass a ProjectMeta object into connect
+    jira.connect(project)
+
+    # assert that a new connection is not created
+    assert mock_mod_jira.JIRA.called
+
+
+@mock.patch('jira_cli.main.load_config')
+@mock.patch('jira_cli.main.mod_jira')
+def test_jira__connect__passes_basic_auth_to_mod_jira(mock_mod_jira, mock_load_config, project):
+    '''
+    Ensure connect() passes username/password to mod_jira.JIRA constructor when username supplied
+    '''
+    jira = Jira()
+    jira.config = AppConfig()
+
+    project.username = 'tester'
+    project.password = 'faked'
+    project.oauth = None
+
+    # pass a ProjectMeta object into connect
+    jira.connect(project)
+
+    # validate the parameter passed into the JIRA constructor
+    assert mock_mod_jira.JIRA.call_args_list[0][1]['basic_auth'] == ('tester', 'faked')
+
+
+@mock.patch('jira_cli.main.load_config')
+@mock.patch('jira_cli.main.mod_jira')
+def test_jira__connect__passes_oauth_to_mod_jira(mock_mod_jira, mock_load_config, project):
+    '''
+    Ensure connect() passes oauth to mod_jira.JIRA constructor when username supplied
+    '''
+    jira = Jira()
+    jira.config = AppConfig()
+
+    project.username = project.password = None
+    project.oauth = OAuth(
+        access_token='token',
+        access_token_secret='secret',
+        consumer_key='ckey',
+        key_cert='cert',
+    )
+
+    # pass a ProjectMeta object into connect
+    jira.connect(project)
+
+    # validate the parameter passed into the JIRA constructor
+    assert mock_mod_jira.JIRA.call_args_list[0][1]['oauth'] == {
+        'access_token': 'token',
+        'access_token_secret': 'secret',
+        'consumer_key': 'ckey',
+        'key_cert': 'cert',
+    }
 
 
 @mock.patch('jira_cli.main.jsonlines')
@@ -99,11 +182,15 @@ def test_jira__get_project_meta__extracts_issuetypes(mock_jira_core):
             }]
         }]
     }
-    result = mock_jira_core.get_project_meta('EGG')
+
+    project_meta = ProjectMeta(key='BACON')
+
+    mock_jira_core.get_project_meta(project_meta)
 
     assert mock_jira_core.connect.called
     assert mock_jira_core._jira.createmeta.called
-    assert result == ProjectMeta(name='Project EGG', issuetypes={'Epic', 'Party'})
+    assert project_meta.name == 'Project EGG'
+    assert project_meta.issuetypes == {'Epic', 'Party'}
 
 
 def test_jira__get_project_meta__extracts_custom_fields(mock_jira_core):
@@ -134,10 +221,13 @@ def test_jira__get_project_meta__extracts_custom_fields(mock_jira_core):
             }]
         }]
     }
-    result = mock_jira_core.get_project_meta('EGG')
+
+    project_meta = ProjectMeta(key='BACON')
+
+    mock_jira_core.get_project_meta(project_meta)
 
     assert mock_jira_core._jira.createmeta.called
-    assert result.custom_fields == CustomFields(epic_name='10104')
+    assert project_meta.custom_fields == CustomFields(epic_name='10104')
 
 
 def test_jira__get_project_meta__raises_project_doesnt_exist(mock_jira_core):
@@ -148,26 +238,33 @@ def test_jira__get_project_meta__raises_project_doesnt_exist(mock_jira_core):
     mock_jira_core._jira.createmeta.return_value = {'projects': []}
 
     with pytest.raises(ProjectDoesntExist):
-        mock_jira_core.get_project_meta('EGG')
+        mock_jira_core.get_project_meta(ProjectMeta(key='TEST'))
 
 
 @mock.patch('jira_cli.main.jiraapi_object_to_issue', return_value=Issue.deserialize(ISSUE_1))
-def test_jira__new_issue__removes_fields_which_cannot_be_posted_for_new_issue(mock_jiraapi_object_to_issue, mock_jira_core):
+def test_jira__new_issue__removes_fields_which_cannot_be_posted_for_new_issue(mock_jiraapi_object_to_issue, mock_jira_core, project):
     '''
     Some fields cannot be posted to the Jira API. Ensure they are removed before the API call.
     '''
     # dont write to disk during tests
     mock_jira_core.write_issues = mock.Mock()
 
-    # jira.connect() returns an instance of underlying Jira library
+    # jira.connect() returns the Jira connection for a given project
     mock_jira_core.connect.return_value = mock_jira_core._jira
 
     # add new issue to the jira object
     mock_jira_core[ISSUE_NEW['key']] = Issue.deserialize(ISSUE_NEW)
 
-    mock_jira_core.new_issue({
-        'key': ISSUE_NEW['key'], 'status': 'Backlog', 'summary': 'A summary', 'issuetype': {'name': 'Story'}
-    })
+    mock_jira_core.new_issue(
+        project,
+        fields={
+            'project_id': 'notarealprojecthash',
+            'key': ISSUE_NEW['key'],
+            'status': 'Backlog',
+            'summary': 'A summary',
+            'issuetype': {'name': 'Story'},
+        }
+    )
 
     # assert "key" and "status" are removed
     mock_jira_core._jira.create_issue.assert_called_with(fields={'summary': 'A summary', 'issuetype': {'name': 'Story'}})
@@ -178,39 +275,53 @@ def test_jira__new_issue__removes_fields_which_cannot_be_posted_for_new_issue(mo
     ("Field 'estimate' cannot be set", EstimateFieldUnavailable),
     ('cannot be set. It is not on the appropriate screen, or unknown.', JiraNotConfigured),
 ])
-def test_jira__new_issue__raises_specific_exceptions(mock_jira_core, error_msg, exception):
+def test_jira__new_issue__raises_specific_exceptions(mock_jira_core, project, error_msg, exception):
     '''
     Ensure correct custom exception is raised when specific string found in Jira API error message
     '''
-    # jira.connect() returns an instance of underlying Jira library
+    # jira.connect() returns the Jira connection for a given project
     mock_jira_core.connect.return_value = mock_jira_core._jira
 
     # mock the Jira library to raise
     mock_jira_core._jira.create_issue.side_effect = mod_jira.JIRAError(text=error_msg)
 
     with pytest.raises(exception):
-        mock_jira_core.new_issue({
-            'key': ISSUE_NEW['key'], 'status': 'Backlog', 'summary': 'A summary', 'issuetype': {'name': 'Story'}
-        })
+        mock_jira_core.new_issue(
+            project,
+            fields={
+                'project_id': 'notarealprojecthash',
+                'key': ISSUE_NEW['key'],
+                'status': 'Backlog',
+                'summary': 'A summary',
+                'issuetype': {'name': 'Story'},
+            }
+        )
 
 
 @mock.patch('jira_cli.main.jiraapi_object_to_issue', return_value=Issue.deserialize(ISSUE_1))
-def test_jira__new_issue__removes_temp_key_when_new_post_successful(mock_jiraapi_object_to_issue, mock_jira_core):
+def test_jira__new_issue__removes_temp_key_when_new_post_successful(mock_jiraapi_object_to_issue, mock_jira_core, project):
     '''
     Ensure a successful post of a new Issue deletes the old temp UUID key from self
     '''
     # dont write to disk during tests
     mock_jira_core.write_issues = mock.Mock()
 
-    # jira.connect() returns an instance of underlying Jira library
+    # jira.connect() returns the Jira connection for a given project
     mock_jira_core.connect.return_value = mock_jira_core._jira
 
     # add new issue to the jira object
     mock_jira_core[ISSUE_NEW['key']] = Issue.deserialize(ISSUE_NEW)
 
-    mock_jira_core.new_issue({
-        'key': ISSUE_NEW['key'], 'status': 'Backlog', 'summary': 'A summary', 'issuetype': {'name': 'Story'}
-    })
+    mock_jira_core.new_issue(
+        project,
+        fields={
+            'project_id': 'notarealprojecthash',
+            'key': ISSUE_NEW['key'],
+            'status': 'Backlog',
+            'summary': 'A summary',
+            'issuetype': {'name': 'Story'},
+        }
+    )
 
     # assert old local-only UUID temp key has been removed
     assert ISSUE_NEW['key'] not in mock_jira_core

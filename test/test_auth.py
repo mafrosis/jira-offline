@@ -3,8 +3,7 @@ from unittest import mock
 import pytest
 
 from jira_cli.auth import authenticate, get_user_creds
-from jira_cli.exceptions import FailedAuthError
-from jira_cli.models import AppConfig
+from jira_cli.models import ProjectMeta
 
 
 @mock.patch('jira_cli.auth.get_user_creds')
@@ -14,15 +13,13 @@ def test_authenticate__calls_oauth_dance_when_oauth_params_passed(mock_open, moc
     '''
     Ensure the private key file is opened and oauth_dance() is called when params passed
     '''
-    app_config = AppConfig()
-    app_config.write_to_disk = mock.Mock()
+    project_meta = ProjectMeta(key='test')
 
-    authenticate(app_config, 'http', 'example.com', oauth_consumer_key='egg', oauth_private_key_path='pky')
+    authenticate(project_meta, oauth_consumer_key='egg', oauth_private_key_path='pky')
 
     mock_open.assert_called_with('pky')
-    mock_oauth_dance.assert_called_with('http://example.com', 'egg', mock_open.return_value.__enter__.return_value.read.return_value)
+    mock_oauth_dance.assert_called_with(project_meta, 'egg', mock_open.return_value.__enter__.return_value.read.return_value)
     assert not mock_get_user_creds.called
-    assert app_config.write_to_disk.called
 
 
 @mock.patch('jira_cli.auth.get_user_creds')
@@ -33,54 +30,32 @@ def test_authenticate__calls_get_user_creds_when_username_passed(mock_click, moc
     '''
     Ensure get_user_creds() is called when params passed
     '''
-    app_config = AppConfig()
-    app_config.write_to_disk = mock.Mock()
+    project_meta = ProjectMeta(key='test')
 
-    authenticate(app_config, 'http', 'example.com', username='egg')
+    authenticate(project_meta, username='egg')
 
     assert not mock_oauth_dance.called
-    mock_get_user_creds.assert_called_with(app_config, 'egg')
-    assert app_config.write_to_disk.called
+    mock_get_user_creds.assert_called_with(project_meta, 'egg')
 
 
-@mock.patch('jira_cli.auth.get_user_creds')
-def test_authenticate__doesnt_write_config_when_get_user_creds_raises(mock_get_user_creds):
-    '''
-    Ensure config.write_to_disk() is not called when get_user_creds() raises exception
-    '''
-    app_config = AppConfig()
-    app_config.write_to_disk = mock.Mock()
-
-    # mock get_user_creds() to fail
-    mock_get_user_creds.side_effect = FailedAuthError
-
-    with pytest.raises(FailedAuthError):
-        authenticate(app_config, 'http', 'example.com', username='egg')
-
-    assert not app_config.write_to_disk.called
-
-
-@pytest.mark.parametrize('app_config', [
-    AppConfig(),
-    AppConfig(username='test', password='dummy', projects={'TEST': None}),
+@pytest.mark.parametrize('project_meta', [
+    ProjectMeta(key='test'),
+    ProjectMeta(key='test', username='test', password='dummy'),
 ])
 @mock.patch('jira_cli.auth._test_jira_connect')
 @mock.patch('jira_cli.auth.click')
-def test_get_user_creds__calls_click_prompt_and_jira_connect(mock_click, mock_test_jira_connect, app_config):
+def test_get_user_creds__calls_click_prompt_and_jira_connect(mock_click, mock_test_jira_connect, project_meta):
     '''
     Ensure that get_user_creds() makes calls to click.prompt and Jira.connect()
     '''
     # mock return from user CLI prompts
     mock_click.prompt.return_value = 'egg'
 
-    # mock AppConfig.write_to_disk calls
-    app_config.write_to_disk = mock.Mock()
-
-    get_user_creds(app_config)
+    get_user_creds(project_meta)
 
     assert mock_click.prompt.call_count == 2
-    assert app_config.username == 'egg'
-    assert app_config.password == 'egg'
+    assert project_meta.username == 'egg'
+    assert project_meta.password == 'egg'
     assert mock_test_jira_connect.called
 
 
@@ -90,16 +65,13 @@ def test_get_user_creds__calls_prompt_only_once_when_username_passed(mock_click,
     '''
     Ensure that get_user_creds() only calls click.prompt once when username param is passed
     '''
-    app_config = AppConfig()
+    project_meta = ProjectMeta(key='test')
 
     # mock return from user CLI prompts
     mock_click.prompt.return_value = 'egg'
 
-    # mock AppConfig.write_to_disk calls
-    app_config.write_to_disk = mock.Mock()
-
-    get_user_creds(app_config, username='bacon')
+    get_user_creds(project_meta, username='bacon')
 
     assert mock_click.prompt.call_count == 1
-    assert app_config.username == 'bacon'
-    assert app_config.password == 'egg'
+    assert project_meta.username == 'bacon'
+    assert project_meta.password == 'egg'

@@ -17,8 +17,8 @@ from tabulate import tabulate
 from tqdm import tqdm
 
 from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, FailedPullingIssues,
-                                 JiraApiError, ProjectNotConfigured)
-from jira_cli.models import AppConfig, Issue
+                                 JiraApiError)
+from jira_cli.models import Issue, ProjectMeta
 from jira_cli.utils import critical_logger, DeserializeError, friendly_title, is_optional_type
 
 if TYPE_CHECKING:
@@ -32,36 +32,57 @@ class Conflict(Exception):
     pass
 
 
-def pull_issues(jira: 'Jira', projects: set=None, force: bool=False, verbose: bool=False):  # pylint: disable=too-many-statements
+def pull_issues(jira: 'Jira', projects: Optional[set]=None, force: bool=False, verbose: bool=False):
     '''
     Pull changed issues from upstream Jira API
 
     Params:
         jira:      Dependency-injected main.Jira object
-        projects:  Project keys to pull, if None then pull all configured projects
+        projects:  Project IDs to pull, if None then pull all configured projects
         force:     Force reload of *all* issues, not just changed since `last_updated` value
         verbose:   Verbose print all issues as they're pulled from the API (default is progress bar)
     '''
-    if projects is None:
-        projects = jira.config.projects.keys()
-    else:
-        for project_key in projects:
-            if project_key not in jira.config.projects:
-                raise ProjectNotConfigured(project_key)
+    projects_to_pull: List[ProjectMeta]
 
-    if force or jira.config.last_updated is None:
+    if projects is None:
+        # pull all projects
+        projects_to_pull = jira.config.projects.values()
+    else:
+        # pull only the IDs passed to pull_issues()
+        projects_to_pull = [
+            project for project_id, project in jira.config.projects.items()
+            if project_id in projects
+        ]
+
+    # if the issue cache is not yet loaded, load before pull
+    if not jira:
+        jira.load_issues()
+
+    for project in projects_to_pull:
+        pull_single_project(jira, project, force=force, verbose=verbose)
+
+
+def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose: bool):  # pylint: disable=too-many-statements
+    '''
+    Pull changed issues from upstream Jira API
+
+    Params:
+        jira:     Dependency-injected main.Jira object
+        project:  Properties of the Jira project to pull
+        force:    Force reload of *all* issues, not just changed since `last_updated` value
+        verbose:  Verbose print all issues as they're pulled from the API (default is progress bar)
+    '''
+    if force or project.last_updated is None:
         # first/forced load; cache must be empty
         last_updated = '2010-01-01 00:00'
-        logger.info('Querying for all Jira issues')
+        logger.info('Querying %s for all issues', project.project_uri)
     else:
-        if not jira:
-            # load existing issue data from cache
-            jira.load_issues()
+        last_updated = project.last_updated
+        logger.info(
+            'Querying %s for issues since %s', project.project_uri, project.last_updated
+        )
 
-        last_updated = jira.config.last_updated
-        logger.info('Querying for Jira issues since %s', last_updated)
-
-    jql = f'project IN ({",".join(projects)}) AND updated > "{last_updated}"'
+    jql = f'project = {project.key} AND updated > "{last_updated}"'
 
     def _run(jql: str, pbar=None) -> int:
         page = 0
@@ -77,7 +98,7 @@ def pull_issues(jira: 'Jira', projects: set=None, force: bool=False, verbose: bo
 
             for api_issue in issues:
                 # convert from Jira object into Issue dataclass
-                issue = jiraapi_object_to_issue(jira.config, api_issue)
+                issue = jiraapi_object_to_issue(project, api_issue)
 
                 try:
                     # determine if local changes have been made
@@ -98,7 +119,7 @@ def pull_issues(jira: 'Jira', projects: set=None, force: bool=False, verbose: bo
                 logger.info('Page number %s', page)
                 df = pd.DataFrame.from_dict(
                     {
-                        issue.key: jiraapi_object_to_issue(jira.config, issue).serialize()
+                        issue.key: jiraapi_object_to_issue(project, issue).serialize()
                         for issue in issues
                     },
                     orient='index'
@@ -112,7 +133,7 @@ def pull_issues(jira: 'Jira', projects: set=None, force: bool=False, verbose: bo
 
     try:
         # single quick query to get total number of issues
-        api = jira.connect()
+        api = jira.connect(project)
         head = api.search_issues(jql, maxResults=1)
 
         pbar = None
@@ -137,30 +158,29 @@ def pull_issues(jira: 'Jira', projects: set=None, force: bool=False, verbose: bo
     jira.write_issues()
 
     # cache the last_updated value
-    jira.config.last_updated = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
+    project.last_updated = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
     jira.config.write_to_disk()
 
 
-def jiraapi_object_to_issue(config: AppConfig, issue: ApiIssue) -> Issue:
+def jiraapi_object_to_issue(project: ProjectMeta, issue: ApiIssue) -> Issue:
     '''
     Convert raw JSON from Jira API to Issue object
 
     Params:
-        config:  App config object containing project-specific Jira settings
-        issue:   Instance of the Issue class from the Jira library
+        project:  Properties of the project pushing issues to
+        issue:    Instance of the Issue class from the Jira library
     Return:
         An Issue dataclass instance
     '''
-    custom_fields = config.projects[issue.fields.project.key].custom_fields
-
     fixVersions = set()
     if issue.fields.fixVersions:
         fixVersions = {f.name for f in issue.fields.fixVersions}
 
     jiraapi_object = {
+        'project_id': project.id,
         'created': issue.fields.created,
         'creator': issue.fields.creator.name,
-        'epic_name': getattr(issue.fields, custom_fields.epic_name, ''),
+        'epic_name': getattr(issue.fields, project.custom_fields.epic_name, ''),
         'description': issue.fields.description,
         'fixVersions': fixVersions,
         'id': issue.id,
@@ -175,10 +195,14 @@ def jiraapi_object_to_issue(config: AppConfig, issue: ApiIssue) -> Issue:
     }
     if issue.fields.assignee:
         jiraapi_object['assignee'] = issue.fields.assignee.name
-    if getattr(issue.fields, f'customfield_{custom_fields.epic_ref}'):
-        jiraapi_object['epic_ref'] = getattr(issue.fields, f'customfield_{custom_fields.epic_ref}')
-    if getattr(issue.fields, f'customfield_{custom_fields.estimate}'):
-        jiraapi_object['estimate'] = getattr(issue.fields, f'customfield_{custom_fields.estimate}')
+    if getattr(issue.fields, f'customfield_{project.custom_fields.epic_ref}'):
+        jiraapi_object['epic_ref'] = getattr(
+            issue.fields, f'customfield_{project.custom_fields.epic_ref}'
+        )
+    if getattr(issue.fields, f'customfield_{project.custom_fields.estimate}'):
+        jiraapi_object['estimate'] = getattr(
+            issue.fields, f'customfield_{project.custom_fields.estimate}'
+        )
     if issue.fields.labels:
         jiraapi_object['labels'] = issue.fields.labels
 
@@ -195,13 +219,13 @@ class IssueUpdate:
     conflicts: dict = field(default_factory=dict)
 
 
-def issue_to_jiraapi_update(config: AppConfig, issue: Issue, modified: set) -> dict:
+def issue_to_jiraapi_update(project: ProjectMeta, issue: Issue, modified: set) -> dict:
     '''
     Convert an Issue object to a JSON blob to update the Jira API. Handles both new and updated
     Issues.
 
     Params:
-        config:    App config object containing project-specific Jira settings
+        project:   Properties of the project pushing issues to
         issue:     Issue model to create an update for
         modified:  Set of modified fields (created by a call to _build_update)
     Return:
@@ -209,9 +233,9 @@ def issue_to_jiraapi_update(config: AppConfig, issue: Issue, modified: set) -> d
     '''
     # create a mapping of Issue keys (custom fields have a different key on Jira)
     field_keys: dict = {f.name: f.name for f in dataclasses.fields(Issue)}
-    field_keys['epic_ref'] = f'customfield_{config.projects[issue.project].custom_fields.epic_ref}'
-    field_keys['epic_name'] = f'customfield_{config.projects[issue.project].custom_fields.epic_name}'
-    field_keys['estimate'] = f'customfield_{config.projects[issue.project].custom_fields.estimate}'
+    field_keys['epic_ref'] = f'customfield_{project.custom_fields.epic_ref}'
+    field_keys['epic_name'] = f'customfield_{project.custom_fields.epic_name}'
+    field_keys['estimate'] = f'customfield_{project.custom_fields.estimate}'
 
     # serialize all Issue data to be JSON-compatible
     issue_values: dict = issue.serialize()
@@ -525,30 +549,33 @@ def push_issues(jira: 'Jira', verbose: bool=False):
 
         for local_issue in issues:
             # skip issues which belong to unconfigured projects
-            if local_issue.project not in jira.config.projects:
+            if local_issue.project_id not in jira.config.projects:
                 logger.warning('Skipped issue for unconfigured project: %s', local_issue.summary)
                 if pbar:
                     # update progress
                     pbar.update(1)
                 continue
 
+            # create local var for the Jira project for this Issue
+            project = jira.config.projects.get(local_issue.project_id)
+
             # retrieve the upstream issue
-            remote_issue = _fetch_single_issue(jira, local_issue)
+            remote_issue = _fetch_single_issue(jira, project, local_issue)
 
             # resolve any conflicts with upstream
             update_object: IssueUpdate = check_resolve_conflicts(local_issue, remote_issue)
 
             update_dict: dict = issue_to_jiraapi_update(
-                jira.config, update_object.merged_issue, update_object.modified
+                project, update_object.merged_issue, update_object.modified
             )
 
             if update_object.merged_issue.exists:
-                jira.update_issue(update_object.merged_issue.key, update_dict)
+                jira.update_issue(project, update_object.merged_issue.key, update_dict)
                 logger.info('Updated issue %s', update_object.merged_issue.key)
                 count += 1
             else:
                 try:
-                    new_issue = jira.new_issue(update_dict)
+                    new_issue = jira.new_issue(project, update_dict)
                     logger.info('New issue %s created', new_issue.key)
                     count += 1
                 except (EpicNotFound, EstimateFieldUnavailable) as e:
@@ -583,7 +610,7 @@ def push_issues(jira: 'Jira', verbose: bool=False):
     logger.info('Pushed %s of %s issues', total, len(issues_to_push))
 
 
-def _fetch_single_issue(jira: 'Jira', issue: Issue) -> Optional[Issue]:
+def _fetch_single_issue(jira: 'Jira', project: ProjectMeta, issue: Issue) -> Optional[Issue]:
     '''
     Return a single Issue object from the Jira API by key
 
@@ -596,4 +623,4 @@ def _fetch_single_issue(jira: 'Jira', issue: Issue) -> Optional[Issue]:
     # new issues return False for exists
     if not issue.exists:
         return None
-    return jiraapi_object_to_issue(jira.config, jira.connect().issue(issue.key))
+    return jiraapi_object_to_issue(project, jira.connect(project).issue(issue.key))

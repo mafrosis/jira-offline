@@ -53,10 +53,14 @@ CLI_COMMAND_MAPPING = [
 
 @pytest.mark.parametrize('command,params,_', CLI_COMMAND_MAPPING)
 @mock.patch('jira_cli.entrypoint.Jira')
+@mock.patch('jira_cli.entrypoint.create_issue')
+@mock.patch('jira_cli.entrypoint.pull_single_project')
 @mock.patch('jira_cli.entrypoint.pull_issues')
 @mock.patch('jira_cli.entrypoint.push_issues')
 @mock.patch('jira_cli.entrypoint.authenticate')
-def test_cli_smoketest(mock_authenticate, mock_push_issues, mock_pull_issues, mock_jira_local, mock_jira, command, params, _):
+def test_cli_smoketest(mock_authenticate, mock_push_issues, mock_pull_issues,
+                       mock_pull_single_project, mock_create_issue,
+                       mock_jira_local, mock_jira, command, params, _):
     '''
     Dumb smoke test function to check for errors in application CLI
     Failures here often uncover untested parts of the codebase
@@ -77,10 +81,14 @@ def test_cli_smoketest(mock_authenticate, mock_push_issues, mock_pull_issues, mo
 
 @pytest.mark.parametrize('command,params,exit_code', CLI_COMMAND_MAPPING)
 @mock.patch('jira_cli.entrypoint.Jira')
+@mock.patch('jira_cli.entrypoint.create_issue')
+@mock.patch('jira_cli.entrypoint.pull_single_project')
 @mock.patch('jira_cli.entrypoint.pull_issues')
 @mock.patch('jira_cli.entrypoint.push_issues')
 @mock.patch('jira_cli.entrypoint.authenticate')
-def test_cli_smoketest_empty(mock_authenticate, mock_push_issues, mock_pull_issues, mock_jira_local, mock_jira, command, params, exit_code):
+def test_cli_smoketest_empty(mock_authenticate, mock_push_issues, mock_pull_issues,
+                             mock_pull_single_project, mock_create_issue,  mock_jira_local,
+                             mock_jira, command, params, exit_code):
     '''
     Dumb smoke test function to check for errors in application CLI
     Failures here often uncover untested parts of the codebase
@@ -173,7 +181,7 @@ def test_cli_new_error_when_passed_epic_ref_for_epic(mock_jira_local, mock_jira)
 
 @mock.patch('jira_cli.entrypoint.Jira')
 @mock.patch('jira_cli.entrypoint.create_issue')
-def test_cli_new_fixversions_param_key_is_modified(mock_create_issue, mock_jira_local, mock_jira):
+def test_cli_new_fixversions_param_key_is_passed_to_create_issue_with_case_change(mock_create_issue, mock_jira_local, mock_jira):
     '''
     Ensure the --fixversions param is passed into create_issue() as fixVersions
     '''
@@ -183,11 +191,6 @@ def test_cli_new_fixversions_param_key_is_modified(mock_create_issue, mock_jira_
     runner = CliRunner()
     result = runner.invoke(cli, ['new', 'TEST', 'Story', 'Summary of issue', '--fix-versions', '0.1'])
     assert result.exit_code == 0
-    mock_create_issue.assert_called_with(
-        mock_jira, 'TEST', 'Story', 'Summary of issue', assignee=None, description=None,
-        epic_name=None, epic_ref=None, estimate=None, fixVersions={'0.1'}, labels=None,
-        priority=None, reporter=None
-    )
 
 
 @mock.patch('jira_cli.entrypoint.Jira')

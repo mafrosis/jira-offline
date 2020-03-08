@@ -7,6 +7,8 @@ functions.
 from click import ClickException
 import jira as mod_jira
 
+# pylint: disable=no-self-use
+
 
 class EpicNotFound(Exception):
     pass

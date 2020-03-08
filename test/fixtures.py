@@ -1,4 +1,5 @@
 ISSUE_1 = {
+    'project_id': '99fd9182cfc4c701a8a662f6293f4136201791b4',
     'assignee': 'danil1',
     'created': '2018-09-24T08:44:06.000+10:00',
     'creator': 'danil1',
@@ -19,6 +20,7 @@ ISSUE_1 = {
 }
 
 ISSUE_1_WITH_UPDATED_DIFF = {
+    'project_id': '99fd9182cfc4c701a8a662f6293f4136201791b4',
     'assignee': 'danil1',
     'created': '2018-09-24T08:44:06.000+10:00',
     'creator': 'danil1',
@@ -39,6 +41,7 @@ ISSUE_1_WITH_UPDATED_DIFF = {
 }
 
 ISSUE_1_WITH_ASSIGNEE_DIFF = {
+    'project_id': '99fd9182cfc4c701a8a662f6293f4136201791b4',
     'assignee': 'hoganp',
     'created': '2018-09-24T08:44:06.000+10:00',
     'creator': 'danil1',
@@ -59,6 +62,7 @@ ISSUE_1_WITH_ASSIGNEE_DIFF = {
 }
 
 ISSUE_1_WITH_FIXVERSIONS_DIFF = {
+    'project_id': '99fd9182cfc4c701a8a662f6293f4136201791b4',
     'assignee': 'danil1',
     'created': '2018-09-24T08:44:06.000+10:00',
     'creator': 'danil1',
@@ -79,6 +83,7 @@ ISSUE_1_WITH_FIXVERSIONS_DIFF = {
 }
 
 ISSUE_2 = {
+    'project_id': '99fd9182cfc4c701a8a662f6293f4136201791b4',
     'assignee': 'danil1',
     'created': '2018-09-24T08:44:06.000+10:00',
     'creator': 'danil1',
@@ -99,6 +104,7 @@ ISSUE_2 = {
 }
 
 ISSUE_MISSING_EPIC = {
+    'project_id': '99fd9182cfc4c701a8a662f6293f4136201791b4',
     'created': '2018-09-24T08:44:06.000+10:00',
     'creator': 'danil1',
     'description': 'This is a story or issue',
@@ -117,6 +123,7 @@ ISSUE_MISSING_EPIC = {
 }
 
 ISSUE_NEW = {
+    'project_id': '99fd9182cfc4c701a8a662f6293f4136201791b4',
     'key': '7242cc9e-ea52-4e51-bd84-2ced250cabf0',
     'description': 'This is a story or issue',
     'issuetype': 'Story',
@@ -128,6 +135,7 @@ ISSUE_NEW = {
 }
 
 EPIC_1 = {
+    'project_id': '99fd9182cfc4c701a8a662f6293f4136201791b4',
     'created': '2018-09-24T08:44:06.000+10:00',
     'creator': 'danil1',
     'fixVersions': ['0.1'],

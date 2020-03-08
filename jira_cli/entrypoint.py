@@ -18,7 +18,8 @@ from jira_cli.exceptions import FailedPullingProjectMeta, JiraApiError, ProjectN
 from jira_cli.linters import fixversions as lint_fixversions
 from jira_cli.linters import issues_missing_epic as lint_issues_missing_epic
 from jira_cli.main import Jira
-from jira_cli.sync import pull_issues, push_issues
+from jira_cli.models import ProjectMeta
+from jira_cli.sync import pull_issues, pull_single_project, push_issues
 
 
 logger = logging.getLogger('jira')
@@ -113,21 +114,33 @@ def cli_clone(ctx, project_uri: str, username: str=None, oauth_app: str=None, oa
         ))
         raise click.Abort
 
-    project: str = uri.path[1:]
-    click.echo(f'Cloning project {project} from {uri.scheme}://{uri.netloc}')
+    # create a new project
+    project = ProjectMeta(
+        key=uri.path[1:],
+        protocol=uri.scheme,
+        hostname=uri.netloc,
+    )
+    click.echo(f'Cloning project {project.key} from {project.jira_server}')
 
     jira = Jira()
-    authenticate(jira.config, uri.scheme, uri.netloc, username, oauth_app, oauth_private_key)
+    authenticate(project, username, oauth_app, oauth_private_key)
+    click.echo(f'Authenticated with {project.jira_server}')
 
     try:
         # retrieve project metadata
-        jira.config.projects[project] = jira.get_project_meta(project)
-        jira.config.write_to_disk()
+        jira.get_project_meta(project)
     except JiraApiError as e:
         raise FailedPullingProjectMeta(e)
 
+    click.echo(f'{project.key} project properties retrieved')
+
+    # write new project to the app config
+    jira.config.projects[project.id] = project
+    jira.config.write_to_disk()
+
     # and finally pull all the project's issues
-    pull_issues(jira, projects={project}, verbose=ctx.obj.verbose)
+    click.echo(f'Pulling issues..')
+    pull_single_project(jira, project, force=False, verbose=ctx.obj.verbose)
 
 
 @cli.command(name='pull')
@@ -136,21 +149,26 @@ def cli_clone(ctx, project_uri: str, username: str=None, oauth_app: str=None, oa
 @click.pass_context
 def cli_pull(ctx, projects: str=None, reset_hard: bool=False):
     '''Fetch and cache all Jira issues'''
+    jira = Jira()
+
     projects_set: Optional[Set[str]] = None
     if projects:
         projects_set = set(projects.split(','))
 
-    jira = Jira()
+        # validate all requested projects are configured
+        for key in projects_set:
+            if key not in {p.key for p in jira.config.projects.values()}:
+                raise ProjectNotConfigured(key)
 
     if reset_hard:
         if projects:
-            reset_warning = f'{projects}'
+            reset_warning = '\n'.join(projects_set)  # type: ignore
         else:
-            reset_warning = f'{jira.config.projects}'
+            reset_warning = '\n'.join([p.key for p in jira.config.projects.values()])  # type: ignore
 
         if reset_warning:
             click.confirm(
-                f'Warning! This will destroy any local changes for project(s) {reset_warning}. Continue?',
+                f'Warning! This will destroy any local changes for project(s)\n\n{reset_warning}\n\nContinue?',
                 abort=True
             )
 
@@ -158,7 +176,7 @@ def cli_pull(ctx, projects: str=None, reset_hard: bool=False):
 
 
 @cli.command(name='new')
-@click.argument('project')
+@click.argument('projectkey')
 @click.argument('issuetype')
 @click.argument('summary')
 @click.option('--assignee', help='Username of person assigned to complete the Issue')
@@ -169,22 +187,27 @@ def cli_pull(ctx, projects: str=None, reset_hard: bool=False):
 @click.option('--fix-versions', help='Issue fix versions as comma-separated')
 @click.option('--labels', help='Issue labels as comma-separated')
 @click.option('--reporter', help='Username of Issue reporter (defaults to creator)')
-def cli_new(project: str, issuetype: str, summary: str, **kwargs):
+def cli_new(projectkey: str, issuetype: str, summary: str, **kwargs):
     '''
     Create a new issue on a project
 
-    PROJECT    Jira project key for the new issue
+    PROJECTKEY    Jira project key for the new issue
     ISSUETYPE  A valid issue type for the specified project
     SUMMARY    Mandatory free text oneliner for this issue
     '''
-    jira = Jira()
-
-    if ',' in project:
+    if ',' in projectkey:
         click.echo('You should pass only a single project key')
         raise click.Abort
 
-    if jira.config and project not in jira.config.projects:
-        raise ProjectNotConfigured(project)
+    jira = Jira()
+
+    try:
+        # extract the ProjectMeta object for the specified project
+        project: ProjectMeta = next(iter(
+            [pm for id, pm in jira.config.projects.items() if pm.key == projectkey]
+        ))
+    except StopIteration:
+        raise ProjectNotConfigured(projectkey)
 
     # validate epic parameters
     if issuetype == 'Epic':

@@ -7,13 +7,13 @@ from jira_cli.sync import _fetch_single_issue, IssueUpdate, push_issues
 
 @mock.patch('jira_cli.sync.check_resolve_conflicts')
 @mock.patch('jira_cli.sync.jiraapi_object_to_issue')
-def test_fetch_single_issue__returns_output_from_jiraapi_object_to_issue(mock_jiraapi_object_to_issue, mock_check_resolve_conflicts, mock_jira):
+def test_fetch_single_issue__returns_output_from_jiraapi_object_to_issue(mock_jiraapi_object_to_issue, mock_check_resolve_conflicts, mock_jira, project):
     '''
     Ensure _fetch_single_issue() returns the output directly from jiraapi_object_to_issue()
     '''
     mock_jiraapi_object_to_issue.return_value = 1
 
-    ret = _fetch_single_issue(mock_jira, Issue.deserialize(ISSUE_1))
+    ret = _fetch_single_issue(mock_jira, project, Issue.deserialize(ISSUE_1))
     assert ret == 1
 
     assert mock_jiraapi_object_to_issue.called
@@ -22,11 +22,11 @@ def test_fetch_single_issue__returns_output_from_jiraapi_object_to_issue(mock_ji
 
 @mock.patch('jira_cli.sync.check_resolve_conflicts')
 @mock.patch('jira_cli.sync.jiraapi_object_to_issue')
-def test_fetch_single_issue__returns_none_when_issue_is_new(mock_jiraapi_object_to_issue, mock_check_resolve_conflicts, mock_jira):
+def test_fetch_single_issue__returns_none_when_issue_is_new(mock_jiraapi_object_to_issue, mock_check_resolve_conflicts, mock_jira, project):
     '''
     Ensure _fetch_single_issue() returns None when the passed Issue is new
     '''
-    ret = _fetch_single_issue(mock_jira, Issue.deserialize(ISSUE_NEW))
+    ret = _fetch_single_issue(mock_jira, project, Issue.deserialize(ISSUE_NEW))
     assert ret is None
 
     assert not mock_jiraapi_object_to_issue.called
@@ -107,7 +107,7 @@ def test_push_issues__skips_issues_from_unconfigured_projects(
     '''
     mock_jira['issue1'] = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
     mock_jira['issue2'] = Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF)
-    mock_jira['issue2'].project = 'TEST1'
+    mock_jira['issue2'].project_id = 'notarealprojecthash'
 
     push_issues(mock_jira)
 

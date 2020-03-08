@@ -8,21 +8,26 @@ from jira_cli.models import AppConfig, CustomFields, ProjectMeta
 
 
 @pytest.fixture()
+def project():
+    '''
+    Fixture representing a configured Jira project
+    '''
+    return ProjectMeta(
+        key='TEST',
+        username='test',
+        password='dummy',
+        custom_fields=CustomFields(epic_ref='1', epic_name='2', estimate='3')
+    )
+
+
+@pytest.fixture()
 @mock.patch('jira_cli.main.load_config')
-def mock_jira_core(mock_load_config):
+def mock_jira_core(mock_load_config, project):
     '''
     Return a Jira class instance with connect method and underlying Jira lib mocked
     '''
     jira = Jira()
-    jira.config = AppConfig(
-        username='test',
-        password='dummy',
-        projects={
-            'TEST': ProjectMeta(
-                custom_fields=CustomFields(epic_ref='1', epic_name='2', estimate='3')
-            )
-        }
-    )
+    jira.config = AppConfig(projects={project.id: project})
     jira.config.write_to_disk = mock.Mock()
     jira._jira = mock.Mock(spec=mod_jira.JIRA)
     jira.connect = mock.Mock(return_value=jira._jira)

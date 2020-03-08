@@ -16,7 +16,10 @@ def test_issue_to_jiraapi_update__returns_only_fields_passed_in_modified(mock_ji
     '''
     Ensure issue_to_jiraapi_update returns only set of fields passed in modified parameter
     '''
-    issue_dict = issue_to_jiraapi_update(mock_jira.config, Issue.deserialize(ISSUE_1), modified)
+    # extract ProjectMeta object from config fixture
+    project_meta = mock_jira.config.projects['99fd9182cfc4c701a8a662f6293f4136201791b4']
+
+    issue_dict = issue_to_jiraapi_update(project_meta, Issue.deserialize(ISSUE_1), modified)
     assert issue_dict.keys() == modified
 
 
@@ -29,7 +32,10 @@ def test_issue_to_jiraapi_update__fields_are_formatted_correctly(mock_jira, modi
     '''
     Ensure issue_to_jiraapi_update formats some fields correctly
     '''
-    issue_dict = issue_to_jiraapi_update(mock_jira.config, Issue.deserialize(ISSUE_1), modified)
+    # extract ProjectMeta object from config fixture
+    project_meta = mock_jira.config.projects['99fd9182cfc4c701a8a662f6293f4136201791b4']
+
+    issue_dict = issue_to_jiraapi_update(project_meta, Issue.deserialize(ISSUE_1), modified)
     assert 'name' in issue_dict[modified.pop()]
 
 
@@ -37,8 +43,11 @@ def test_issue_to_jiraapi_update__all_fields_are_returned_for_new_issue(mock_jir
     '''
     Ensure issue_to_jiraapi_update returns all mandatory and new fields for a new Issue
     '''
+    # extract ProjectMeta object from config fixture
+    project_meta = mock_jira.config.projects['99fd9182cfc4c701a8a662f6293f4136201791b4']
+
     issue_dict = issue_to_jiraapi_update(
-        mock_jira.config,
+        project_meta,
         Issue.deserialize(ISSUE_1),
         {'issuetype', 'project', 'summary', 'epic_ref', 'description', 'fixVersions', 'reporter'}
     )

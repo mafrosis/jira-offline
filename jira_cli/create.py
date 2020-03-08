@@ -6,7 +6,7 @@ import uuid
 from typing import Optional, TYPE_CHECKING
 
 from jira_cli.exceptions import DeserializeError, EpicNotFound, SummaryAlreadyExists
-from jira_cli.models import Issue, IssueStatus
+from jira_cli.models import Issue, IssueStatus, ProjectMeta
 
 if TYPE_CHECKING:
     import Jira
@@ -50,18 +50,19 @@ def check_summary_exists(jira: 'Jira', project_key: str, summary: str) -> bool:
     return False
 
 
-def create_issue(jira: 'Jira', project_key: str, issuetype: str, summary: str, **kwargs) -> Issue:
+def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: str, **kwargs) -> Issue:
     '''
     Create a new Issue
 
     Params:
-        jira:         Dependency-injected main.Jira object
-        project_key:  Jira project key
-        issuetype:    Issue.issuetype
-        summary:      Issue.summary
-        kwargs:       Issue fields as parameters
+        jira:       Dependency-injected main.Jira object
+        project:    Project properties on which to create the new issue
+        issuetype:  Issue.issuetype
+        summary:    Issue.summary
+        kwargs:     Issue fields as parameters
     '''
-    kwargs['project'] = project_key
+    kwargs['project_id'] = project.id
+    kwargs['project'] = project.key
     kwargs['issuetype'] = issuetype
     kwargs['summary'] = summary
 

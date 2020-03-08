@@ -233,7 +233,7 @@ def test_build_update__new_issue():
     update_obj = _build_update(new_issue, None)
 
     # modified fields should match all non-readonly fields
-    assert update_obj.modified == set(['key', 'description', 'epic_ref', 'fixVersions', 'issuetype', 'project', 'reporter', 'summary'])
+    assert update_obj.modified == set(['project_id', 'key', 'description', 'epic_ref', 'fixVersions', 'issuetype', 'project', 'reporter', 'summary'])
     assert not update_obj.conflicts
     for field in update_obj.modified:
         assert getattr(update_obj.merged_issue, field) == getattr(new_issue, field)

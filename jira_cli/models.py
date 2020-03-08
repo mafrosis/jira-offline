@@ -7,6 +7,7 @@ import datetime
 import enum
 import functools
 import json
+import hashlib
 import os
 import textwrap
 from typing import Any, Dict, Optional, Tuple
@@ -33,13 +34,6 @@ class CustomFields(DataclassSerializer):
 
 
 @dataclass
-class ProjectMeta(DataclassSerializer):
-    name: Optional[str] = field(default=None)
-    issuetypes: set = field(default_factory=set)
-    custom_fields: CustomFields = field(default_factory=CustomFields)  # type: ignore
-
-
-@dataclass
 class OAuth(DataclassSerializer):
     access_token: Optional[str] = field(default=None)
     access_token_secret: Optional[str] = field(default=None)
@@ -47,20 +41,41 @@ class OAuth(DataclassSerializer):
     key_cert: Optional[str] = field(default=None)
 
 
-@dataclass
-class AppConfig(DataclassSerializer):
+@dataclass  # pylint: disable=too-many-instance-attributes
+class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-attributes
+    key: str
+    name: Optional[str] = field(default=None)
     username: Optional[str] = field(default=None)
     password: Optional[str] = field(default=None)
     protocol: Optional[str] = field(default='https')
     hostname: Optional[str] = field(default='jira.atlassian.com')
     last_updated: Optional[str] = field(default=None)
-    projects: Dict[str, ProjectMeta] = field(default_factory=dict)
+    issuetypes: set = field(default_factory=set)
+    custom_fields: CustomFields = field(default_factory=CustomFields)  # type: ignore
     oauth: Optional[OAuth] = field(default=None)
+
+    @property
+    def jira_server(self):
+        return f'{self.protocol}://{self.hostname}'
+
+    @property
+    def project_uri(self):
+        return f'{self.jira_server}/{self.key}'
+
+    @property
+    def id(self) -> str:
+        return hashlib.sha1(self.project_uri.encode('utf8')).hexdigest()
+
+
+@dataclass
+class AppConfig(DataclassSerializer):
+    projects: Dict[str, ProjectMeta] = field(default_factory=dict)
 
     def write_to_disk(self):
         config_filepath = os.path.join(click.get_app_dir(__title__), 'app.json')
         with open(config_filepath, 'w') as f:
             json.dump(self.serialize(), f)
+            f.write('\n')
 
 
 class IssueStatus(enum.Enum):
@@ -89,6 +104,7 @@ class IssueStatus(enum.Enum):
 
 @dataclass  # pylint: disable=too-many-instance-attributes
 class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attributes
+    project_id: str = field(metadata={'friendly': 'Project ID', 'readonly': True})
     issuetype: str = field(metadata={'friendly': 'Type', 'readonly': True})
     project: str = field(metadata={'readonly': True})
     summary: str
@@ -121,7 +137,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         '''
         Static class property returning a blank/empty Issue
         '''
-        blank_issue = Issue(project='', issuetype='', summary='', description='')
+        blank_issue = Issue(project_id='', project='', issuetype='', summary='', description='')
         blank_issue.original = blank_issue.serialize()
         return blank_issue
 
