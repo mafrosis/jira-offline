@@ -17,7 +17,7 @@ from jira_cli.config import load_config
 from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, JiraApiError,
                                  JiraNotConfigured, MissingFieldsForNewIssue, NoAuthenticationMethod,
                                  ProjectDoesntExist)
-from jira_cli.models import AppConfig, CustomFields, Issue, ProjectMeta
+from jira_cli.models import AppConfig, CustomFields, Issue, IssueType, ProjectMeta
 from jira_cli.sync import jiraapi_object_to_issue
 
 
@@ -141,8 +141,11 @@ class Jira(collections.abc.MutableMapping):
             # project friendly name
             project.name = data['projects'][0]['name']
 
-            # extract set of issuetypes returned from the createmeta API
-            project.issuetypes = {x['name'] for x in data['projects'][0]['issuetypes']}
+            # extract set of issuetypes, and their priority values returned from the createmeta API
+            for x in data['projects'][0]['issuetypes']:
+                it = IssueType(name=x['name'])
+                it.priorities = {y['name'] for y in x['fields']['priority']['allowedValues'] }
+                project.issuetypes[x['name']] = it
 
             custom_fields = CustomFields()
 

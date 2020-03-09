@@ -4,7 +4,7 @@ import jira as mod_jira
 import pytest
 
 from jira_cli.main import Jira
-from jira_cli.models import AppConfig, CustomFields, ProjectMeta
+from jira_cli.models import AppConfig, CustomFields, IssueType, ProjectMeta
 
 
 @pytest.fixture()
@@ -16,7 +16,10 @@ def project():
         key='TEST',
         username='test',
         password='dummy',
-        custom_fields=CustomFields(epic_ref='1', epic_name='2', estimate='3')
+        custom_fields=CustomFields(epic_ref='1', epic_name='2', estimate='3'),
+        issuetypes={
+            'Story': IssueType(name='Story', priorities=['High', 'Low']),
+        },
     )
 
 

@@ -13,7 +13,7 @@ from fixtures import EPIC_1, ISSUE_1, ISSUE_MISSING_EPIC, ISSUE_NEW
 from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, JiraNotConfigured,
                                  ProjectDoesntExist)
 from jira_cli.main import Jira
-from jira_cli.models import AppConfig, CustomFields, Issue, OAuth, ProjectMeta
+from jira_cli.models import AppConfig, CustomFields, Issue, IssueType, OAuth, ProjectMeta
 
 
 @mock.patch('jira_cli.main.load_config')
@@ -174,11 +174,21 @@ def test_jira__get_project_meta__extracts_issuetypes(mock_jira_core):
             'issuetypes': [{
                 'id': '5',
                 'name': 'Epic',
-                'fields': {},
+                'fields': {
+                    'priority': {
+                        'name': 'priority',
+                        'allowedValues': [{'name': 'egg'}, {'name': 'bacon'}],
+                    },
+                },
             },{
                 'id': '18500',
                 'name': 'Party',
-                'fields': {},
+                'fields': {
+                    'priority': {
+                        'name': 'priority',
+                        'allowedValues': [{'name': 'egg'}, {'name': 'bacon'}],
+                    },
+                },
             }]
         }]
     }
@@ -190,7 +200,10 @@ def test_jira__get_project_meta__extracts_issuetypes(mock_jira_core):
     assert mock_jira_core.connect.called
     assert mock_jira_core._jira.createmeta.called
     assert project_meta.name == 'Project EGG'
-    assert project_meta.issuetypes == {'Epic', 'Party'}
+    assert project_meta.issuetypes == {
+        'Epic': IssueType(name='Epic', priorities={'egg', 'bacon'}),
+        'Party': IssueType(name='Party', priorities={'egg', 'bacon'})
+    }
 
 
 def test_jira__get_project_meta__extracts_custom_fields(mock_jira_core):
@@ -208,6 +221,10 @@ def test_jira__get_project_meta__extracts_custom_fields(mock_jira_core):
                 'id': '5',
                 'name': 'Epic',
                 'fields': {
+                    'priority': {
+                        'name': 'priority',
+                        'allowedValues': [{'name': 'egg'}, {'name': 'bacon'}],
+                    },
                     'customfield_10104': {
                         'required': True,
                         'schema': {

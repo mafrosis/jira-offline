@@ -10,7 +10,7 @@ import json
 import hashlib
 import os
 import textwrap
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Set, Tuple
 
 import click
 import arrow
@@ -34,6 +34,12 @@ class CustomFields(DataclassSerializer):
 
 
 @dataclass
+class IssueType(DataclassSerializer):
+    name: str = field(default='')
+    priorities: Set[str] = field(default_factory=set)
+
+
+@dataclass
 class OAuth(DataclassSerializer):
     access_token: Optional[str] = field(default=None)
     access_token_secret: Optional[str] = field(default=None)
@@ -50,7 +56,7 @@ class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-att
     protocol: Optional[str] = field(default='https')
     hostname: Optional[str] = field(default='jira.atlassian.com')
     last_updated: Optional[str] = field(default=None)
-    issuetypes: set = field(default_factory=set)
+    issuetypes: Dict[str, IssueType] = field(default_factory=dict)
     custom_fields: CustomFields = field(default_factory=CustomFields)  # type: ignore
     oauth: Optional[OAuth] = field(default=None)
 
