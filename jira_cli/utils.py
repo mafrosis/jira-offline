@@ -36,9 +36,13 @@ class classproperty(property):
 
 def get_type_class(type_):
     '''
-    Get the origin class for a Generic type, supporting older pythons
-    This is called `get_origin(typ)` in `typing_inspect` lib
+    Attempt to get the origin class for a Generic type
+
+    This is based on `typing_inspect.get_origin(typ)`
     '''
+    # abort if type is not generic
+    if not typing_inspect.is_generic_type(type_):
+        return type_
     try:
         return type_.__extra__  # Python 3.5 / 3.6
     except AttributeError:
@@ -165,8 +169,11 @@ class DataclassSerializer:
             except TypeError as e:
                 raise DeserializeError(f'Fatal TypeError for key {f.name} ({e})')
 
-            # determine if type is a Generic Dict
-            if typing_inspect.is_generic_type(f.type) and get_type_class(f.type) is dict:
+            # extract the base type for a generic type
+            base_type = get_type_class(f.type)
+
+            # special handling for generic Dict
+            if base_type is dict:
                 # extract key and value types for the Dict
                 dict_key_type, dict_value_type = f.type.__args__[0], f.type.__args__[1]
                 try:
@@ -178,7 +185,7 @@ class DataclassSerializer:
                 except AttributeError:
                     raise DeserializeError(f'Failed serializing "{raw_value}" to {f.type}')
             else:
-                data[f.name] = deserialize_value(f.type, raw_value)
+                data[f.name] = deserialize_value(base_type, raw_value)
 
         return cls(**data)  # type: ignore
 
@@ -234,8 +241,11 @@ class DataclassSerializer:
 
             raw_value = self.__dict__.get(f.name)
 
-            # determine if type is a Generic Dict
-            if typing_inspect.is_generic_type(f.type) and get_type_class(f.type) is dict:
+            # extract the base type for a generic type
+            base_type = get_type_class(f.type)
+
+            # special handling for generic Dict
+            if base_type is dict:
                 # extract key and value types for the Dict
                 dict_key_type, dict_value_type = f.type.__args__[0], f.type.__args__[1]
                 # deserialize keys and values individually into a new dict
@@ -245,7 +255,7 @@ class DataclassSerializer:
                     for item_key, item_value in raw_value.items()  # type: ignore
                 }
             else:
-                serialized_value = serialize_value(f.type, raw_value)
+                serialized_value = serialize_value(base_type, raw_value)
                 if serialized_value:
                     data[f.name] = serialized_value
 
