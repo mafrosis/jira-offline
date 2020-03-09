@@ -2,7 +2,7 @@
 Application CLI entrypoint. Uses the click library to configure commands and subcommands, arguments,
 options and help text.
 '''
-from dataclasses import dataclass, field
+import dataclasses
 import logging
 from typing import Optional, Set
 from urllib.parse import urlparse
@@ -28,15 +28,15 @@ logger.addHandler(sh)
 logger.setLevel(logging.ERROR)
 
 
-@dataclass
+@dataclasses.dataclass
 class LintParams:
     fix: bool
 
-@dataclass
+@dataclasses.dataclass
 class CliParams:
-    verbose: bool = field(default=False)
-    debug: bool = field(default=False)
-    lint: Optional[LintParams] = field(default=None)
+    verbose: bool = dataclasses.field(default=False)
+    debug: bool = dataclasses.field(default=False)
+    lint: Optional[LintParams] = dataclasses.field(default=None)
 
 @click.group()
 @click.option('--verbose', '-v', is_flag=True, help='Display INFO level logging')
