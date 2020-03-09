@@ -255,7 +255,7 @@ class DataclassSerializer:
 @contextlib.contextmanager
 def critical_logger(logger_):
     '''
-    Context manager to set a logger to CRITICAL level only for the duration of the with block.
+    Context manager which sets a logger to CRITICAL.
 
     with set_logger_level_critical(logger):
         ...
