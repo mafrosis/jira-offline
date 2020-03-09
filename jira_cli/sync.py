@@ -303,7 +303,7 @@ def _build_update(base_issue: Issue, updated_issue: Optional[Issue]) -> IssueUpd
     There are three versions of the Issue at update time:
 
       original:  The original Issue before any local modifications
-      base:      A modified Issue, to which the updated Issue is compared
+      base:      A potentially-modified Issue, which is compared to the updated Issue
       updated:   Incoming modified Issue
 
     The updated and base Issues are compared to the original Issue and are merged into the final Issue.
