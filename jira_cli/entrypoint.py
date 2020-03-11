@@ -64,7 +64,11 @@ def cli(ctx, verbose: bool=False, debug: bool=False):
 @cli.command(name='show')
 @click.argument('key')
 def cli_show(key):
-    '''Pretty print an Issue on the CLI'''
+    '''
+    Pretty print an Issue on the CLI
+
+    KEY - Jira issue key
+    '''
     jira = Jira()
     jira.load_issues()
 
