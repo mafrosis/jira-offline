@@ -74,8 +74,7 @@ def is_optional_type(type_: type, typ: type) -> bool:
 @dataclasses.dataclass
 class DataclassSerializer:
     @classmethod
-    # pylint: disable=too-many-branches, too-many-statements
-    def deserialize(cls, attrs: dict) -> Any:
+    def deserialize(cls, attrs: dict) -> Any:  # pylint: disable=too-many-branches, too-many-statements
         '''
         Deserialize JSON-compatible dict to dataclass. Supports the following types:
             - int
@@ -93,8 +92,7 @@ class DataclassSerializer:
         '''
         data = {}
 
-        # pylint: disable=too-many-return-statements
-        def deserialize_value(type_: type, value: Any) -> Any:
+        def deserialize_value(type_: type, value: Any) -> Any:  # pylint: disable=too-many-branches, too-many-return-statements
             if typing_inspect.is_optional_type(type_):
                 # for typing.Optional, first arg is the real type and second arg is typing.NoneType
                 type_ = typing_inspect.get_args(type_)[0]
@@ -159,8 +157,8 @@ class DataclassSerializer:
 
             except KeyError as e:
                 # handle key missing from passed dict
-                # pylint: disable=protected-access
-                if isinstance(f.default, dataclasses._MISSING_TYPE) and isinstance(f.default_factory, dataclasses._MISSING_TYPE):  # type: ignore
+                if isinstance(f.default, dataclasses._MISSING_TYPE) and \
+                   isinstance(f.default_factory, dataclasses._MISSING_TYPE):  # type: ignore # pylint: disable=protected-access
                     # raise exception if field has no defaults defined
                     raise DeserializeError(f'Missing input data for mandatory key {f.name}')
 
@@ -210,8 +208,7 @@ class DataclassSerializer:
         '''
         data = {}
 
-        # pylint: disable=too-many-return-statements
-        def serialize_value(type_: type, value: Any) -> Any:
+        def serialize_value(type_: type, value: Any) -> Any:  # pylint: disable=too-many-return-statements
             if typing_inspect.is_optional_type(type_):
                 # for typing.Optional, first arg is the real type and second arg is typing.NoneType
                 type_ = typing_inspect.get_args(type_)[0]
