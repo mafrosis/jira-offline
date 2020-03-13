@@ -74,7 +74,10 @@ def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: st
     kwargs['status'] = IssueStatus.Unspecified
 
     try:
-        new_issue = Issue.deserialize({k:v for k,v in kwargs.items() if v is not None})
+        new_issue = Issue.deserialize(
+            {k:v for k,v in kwargs.items() if v is not None},
+            project_ref=project
+        )
     except DeserializeError as e:
         raise DeserializeError(f'Failed creating Issue from supplied values! {e}')
 

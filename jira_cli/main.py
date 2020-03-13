@@ -93,7 +93,9 @@ class Jira(collections.abc.MutableMapping):
             try:
                 with open('issue_cache.jsonl') as f:
                     for obj in jsonlines.Reader(f.readlines()).iter(type=dict):
-                        self[obj['key']] = Issue.deserialize(obj)
+                        self[obj['key']] = Issue.deserialize(
+                            obj, project_ref=self.config.projects[obj['project_id']]
+                        )
 
             except (KeyError, TypeError, jsonlines.Error):
                 logger.exception('Cannot read issues cache! Please report this bug.')

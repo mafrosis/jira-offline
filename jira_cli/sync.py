@@ -206,7 +206,7 @@ def jiraapi_object_to_issue(project: ProjectMeta, issue: ApiIssue) -> Issue:
     if issue.fields.labels:
         jiraapi_object['labels'] = issue.fields.labels
 
-    return Issue.deserialize(jiraapi_object)
+    return Issue.deserialize(jiraapi_object, project_ref=project)
 
 
 @dataclass

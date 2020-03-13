@@ -137,6 +137,8 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
     # patch of current Issue to dict last seen on Jira server
     diff_to_original: Optional[list] = field(default=None, repr=False)
 
+    project_ref: Optional[ProjectMeta] = field(default=None, repr=False)
+
     @classproperty
     @functools.lru_cache(maxsize=1)
     def blank(self):
@@ -210,7 +212,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         return list(dictdiffer.diff(data, self.original, ignore=set(['diff_to_original'])))
 
     @classmethod
-    def deserialize(cls, attrs: dict) -> 'Issue':
+    def deserialize(cls, attrs: dict, project_ref: Optional[ProjectMeta]=None) -> 'Issue':  # pylint: disable=arguments-differ
         '''
         Deserialize a dict into an Issue object. Inflate the original Jira issue from the
         diff_to_original property.
@@ -230,6 +232,9 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         # apply the diff_to_original patch to the serialized version of the issue, which recreates
         # the issue dict as last seen on the Jira server
         issue.original = dictdiffer.patch(issue.diff_to_original, issue.serialize())  # pylint: disable=no-member
+
+        # store reference to Jira project this Issue belongs to
+        issue.project_ref = project_ref
 
         return issue
 
