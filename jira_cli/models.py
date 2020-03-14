@@ -126,7 +126,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
     id: Optional[str] = field(default=None, metadata={'readonly': True})
     key: Optional[str] = field(default=None, metadata={'readonly': True})
     labels: Optional[set] = field(default=None)
-    priority: Optional[str] = field(default=None)
+    _priority: Optional[str] = field(default=None, metadata={'friendly': 'Priority', 'property': 'priority'})
     reporter: Optional[str] = field(default=None)
     status: Optional[IssueStatus] = field(default=None, metadata={'readonly': True})
     updated: Optional[datetime.datetime] = field(default=None, metadata={'readonly': True})
@@ -149,6 +149,14 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         blank_issue = Issue(project_id='', project='', issuetype='', summary='', description='')
         blank_issue.original = blank_issue.serialize()
         return blank_issue
+
+    @property
+    def priority(self) -> Optional[str]:
+        return self._priority
+
+    @priority.setter
+    def priority(self, value: str):
+        self._priority = value
 
     @property
     def exists(self) -> bool:
@@ -310,7 +318,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
             *fmt('issuetype'),
             *epicdetails,
             *fmt('status'),
-            *fmt('priority'),
+            *fmt('_priority'),
             *fmt('assignee'),
             *fmt('estimate'),
             *fmt('description'),
