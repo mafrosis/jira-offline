@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from jira_cli.utils import DeserializeError, DataclassSerializer
+from jira_cli.utils.serializer import DeserializeError, DataclassSerializer
 
 
 @dataclass

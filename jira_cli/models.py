@@ -18,7 +18,8 @@ import dictdiffer
 from tabulate import tabulate
 
 from jira_cli import __title__
-from jira_cli.utils import DataclassSerializer, classproperty, friendly_title, get_enum
+from jira_cli.utils import classproperty, friendly_title
+from jira_cli.utils.serializer import DataclassSerializer, get_enum
 
 
 @dataclass

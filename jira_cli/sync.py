@@ -19,7 +19,8 @@ from tqdm import tqdm
 from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, FailedPullingIssues,
                                  JiraApiError)
 from jira_cli.models import Issue, ProjectMeta
-from jira_cli.utils import critical_logger, DeserializeError, friendly_title, is_optional_type
+from jira_cli.utils import critical_logger, friendly_title
+from jira_cli.utils.serializer import DeserializeError, is_optional_type
 
 if TYPE_CHECKING:
     import Jira
