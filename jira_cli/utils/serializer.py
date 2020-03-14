@@ -160,7 +160,9 @@ class DataclassSerializer:
             raw_value = None
 
             try:
-                raw_value = attrs[f.name]
+                # pull value from dataclass field name, or by property name, if defined on the dataclass.field
+                field_name = f.metadata.get('property', f.name)
+                raw_value = attrs[field_name]
 
             except KeyError as e:
                 # handle key missing from passed dict
@@ -219,6 +221,9 @@ class DataclassSerializer:
             if f.repr is False:
                 continue
 
+            # pull value from dataclass field name, or by property name, if defined on the dataclass.field
+            write_field_name = f.metadata.get('property', f.name)
+
             raw_value = self.__dict__.get(f.name)
 
             # extract the base type for a generic type
@@ -229,7 +234,7 @@ class DataclassSerializer:
                 # extract key and value types for the Dict
                 dict_key_type, dict_value_type = f.type.__args__[0], f.type.__args__[1]
                 # deserialize keys and values individually into a new dict
-                data[f.name] = {
+                data[write_field_name] = {
                     serialize_value(dict_key_type, item_key):
                         serialize_value(dict_value_type, item_value)
                     for item_key, item_value in raw_value.items()  # type: ignore
@@ -237,6 +242,6 @@ class DataclassSerializer:
             else:
                 serialized_value = serialize_value(base_type, raw_value)
                 if serialized_value:
-                    data[f.name] = serialized_value
+                    data[write_field_name] = serialized_value
 
         return data
