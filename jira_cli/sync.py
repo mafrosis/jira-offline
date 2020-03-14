@@ -249,10 +249,6 @@ def issue_to_jiraapi_update(project: ProjectMeta, issue: Issue, modified: set) -
 
     include_fields: set = set(modified).copy()
 
-    # currently the priority field is unhandled
-    if 'priority' in include_fields:
-        include_fields.remove('priority')
-
     # don't send estimate field for Epics
     if issue_values['issuetype'] == 'Epic':
         include_fields.remove('estimate')

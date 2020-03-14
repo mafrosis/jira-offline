@@ -18,6 +18,7 @@ import dictdiffer
 from tabulate import tabulate
 
 from jira_cli import __title__
+from jira_cli.exceptions import IssuePriorityInvalid
 from jira_cli.utils import classproperty, friendly_title
 from jira_cli.utils.serializer import DataclassSerializer, get_enum
 
@@ -156,6 +157,14 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
 
     @priority.setter
     def priority(self, value: str):
+        if not self.project_ref:
+            raise Exception
+
+        if value not in self.project_ref.issuetypes[self.issuetype].priorities:
+            raise IssuePriorityInvalid(
+                ', '.join(self.project_ref.issuetypes[self.issuetype].priorities)
+            )
+
         self._priority = value
 
     @property

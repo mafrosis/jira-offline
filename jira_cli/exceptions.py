@@ -106,3 +106,9 @@ class NoAuthenticationMethod(BaseAppException):
     '''Jira.connect was called with no authentication method configured'''
     def format_message(self):
         return f'No way to authenticate!'
+
+
+class IssuePriorityInvalid(BaseAppException):
+    '''Setting Issue.priority to an invalid string will cause this exception'''
+    def format_message(self):
+        return f'Invalid priority setting!\n\nYou have the following options:\n{self.message}'
