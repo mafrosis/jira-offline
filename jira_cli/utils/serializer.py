@@ -48,10 +48,97 @@ def is_optional_type(type_: type, typ: type) -> bool:
     return typ is type_
 
 
+def deserialize_value(type_: type, value: Any) -> Any:  # pylint: disable=too-many-branches, too-many-return-statements
+    '''
+    Utility function to deserialize `value` into `type_`. Used by DataclassSerializer.
+    '''
+    if typing_inspect.is_optional_type(type_):
+        # for typing.Optional, first arg is the real type and second arg is typing.NoneType
+        type_ = typing_inspect.get_args(type_)[0]
+
+    if dataclasses.is_dataclass(type_):
+        return type_.deserialize(value)  # type: ignore
+
+    elif type_ is decimal.Decimal:
+        try:
+            return decimal.Decimal(value)
+        except decimal.InvalidOperation:
+            raise DeserializeError(f'Failed deserializing "{value}" to Decimal')
+
+    elif type_ is uuid.UUID:
+        try:
+            return uuid.UUID(value)
+        except ValueError:
+            raise DeserializeError(f'Failed deserializing "{value}" to UUID')
+
+    elif type_ is datetime.date:
+        try:
+            return arrow.get(value).datetime.date()
+        except arrow.parser.ParserError:
+            raise DeserializeError(f'Failed deserializing "{value}" to Arrow datetime.date')
+
+    elif type_ is datetime.datetime:
+        try:
+            return arrow.get(value).datetime
+        except arrow.parser.ParserError:
+            raise DeserializeError(f'Failed deserializing "{value}" to Arrow datetime.datetime')
+
+    elif type_ is set:
+        if not isinstance(value, set) and not isinstance(value, list):
+        #if not is_typing_instance(value, set) and not is_typing_instance(value, list):
+            raise DeserializeError(f'Value passed to set type must be JSON set or list')
+        return set(value)
+
+    elif type_ is int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            raise DeserializeError(f'Failed deserializing {value} to int')
+    else:
+        # handle enum
+        enum_type = get_enum(type_)
+        if enum_type:
+            try:
+                # convert string to Enum instance
+                return enum_type(value)
+            except ValueError:
+                raise DeserializeError(f'Failed deserializing {value} to {type_}')
+
+        # no deserialize necessary
+        return value
+
+
+def serialize_value(type_: type, value: Any) -> Any:  # pylint: disable=too-many-return-statements
+    '''
+    Utility function to serialize `value` into `type_`. Used by DataclassSerializer.
+    '''
+    if typing_inspect.is_optional_type(type_):
+        # for typing.Optional, first arg is the real type and second arg is typing.NoneType
+        type_ = typing_inspect.get_args(type_)[0]
+
+    if value is None:
+        return None
+    elif dataclasses.is_dataclass(type_):
+        return value.serialize()
+    elif isinstance(value, (decimal.Decimal, uuid.UUID)):
+        return str(value)
+    elif isinstance(value, (datetime.date, datetime.datetime)):
+        return value.isoformat()
+    elif isinstance(value, set):
+        return sorted(list(value))
+    else:
+        # handle enum
+        if get_enum(type_):
+            return value.value
+
+        # no serialize necessary
+        return value
+
+
 @dataclasses.dataclass
 class DataclassSerializer:
     @classmethod
-    def deserialize(cls, attrs: dict) -> Any:  # pylint: disable=too-many-branches, too-many-statements
+    def deserialize(cls, attrs: dict) -> Any:
         '''
         Deserialize JSON-compatible dict to dataclass. Supports the following types:
             - int
@@ -68,63 +155,6 @@ class DataclassSerializer:
             An instance of cls
         '''
         data = {}
-
-        def deserialize_value(type_: type, value: Any) -> Any:  # pylint: disable=too-many-branches, too-many-return-statements
-            if typing_inspect.is_optional_type(type_):
-                # for typing.Optional, first arg is the real type and second arg is typing.NoneType
-                type_ = typing_inspect.get_args(type_)[0]
-
-            if dataclasses.is_dataclass(type_):
-                return type_.deserialize(value)  # type: ignore
-
-            elif type_ is decimal.Decimal:
-                try:
-                    return decimal.Decimal(value)
-                except decimal.InvalidOperation:
-                    raise DeserializeError(f'Failed deserializing "{value}" to Decimal')
-
-            elif type_ is uuid.UUID:
-                try:
-                    return uuid.UUID(value)
-                except ValueError:
-                    raise DeserializeError(f'Failed deserializing "{value}" to UUID')
-
-            elif type_ is datetime.date:
-                try:
-                    return arrow.get(value).datetime.date()
-                except arrow.parser.ParserError:
-                    raise DeserializeError(f'Failed deserializing "{value}" to Arrow datetime.date')
-
-            elif type_ is datetime.datetime:
-                try:
-                    return arrow.get(value).datetime
-                except arrow.parser.ParserError:
-                    raise DeserializeError(f'Failed deserializing "{value}" to Arrow datetime.datetime')
-
-            elif type_ is set:
-                if not isinstance(value, set) and not isinstance(value, list):
-                #if not is_typing_instance(value, set) and not is_typing_instance(value, list):
-                    raise DeserializeError(f'Value passed to set type must be JSON set or list')
-                return set(value)
-
-            elif type_ is int:
-                try:
-                    return int(value)
-                except (TypeError, ValueError):
-                    raise DeserializeError(f'Failed deserializing {value} to int')
-            else:
-                # handle enum
-                enum_type = get_enum(type_)
-                if enum_type:
-                    try:
-                        # convert string to Enum instance
-                        return enum_type(value)
-                    except ValueError:
-                        raise DeserializeError(f'Failed deserializing {value} to {type_}')
-
-                # no deserialize necessary
-                return value
-
 
         for f in dataclasses.fields(cls):
             raw_value = None
@@ -184,30 +214,6 @@ class DataclassSerializer:
             A JSON-compatible dict
         '''
         data = {}
-
-        def serialize_value(type_: type, value: Any) -> Any:  # pylint: disable=too-many-return-statements
-            if typing_inspect.is_optional_type(type_):
-                # for typing.Optional, first arg is the real type and second arg is typing.NoneType
-                type_ = typing_inspect.get_args(type_)[0]
-
-            if value is None:
-                return None
-            elif dataclasses.is_dataclass(type_):
-                return value.serialize()
-            elif isinstance(value, (decimal.Decimal, uuid.UUID)):
-                return str(value)
-            elif isinstance(value, (datetime.date, datetime.datetime)):
-                return value.isoformat()
-            elif isinstance(value, set):
-                return sorted(list(value))
-            else:
-                # handle enum
-                if get_enum(type_):
-                    return value.value
-
-                # no serialize necessary
-                return value
-
 
         for f in dataclasses.fields(self):
             if f.repr is False:
