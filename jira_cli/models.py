@@ -20,7 +20,7 @@ from tabulate import tabulate
 from jira_cli import __title__
 from jira_cli.exceptions import IssuePriorityInvalid
 from jira_cli.utils import classproperty, friendly_title
-from jira_cli.utils.serializer import DataclassSerializer, get_enum
+from jira_cli.utils.serializer import DataclassSerializer, get_enum, get_type_class
 
 
 @dataclass
@@ -300,16 +300,19 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
             '''
             title = friendly_title(field_name)
 
+            # determine the origin type for this field (thus handling Optional[type])
+            type_ = get_type_class(issue_fields[field_name].type)
+
             if value is None:
                 value = ''
-            elif issue_fields[field_name].type is set:
+            elif type_ is set:
                 value = tabulate([('-', v) for v in value], tablefmt='plain')
-            elif issue_fields[field_name].type is datetime.datetime:
+            elif type_ is datetime.datetime:
                 dt = arrow.get(self.created)
                 value = f'{dt.humanize()} [{dt.format()}]'
-            elif get_enum(issue_fields[field_name].type):
+            elif get_enum(type_):
                 value = value.value
-            elif value and issue_fields[field_name].type is str and len(value) > 100:
+            elif value and type_ is str and len(value) > 100:
                 value = '\n'.join(textwrap.wrap(value, width=100))
 
             if prefix:
