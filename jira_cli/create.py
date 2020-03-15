@@ -89,7 +89,7 @@ def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: st
     if new_issue.epic_ref:
         epic_key = get_epic_key_matching_summary_or_epic_name(jira, new_issue.project, new_issue.epic_ref)
         if not epic_key:
-            raise EpicNotFound
+            raise EpicNotFound(new_issue.epic_ref)
 
         new_issue.epic_ref = epic_key
 

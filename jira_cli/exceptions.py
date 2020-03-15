@@ -7,24 +7,6 @@ functions.
 from click import ClickException
 import jira as mod_jira
 
-# pylint: disable=no-self-use
-
-
-class EpicNotFound(Exception):
-    pass
-
-
-class EstimateFieldUnavailable(Exception):
-    pass
-
-
-class SummaryAlreadyExists(Exception):
-    pass
-
-
-class MissingFieldsForNewIssue(Exception):
-    pass
-
 
 class DeserializeError(ValueError):
     pass
@@ -40,24 +22,48 @@ class BaseAppException(ClickException):
         super().__init__(msg)
 
 
+class EpicNotFound(BaseAppException):
+    '''Raised when attempting map an issue to an epic that doesnt exist'''
+    def format_message(self):
+        return f"Epic doesn't exist! ({self.message})"
+
+
+class EstimateFieldUnavailable(BaseAppException):
+    pass
+
+
+class SummaryAlreadyExists(BaseAppException):
+    '''Raised when creating an issue where the summary text is already used in another issue'''
+    def format_message(self):
+        return 'The exact summary text supplied is already in use.'
+
+
+class MissingFieldsForNewIssue(BaseAppException):
+    pass
+
+
+class CliError(BaseAppException):
+    '''Raised when bad params are passed to a CLI command'''
+
+
 class UnreadableConfig(BaseAppException):
-    '''Terminal. Raised when load_config cannot read the config file'''
+    '''Raised when load_config cannot read the config file'''
 
 
 class NoProjectsSetup(BaseAppException):
-    '''Terminal. Raised when pull_issues is called without any projects setup to pull'''
+    '''Raised when pull_issues is called without any projects setup to pull'''
     def format_message(self):
         return 'No projects setup, use the clone command.'
 
 
 class ProjectDoesntExist(BaseAppException):
-    '''Terminal. Raised when specified project key doesnt exist in Jira'''
+    '''Raised when specified project key doesnt exist in Jira'''
     def format_message(self):
         return f'Project {self.message} does not exist!'
 
 
 class ProjectNotConfigured(BaseAppException):
-    '''Terminal. Raised when trying to pull a project which has not been cloned'''
+    '''Raised when trying to pull a project which has not been cloned'''
     def format_message(self):
         return (
             'The project {key} is not currently configured! You must first load the project with '
@@ -66,7 +72,7 @@ class ProjectNotConfigured(BaseAppException):
 
 
 class JiraNotConfigured(BaseAppException):
-    '''Terminal. Raised if Jira is not setup correctly'''
+    '''Raised if Jira is not setup correctly'''
     def format_message(self):
         return '''
 Jira screens are not configured correctly. Unable to continue.
