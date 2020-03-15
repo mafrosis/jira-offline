@@ -61,6 +61,10 @@ def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: st
         summary:    Issue.summary
         kwargs:     Issue fields as parameters
     '''
+    # ensure issues are loaded, as write_issues called on success
+    if not jira:
+        jira.load_issues()
+
     kwargs['project_id'] = project.id
     kwargs['project'] = project.key
     kwargs['issuetype'] = issuetype

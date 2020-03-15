@@ -8,6 +8,27 @@ from jira_cli.create import create_issue
 from jira_cli.models import Issue, IssueStatus
 
 
+def test_create__create_issue__loads_issues_when_cache_empty(mock_jira, project):
+    '''
+    Ensure create_issue() calls load_issues() when the cache is empty
+    '''
+    create_issue(mock_jira, project, 'Story', 'This is a summary')
+
+    assert mock_jira.load_issues.called
+
+
+def test_create__create_issue__does_not_load_issues_when_cache_full(mock_jira, project):
+    '''
+    Ensure create_issue() NOT calls load_issues() when the cache is full
+    '''
+    # add an Issue fixture to the Jira dict
+    mock_jira['issue1'] = Issue.deserialize(ISSUE_1)
+
+    create_issue(mock_jira, project, 'Story', 'This is a summary')
+
+    assert not mock_jira.load_issues.called
+
+
 def test_create__create_issue__adds_issue_to_self_and_calls_write_issues(mock_jira, project):
     '''
     Ensure create_issue() adds the new Issue to self, and writes the issue cache
