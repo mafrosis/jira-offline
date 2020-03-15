@@ -33,6 +33,15 @@ Using the docker image published on Github, the following will get you going ver
     docker-compose run --rm jiracli
 
 
+Known Limitations
+-----------------
+
+* Currently, you can't change the state of an issue (eg. In Progress -> Done)
+* It's slow. Reading and writing all data to a single JSONL file is inefficient, and the quantity of
+  serialize/deserialize operations can surely be optimised.
+* No support for the same project key from two different Jiras (an edge-case at this stage)
+
+
 Quick Start
 -----------
 
