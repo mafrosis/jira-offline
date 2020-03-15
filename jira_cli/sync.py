@@ -19,7 +19,7 @@ from tqdm import tqdm
 from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, FailedPullingIssues,
                                  JiraApiError)
 from jira_cli.models import Issue, ProjectMeta
-from jira_cli.utils import critical_logger, friendly_title
+from jira_cli.utils import critical_logger, friendly_title, get_field_by_name
 from jira_cli.utils.serializer import DeserializeError, is_optional_type
 
 if TYPE_CHECKING:
@@ -477,9 +477,6 @@ def parse_editor_result(update_object: IssueUpdate, editor_result_raw: str) -> I
     Returns:
         Edited Issue object
     '''
-    # dict of Issue dataclass fields
-    issue_fields = {f.name:f for f in dataclasses.fields(Issue)}
-
     # create dict to lookup a dataclass field by its pretty formatted name
     issue_fields_by_friendly = {
         friendly_title(f.name):f for f in dataclasses.fields(Issue)
@@ -511,7 +508,7 @@ def parse_editor_result(update_object: IssueUpdate, editor_result_raw: str) -> I
     summary_prefix = f'[{update_object.merged_issue.key}]'
 
     def preprocess_field_value(field_name, val):
-        if is_optional_type(issue_fields[field_name].type, set):
+        if is_optional_type(get_field_by_name(field_name).type, set):
             return [item[1:].strip() for item in val]
         else:
             output = ''.join(val)

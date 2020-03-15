@@ -1,7 +1,6 @@
 '''
 Application data structures. Mostly dataclasses inheriting from utils.DataclassSerializer.
 '''
-import dataclasses
 from dataclasses import dataclass, field
 import datetime
 import enum
@@ -19,7 +18,7 @@ from tabulate import tabulate
 
 from jira_cli import __title__
 from jira_cli.exceptions import IssuePriorityInvalid
-from jira_cli.utils import classproperty, friendly_title
+from jira_cli.utils import classproperty, friendly_title, get_field_by_name
 from jira_cli.utils.serializer import DataclassSerializer, get_enum, get_type_class
 
 
@@ -263,9 +262,6 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         Params:
             conflicts:  A conflict object
         '''
-        # create dict of Issue dataclass fields
-        issue_fields = {f.name:f for f in dataclasses.fields(Issue)}
-
         def fmt(field_name: str, prefix: str=None) -> Tuple:
             '''
             Pretty formatting with support for conflicts
@@ -301,7 +297,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
             title = friendly_title(field_name)
 
             # determine the origin type for this field (thus handling Optional[type])
-            type_ = get_type_class(issue_fields[field_name].type)
+            type_ = get_type_class(get_field_by_name(field_name).type)
 
             if value is None:
                 value = ''
