@@ -353,27 +353,34 @@ def cli_ls(ctx):
     '''List Issues on the CLI'''
     jira = Jira()
     jira.load_issues()
-    _print_list(jira.df, verbose=ctx.obj.verbose)
+    _print_list(jira.df, verbose=ctx.obj.verbose, include_project_col=len(jira.config.projects) > 1)
 
 
-def _print_list(df: pd.DataFrame, width: int=60, verbose: bool=False):
+def _print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_project_col: bool=False):
     '''
     Helper to print abbreviated list of issues
 
     Params:
-        df:       Issues to display in a DataFrame
-        width:    Crop width for the summary string
-        verbose:  Display more information
+        df:                   Issues to display in a DataFrame
+        width:                Crop width for the summary string
+        verbose:              Display more information
+        include_project_col:  Include the Issue.project field in a column
     '''
     if df.empty:
         click.echo('No issues in the cache')
         raise click.Abort
 
-    if not verbose:
-        fields = ['issuetype', 'epic_ref', 'summary', 'assignee', 'updated']
+    if include_project_col:
+        fields = ['project']
     else:
-        fields = ['issuetype', 'epic_ref', 'epic_name', 'summary', 'assignee', 'fixVersions',
-                  'updated']
+        fields = []
+
+    if not verbose:
+        fields += ['issuetype', 'epic_ref', 'summary', 'assignee', 'updated']
+    else:
+        fields += [
+            'issuetype', 'epic_ref', 'epic_name', 'summary', 'assignee', 'fixVersions', 'updated'
+        ]
         width = 200
 
     # pretty dates for non-verbose
