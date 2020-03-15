@@ -7,6 +7,8 @@ from typing import Optional, TYPE_CHECKING
 
 from jira_cli.exceptions import DeserializeError, EpicNotFound, SummaryAlreadyExists
 from jira_cli.models import Issue, IssueStatus, ProjectMeta
+from jira_cli.utils import get_field_by_name
+from jira_cli.utils.serializer import deserialize_value
 
 if TYPE_CHECKING:
     import Jira
@@ -65,10 +67,15 @@ def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: st
     if not jira:
         jira.load_issues()
 
-    kwargs['project_id'] = project.id
-    kwargs['project'] = project.key
-    kwargs['issuetype'] = issuetype
-    kwargs['summary'] = summary
+    new_issue = Issue.deserialize(
+        {
+            'project_id': project.id,
+            'project': project.key,
+            'issuetype': issuetype,
+            'summary': summary,
+        },
+        project_ref=project
+    )
 
     # although description is an API mandatory field, we can survive without one
     if 'description' not in kwargs or not kwargs['description']:
@@ -77,13 +84,8 @@ def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: st
     # new Issues have no status (Jira project workflow settings will determine this)
     kwargs['status'] = IssueStatus.Unspecified
 
-    try:
-        new_issue = Issue.deserialize(
-            {k:v for k,v in kwargs.items() if v is not None},
-            project_ref=project
-        )
-    except DeserializeError as e:
-        raise DeserializeError(f'Failed creating Issue from supplied values! {e}')
+    for field_name, value in kwargs.items():
+        set_field_on_issue(new_issue, field_name, value)
 
     # pylint: disable=no-member
     if check_summary_exists(jira, new_issue.project, new_issue.summary):
@@ -103,3 +105,17 @@ def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: st
     jira.write_issues()
 
     return jira[new_issue.key]
+
+
+def set_field_on_issue(issue: Issue, field_name: str, value: str):
+    if value is None:
+        return
+
+    try:
+        # convert string value to Issue field type
+        value = deserialize_value(get_field_by_name(field_name).type, value)
+
+    except DeserializeError as e:
+        raise DeserializeError(f'Failed parsing {field_name} with value {value} ({e})')
+
+    setattr(issue, field_name, value)
