@@ -13,13 +13,18 @@ from jira_cli.exceptions import DeserializeError
 
 def get_type_class(type_):
     '''
-    Attempt to get the origin class for a Generic type
+    Attempt to get the origin class for a type. Handle Optional and generic types.
 
     This is based on `typing_inspect.get_origin(typ)`
     '''
+    if typing_inspect.is_optional_type(type_):
+        # for typing.Optional, the real type is the first arg, and second is typing.NoneType
+        return typing_inspect.get_args(type_)[0]
+
     # abort if type is not generic
     if not typing_inspect.is_generic_type(type_):
         return type_
+
     try:
         return type_.__extra__  # Python 3.5 / 3.6
     except AttributeError:
@@ -30,9 +35,7 @@ def get_enum(type_: type) -> Optional[type]:
     '''
     Return enum if type_ is a subclass of enum.Enum. Handle typing.Optional.
     '''
-    if typing_inspect.is_optional_type(type_):
-        # for typing.Optional, the real type is the first arg, and second is typing.NoneType
-        type_ = typing_inspect.get_args(type_)[0]
+    type_ = get_type_class(type_)
     if issubclass(type_, enum.Enum):
         return type_
     return None
