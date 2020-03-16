@@ -3,8 +3,9 @@ import copy
 import pytest
 
 from fixtures import EPIC_1, ISSUE_1
-from jira_cli.exceptions import EpicNotFound, InvalidIssueType, SummaryAlreadyExists
-from jira_cli.create import create_issue
+from jira_cli.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce, InvalidIssueType,
+                                 SummaryAlreadyExists)
+from jira_cli.create import create_issue, find_epic_by_reference
 from jira_cli.models import Issue, IssueStatus
 
 
@@ -124,3 +125,58 @@ def test_create__create_issue__issue_is_mapped_to_existing_epic_summary(mock_jir
 
     # assert new Issue to linked to the epic
     assert new_issue.epic_ref == mock_jira['epic1'].key
+
+
+def test_create__find_epic_by_reference__match_by_key(mock_jira):
+    '''
+    Ensure find_epic_by_reference() returns an Issue of epic type when passed the Issue key
+    '''
+    # add an Epic fixture to the Jira dict
+    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
+
+    epic = find_epic_by_reference(mock_jira, 'TEST-1')
+    assert epic == mock_jira['TEST-1']
+
+
+def test_create__find_epic_by_reference__match_by_summary(mock_jira):
+    '''
+    Ensure find_epic_by_reference() returns an Issue of epic type when passed a summary
+    '''
+    # add an Epic fixture to the Jira dict
+    mock_jira['epic1'] = Issue.deserialize(EPIC_1)
+
+    epic = find_epic_by_reference(mock_jira, 'This is an epic')
+    assert epic == mock_jira['epic1']
+
+
+def test_create__find_epic_by_reference__match_by_epic_name(mock_jira):
+    '''
+    Ensure find_epic_by_reference() returns an Issue of epic type when passed an epic_name
+    '''
+    # add an Epic fixture to the Jira dict
+    mock_jira['epic1'] = Issue.deserialize(EPIC_1)
+
+    epic = find_epic_by_reference(mock_jira, '0.1: Epic about a thing')
+    assert epic == mock_jira['epic1']
+
+
+def test_create__find_epic_by_reference__raise_on_failed_to_match(mock_jira):
+    '''
+    Ensure exception raised when epic not found
+    '''
+    with pytest.raises(EpicNotFound):
+        find_epic_by_reference(mock_jira, 'fake epic reference')
+
+
+def test_create__find_epic_by_reference__raise_on_duplicate_ref_string(mock_jira):
+    '''
+    Ensure exception raised when there are two epics matching the search string
+    '''
+    # add two Epic fixtures to the Jira dict
+    mock_jira['EPIC-1'] = Issue.deserialize(EPIC_1)
+    epic2 = copy.copy(Issue.deserialize(EPIC_1))
+    epic2.key = 'EPIC-2'
+    mock_jira['EPIC-2'] = epic2
+
+    with pytest.raises(EpicSearchStrUsedMoreThanOnce):
+        find_epic_by_reference(mock_jira, 'This is an epic')

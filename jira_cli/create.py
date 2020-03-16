@@ -5,8 +5,8 @@ import logging
 import uuid
 from typing import Optional, TYPE_CHECKING
 
-from jira_cli.exceptions import (DeserializeError, EpicNotFound, InvalidIssueType,
-                                 SummaryAlreadyExists)
+from jira_cli.exceptions import (DeserializeError, EpicNotFound, EpicSearchStrUsedMoreThanOnce,
+                                 InvalidIssueType, SummaryAlreadyExists)
 from jira_cli.models import Issue, IssueStatus, ProjectMeta
 from jira_cli.utils import get_field_by_name
 from jira_cli.utils.serializer import deserialize_value
@@ -18,22 +18,44 @@ if TYPE_CHECKING:
 logger = logging.getLogger('jira')
 
 
-def get_epic_key_matching_summary_or_epic_name(jira: 'Jira', project_key: str, epic_ref: str) -> Optional[str]:
+def find_epic_by_reference(jira: 'Jira', epic_ref_string: str) -> Issue:
     '''
-    Check if epic_ref string matches summary or epic_name on existing Epic, in project with project_key
+    Find an epic by search string.
+
+    This will attempt find an epic based on:
+        1. Issue.key
+        2. Issue.summary
+        3. Issue.epic_name
 
     Params:
-        jira:         Dependency-injected main.Jira object
-        project_key:  Jira project key
-        epic_ref:     Issue.epic_ref field
-        epic_name:    Issue.epic_name field
+        jira:             Dependency-injected main.Jira object
+        epic_ref_string:  String by which to find an epic
+    Returns:
+        Issue for matched Epic object
     '''
-    for issue in jira.values():
-        if issue.project is None or issue.project != project_key:
+    # first attempt to match issue.epic_ref to an existing epic on key
+    matched_epic: Optional[Issue] = jira.get(epic_ref_string)
+
+    if matched_epic:
+        return matched_epic
+
+    for epic in jira.values():
+        # skip non-Epics
+        if epic.issuetype != 'Epic':
             continue
-        if issue.issuetype == 'Epic' and epic_ref in (issue.summary, issue.epic_name):
-            return issue.key
-    return None
+
+        if epic_ref_string in (epic.summary, epic.epic_name):
+            if matched_epic:
+                # finding two epics that match epic_ref_string is a terminal problem, because you
+                # can only link an issue to a single epic
+                raise EpicSearchStrUsedMoreThanOnce
+
+            matched_epic = epic
+
+    if not matched_epic:
+        raise EpicNotFound(epic_ref_string)
+
+    return matched_epic
 
 
 def check_summary_exists(jira: 'Jira', project_key: str, summary: str) -> bool:
@@ -95,13 +117,9 @@ def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: st
     if check_summary_exists(jira, new_issue.project, new_issue.summary):  # pylint: disable=no-member
         raise SummaryAlreadyExists
 
-    # map the new issue to an existing epic
-    if new_issue.epic_ref:
-        epic_key = get_epic_key_matching_summary_or_epic_name(jira, new_issue.project, new_issue.epic_ref)  # pylint: disable=no-member
-        if not epic_key:
-            raise EpicNotFound(new_issue.epic_ref)
-
-        new_issue.epic_ref = epic_key
+    if new_issue.epic_ref:  # pylint: disable=no-member
+        matched_epic = find_epic_by_reference(jira, new_issue.epic_ref)  # pylint: disable=no-member
+        new_issue.epic_ref = matched_epic.key
 
     # use a temporary Issue.key until Jira server creates the actual key at sync-time
     new_issue.key = str(uuid.uuid4())
