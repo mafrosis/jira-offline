@@ -242,8 +242,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         # deserialize supplied dict into an Issue object
         issue = super().deserialize(attrs)
 
-        # pylint: disable=no-member
-        if issue.diff_to_original is None:
+        if issue.diff_to_original is None:  # pylint: disable=no-member
             issue.diff_to_original = []
 
         # apply the diff_to_original patch to the serialized version of the issue, which recreates

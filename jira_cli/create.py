@@ -92,13 +92,12 @@ def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: st
     for field_name, value in kwargs.items():
         set_field_on_issue(new_issue, field_name, value)
 
-    # pylint: disable=no-member
-    if check_summary_exists(jira, new_issue.project, new_issue.summary):
+    if check_summary_exists(jira, new_issue.project, new_issue.summary):  # pylint: disable=no-member
         raise SummaryAlreadyExists
 
     # map the new issue to an existing epic
     if new_issue.epic_ref:
-        epic_key = get_epic_key_matching_summary_or_epic_name(jira, new_issue.project, new_issue.epic_ref)
+        epic_key = get_epic_key_matching_summary_or_epic_name(jira, new_issue.project, new_issue.epic_ref)  # pylint: disable=no-member
         if not epic_key:
             raise EpicNotFound(new_issue.epic_ref)
 
