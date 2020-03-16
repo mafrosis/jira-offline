@@ -37,6 +37,15 @@ def test_pull_issues__calls_pull_single_project_for_each_project(mock_pull_singl
     mock_pull_single_project.assert_called_once_with(mock_jira, project, force=True, verbose=False)
 
 
+@mock.patch('jira_cli.sync.pull_single_project')
+def test_pull_issues__calls_get_project_meta_for_each_project(mock_pull_single_project, mock_jira, project):
+    '''
+    Ensure that pull_single_project() is called for each project
+    '''
+    pull_issues(mock_jira, force=True, verbose=False)
+    mock_jira.get_project_meta.assert_called_once_with(project)
+
+
 @mock.patch('jira_cli.sync.tqdm')
 def test_pull_single_project__last_updated_field_creates_filter_query(mock_tqdm, mock_jira, project):
     '''

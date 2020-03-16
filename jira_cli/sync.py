@@ -17,7 +17,7 @@ from tabulate import tabulate
 from tqdm import tqdm
 
 from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, FailedPullingIssues,
-                                 JiraApiError)
+                                 FailedPullingProjectMeta, JiraApiError)
 from jira_cli.models import Issue, ProjectMeta
 from jira_cli.utils import critical_logger, friendly_title, get_field_by_name
 from jira_cli.utils.serializer import DeserializeError, is_optional_type
@@ -60,6 +60,13 @@ def pull_issues(jira: 'Jira', projects: Optional[set]=None, force: bool=False, v
         jira.load_issues()
 
     for project in projects_to_pull:
+        try:
+            # Since the ProjectMeta defines options for how issues are created, we need to keep it
+            # up-to-date. Update project meta on every pull.
+            jira.get_project_meta(project)
+        except JiraApiError as e:
+            raise FailedPullingProjectMeta(e)
+
         pull_single_project(jira, project, force=force, verbose=verbose)
 
 
