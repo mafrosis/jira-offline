@@ -5,7 +5,8 @@ import logging
 import uuid
 from typing import Optional, TYPE_CHECKING
 
-from jira_cli.exceptions import DeserializeError, EpicNotFound, SummaryAlreadyExists
+from jira_cli.exceptions import (DeserializeError, EpicNotFound, InvalidIssueType,
+                                 SummaryAlreadyExists)
 from jira_cli.models import Issue, IssueStatus, ProjectMeta
 from jira_cli.utils import get_field_by_name
 from jira_cli.utils.serializer import deserialize_value
@@ -66,6 +67,10 @@ def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: st
     # ensure issues are loaded, as write_issues called on success
     if not jira:
         jira.load_issues()
+
+    # validate issuetype against the specified project
+    if issuetype not in project.issuetypes:
+        raise InvalidIssueType
 
     new_issue = Issue.deserialize(
         {

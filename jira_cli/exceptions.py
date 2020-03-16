@@ -42,6 +42,13 @@ class MissingFieldsForNewIssue(BaseAppException):
     pass
 
 
+class InvalidIssueType(BaseAppException):
+    '''
+    Only a small set of issuetypes are available on each project. An error occurs if create_issue is
+    called with an invalid issuetype
+    '''
+
+
 class CliError(BaseAppException):
     '''Raised when bad params are passed to a CLI command'''
 

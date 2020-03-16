@@ -3,7 +3,7 @@ import copy
 import pytest
 
 from fixtures import EPIC_1, ISSUE_1
-from jira_cli.exceptions import EpicNotFound, SummaryAlreadyExists
+from jira_cli.exceptions import EpicNotFound, InvalidIssueType, SummaryAlreadyExists
 from jira_cli.create import create_issue
 from jira_cli.models import Issue, IssueStatus
 
@@ -27,6 +27,14 @@ def test_create__create_issue__does_not_load_issues_when_cache_full(mock_jira, p
     create_issue(mock_jira, project, 'Story', 'This is a summary')
 
     assert not mock_jira.load_issues.called
+
+
+def test_create__create_issue__raises_on_invalid_issuetype(mock_jira, project):
+    '''
+    Ensure create_issue() raises an exception on an invalid issuetype
+    '''
+    with pytest.raises(InvalidIssueType):
+        create_issue(mock_jira, project, 'FakeType', 'This is a summary')
 
 
 def test_create__create_issue__adds_issue_to_self_and_calls_write_issues(mock_jira, project):
