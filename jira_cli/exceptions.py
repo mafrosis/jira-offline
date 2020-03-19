@@ -79,16 +79,26 @@ class ProjectNotConfigured(BaseAppException):
 
 
 class JiraNotConfigured(BaseAppException):
-    '''Raised if Jira is not setup correctly'''
+    '''
+    Raised if Jira is not setup correctly
+    '''
+    def __init__(self, project_key, jira_server, msg=''):  # pylint: disable=useless-super-delegation
+        'Special constructor to make the Jira server details available in a friendly error message'
+        self.project_key = project_key
+        self.jira_server = jira_server
+        super().__init__(msg)
+
     def format_message(self):
         return '''
 Jira screens are not configured correctly. Unable to continue.
 
 Go to your Jira project screens configuration:
-http://{}/plugins/servlet/project-config/{}/screens
+{host}/plugins/servlet/project-config/{proj}/screens
 
 Ensure that "Story Points" is on the fields list.
-'''.strip()
+
+ > {msg}
+'''.strip().format(host=self.jira_server, proj=self.project_key, msg=self.message)
 
 
 class FailedPullingProjectMeta(BaseAppException):

@@ -213,7 +213,7 @@ class Jira(collections.abc.MutableMapping):
             if "Field 'estimate' cannot be set" in e.text:
                 raise EstimateFieldUnavailable(err)
             if 'cannot be set. It is not on the appropriate screen, or unknown.' in e.text:
-                raise JiraNotConfigured(err)
+                raise JiraNotConfigured(project.key, project.jira_server, err)
 
         # transform the API response and add to self
         new_issue: Issue = jiraapi_object_to_issue(project, issue)
