@@ -166,6 +166,9 @@ class Jira(collections.abc.MutableMapping):
                     elif not custom_fields.estimate and field_props['name'] == 'Story Points':
                         custom_fields.estimate = str(field_props['schema']['customId'])
 
+            if not custom_fields.estimate:
+                raise EstimateFieldUnavailable(project.key, project.jira_server)
+
             project.custom_fields = custom_fields
 
         except (IndexError, KeyError) as e:
@@ -211,7 +214,7 @@ class Jira(collections.abc.MutableMapping):
             if e.text == 'gh.epic.error.not.found':
                 raise EpicNotFound(err)
             if "Field 'estimate' cannot be set" in e.text:
-                raise EstimateFieldUnavailable(err)
+                raise EstimateFieldUnavailable(project.key, project.jira_server)
             if 'cannot be set. It is not on the appropriate screen, or unknown.' in e.text:
                 raise JiraNotConfigured(project.key, project.jira_server, err)
 

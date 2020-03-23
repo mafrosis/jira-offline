@@ -28,10 +28,6 @@ class EpicNotFound(BaseAppException):
         return f"Epic doesn't exist! ({self.message})"
 
 
-class EstimateFieldUnavailable(BaseAppException):
-    pass
-
-
 class SummaryAlreadyExists(BaseAppException):
     '''Raised when creating an issue where the summary text is already used in another issue'''
     def format_message(self):
@@ -89,16 +85,23 @@ class JiraNotConfigured(BaseAppException):
         super().__init__(msg)
 
     def format_message(self):
-        return '''
-Jira screens are not configured correctly. Unable to continue.
+        msg = '''Jira screens are not configured correctly. Unable to continue.
 
 Go to your Jira project screens configuration:
 {host}/plugins/servlet/project-config/{proj}/screens
 
-Ensure that "Story Points" is on the fields list.
+Ensure that "Story Points" is on the fields list.'''.strip().format(
+    host=self.jira_server, proj=self.project_key
+)
 
- > {msg}
-'''.strip().format(host=self.jira_server, proj=self.project_key, msg=self.message)
+        if self.message:
+            msg += f'\n\n  > {msg}'
+
+        return msg
+
+
+class EstimateFieldUnavailable(JiraNotConfigured):
+    '''Raised when Story Points field is missing'''
 
 
 class FailedPullingProjectMeta(BaseAppException):
