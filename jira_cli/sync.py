@@ -572,12 +572,14 @@ def push_issues(jira: 'Jira', verbose: bool=False):
 
             if update_object.merged_issue.exists:
                 jira.update_issue(project, update_object.merged_issue.key, update_dict)
-                logger.info('Updated issue %s', update_object.merged_issue.key)
+                logger.info(
+                    'Updated %s %s', update_object.merged_issue.issuetype, update_object.merged_issue.key
+                )
                 count += 1
             else:
                 try:
                     new_issue = jira.new_issue(project, update_dict)
-                    logger.info('New issue %s created', new_issue.key)
+                    logger.info('Created new %s %s', new_issue.issuetype, new_issue.key)
                     count += 1
                 except (EpicNotFound, EstimateFieldUnavailable) as e:
                     logger.error(e)
