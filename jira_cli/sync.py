@@ -608,7 +608,13 @@ def push_issues(jira: 'Jira', verbose: bool=False):
     # write any changes to disk
     jira.write_issues()
 
-    logger.info('Pushed %s of %s issues', total, len(issues_to_push))
+    if total < len(issues_to_push):
+        push_result_log_level = logging.ERROR
+    else:
+        push_result_log_level = logging.INFO
+
+    logger.log(push_result_log_level, 'Pushed %s of %s issues', total, len(issues_to_push))
+
 
 
 def _fetch_single_issue(jira: 'Jira', project: ProjectMeta, issue: Issue) -> Optional[Issue]:
