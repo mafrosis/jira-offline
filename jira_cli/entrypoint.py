@@ -124,9 +124,13 @@ def cli_clone(ctx, project_uri: str, username: str=None, oauth_app: str=None, oa
         protocol=uri.scheme,
         hostname=uri.netloc,
     )
-    click.echo(f'Cloning project {project.key} from {project.jira_server}')
 
     jira = Jira()
+    if project.id in jira.config.projects:
+        click.echo(f'Already cloned {project.project_uri}')
+        raise click.Abort
+
+    click.echo(f'Cloning project {project.key} from {project.jira_server}')
     authenticate(project, username, oauth_app, oauth_private_key)
     click.echo(f'Authenticated with {project.jira_server}')
 
