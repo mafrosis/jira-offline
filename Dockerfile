@@ -1,5 +1,5 @@
 ARG PYTHON_VERSION=3.7
-FROM python:$PYTHON_VERSION
+FROM python:${PYTHON_VERSION}-slim
 
 RUN pip install ipdb
 WORKDIR /app
