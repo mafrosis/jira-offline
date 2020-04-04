@@ -1,0 +1,3 @@
+FROM mafrosis/jiracli
+ADD requirements-dev.txt /app/
+RUN pip install -r requirements-dev.txt

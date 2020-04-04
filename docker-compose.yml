@@ -9,6 +9,15 @@ services:
       - ./jira_cli:/app/jira_cli
       - ./test:/app/test
       - ./config:/root/.config/jiracli
+
+  test:
+    image: mafrosis/jiracli-test
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    volumes:
+      - ./jira_cli:/app/jira_cli
+      - ./test:/app/test
       - ./.pylintrc:/app/.pylintrc
 
   jira:
