@@ -6,10 +6,10 @@ services:
     build:
       context: .
     volumes:
-      - ./:/app
+      - ./jira_cli:/app/jira_cli
+      - ./test:/app/test
       - ./config:/root/.config/jiracli
-      - /app/.git
-      - /app/jira_cli.egg-info
+      - ./.pylintrc:/app/.pylintrc
 
   jira:
     image: mafrosis/jira
