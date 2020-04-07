@@ -18,6 +18,9 @@ services:
     volumes:
       - ./jira_cli:/app/jira_cli
       - ./test:/app/test
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp:/tmp
+      - ./pytest.ini:/app/pytest.ini
       - ./.pylintrc:/app/.pylintrc
 
   jira:
