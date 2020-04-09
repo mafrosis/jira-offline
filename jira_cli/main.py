@@ -219,6 +219,11 @@ class Jira(collections.abc.MutableMapping):
         new_issue: Issue = jiraapi_object_to_issue(project, issue)
         self[new_issue.key] = new_issue  # pylint: disable=no-member
 
+        if new_issue.issuetype == 'Epic':  # pylint: disable=no-member
+            # relink any issue linked to this epic to the new Jira-generated key
+            for linked_issue in [i for i in self.values() if i.epic_ref == temp_key]:
+                linked_issue.epic_ref = new_issue.key  # pylint: disable=no-member
+
         # remove the placeholder Issue
         del self[temp_key]
 
