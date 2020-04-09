@@ -593,9 +593,9 @@ def push_issues(jira: 'Jira', verbose: bool=False):
     #  1. Push existing issues with local changes first
     issues_to_push: List[Issue] = [i for i in jira.values() if i.diff_to_original and i.exists]
     #  2. Push new epics
-    issues_to_push.extend(i for i in jira.values() if not i.exists and i.status == 'Epic')
+    issues_to_push.extend(i for i in jira.values() if not i.exists and i.issuetype == 'Epic')
     #  3. Push all other new issues
-    issues_to_push.extend(i for i in jira.values() if not i.exists and i.status != 'Epic')
+    issues_to_push.extend(i for i in jira.values() if not i.exists and i.issuetype != 'Epic')
 
     if verbose:
         total = _run(issues_to_push)
