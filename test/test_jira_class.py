@@ -105,8 +105,9 @@ def test_jira__load_issues__calls_deserialize_for_each_line_in_cache(mock_open, 
     '''
     Ensure load_issues calls Issue.deserialize for each line in the cache file
     '''
-    # issues cache is present
+    # issues cache is present, and non-zero in size
     mock_os.path.exists.return_value = True
+    mock_os.stat.return_value.st_size = 1
 
     # mock contents of issue cache, as read from disk
     mock_jsonlines.Reader.return_value.iter.return_value = [EPIC_1, ISSUE_1, ISSUE_MISSING_EPIC]

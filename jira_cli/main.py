@@ -90,7 +90,7 @@ class Jira(collections.abc.MutableMapping):
         Load issues from JSON cache file, and store in self (as class implements dict interface)
         '''
         cache_filepath = get_cache_filepath()
-        if os.path.exists(cache_filepath) or os.stat(cache_filepath).st_size > 0:
+        if os.path.exists(cache_filepath) and os.stat(cache_filepath).st_size > 0:
             try:
                 with open(cache_filepath) as f:
                     for obj in jsonlines.Reader(f.readlines()).iter(type=dict):
