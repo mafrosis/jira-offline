@@ -245,9 +245,11 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         if issue.diff_to_original is None:  # pylint: disable=no-member
             issue.diff_to_original = []
 
-        # apply the diff_to_original patch to the serialized version of the issue, which recreates
-        # the issue dict as last seen on the Jira server
-        issue.original = dictdiffer.patch(issue.diff_to_original, issue.serialize())  # pylint: disable=no-member
+        # if issue exists on Jira server (see `exists` property above)
+        if bool(attrs.get('id')):
+            # apply the diff_to_original patch to the serialized version of the issue, which
+            # recreates the issue dict as last seen on the Jira server
+            issue.original = dictdiffer.patch(issue.diff_to_original, issue.serialize())  # pylint: disable=no-member
 
         # store reference to Jira project this Issue belongs to
         issue.project_ref = project_ref
