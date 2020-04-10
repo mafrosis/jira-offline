@@ -6,10 +6,22 @@ services:
     build:
       context: .
     volumes:
-      - ./:/app
+      - ./jira_cli:/app/jira_cli
+      - ./test:/app/test
       - ./config:/root/.config/jiracli
-      - /app/.git
-      - /app/jira_cli.egg-info
+
+  test:
+    image: mafrosis/jiracli-test
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    volumes:
+      - ./jira_cli:/app/jira_cli
+      - ./test:/app/test
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp:/tmp
+      - ./pytest.ini:/app/pytest.ini
+      - ./.pylintrc:/app/.pylintrc
 
   jira:
     image: mafrosis/jira

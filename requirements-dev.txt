@@ -1,6 +1,8 @@
 -r requirements.txt
+docker
+ipdb
 pylint
-pytest
+pytest<5.4
 pytest-cov
 pytest-mypy
 pytest-sugar

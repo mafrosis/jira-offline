@@ -39,7 +39,7 @@ def test_debug_flag_sets_logger_to_debug_level(mock_jira_local, mock_jira):
 CLI_COMMAND_MAPPING = [
     ('ls', tuple(), 1),
     ('show', ('issue1',), 1),
-    ('clone', ('https://jira.atlassian.com/TEST',), 0),
+    ('clone', ('https://jira.atlassian.com/TEST1',), 0),
     ('new', ('TEST', 'Story', 'Summary'), 0),
     ('pull', tuple(), 0),
     ('push', tuple(), 1),

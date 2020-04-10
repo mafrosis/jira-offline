@@ -32,10 +32,10 @@ def test_authenticate__calls_get_user_creds_when_username_passed(mock_click, moc
     '''
     project_meta = ProjectMeta(key='test')
 
-    authenticate(project_meta, username='egg')
+    authenticate(project_meta, username='egg', password='bacon')
 
     assert not mock_oauth_dance.called
-    mock_get_user_creds.assert_called_with(project_meta, 'egg')
+    mock_get_user_creds.assert_called_with(project_meta, 'egg', 'bacon')
 
 
 @pytest.mark.parametrize('project_meta', [

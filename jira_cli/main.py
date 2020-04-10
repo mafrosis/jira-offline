@@ -13,7 +13,7 @@ from jira.resources import Issue as ApiIssue
 import jsonlines
 import pandas as pd
 
-from jira_cli.config import load_config
+from jira_cli.config import get_cache_filepath, load_config
 from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, JiraApiError,
                                  JiraNotConfigured, MissingFieldsForNewIssue, NoAuthenticationMethod,
                                  ProjectDoesntExist)
@@ -89,9 +89,10 @@ class Jira(collections.abc.MutableMapping):
         '''
         Load issues from JSON cache file, and store in self (as class implements dict interface)
         '''
-        if os.path.exists('issue_cache.jsonl') or os.stat('issue_cache.jsonl').st_size > 0:
+        cache_filepath = get_cache_filepath()
+        if os.path.exists(cache_filepath) or os.stat(cache_filepath).st_size > 0:
             try:
-                with open('issue_cache.jsonl') as f:
+                with open(cache_filepath) as f:
                     for obj in jsonlines.Reader(f.readlines()).iter(type=dict):
                         self[obj['key']] = Issue.deserialize(
                             obj, project_ref=self.config.projects[obj['project_id']]
@@ -121,7 +122,7 @@ class Jira(collections.abc.MutableMapping):
             logger.exception('Cannot write issues cache! Please report this bug.')
             return
 
-        with open('issue_cache.jsonl', 'w') as f:
+        with open(get_cache_filepath(), 'w') as f:
             writer = jsonlines.Writer(f)
             writer.write_all(issues_json)
 
@@ -217,6 +218,11 @@ class Jira(collections.abc.MutableMapping):
         # transform the API response and add to self
         new_issue: Issue = jiraapi_object_to_issue(project, issue)
         self[new_issue.key] = new_issue  # pylint: disable=no-member
+
+        if new_issue.issuetype == 'Epic':  # pylint: disable=no-member
+            # relink any issue linked to this epic to the new Jira-generated key
+            for linked_issue in [i for i in self.values() if i.epic_ref == temp_key]:
+                linked_issue.epic_ref = new_issue.key  # pylint: disable=no-member
 
         # remove the placeholder Issue
         del self[temp_key]

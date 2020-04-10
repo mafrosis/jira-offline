@@ -96,10 +96,11 @@ def cli_push(ctx):
 @cli.command(name='clone')
 @click.argument('project_uri')
 @click.option('--username', help='Basic auth username to authenicate with')
+@click.option('--password', help='Basic auth password (use with caution!)')
 @click.option('--oauth-app', default='jiracli', help='Jira Application Link consumer name')
 @click.option('--oauth-private-key', help='oAuth private key', type=click.Path(exists=True))
 @click.pass_context
-def cli_clone(ctx, project_uri: str, username: str=None, oauth_app: str=None, oauth_private_key: str=None):
+def cli_clone(ctx, project_uri: str, username: str=None, password: str=None, oauth_app: str=None, oauth_private_key: str=None):
     '''
     Clone a Jira project to offline
 
@@ -124,10 +125,14 @@ def cli_clone(ctx, project_uri: str, username: str=None, oauth_app: str=None, oa
         protocol=uri.scheme,
         hostname=uri.netloc,
     )
-    click.echo(f'Cloning project {project.key} from {project.jira_server}')
 
     jira = Jira()
-    authenticate(project, username, oauth_app, oauth_private_key)
+    if project.id in jira.config.projects:
+        click.echo(f'Already cloned {project.project_uri}')
+        raise click.Abort
+
+    click.echo(f'Cloning project {project.key} from {project.jira_server}')
+    authenticate(project, username, password, oauth_app, oauth_private_key)
     click.echo(f'Authenticated with {project.jira_server}')
 
     try:

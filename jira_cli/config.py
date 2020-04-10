@@ -30,3 +30,10 @@ def load_config():
         config = AppConfig()
 
     return config
+
+
+def get_cache_filepath() -> str:
+    '''
+    Return the path to jiracli offline issues cache file
+    '''
+    return os.path.join(click.get_app_dir(__title__), 'issue_cache.jsonl')

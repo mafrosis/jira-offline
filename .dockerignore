@@ -1,0 +1,13 @@
+.git
+.github
+.mypy_cache
+.pytest_cache
+.undodir
+.coverage
+.DS_Store
+.gitignore
+.pylintrc
+
+cov_html
+jira_data
+issue_cache.*

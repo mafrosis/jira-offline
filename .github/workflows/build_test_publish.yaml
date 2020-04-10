@@ -17,17 +17,18 @@ jobs:
 
     - name: Build for python ${{ matrix.python-version }}
       run: |
-        docker-compose build --build-arg PYTHON_VERSION=${{ matrix.python-version }}
+        docker-compose build --build-arg PYTHON_VERSION=${{ matrix.python-version }} jiracli
+        docker-compose build test
 
     - name: Extra build step for python 3.6 (include dataclasses & typing from pypi)
       if: matrix.python-version < 3.7
       run: |
         # Build an updated Docker image including dataclasses lib
         tee Dockerfile.36 > /dev/null <<EOF
-        FROM mafrosis/jiracli
+        FROM mafrosis/jiracli-test
         RUN pip install dataclasses typing
         EOF
-        docker build -f Dockerfile.36 -t mafrosis/jiracli .
+        docker build -f Dockerfile.36 -t mafrosis/jiracli-test .
 
     - name: Lint with pylint
       run: |

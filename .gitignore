@@ -3,11 +3,8 @@
 __pycache__
 .coverage
 
-# jiracli config
+# jiracli config and issues cache file
 config/
-
-# actual Jira issue data
-issue_cache.*
 
 # pycov report
 cov_html

@@ -15,7 +15,7 @@ from jira_cli.exceptions import FailedAuthError, JiraUnavailable, NoAuthenticati
 from jira_cli.models import ProjectMeta, OAuth
 
 
-def authenticate(project_meta: ProjectMeta, username: Optional[str]=None,
+def authenticate(project_meta: ProjectMeta, username: Optional[str]=None, password: Optional[str]=None,
                  oauth_consumer_key: Optional[str]=None, oauth_private_key_path: Optional[str]=None):
     '''
     Authenticate against hostname with either basic-auth or oAuth
@@ -33,25 +33,28 @@ def authenticate(project_meta: ProjectMeta, username: Optional[str]=None,
 
     elif username:
         # ask for password and validate creds
-        get_user_creds(project_meta, username)
+        get_user_creds(project_meta, username, password)
 
     else:
         raise NoAuthenticationMethod
 
 
-def get_user_creds(project_meta: ProjectMeta, username: Optional[str]=None):
+def get_user_creds(project_meta: ProjectMeta, username: Optional[str]=None, password: Optional[str]=None):
     '''
     Accept username/password and validate against Jira server
 
     Params:
         project_meta:  Properties of the project we're authenticating against
         username:      Basic auth username
+        password:      Basic auth password
     '''
     project_meta.username = username
     if not project_meta.username:
         project_meta.username = click.prompt('Username', type=str)
 
-    project_meta.password = click.prompt('Password', type=str, hide_input=True)
+    project_meta.password = password
+    if not project_meta.password:
+        project_meta.password = click.prompt('Password', type=str, hide_input=True)
 
     # validate Jira connection details
     if project_meta.username and project_meta.password:
