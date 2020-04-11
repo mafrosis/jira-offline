@@ -105,8 +105,9 @@ def test_jira__load_issues__calls_deserialize_for_each_line_in_cache(mock_open, 
     '''
     Ensure load_issues calls Issue.deserialize for each line in the cache file
     '''
-    # issues cache is present
+    # issues cache is present, and non-zero in size
     mock_os.path.exists.return_value = True
+    mock_os.stat.return_value.st_size = 1
 
     # mock contents of issue cache, as read from disk
     mock_jsonlines.Reader.return_value.iter.return_value = [EPIC_1, ISSUE_1, ISSUE_MISSING_EPIC]
@@ -188,6 +189,12 @@ def test_jira__get_project_meta__extracts_issuetypes(mock_jira_core):
                         'name': 'priority',
                         'allowedValues': [{'name': 'egg'}, {'name': 'bacon'}],
                     },
+                    'customfield_10104': {
+                        'schema': {
+                            'customId': 10104
+                        },
+                        'name': 'Story Points',
+                    },
                 },
             }]
         }]
@@ -226,13 +233,16 @@ def test_jira__get_project_meta__extracts_custom_fields(mock_jira_core):
                         'allowedValues': [{'name': 'egg'}, {'name': 'bacon'}],
                     },
                     'customfield_10104': {
-                        'required': True,
                         'schema': {
-                            'type': 'string',
                             'customId': 10104
                         },
                         'name': 'Epic Name',
-                        'operations': ['set']
+                    },
+                    'customfield_10106': {
+                        'schema': {
+                            'customId': 10106
+                        },
+                        'name': 'Story Points',
                     },
                 },
             }]
@@ -244,7 +254,7 @@ def test_jira__get_project_meta__extracts_custom_fields(mock_jira_core):
     mock_jira_core.get_project_meta(project_meta)
 
     assert mock_jira_core._jira.createmeta.called
-    assert project_meta.custom_fields == CustomFields(epic_name='10104')
+    assert project_meta.custom_fields == CustomFields(epic_name='10104', estimate='10106')
 
 
 def test_jira__get_project_meta__raises_project_doesnt_exist(mock_jira_core):

@@ -90,7 +90,7 @@ class Jira(collections.abc.MutableMapping):
         Load issues from JSON cache file, and store in self (as class implements dict interface)
         '''
         cache_filepath = get_cache_filepath()
-        if os.path.exists(cache_filepath) or os.stat(cache_filepath).st_size > 0:
+        if os.path.exists(cache_filepath) and os.stat(cache_filepath).st_size > 0:
             try:
                 with open(cache_filepath) as f:
                     for obj in jsonlines.Reader(f.readlines()).iter(type=dict):
@@ -166,6 +166,9 @@ class Jira(collections.abc.MutableMapping):
                     elif not custom_fields.estimate and field_props['name'] == 'Story Points':
                         custom_fields.estimate = str(field_props['schema']['customId'])
 
+            if not custom_fields.estimate:
+                raise EstimateFieldUnavailable(project.key, project.jira_server)
+
             project.custom_fields = custom_fields
 
         except (IndexError, KeyError) as e:
@@ -211,9 +214,9 @@ class Jira(collections.abc.MutableMapping):
             if e.text == 'gh.epic.error.not.found':
                 raise EpicNotFound(err)
             if "Field 'estimate' cannot be set" in e.text:
-                raise EstimateFieldUnavailable(err)
+                raise EstimateFieldUnavailable(project.key, project.jira_server)
             if 'cannot be set. It is not on the appropriate screen, or unknown.' in e.text:
-                raise JiraNotConfigured(err)
+                raise JiraNotConfigured(project.key, project.jira_server, err)
 
         # transform the API response and add to self
         new_issue: Issue = jiraapi_object_to_issue(project, issue)

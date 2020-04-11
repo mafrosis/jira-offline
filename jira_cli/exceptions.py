@@ -28,10 +28,6 @@ class EpicNotFound(BaseAppException):
         return f"Epic doesn't exist! ({self.message})"
 
 
-class EstimateFieldUnavailable(BaseAppException):
-    pass
-
-
 class SummaryAlreadyExists(BaseAppException):
     '''Raised when creating an issue where the summary text is already used in another issue'''
     def format_message(self):
@@ -74,21 +70,40 @@ class ProjectNotConfigured(BaseAppException):
     def format_message(self):
         return (
             'The project {key} is not currently configured! You must first load the project with '
-            'this command:\n\n  jiracli clone {key}\n'.format(key=self.message)
+            'this command:\n\n  jiracli clone https://jira.atlassian.com:8080/{key}\n'.format(
+                key=self.message
+            )
         )
 
 
 class JiraNotConfigured(BaseAppException):
-    '''Raised if Jira is not setup correctly'''
+    '''
+    Raised if Jira is not setup correctly
+    '''
+    def __init__(self, project_key, jira_server, msg=''):  # pylint: disable=useless-super-delegation
+        'Special constructor to make the Jira server details available in a friendly error message'
+        self.project_key = project_key
+        self.jira_server = jira_server
+        super().__init__(msg)
+
     def format_message(self):
-        return '''
-Jira screens are not configured correctly. Unable to continue.
+        msg = '''Jira screens are not configured correctly. Unable to continue.
 
 Go to your Jira project screens configuration:
-http://{}/plugins/servlet/project-config/{}/screens
+{host}/plugins/servlet/project-config/{proj}/screens
 
-Ensure that "Story Points" is on the fields list.
-'''.strip()
+Ensure that "Story Points" is on the fields list.'''.strip().format(
+    host=self.jira_server, proj=self.project_key
+)
+
+        if self.message:
+            msg += f'\n\n  > {msg}'
+
+        return msg
+
+
+class EstimateFieldUnavailable(JiraNotConfigured):
+    '''Raised when Story Points field is missing'''
 
 
 class FailedPullingProjectMeta(BaseAppException):

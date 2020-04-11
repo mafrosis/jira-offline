@@ -92,13 +92,12 @@ def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: st
     for field_name, value in kwargs.items():
         set_field_on_issue(new_issue, field_name, value)
 
-    # pylint: disable=no-member
-    if check_summary_exists(jira, new_issue.project, new_issue.summary):
+    if check_summary_exists(jira, new_issue.project, new_issue.summary):  # pylint: disable=no-member
         raise SummaryAlreadyExists
 
     # map the new issue to an existing epic
     if new_issue.epic_ref:
-        epic_key = get_epic_key_matching_summary_or_epic_name(jira, new_issue.project, new_issue.epic_ref)
+        epic_key = get_epic_key_matching_summary_or_epic_name(jira, new_issue.project, new_issue.epic_ref)  # pylint: disable=no-member
         if not epic_key:
             raise EpicNotFound(new_issue.epic_ref)
 
@@ -113,6 +112,15 @@ def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: st
 
 
 def set_field_on_issue(issue: Issue, field_name: str, value: str):
+    '''
+    Use DataclassSerializer.deserialize_value to convert from string to the corrent type, and then
+    set the single attribute on the target Issue object.
+
+    Params:
+        issue:       Issue object being updated
+        field_name:  Name of the field Issue dataclass
+        value:       String representation of the value to be set
+    '''
     if value is None:
         return
 
