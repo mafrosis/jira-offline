@@ -43,6 +43,7 @@ CLI_COMMAND_MAPPING = [
     ('new', ('TEST', 'Story', 'Summary'), 0),
     ('pull', tuple(), 0),
     ('push', tuple(), 1),
+    ('edit', ('issue1', '--summary', 'Egg'), 1),
     ('stats', ('issuetype',), 1),
     ('stats', ('status',), 1),
     ('stats', ('fixversions',), 1),

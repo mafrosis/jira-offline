@@ -140,3 +140,12 @@ class IssuePriorityInvalid(BaseAppException):
     '''Setting Issue.priority to an invalid string will cause this exception'''
     def format_message(self):
         return f'Invalid priority setting!\n\nYou have the following options:\n{self.message}'
+
+
+class EpicSearchStrUsedMoreThanOnce(BaseAppException):
+    '''Raised when trying to link an epic by a summary/epic name that has been used multiple times'''
+    def format_message(self):
+        return (
+            'Unable to map to the specified epic, as two epics match "{}". Please try referencing'
+            'the epic by key (eg. JIRA-123)'.format(self.message)
+        )

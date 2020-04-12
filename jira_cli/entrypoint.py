@@ -13,8 +13,8 @@ import pandas as pd
 from tabulate import tabulate
 
 from jira_cli.auth import authenticate
-from jira_cli.create import create_issue
-from jira_cli.exceptions import FailedPullingProjectMeta, JiraApiError, ProjectNotConfigured
+from jira_cli.create import create_issue, find_epic_by_reference, set_field_on_issue
+from jira_cli.exceptions import CliError, FailedPullingProjectMeta, JiraApiError, ProjectNotConfigured
 from jira_cli.linters import fixversions as lint_fixversions
 from jira_cli.linters import issues_missing_epic as lint_issues_missing_epic
 from jira_cli.main import Jira
@@ -195,6 +195,7 @@ def cli_pull(ctx, projects: str=None, reset_hard: bool=False):
 @click.option('--estimate', help='Issue size estimate in story points', type=int)
 @click.option('--fix-versions', help='Issue fix versions as comma-separated')
 @click.option('--labels', help='Issue labels as comma-separated')
+@click.option('--priority', help='Set the priority of the issue')
 @click.option('--reporter', help='Username of Issue reporter (defaults to creator)')
 def cli_new(projectkey: str, issuetype: str, summary: str, **kwargs):
     '''
@@ -243,6 +244,59 @@ def cli_new(projectkey: str, issuetype: str, summary: str, **kwargs):
 
     # display the new issue
     click.echo(new_issue)
+
+
+@cli.command(name='edit')
+@click.argument('key')
+@click.option('--assignee', help='Username of person assigned to complete the Issue')
+@click.option('--description', help='Long description of Issue')
+@click.option('--epic-name', help='Short epic name')
+@click.option('--epic-ref', help='Epic key to which this Issue belongs')
+@click.option('--estimate', help='Issue size estimate in story points', type=int)
+@click.option('--fix-versions', help='Issue fix versions as comma-separated')
+@click.option('--labels', help='Issue labels as comma-separated')
+@click.option('--priority', help='Set the priority of the issue')
+@click.option('--reporter', help='Username of Issue reporter')
+@click.option('--summary', help='Summary one-liner for this issue')
+def cli_edit(key, **kwargs):
+    '''
+    Edit one or more fields on an issue
+
+    KEY - Jira issue key
+    '''
+    jira = Jira()
+    jira.load_issues()
+
+    if key not in jira:
+        raise CliError(f"Issue {key} doesn't exist!")
+
+    # validate epic parameters
+    if jira[key].issuetype == 'Epic':
+        if kwargs.get('epic_ref'):
+            click.echo('Parameter --epic-ref is ignored when modifing an Epic')
+            del kwargs['epic_ref']
+    else:
+        if kwargs.get('epic_name'):
+            click.echo('Parameter --epic-name is ignored for anything other than an Epic')
+
+    # parse fixVersions and labels
+    if kwargs.get('fix_versions'):
+        # note key change of --fix-versions -> Issue.fixVersions
+        kwargs['fixVersions'] = set(kwargs['fix_versions'].split(','))
+        del kwargs['fix_versions']
+    if kwargs.get('labels'):
+        kwargs['labels'] = set(kwargs['labels'].split(','))
+
+    for field_name, value in kwargs.items():
+        set_field_on_issue(jira[key], field_name, value)
+
+    # link issue to epic if --epic-ref was passed
+    if kwargs.get('epic_ref'):
+        matched_epic = find_epic_by_reference(jira, kwargs['epic_ref'])
+        jira[key].epic_ref = matched_epic.key
+
+    click.echo(jira[key])
+    jira.write_issues()
 
 
 @cli.group(name='stats', invoke_without_command=True)
