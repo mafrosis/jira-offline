@@ -195,6 +195,7 @@ def cli_pull(ctx, projects: str=None, reset_hard: bool=False):
 @click.option('--estimate', help='Issue size estimate in story points', type=int)
 @click.option('--fix-versions', help='Issue fix versions as comma-separated')
 @click.option('--labels', help='Issue labels as comma-separated')
+@click.option('--priority', help='Set the priority of the issue')
 @click.option('--reporter', help='Username of Issue reporter (defaults to creator)')
 def cli_new(projectkey: str, issuetype: str, summary: str, **kwargs):
     '''
