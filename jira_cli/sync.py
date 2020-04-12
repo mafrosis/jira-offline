@@ -7,7 +7,7 @@ import dataclasses
 from dataclasses import dataclass, field
 import datetime
 import logging
-from typing import Dict, Generator, List, Optional, Tuple, TYPE_CHECKING
+from typing import Dict, Generator, List, Optional, Set, Tuple, TYPE_CHECKING
 
 import click
 import dictdiffer
@@ -33,7 +33,7 @@ class Conflict(Exception):
     pass
 
 
-def pull_issues(jira: 'Jira', projects: Optional[set]=None, force: bool=False, verbose: bool=False):
+def pull_issues(jira: 'Jira', projects: Optional[Set[str]]=None, force: bool=False, verbose: bool=False):
     '''
     Pull changed issues from upstream Jira API
 
@@ -49,10 +49,10 @@ def pull_issues(jira: 'Jira', projects: Optional[set]=None, force: bool=False, v
         # pull all projects
         projects_to_pull = jira.config.projects.values()
     else:
-        # pull only the IDs passed to pull_issues()
+        # Pull only the projects specified in `projects` parameter, which is a set of Jira project keys
         projects_to_pull = [
             project for project_id, project in jira.config.projects.items()
-            if project_id in projects
+            if project.key in projects
         ]
 
     # if the issue cache is not yet loaded, load before pull
