@@ -11,12 +11,12 @@ import os
 import textwrap
 from typing import Any, Dict, Optional, Set, Tuple
 
-import click
-from requests.auth import HTTPBasicAuth
-from oauthlib.oauth1 import SIGNATURE_RSA
-from requests_oauthlib import OAuth1
 import arrow
+import click
 import dictdiffer
+from oauthlib.oauth1 import SIGNATURE_RSA
+from requests.auth import HTTPBasicAuth
+from requests_oauthlib import OAuth1
 from tabulate import tabulate
 
 from jira_cli import __title__

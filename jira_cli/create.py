@@ -2,8 +2,8 @@
 Module for functions related to Issue creation and bulk import.
 '''
 import logging
-import uuid
 from typing import Optional, TYPE_CHECKING
+import uuid
 
 from jira_cli.exceptions import (DeserializeError, EpicNotFound, EpicSearchStrUsedMoreThanOnce,
                                  InvalidIssueType, SummaryAlreadyExists)
