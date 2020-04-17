@@ -2,21 +2,17 @@
 The Jira class in this module is the primary abstraction around the Jira API.
 '''
 import collections.abc
-import json
 import logging
 import os
-from typing import Dict, Optional
-import urllib3
+from typing import Optional
 
-import jira as mod_jira
-from jira.resources import Issue as ApiIssue
 import jsonlines
 import pandas as pd
 
+from jira_cli.api import get as api_get, post as api_post, put as api_put
 from jira_cli.config import get_cache_filepath, load_config
 from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, JiraApiError,
-                                 JiraNotConfigured, MissingFieldsForNewIssue, NoAuthenticationMethod,
-                                 ProjectDoesntExist)
+                                 JiraNotConfigured, MissingFieldsForNewIssue, ProjectDoesntExist)
 from jira_cli.models import AppConfig, CustomFields, Issue, IssueType, ProjectMeta
 from jira_cli.sync import jiraapi_object_to_issue
 
@@ -25,7 +21,7 @@ logger = logging.getLogger('jira')
 
 
 class Jira(collections.abc.MutableMapping):
-    _connections: Optional[Dict[str, mod_jira.JIRA]] = None
+    _connections = None
     _df: Optional[pd.DataFrame] = None
 
     def __init__(self, *args, **kwargs):
@@ -49,40 +45,6 @@ class Jira(collections.abc.MutableMapping):
 
     def __len__(self):
         return len(self.store)
-
-
-    def connect(self, project: ProjectMeta):
-        '''
-        Connect to Jira API and cache the mod_jira.JIRA object each host
-
-        Params:
-            project:  Properties of the Jira project to connect to
-        '''
-        # no insecure cert warnings
-        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-        if not self._connections:
-            self._connections = {}
-
-        # return pre-cached connection
-        if project.id in self._connections:
-            return self._connections[project.id]
-
-        basic_auth = oauth = None
-
-        if project.username:
-            basic_auth = (project.username, project.password)
-        elif project.oauth:
-            oauth = project.oauth.serialize()
-        else:
-            raise NoAuthenticationMethod
-
-        self._connections[project.id] = mod_jira.JIRA(
-            options={'server': project.jira_server, 'verify': False},
-            basic_auth=basic_auth,
-            oauth=oauth,
-        )
-        return self._connections[project.id]
 
 
     def load_issues(self) -> None:
@@ -127,7 +89,7 @@ class Jira(collections.abc.MutableMapping):
             writer.write_all(issues_json)
 
 
-    def get_project_meta(self, project: ProjectMeta):
+    def get_project_meta(self, project: ProjectMeta):  # pylint: disable=no-self-use
         '''
         Load additional Jira project meta data from Jira's createmeta API
 
@@ -135,9 +97,8 @@ class Jira(collections.abc.MutableMapping):
             project:  Jira project object into which we should load additional metadata
         '''
         try:
-            api = self.connect(project)
-            data: dict = api.createmeta(project.key, expand='projects.issuetypes.fields')
-
+            params = {'projectKeys': project.key, 'expand': 'projects.issuetypes.fields'}
+            data = api_get(project, 'issue/createmeta', params=params)
             if not data.get('projects'):
                 raise ProjectDoesntExist(project.key)
 
@@ -173,7 +134,7 @@ class Jira(collections.abc.MutableMapping):
 
         except (IndexError, KeyError) as e:
             raise JiraApiError(f'Missing or bad project meta returned for {project.key} with error "{e}"')
-        except mod_jira.JIRAError as e:
+        except JiraApiError as e:
             raise JiraApiError(f'Failed retrieving project meta for {project.key} with error "{e}"')
 
 
@@ -192,9 +153,6 @@ class Jira(collections.abc.MutableMapping):
             raise MissingFieldsForNewIssue
 
         try:
-            # create a new Issue and store in self
-            api = self.connect(project)
-
             # key/status are set by Jira server; remove them
             temp_key = fields['key']
             del fields['key']
@@ -203,23 +161,23 @@ class Jira(collections.abc.MutableMapping):
             del fields['project_id']
 
             # create new issue in Jira and update self
-            issue: ApiIssue = api.create_issue(fields=fields)
+            data = api_post(project, 'issue', data={'fields': fields})
 
-        except mod_jira.JIRAError as e:
+        except JiraApiError as e:
             err: str = 'Failed creating new {} "{}" with error "{}"'.format(
                 fields['issuetype']['name'],
                 fields['summary'],
-                e.text
+                e.inner_message
             )
-            if e.text == 'gh.epic.error.not.found':
+            if e.inner_message == 'gh.epic.error.not.found':
                 raise EpicNotFound(err)
-            if "Field 'estimate' cannot be set" in e.text:
+            if "Field 'estimate' cannot be set" in e.inner_message:
                 raise EstimateFieldUnavailable(project.key, project.jira_server)
-            if 'cannot be set. It is not on the appropriate screen, or unknown.' in e.text:
+            if 'cannot be set. It is not on the appropriate screen, or unknown.' in e.inner_message:
                 raise JiraNotConfigured(project.key, project.jira_server, err)
 
         # transform the API response and add to self
-        new_issue: Issue = jiraapi_object_to_issue(project, issue)
+        new_issue: Issue = jiraapi_object_to_issue(project, data)
         self[new_issue.key] = new_issue  # pylint: disable=no-member
 
         if new_issue.issuetype == 'Epic':  # pylint: disable=no-member
@@ -240,32 +198,20 @@ class Jira(collections.abc.MutableMapping):
         '''
         Update an issue on Jira via the API
 
-        WARNING: Uses a private API on the `pycontribs/jira` project.
-                 This was done to greatly simplify our interaction with the Jira API; the default
-                 API provided by the jira library does many clever things that are not useful for
-                 this application.
-
         Params:
             project:  Properties of the Jira project to update
             issue:    Issue object to update
             fields:   JSON-compatible key-value pairs to write
         '''
         try:
-            api = self.connect(project)
-            logger.debug('PUT %s/rest/api/2/issue/%s %s', project.jira_server, issue.key, json.dumps(fields))
-            resp = api._session.put( # pylint: disable=protected-access
-                f'{project.jira_server}/rest/api/2/issue/{issue.key}/',
-                data=json.dumps({'fields': fields})
-            )
-            logger.debug(resp)
+            api_put(project, f'issue/{issue.key}', data={'fields': fields})
 
-            if bool(resp.status_code > 200 and resp.status_code < 300):
-                # Jira is now updated to match local; synchronize our local reference to the Jira object
-                issue.original = issue.serialize()
-                self[issue.key] = issue
-                return issue
+            # Jira is now updated to match local; synchronize our local reference to the Jira object
+            issue.original = issue.serialize()
+            self[issue.key] = issue
+            return issue
 
-        except mod_jira.JIRAError as e:
+        except JiraApiError as e:
             logger.error('Failed updating %s with error "%s"', issue.key, e)
 
         return None

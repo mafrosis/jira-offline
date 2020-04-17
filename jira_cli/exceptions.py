@@ -5,15 +5,17 @@ Many exceptions inherit from ClickException, which gives us handling for free in
 functions.
 '''
 from click import ClickException
-import jira as mod_jira
 
 
 class DeserializeError(ValueError):
     pass
 
 
-class JiraApiError(mod_jira.exceptions.JIRAError):
+class JiraApiError(Exception):
     '''Custom exception wrapping Jira library base exception'''
+    def __init__(self, message='', inner_message=''):
+        self.inner_message = inner_message
+        super().__init__(message)
 
 
 class BaseAppException(ClickException):

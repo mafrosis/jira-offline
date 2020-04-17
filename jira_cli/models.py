@@ -12,12 +12,15 @@ import textwrap
 from typing import Any, Dict, Optional, Set, Tuple
 
 import click
+from requests.auth import HTTPBasicAuth
+from oauthlib.oauth1 import SIGNATURE_RSA
+from requests_oauthlib import OAuth1
 import arrow
 import dictdiffer
 from tabulate import tabulate
 
 from jira_cli import __title__
-from jira_cli.exceptions import IssuePriorityInvalid
+from jira_cli.exceptions import IssuePriorityInvalid, NoAuthenticationMethod
 from jira_cli.utils import classproperty, friendly_title, get_field_by_name
 from jira_cli.utils.serializer import DataclassSerializer, get_enum, get_type_class
 
@@ -47,6 +50,18 @@ class OAuth(DataclassSerializer):
     consumer_key: Optional[str] = field(default=None)
     key_cert: Optional[str] = field(default=None)
 
+    def asoauth1(self) -> OAuth1:
+        '''
+        Return an OAuth1 object compatible with requests
+        '''
+        return OAuth1(
+            self.consumer_key,
+            rsa_key=self.key_cert,
+            signature_method=SIGNATURE_RSA,
+            resource_owner_key=self.access_token,
+            resource_owner_secret=self.access_token_secret,
+        )
+
 
 @dataclass  # pylint: disable=too-many-instance-attributes
 class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-attributes
@@ -64,6 +79,15 @@ class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-att
     @property
     def jira_server(self):
         return f'{self.protocol}://{self.hostname}'
+
+    @property
+    def auth(self):
+        if self.username:
+            return HTTPBasicAuth(self.username, self.password)
+        elif self.oauth:
+            return self.oauth.asoauth1()
+        else:
+            raise NoAuthenticationMethod
 
     @property
     def project_uri(self):

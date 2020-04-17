@@ -7,15 +7,15 @@ import dataclasses
 from dataclasses import dataclass, field
 import datetime
 import logging
-from typing import Dict, Generator, List, Optional, Set, Tuple, TYPE_CHECKING
+from typing import Any, Dict, Generator, List, Optional, Set, Tuple, TYPE_CHECKING
 
 import click
 import dictdiffer
-from jira.resources import Issue as ApiIssue
 import pandas as pd
 from tabulate import tabulate
 from tqdm import tqdm
 
+from jira_cli.api import get as api_get
 from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, FailedPullingIssues,
                                  FailedPullingProjectMeta, JiraApiError)
 from jira_cli.models import Issue, ProjectMeta
@@ -97,8 +97,12 @@ def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose
         total = 0
 
         while True:
-            start = page * 25
-            issues = api.search_issues(jql, start, 25)
+            startAt = page * 25
+
+            params = {'jql': jql, 'startAt': startAt, 'maxResults': 25}
+            data = api_get(project, 'search', params=params)
+
+            issues = data.get('issues', [])
             if len(issues) == 0:
                 break
             page += 1
@@ -110,15 +114,15 @@ def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose
 
                 try:
                     # determine if local changes have been made
-                    if jira[api_issue.key].diff_to_original:
+                    if jira[api_issue['key']].diff_to_original:
                         # when pulling, the remote Issue is considered the base
-                        update_object: IssueUpdate = check_resolve_conflicts(jira[api_issue.key], issue)
+                        update_object: IssueUpdate = check_resolve_conflicts(jira[api_issue['key']], issue)
                         issue = update_object.merged_issue
                 except KeyError:
                     pass
 
                 # insert issue into Jira dict
-                jira[api_issue.key] = issue
+                jira[api_issue['key']] = issue
 
             if pbar:
                 # update progress
@@ -127,7 +131,7 @@ def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose
                 logger.info('Page number %s', page)
                 df = pd.DataFrame.from_dict(
                     {
-                        issue.key: jiraapi_object_to_issue(project, issue).serialize()
+                        issue['key']: jiraapi_object_to_issue(project, issue).serialize()
                         for issue in issues
                     },
                     orient='index'
@@ -141,8 +145,8 @@ def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose
 
     try:
         # single quick query to get total number of issues
-        api = jira.connect(project)
-        head = api.search_issues(jql, maxResults=1)
+        params: Dict[str, Any] = {'jql': jql, 'maxResults': 1, 'fields': 'key'}
+        data = api_get(project, 'search', params=params)
 
         pbar = None
 
@@ -150,7 +154,7 @@ def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose
             total = _run(jql)
         else:
             # show progress bar
-            with tqdm(total=head.total, unit=' issues') as pbar:
+            with tqdm(total=data['total'], unit=' issues') as pbar:
                 total = _run(jql, pbar)
 
     except JiraApiError as e:
@@ -170,49 +174,39 @@ def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose
     jira.config.write_to_disk()
 
 
-def jiraapi_object_to_issue(project: ProjectMeta, issue: ApiIssue) -> Issue:
+def jiraapi_object_to_issue(project: ProjectMeta, issue: dict) -> Issue:
     '''
     Convert raw JSON from Jira API to Issue object
 
     Params:
         project:  Properties of the project pushing issues to
-        issue:    Instance of the Issue class from the Jira library
+        issue:    JSON dict of an Issue from the Jira API
     Return:
         An Issue dataclass instance
     '''
-    fixVersions = set()
-    if issue.fields.fixVersions:
-        fixVersions = {f.name for f in issue.fields.fixVersions}
-
     jiraapi_object = {
         'project_id': project.id,
-        'created': issue.fields.created,
-        'creator': issue.fields.creator.name,
-        'epic_name': getattr(issue.fields, project.custom_fields.epic_name, ''),
-        'description': issue.fields.description,
-        'fixVersions': fixVersions,
-        'id': issue.id,
-        'issuetype': issue.fields.issuetype.name,
-        'key': issue.key,
-        'priority': issue.fields.priority.name,
-        'project': issue.fields.project.key,
-        'reporter': issue.fields.reporter.name,
-        'status': issue.fields.status.name,
-        'summary': issue.fields.summary,
-        'updated': issue.fields.updated,
+        'created': issue['fields']['created'],
+        'creator': issue['fields']['creator']['name'],
+        'epic_name': issue['fields'].get(f'customfield_{project.custom_fields.epic_name}', None),
+        'epic_ref': issue['fields'].get(f'customfield_{project.custom_fields.epic_ref}', None),
+        'description': issue['fields']['description'],
+        'fixVersions': {x['name'] for x in issue['fields']['fixVersions']},
+        'id': issue['id'],
+        'issuetype': issue['fields']['issuetype']['name'],
+        'key': issue['key'],
+        'labels': issue['fields']['labels'],
+        'priority': issue['fields']['priority']['name'],
+        'project': issue['fields']['project']['key'],
+        'reporter': issue['fields']['reporter']['name'],
+        'status': issue['fields']['status']['name'],
+        'summary': issue['fields']['summary'],
+        'updated': issue['fields']['updated'],
     }
-    if issue.fields.assignee:
-        jiraapi_object['assignee'] = issue.fields.assignee.name
-    if getattr(issue.fields, f'customfield_{project.custom_fields.epic_ref}'):
-        jiraapi_object['epic_ref'] = getattr(
-            issue.fields, f'customfield_{project.custom_fields.epic_ref}'
-        )
-    if getattr(issue.fields, f'customfield_{project.custom_fields.estimate}'):
-        jiraapi_object['estimate'] = getattr(
-            issue.fields, f'customfield_{project.custom_fields.estimate}'
-        )
-    if issue.fields.labels:
-        jiraapi_object['labels'] = issue.fields.labels
+    if issue['fields'].get('assignee'):
+        jiraapi_object['assignee'] = issue['fields']['assignee']['name']
+    if issue['fields'].get(f'customfield_{project.custom_fields.estimate}'):
+        jiraapi_object['estimate'] = issue['fields'][f'customfield_{project.custom_fields.estimate}']
 
     return Issue.deserialize(jiraapi_object, project_ref=project)
 
@@ -561,7 +555,7 @@ def push_issues(jira: 'Jira', verbose: bool=False):
             project = jira.config.projects.get(local_issue.project_id)
 
             # retrieve the upstream issue
-            remote_issue = _fetch_single_issue(jira, project, local_issue)
+            remote_issue = _fetch_single_issue(project, local_issue)
 
             # resolve any conflicts with upstream
             update_object: IssueUpdate = check_resolve_conflicts(local_issue, remote_issue)
@@ -618,18 +612,19 @@ def push_issues(jira: 'Jira', verbose: bool=False):
     logger.log(push_result_log_level, 'Pushed %s of %s issues', total, len(issues_to_push))
 
 
-
-def _fetch_single_issue(jira: 'Jira', project: ProjectMeta, issue: Issue) -> Optional[Issue]:
+def _fetch_single_issue(project: ProjectMeta, issue: Issue) -> Optional[Issue]:
     '''
     Return a single Issue object from the Jira API by key
 
     Params:
-        jira:   Dependency-injected main.Jira object
-        issue:  Local Issue to lookup on Jira API
+        project:  Properties of the project pushing issues to
+        issue:    Local Issue to lookup on Jira API
     Returns:
         Issue dataclass instance
     '''
     # new issues return False for exists
     if not issue.exists:
         return None
-    return jiraapi_object_to_issue(project, jira.connect(project).issue(issue.key))
+
+    data = api_get(project, 'issue/{issue.key}')
+    return jiraapi_object_to_issue(project, data)
