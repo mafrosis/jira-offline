@@ -7,17 +7,17 @@ from jira_cli.sync import _fetch_single_issue, IssueUpdate, push_issues
 
 @mock.patch('jira_cli.sync.check_resolve_conflicts')
 @mock.patch('jira_cli.sync.jiraapi_object_to_issue')
-def test_fetch_single_issue__returns_output_from_jiraapi_object_to_issue(mock_jiraapi_object_to_issue, mock_check_resolve_conflicts, mock_jira, project):
+@mock.patch('jira_cli.sync.api_get')
+def test_fetch_single_issue__returns_output_from_jiraapi_object_to_issue(mock_api_get, mock_jiraapi_object_to_issue, mock_check_resolve_conflicts, mock_jira, project):
     '''
     Ensure _fetch_single_issue() returns the output directly from jiraapi_object_to_issue()
     '''
     mock_jiraapi_object_to_issue.return_value = 1
 
-    ret = _fetch_single_issue(mock_jira, project, Issue.deserialize(ISSUE_1))
+    ret = _fetch_single_issue(project, Issue.deserialize(ISSUE_1))
     assert ret == 1
 
     assert mock_jiraapi_object_to_issue.called
-    assert mock_jira.connect.return_value.issue.called
 
 
 @mock.patch('jira_cli.sync.check_resolve_conflicts')
@@ -26,7 +26,7 @@ def test_fetch_single_issue__returns_none_when_issue_is_new(mock_jiraapi_object_
     '''
     Ensure _fetch_single_issue() returns None when the passed Issue is new
     '''
-    ret = _fetch_single_issue(mock_jira, project, Issue.deserialize(ISSUE_NEW))
+    ret = _fetch_single_issue(project, Issue.deserialize(ISSUE_NEW))
     assert ret is None
 
     assert not mock_jiraapi_object_to_issue.called

@@ -9,19 +9,21 @@ import click
 from oauthlib.oauth1 import SIGNATURE_RSA
 import requests
 import requests_oauthlib
+from requests_oauthlib.oauth1_session import TokenRequestDenied
 
 from jira_cli import __title__
-from jira_cli.exceptions import FailedAuthError, JiraUnavailable, NoAuthenticationMethod
+from jira_cli.api import get as api_get
+from jira_cli.exceptions import FailedAuthError, JiraApiError, JiraUnavailable, NoAuthenticationMethod
 from jira_cli.models import ProjectMeta, OAuth
 
 
-def authenticate(project_meta: ProjectMeta, username: Optional[str]=None, password: Optional[str]=None,
+def authenticate(project: ProjectMeta, username: Optional[str]=None, password: Optional[str]=None,
                  oauth_consumer_key: Optional[str]=None, oauth_private_key_path: Optional[str]=None):
     '''
     Authenticate against hostname with either basic-auth or oAuth
 
     Params:
-        project_meta:            Properties of the project we're authenticating against
+        project:                 Properties of the project we're authenticating against
         username:                Basic auth username
         oauth_consumer_key:      oAuth1 consumer key defined on the Jira Application Link
         oauth_private_key_path:  Path to the oAuth1 private key file
@@ -29,80 +31,82 @@ def authenticate(project_meta: ProjectMeta, username: Optional[str]=None, passwo
     if oauth_consumer_key and oauth_private_key_path:
         with open(oauth_private_key_path) as f:
             # do the oAuth1 dance
-            oauth_dance(project_meta, oauth_consumer_key, f.read())
+            oauth_dance(project, oauth_consumer_key, f.read())
 
     elif username:
         # ask for password and validate creds
-        get_user_creds(project_meta, username, password)
+        get_user_creds(project, username, password)
 
     else:
         raise NoAuthenticationMethod
 
 
-def get_user_creds(project_meta: ProjectMeta, username: Optional[str]=None, password: Optional[str]=None):
+def get_user_creds(project: ProjectMeta, username: Optional[str]=None, password: Optional[str]=None):
     '''
     Accept username/password and validate against Jira server
 
     Params:
-        project_meta:  Properties of the project we're authenticating against
-        username:      Basic auth username
-        password:      Basic auth password
+        project:   Properties of the project we're authenticating against
+        username:  Basic auth username
+        password:  Basic auth password
     '''
-    project_meta.username = username
-    if not project_meta.username:
-        project_meta.username = click.prompt('Username', type=str)
+    project.username = username
+    if not project.username:
+        project.username = click.prompt('Username', type=str)
 
-    project_meta.password = password
-    if not project_meta.password:
-        project_meta.password = click.prompt('Password', type=str, hide_input=True)
+    project.password = password
+    if not project.password:
+        project.password = click.prompt('Password', type=str, hide_input=True)
 
     # validate Jira connection details
-    if project_meta.username and project_meta.password:
-        if not _test_jira_connect(project_meta):
-            raise FailedAuthError(project_meta.hostname)
+    if project.username and project.password:
+        if not _test_jira_connect(project):
+            raise FailedAuthError(project.hostname)
 
 
-def _test_jira_connect(project_meta: ProjectMeta) -> bool:
-    '''Test connection to Jira API to validate config object credentials'''
+def _test_jira_connect(project: ProjectMeta) -> bool:
+    '''
+    Test connection to Jira API to validate config object credentials
+
+    Params:
+        project:  Properties of the project we're authenticating against
+    '''
     try:
-        # late import of Jira class to prevent cyclic-import
-        from jira_cli.main import Jira  # pylint: disable=import-outside-toplevel,cyclic-import
-        Jira().connect(project_meta)
+        api_get(project, 'serverInfo')
         return True
-    except requests.exceptions.ConnectionError:
+    except JiraApiError:
         return False
 
 
-def oauth_dance(project_meta: ProjectMeta, consumer_key: str, key_cert_data: str, verify: Optional[bool]=None):
+def oauth_dance(project: ProjectMeta, consumer_key: str, key_cert_data: str, verify: Optional[bool]=None):
     '''
     Do the oAuth1 flow with the configured Jira Application Link.
 
-    Copied from pycontribs/jira
+    https://requests-oauthlib.readthedocs.io/en/latest/oauth1_workflow.html
 
     Params:
-        project_meta:   Properties of the project we're authenticating against
+        project:        Properties of the project we're authenticating against
         consumer_key:   ooAuth1 consumer key defined on the Jira Application Link
         key_cert_data:  oAuth1 private key data
     '''
     if verify is None:
-        verify = project_meta.protocol == 'https'
+        verify = project.protocol == 'https'
 
-    jira_url = f'{project_meta.protocol}://{project_meta.hostname}'
+    jira_url = f'{project.protocol}://{project.hostname}'
 
     # step 1: get request tokens
-    oauth = requests_oauthlib.OAuth1(consumer_key, signature_method=SIGNATURE_RSA, rsa_key=key_cert_data)
-    resp = requests.post(
-        f'{jira_url}/plugins/servlet/oauth/request-token', verify=verify, auth=oauth
+    oauth_session = requests_oauthlib.OAuth1Session(
+        consumer_key, signature_method=SIGNATURE_RSA, rsa_key=key_cert_data
     )
-    if resp.status_code != 200:
+    try:
+        token_data = oauth_session.fetch_request_token(f'{jira_url}/plugins/servlet/oauth/request-token')
+    except requests.exceptions.ConnectionError as e:
         raise JiraUnavailable
-
-    request = dict(parse_qsl(resp.text))
-    if request.get('oauth_problem'):
-        raise FailedAuthError(request['oauth_problem'])
+    except (TokenRequestDenied, ValueError) as e:
+        raise FailedAuthError(e)
 
     # step 2: prompt user to validate
-    auth_url = f'{jira_url}/plugins/servlet/oauth/authorize?oauth_token={request["oauth_token"]}'
+    auth_url = f'{jira_url}/plugins/servlet/oauth/authorize?oauth_token={token_data["oauth_token"]}'
 
     webbrowser.open_new(auth_url)
 
@@ -114,8 +118,8 @@ def oauth_dance(project_meta: ProjectMeta, consumer_key: str, key_cert_data: str
         consumer_key,
         signature_method=SIGNATURE_RSA,
         rsa_key=key_cert_data,
-        resource_owner_key=request['oauth_token'],
-        resource_owner_secret=request['oauth_token_secret'],
+        resource_owner_key=token_data['oauth_token'],
+        resource_owner_secret=token_data['oauth_token_secret'],
     )
     resp = requests.post(f'{jira_url}/plugins/servlet/oauth/access-token', verify=verify, auth=oauth)
     if resp.status_code != 200:
@@ -124,7 +128,7 @@ def oauth_dance(project_meta: ProjectMeta, consumer_key: str, key_cert_data: str
     access = dict(parse_qsl(resp.text))
 
     # cache the oauth data for the project
-    project_meta.oauth = OAuth.deserialize({
+    project.oauth = OAuth.deserialize({
         'access_token': access['oauth_token'],
         'access_token_secret': access['oauth_token_secret'],
         'consumer_key': consumer_key,

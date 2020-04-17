@@ -7,8 +7,8 @@ import logging
 from typing import Optional, Set
 from urllib.parse import urlparse
 
-import click
 import arrow
+import click
 import pandas as pd
 from tabulate import tabulate
 

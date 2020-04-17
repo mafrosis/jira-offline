@@ -6,7 +6,6 @@ from unittest import mock
 from requests.auth import HTTPBasicAuth
 import requests
 import docker
-import jira as mod_jira
 import pytest
 
 from jira_cli.main import Jira
@@ -38,8 +37,6 @@ def mock_jira_core(mock_load_config, project):
     jira = Jira()
     jira.config = AppConfig(projects={project.id: project})
     jira.config.write_to_disk = mock.Mock()
-    jira._jira = mock.Mock(spec=mod_jira.JIRA)
-    jira.connect = mock.Mock(return_value=jira._jira)
     return jira
 
 

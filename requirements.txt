@@ -2,12 +2,12 @@ arrow
 click
 cryptography
 dictdiffer
-jira
 jsonlines
 oauthlib
 pandas
 pyjwt
 requests
+requests_oauthlib
 tabulate
 tqdm
 typing_inspect
