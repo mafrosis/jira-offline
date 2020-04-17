@@ -9,6 +9,7 @@ import click
 from oauthlib.oauth1 import SIGNATURE_RSA
 import requests
 import requests_oauthlib
+from requests_oauthlib.oauth1_session import TokenRequestDenied
 
 from jira_cli import __title__
 from jira_cli.exceptions import FailedAuthError, JiraUnavailable, NoAuthenticationMethod
@@ -82,7 +83,7 @@ def oauth_dance(project: ProjectMeta, consumer_key: str, key_cert_data: str, ver
     '''
     Do the oAuth1 flow with the configured Jira Application Link.
 
-    Copied from pycontribs/jira
+    https://requests-oauthlib.readthedocs.io/en/latest/oauth1_workflow.html
 
     Params:
         project:        Properties of the project we're authenticating against
@@ -95,19 +96,18 @@ def oauth_dance(project: ProjectMeta, consumer_key: str, key_cert_data: str, ver
     jira_url = f'{project.protocol}://{project.hostname}'
 
     # step 1: get request tokens
-    oauth = requests_oauthlib.OAuth1(consumer_key, signature_method=SIGNATURE_RSA, rsa_key=key_cert_data)
-    resp = requests.post(
-        f'{jira_url}/plugins/servlet/oauth/request-token', verify=verify, auth=oauth
+    oauth_session = requests_oauthlib.OAuth1Session(
+        consumer_key, signature_method=SIGNATURE_RSA, rsa_key=key_cert_data
     )
-    if resp.status_code != 200:
+    try:
+        token_data = oauth_session.fetch_request_token(f'{jira_url}/plugins/servlet/oauth/request-token')
+    except requests.exceptions.ConnectionError as e:
         raise JiraUnavailable
-
-    request = dict(parse_qsl(resp.text))
-    if request.get('oauth_problem'):
-        raise FailedAuthError(request['oauth_problem'])
+    except (TokenRequestDenied, ValueError) as e:
+        raise FailedAuthError(e)
 
     # step 2: prompt user to validate
-    auth_url = f'{jira_url}/plugins/servlet/oauth/authorize?oauth_token={request["oauth_token"]}'
+    auth_url = f'{jira_url}/plugins/servlet/oauth/authorize?oauth_token={token_data["oauth_token"]}'
 
     webbrowser.open_new(auth_url)
 
@@ -119,8 +119,8 @@ def oauth_dance(project: ProjectMeta, consumer_key: str, key_cert_data: str, ver
         consumer_key,
         signature_method=SIGNATURE_RSA,
         rsa_key=key_cert_data,
-        resource_owner_key=request['oauth_token'],
-        resource_owner_secret=request['oauth_token_secret'],
+        resource_owner_key=token_data['oauth_token'],
+        resource_owner_secret=token_data['oauth_token_secret'],
     )
     resp = requests.post(f'{jira_url}/plugins/servlet/oauth/access-token', verify=verify, auth=oauth)
     if resp.status_code != 200:
