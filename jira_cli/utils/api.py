@@ -1,3 +1,6 @@
+'''
+Utility functions for talking to Jira API
+'''
 import json
 import logging
 from typing import Any, Dict, Optional
@@ -22,19 +25,20 @@ def _request(method: str, project: ProjectMeta, path: str, params: Optional[Dict
         params:   Key/value of parameters to send in request URL
         data:     Key/value of parameters to send as JSON in request body
     '''
-    logger.debug('%s %s/rest/api/2/%s %s', method, project.jira_server, path, json.dumps(data))
-
     resp = requests.request(
         method, f'{project.jira_server}/rest/api/2/{path}',
         json=data,
         params=params,
         auth=project.oauth,
     )
+    logger.debug(
+        '%s %s/rest/api/2/%s %s %s', method, project.jira_server, path, resp.status_code, json.dumps(data)
+    )
 
-    if resp.status_code != 200:
+    if resp.status_code >= 400:
         raise JiraApiError(
             f'HTTP {resp.status_code} returned from {method} /rest/api/2/{path}',
-            inner_message=resp.json()['errorMessages'][0]
+            inner_message=str(resp.json().get('errorMessages'))
         )
     return resp.json()
 
