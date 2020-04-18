@@ -14,7 +14,7 @@ from requests_oauthlib.oauth1_session import TokenRequestDenied
 from jira_cli import __title__
 from jira_cli.exceptions import FailedAuthError, JiraApiError, JiraUnavailable, NoAuthenticationMethod
 from jira_cli.models import ProjectMeta, OAuth
-from jira_cli.utils.api import get as api_get
+from jira_cli.utils.api import head as api_head
 
 
 def authenticate(project: ProjectMeta, username: Optional[str]=None, password: Optional[str]=None,
@@ -72,7 +72,7 @@ def _test_jira_connect(project: ProjectMeta) -> bool:
         project:  Properties of the project we're authenticating against
     '''
     try:
-        api_get(project, 'serverInfo')
+        api_head(project, 'mypermissions')
         return True
     except JiraApiError:
         return False

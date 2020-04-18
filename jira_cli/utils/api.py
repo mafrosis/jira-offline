@@ -77,3 +77,14 @@ def put(project: ProjectMeta, path: str, data: Dict[str, Any]) -> dict:
         data:     Key/value of parameters to send as JSON in request body
     '''
     return _request('PUT', project, path, data=data)
+
+
+def head(project: ProjectMeta, path: str) -> dict:
+    '''
+    Make an authenticated head request to the Jira API
+
+    Params:
+        project:  Configured Jira project instance to call
+        path:     API path to call
+    '''
+    return _request('HEAD', project, path)
