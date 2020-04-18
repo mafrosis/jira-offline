@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 
 import requests
 
-from jira_cli.exceptions import JiraApiError
+from jira_cli.exceptions import JiraApiError, JiraUnavailable
 from jira_cli.models import ProjectMeta
 
 
@@ -25,22 +25,32 @@ def _request(method: str, project: ProjectMeta, path: str, params: Optional[Dict
         params:   Key/value of parameters to send in request URL
         data:     Key/value of parameters to send as JSON in request body
     '''
-    resp = requests.request(
-        method, f'{project.jira_server}/rest/api/2/{path}',
-        json=data,
-        params=params,
-        auth=project.oauth,
-    )
-    logger.debug(
-        '%s %s/rest/api/2/%s %s %s', method, project.jira_server, path, resp.status_code, json.dumps(data)
-    )
-
-    if resp.status_code >= 400:
-        raise JiraApiError(
-            f'HTTP {resp.status_code} returned from {method} /rest/api/2/{path}',
-            inner_message=str(resp.json().get('errorMessages'))
+    try:
+        resp = requests.request(
+            method, f'{project.jira_server}/rest/api/2/{path}',
+            json=data,
+            params=params,
+            auth=project.auth,
         )
-    return resp.json()
+        logger.debug(
+            '%s %s/rest/api/2/%s %s %s', method, project.jira_server, path, resp.status_code, json.dumps(data)
+        )
+        resp.raise_for_status()
+
+    except requests.exceptions.HTTPError:
+        if resp.status_code >= 400:
+            msg = f'HTTP {resp.status_code} returned from {method} /rest/api/2/{path}'
+            if 'application/json' in resp.headers.get('Content-Type', ''):
+                raise JiraApiError(msg, inner_message=str(resp.json().get('errorMessages')))
+            raise JiraApiError(msg)
+
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+        raise JiraUnavailable(e)
+
+    try:
+        return resp.json()
+    except json.decoder.JSONDecodeError:
+        return {}
 
 
 def get(project: ProjectMeta, path: str, params: Optional[Dict[str, Any]]=None) -> dict:
