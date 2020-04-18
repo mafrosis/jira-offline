@@ -8,6 +8,7 @@ import functools
 import json
 import hashlib
 import os
+import pathlib
 import textwrap
 from typing import Any, Dict, Optional, Set, Tuple
 
@@ -103,6 +104,9 @@ class AppConfig(DataclassSerializer):
     projects: Dict[str, ProjectMeta] = field(default_factory=dict)
 
     def write_to_disk(self):
+        # ensure config path exists
+        pathlib.Path(click.get_app_dir(__title__)).mkdir(parents=True, exist_ok=True)
+
         config_filepath = os.path.join(click.get_app_dir(__title__), 'app.json')
         with open(config_filepath, 'w') as f:
             json.dump(self.serialize(), f)
