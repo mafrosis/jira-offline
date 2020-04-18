@@ -15,12 +15,12 @@ import pandas as pd
 from tabulate import tabulate
 from tqdm import tqdm
 
-from jira_cli.api import get as api_get
 from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, FailedPullingIssues,
                                  FailedPullingProjectMeta, JiraApiError)
 from jira_cli.models import Issue, ProjectMeta
 from jira_cli.utils import critical_logger, friendly_title, get_field_by_name
 from jira_cli.utils.serializer import DeserializeError, is_optional_type
+from jira_cli.utils.api import get as api_get
 
 if TYPE_CHECKING:
     import Jira

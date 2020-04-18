@@ -23,7 +23,6 @@ def _request(method: str, project: ProjectMeta, path: str, params: Optional[Dict
         data:     Key/value of parameters to send as JSON in request body
     '''
     logger.debug('%s %s/rest/api/2/%s %s', method, project.jira_server, path, json.dumps(data))
-
     resp = requests.request(
         method, f'{project.jira_server}/rest/api/2/{path}',
         json=data,
