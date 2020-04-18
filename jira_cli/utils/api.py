@@ -35,10 +35,10 @@ def _request(method: str, project: ProjectMeta, path: str, params: Optional[Dict
         '%s %s/rest/api/2/%s %s %s', method, project.jira_server, path, resp.status_code, json.dumps(data)
     )
 
-    if resp.status_code != 200:
+    if resp.status_code >= 400:
         raise JiraApiError(
             f'HTTP {resp.status_code} returned from {method} /rest/api/2/{path}',
-            inner_message=resp.json()['errorMessages'][0]
+            inner_message=str(resp.json().get('errorMessages'))
         )
     return resp.json()
 
