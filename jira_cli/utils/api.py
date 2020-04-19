@@ -31,6 +31,7 @@ def _request(method: str, project: ProjectMeta, path: str, params: Optional[Dict
             json=data,
             params=params,
             auth=project.auth,
+            verify=project.ca_cert if project.ca_cert else True,
         )
         logger.debug(
             '%s %s/rest/api/2/%s %s %s', method, project.jira_server, path, resp.status_code, json.dumps(data)
