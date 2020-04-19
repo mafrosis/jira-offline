@@ -254,10 +254,6 @@ def issue_to_jiraapi_update(project: ProjectMeta, issue: Issue, modified: set) -
 
     include_fields: set = set(modified).copy()
 
-    # don't send estimate field for Epics
-    if issue_values['issuetype'] == 'Epic':
-        include_fields.remove('estimate')
-
     # build an update dict
     return {
         field_keys[field_name]: issue_values[field_name]
