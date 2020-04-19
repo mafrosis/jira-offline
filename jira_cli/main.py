@@ -108,7 +108,8 @@ class Jira(collections.abc.MutableMapping):
             # extract set of issuetypes, and their priority values returned from the createmeta API
             for x in data['projects'][0]['issuetypes']:
                 it = IssueType(name=x['name'])
-                it.priorities = {y['name'] for y in x['fields']['priority']['allowedValues'] }
+                if x['fields'].get('priority'):
+                    it.priorities = {y['name'] for y in x['fields']['priority']['allowedValues']}
                 project.issuetypes[x['name']] = it
 
             custom_fields = CustomFields()

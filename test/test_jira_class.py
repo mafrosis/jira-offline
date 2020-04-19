@@ -175,6 +175,41 @@ def test_jira__get_project_meta__extracts_custom_fields(mock_api_get, mock_jira_
 
 
 @mock.patch('jira_cli.main.api_get')
+def test_jira__get_project_meta__handles_no_priority_for_issuetype(mock_api_get, mock_jira_core):
+    '''
+    Ensure get_project_meta() method doesn't choke if an issuetype has no priority field
+    '''
+    # mock return from Jira createmeta API call
+    mock_api_get.return_value = {
+        'projects': [{
+            'id': '56120',
+            'key': 'EGG',
+            'name': 'Project EGG',
+            'issuetypes': [{
+                'self': 'https://example.com/rest/api/2/issuetype/5',
+                'id': '5',
+                'name': 'Epic',
+                'fields': {
+                    'customfield_10106': {
+                        'schema': {
+                            'customId': 10106
+                        },
+                        'name': 'Story Points',
+                    },
+                },
+            }]
+        }]
+    }
+
+    project_meta = ProjectMeta(key='BACON')
+
+    mock_jira_core.get_project_meta(project_meta)
+
+    assert mock_api_get.called
+    assert project_meta.custom_fields == CustomFields(estimate='10106')
+
+
+@mock.patch('jira_cli.main.api_get')
 def test_jira__get_project_meta__raises_project_doesnt_exist(mock_api_get, mock_jira_core):
     '''
     Ensure ProjectDoesntExist exception is raised if nothing returned by API createmeta call
