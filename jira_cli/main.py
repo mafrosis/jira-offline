@@ -128,9 +128,6 @@ class Jira(collections.abc.MutableMapping):
                     elif not custom_fields.estimate and field_props['name'] == 'Story Points':
                         custom_fields.estimate = str(field_props['schema']['customId'])
 
-            if not custom_fields.estimate:
-                raise EstimateFieldUnavailable(project.key, project.jira_server)
-
             project.custom_fields = custom_fields
 
         except (IndexError, KeyError) as e:

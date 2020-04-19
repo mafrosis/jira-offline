@@ -205,6 +205,8 @@ def jiraapi_object_to_issue(project: ProjectMeta, issue: dict) -> Issue:
     }
     if issue['fields'].get('assignee'):
         jiraapi_object['assignee'] = issue['fields']['assignee']['name']
+
+    # support Issue.estimate aka "Story Points", if in use
     if issue['fields'].get(f'customfield_{project.custom_fields.estimate}'):
         jiraapi_object['estimate'] = issue['fields'][f'customfield_{project.custom_fields.estimate}']
 
@@ -237,6 +239,8 @@ def issue_to_jiraapi_update(project: ProjectMeta, issue: Issue, modified: set) -
     field_keys: dict = {f.name: f.name for f in dataclasses.fields(Issue)}
     field_keys['epic_ref'] = f'customfield_{project.custom_fields.epic_ref}'
     field_keys['epic_name'] = f'customfield_{project.custom_fields.epic_name}'
+
+    # support Issue.estimate aka "Story Points", if in use
     field_keys['estimate'] = f'customfield_{project.custom_fields.estimate}'
 
     # serialize all Issue data to be JSON-compatible
