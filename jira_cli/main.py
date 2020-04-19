@@ -134,7 +134,7 @@ class Jira(collections.abc.MutableMapping):
             project.custom_fields = custom_fields
 
         except (IndexError, KeyError) as e:
-            raise JiraApiError(f'Missing or bad project meta returned for {project.key} with error "{e}"')
+            raise JiraApiError(f'Missing or bad project meta returned for {project.key} with error "{e.__class__.__name__}({e})"')
         except JiraApiError as e:
             raise JiraApiError(f'Failed retrieving project meta for {project.key} with error "{e}"')
 
