@@ -48,14 +48,16 @@ def cli(ctx, verbose: bool=False, debug: bool=False):
     formatter = logging.Formatter('%(levelname)s: %(message)s')
 
     # handle --verbose and --debug
-    if verbose:
+    if debug:
+        verbose = True
+        logger.setLevel(logging.DEBUG)
+        formatter = logging.Formatter(f'%(levelname)s: {__name__}:%(lineno)s - %(message)s')
+
+    elif verbose:
         logger.setLevel(logging.INFO)
     else:
         logger.setLevel(logging.WARNING)
 
-    if debug:
-        logger.setLevel(logging.DEBUG)
-        formatter = logging.Formatter(f'%(levelname)s: {__name__}:%(lineno)s - %(message)s')
 
     sh.setFormatter(formatter)
     ctx.obj = CliParams(verbose=verbose, debug=debug)
