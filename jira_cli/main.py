@@ -108,7 +108,8 @@ class Jira(collections.abc.MutableMapping):
             # extract set of issuetypes, and their priority values returned from the createmeta API
             for x in data['projects'][0]['issuetypes']:
                 it = IssueType(name=x['name'])
-                it.priorities = {y['name'] for y in x['fields']['priority']['allowedValues'] }
+                if x['fields'].get('priority'):
+                    it.priorities = {y['name'] for y in x['fields']['priority']['allowedValues']}
                 project.issuetypes[x['name']] = it
 
             custom_fields = CustomFields()
@@ -133,7 +134,7 @@ class Jira(collections.abc.MutableMapping):
             project.custom_fields = custom_fields
 
         except (IndexError, KeyError) as e:
-            raise JiraApiError(f'Missing or bad project meta returned for {project.key} with error "{e}"')
+            raise JiraApiError(f'Missing or bad project meta returned for {project.key} with error "{e.__class__.__name__}({e})"')
         except JiraApiError as e:
             raise JiraApiError(f'Failed retrieving project meta for {project.key} with error "{e}"')
 
