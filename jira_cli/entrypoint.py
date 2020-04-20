@@ -51,7 +51,7 @@ def cli(ctx, verbose: bool=False, debug: bool=False):
     if debug:
         verbose = True
         logger.setLevel(logging.DEBUG)
-        formatter = logging.Formatter(f'%(levelname)s: {__name__}:%(lineno)s - %(message)s')
+        formatter = logging.Formatter('%(levelname)s: %(module)s:%(lineno)s - %(message)s')
 
     elif verbose:
         logger.setLevel(logging.INFO)
