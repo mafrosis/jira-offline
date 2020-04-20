@@ -12,14 +12,11 @@ from jira_cli.sync import issue_to_jiraapi_update
     {'assignee'},
     {'fixVersions', 'summary'},
 ])
-def test_issue_to_jiraapi_update__returns_only_fields_passed_in_modified(mock_jira, modified):
+def test_issue_to_jiraapi_update__returns_only_fields_passed_in_modified(mock_jira, project, modified):
     '''
     Ensure issue_to_jiraapi_update returns only set of fields passed in modified parameter
     '''
-    # extract ProjectMeta object from config fixture
-    project_meta = mock_jira.config.projects['99fd9182cfc4c701a8a662f6293f4136201791b4']
-
-    issue_dict = issue_to_jiraapi_update(project_meta, Issue.deserialize(ISSUE_1), modified)
+    issue_dict = issue_to_jiraapi_update(project, Issue.deserialize(ISSUE_1), modified)
     assert issue_dict.keys() == modified
 
 
@@ -28,26 +25,20 @@ def test_issue_to_jiraapi_update__returns_only_fields_passed_in_modified(mock_ji
     {'issuetype'},
     {'reporter'},
 ])
-def test_issue_to_jiraapi_update__fields_are_formatted_correctly(mock_jira, modified):
+def test_issue_to_jiraapi_update__fields_are_formatted_correctly(mock_jira, project, modified):
     '''
     Ensure issue_to_jiraapi_update formats some fields correctly
     '''
-    # extract ProjectMeta object from config fixture
-    project_meta = mock_jira.config.projects['99fd9182cfc4c701a8a662f6293f4136201791b4']
-
-    issue_dict = issue_to_jiraapi_update(project_meta, Issue.deserialize(ISSUE_1), modified)
-    assert 'name' in issue_dict[modified.pop()]
+    issue_dict = issue_to_jiraapi_update(project, Issue.deserialize(ISSUE_1), modified)
+    assert 'name' in issue_dict[next(iter(modified))]
 
 
-def test_issue_to_jiraapi_update__all_fields_are_returned_for_new_issue(mock_jira):
+def test_issue_to_jiraapi_update__all_fields_are_returned_for_new_issue(mock_jira, project):
     '''
     Ensure issue_to_jiraapi_update returns all mandatory and new fields for a new Issue
     '''
-    # extract ProjectMeta object from config fixture
-    project_meta = mock_jira.config.projects['99fd9182cfc4c701a8a662f6293f4136201791b4']
-
     issue_dict = issue_to_jiraapi_update(
-        project_meta,
+        project,
         Issue.deserialize(ISSUE_1),
         {'issuetype', 'project', 'summary', 'epic_ref', 'description', 'fixVersions', 'reporter'}
     )
