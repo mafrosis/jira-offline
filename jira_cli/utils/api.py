@@ -40,9 +40,13 @@ def _request(method: str, project: ProjectMeta, path: str, params: Optional[Dict
     except requests.exceptions.HTTPError:
         if resp.status_code >= 400:
             msg = f'HTTP {resp.status_code} returned from {method} /rest/api/2/{path}'
-            if 'application/json' in resp.headers.get('Content-Type', ''):
-                raise JiraApiError(msg, inner_message=str(resp.json().get('errorMessages')))
-            raise JiraApiError(msg)
+
+            inner_message = None
+            try:
+                inner_message = resp.json().get('errorMessages')
+            except json.decoder.JSONDecodeError:
+                pass
+            raise JiraApiError(msg, inner_message=inner_message)
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
         raise JiraUnavailable(e)
