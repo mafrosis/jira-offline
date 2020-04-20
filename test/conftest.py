@@ -12,8 +12,14 @@ from jira_cli.main import Jira
 from jira_cli.models import AppConfig, CustomFields, IssueType, ProjectMeta
 
 
+@pytest.fixture(params=['customfield_10100', ''])
+def customfield_estimate(request):
+    '''Parameterized fixture to feed the project fixture below'''
+    return request.param
+
+
 @pytest.fixture
-def project():
+def project(customfield_estimate):
     '''
     Fixture representing a configured Jira project
     '''
@@ -21,7 +27,7 @@ def project():
         key='TEST',
         username='test',
         password='dummy',
-        custom_fields=CustomFields(epic_ref='1', epic_name='2', estimate='3'),
+        custom_fields=CustomFields(epic_ref='1', epic_name='2', estimate=customfield_estimate),
         issuetypes={
             'Story': IssueType(name='Story', priorities=['High', 'Low']),
         },
