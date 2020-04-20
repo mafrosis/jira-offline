@@ -30,7 +30,7 @@ def test_issue_to_jiraapi_update__fields_are_formatted_correctly(mock_jira, proj
     Ensure issue_to_jiraapi_update formats some fields correctly
     '''
     issue_dict = issue_to_jiraapi_update(project, Issue.deserialize(ISSUE_1), modified)
-    assert 'name' in issue_dict[modified.pop()]
+    assert 'name' in issue_dict[next(iter(modified))]
 
 
 def test_issue_to_jiraapi_update__all_fields_are_returned_for_new_issue(mock_jira, project):
