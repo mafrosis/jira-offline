@@ -215,6 +215,24 @@ class Jira(collections.abc.MutableMapping):
         return None
 
 
+    def fetch_issue(self, project: ProjectMeta, issue: Issue) -> Optional[Issue]:  # pylint: disable=no-self-use
+        '''
+        Return a single Issue object from the Jira API by key
+
+        Params:
+            project:  Properties of the project pushing issues to
+            issue:    Issue to lookup on Jira API
+        Returns:
+            Issue dataclass instance
+        '''
+        # new issues return False for exists
+        if not issue.exists:
+            return None
+
+        data = api_get(project, f'issue/{issue.key}')
+        return jiraapi_object_to_issue(project, data)
+
+
     def invalidate_df(self):
         '''Invalidate internal dataframe, so it's recreated on next access'''
         self._df = None

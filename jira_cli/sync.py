@@ -555,7 +555,7 @@ def push_issues(jira: 'Jira', verbose: bool=False):
             project = jira.config.projects.get(local_issue.project_id)
 
             # retrieve the upstream issue
-            remote_issue = _fetch_single_issue(project, local_issue)
+            remote_issue = jira.fetch_issue(project, local_issue)
 
             # resolve any conflicts with upstream
             update_object: IssueUpdate = check_resolve_conflicts(local_issue, remote_issue)
@@ -610,21 +610,3 @@ def push_issues(jira: 'Jira', verbose: bool=False):
         push_result_log_level = logging.INFO
 
     logger.log(push_result_log_level, 'Pushed %s of %s issues', total, len(issues_to_push))
-
-
-def _fetch_single_issue(project: ProjectMeta, issue: Issue) -> Optional[Issue]:
-    '''
-    Return a single Issue object from the Jira API by key
-
-    Params:
-        project:  Properties of the project pushing issues to
-        issue:    Local Issue to lookup on Jira API
-    Returns:
-        Issue dataclass instance
-    '''
-    # new issues return False for exists
-    if not issue.exists:
-        return None
-
-    data = api_get(project, 'issue/{issue.key}')
-    return jiraapi_object_to_issue(project, data)

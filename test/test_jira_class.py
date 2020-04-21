@@ -305,3 +305,30 @@ def test_jira__new_issue__removes_temp_key_when_new_post_successful(
     assert ISSUE_NEW['key'] not in mock_jira_core
     # assert new key returned from Jira API has been added (found in return from jiraapi_object_to_issue)
     assert ISSUE_1['key'] in mock_jira_core
+
+
+@mock.patch('jira_cli.main.jiraapi_object_to_issue')
+@mock.patch('jira_cli.main.api_get')
+def test_fetch_issue__returns_output_from_jiraapi_object_to_issue(
+        mock_api_get, mock_jiraapi_object_to_issue, mock_jira_core, project
+    ):
+    '''
+    Ensure jira.fetch_issue() returns the output directly from jiraapi_object_to_issue()
+    '''
+    mock_jiraapi_object_to_issue.return_value = 1
+
+    ret = mock_jira_core.fetch_issue(project, Issue.deserialize(ISSUE_1))
+    assert ret == 1
+
+    assert mock_jiraapi_object_to_issue.called
+
+
+@mock.patch('jira_cli.main.jiraapi_object_to_issue')
+def test_fetch_issue__returns_none_when_issue_is_new(mock_jiraapi_object_to_issue, mock_jira_core, project):
+    '''
+    Ensure jira.fetch_issue() returns None when the passed Issue is new
+    '''
+    ret = mock_jira_core.fetch_issue(project, Issue.deserialize(ISSUE_NEW))
+    assert ret is None
+
+    assert not mock_jiraapi_object_to_issue.called
