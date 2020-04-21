@@ -28,7 +28,7 @@ setup(
     package_dir={'': '.'},
     include_package_data=True,
     install_requires=REQUIRES,
-    license=open('LICENSE').read(),
+    license='MIT License',
     entry_points={
         'console_scripts': [
             'jira=jira_cli.entrypoint:cli'
@@ -40,7 +40,7 @@ setup(
         'Intended Audience :: Developers',
         'Intended Audience :: System Administrators',
         'Natural Language :: English',
-        'License :: OSI Approved :: BSD License',
+        'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3.7',
     ),
