@@ -18,3 +18,7 @@ jira_data/
 
 # mypy type linting
 .mypy_cache
+
+# distutils
+build
+dist

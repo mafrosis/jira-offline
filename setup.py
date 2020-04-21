@@ -1,15 +1,8 @@
 #! /usr/bin/env python
 
-import os
-import sys
-
 from setuptools import setup, find_packages
 
 import jira_cli
-
-if sys.argv[-1] == 'publish':
-    os.system('python setup.py sdist upload')
-    sys.exit()
 
 REQUIRES = [
     open('requirements.txt').read()
@@ -19,6 +12,7 @@ setup(
     name='jira-offline',
     version=jira_cli.__version__,
     description='CLI for using Jira offline',
+    long_description_content_type='text/markdown',
     long_description=open('README.md').read(),
     author='Matt Black',
     author_email='dev@mafro.net',
@@ -42,6 +36,8 @@ setup(
         'Natural Language :: English',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
+        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
     ),
 )
