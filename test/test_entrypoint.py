@@ -66,7 +66,7 @@ def test_cli_smoketest(mock_authenticate, mock_push_issues, mock_pull_issues,
     Dumb smoke test function to check for errors in application CLI
     Failures here often uncover untested parts of the codebase
 
-    This function tests when the jiracli issue cache has a single issue
+    This function tests when the jira-offline issue cache has a single issue
     '''
     # set function-local instance of Jira class to our test mock
     mock_jira_local.return_value = mock_jira
@@ -94,7 +94,7 @@ def test_cli_smoketest_empty(mock_authenticate, mock_push_issues, mock_pull_issu
     Dumb smoke test function to check for errors in application CLI
     Failures here often uncover untested parts of the codebase
 
-    This function tests when the jiracli issue cache is empty
+    This function tests when the jira-offline issue cache is empty
     '''
     # set function-local instance of Jira class to our test mock
     mock_jira_local.return_value = mock_jira

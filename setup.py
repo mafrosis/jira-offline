@@ -16,13 +16,13 @@ REQUIRES = [
 ]
 
 setup(
-    name='jira_cli',
+    name='jira-offline',
     version=jira_cli.__version__,
-    description='Jira CLI automation tool',
+    description='CLI for using Jira offline',
     long_description=open('README.md').read(),
     author='Matt Black',
     author_email='dev@mafro.net',
-    url='http://github.com/mafrosis/jiracli',
+    url='http://github.com/mafrosis/jira-offline',
     packages=find_packages(exclude=['test']),
     package_data={'': ['LICENSE']},
     package_dir={'': '.'},
@@ -31,7 +31,7 @@ setup(
     license=open('LICENSE').read(),
     entry_points={
         'console_scripts': [
-            'jiracli=jira_cli.entrypoint:cli'
+            'jira=jira_cli.entrypoint:cli'
         ]
     },
     classifiers=(

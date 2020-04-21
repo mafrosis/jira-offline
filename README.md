@@ -18,19 +18,19 @@ A few options exist:
 
 Using the docker image published on Github, the following will get you going very quickly:
 
-    docker pull docker.pkg.github.com/mafrosis/jiracli/jiracli:dev
-    docker run --rm -it docker.pkg.github.com/mafrosis/jiracli/jiracli:dev
+    docker pull docker.pkg.github.com/mafrosis/jira-offline/jira-offline:dev
+    docker run --rm -it docker.pkg.github.com/mafrosis/jira-offline/jira-offline:dev
 
 ### Install with pip
 
-    pip install git+https://github.com/mafrosis/jiracli.git@master
+    pip install git+https://github.com/mafrosis/jira-offline.git@master
 
 ### Clone and use compose
 
-    git clone https://github.com/mafrosis/jiracli.git
-    cd jiracli
-    docker-compose build jiracli
-    docker-compose run --rm jiracli
+    git clone https://github.com/mafrosis/jira-offline.git
+    cd jira-offline
+    docker-compose build jira-offline
+    docker-compose run --rm jira-offline
 
 
 Known Limitations
@@ -49,7 +49,7 @@ Known Limitations
 Quick Start
 -----------
 
-**NB**: The following examples assume `jiracli` is available in `$PATH`
+**NB**: The following examples assume `jira` is available in `$PATH`
 
 ### Clone
 
@@ -65,7 +65,7 @@ There are two auth options, basic and oAuth.
 Basic auth is quick and takes your existing username and password. Beware that this will *write your
 password into the config file on disk*.
 
-    jiracli clone --username benji https://jira.atlassian.com/PROJ
+    jira clone --username benji https://jira.atlassian.com/PROJ
 
 You will be prompted for your password.
 
@@ -74,19 +74,19 @@ You will be prompted for your password.
 oAuth is preferred, as it's token based and doesn't require your password. However it requires the
 setup of an `Application Link` on the Jira server.
 
-    jiracli clone --oauth-private-key=applink.pem https://jira.atlassian.com/PROJ
+    jira clone --oauth-private-key=applink.pem https://jira.atlassian.com/PROJ
 
 
 How To Use
 ----------
 
-**NB**: The following examples assume `jiracli` is available in `$PATH`
+**NB**: The following examples assume `jira` is available in `$PATH`
 
 ### How to configure a new Jira project
 
 Use `clone` to add a project:
 
-    jiracli clone https://jira.atlassian.com/PROJ
+    jira clone https://jira.atlassian.com/PROJ
 
 
 Extending This Tool

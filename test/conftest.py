@@ -169,13 +169,13 @@ def run_in_docker(request):
     def wrapped(project_key: str, cmd: str):
         try:
             stdout = client.containers.run(
-                'mafrosis/jiracli',
+                'mafrosis/jira-offline',
                 command=cmd,
                 remove=True,
                 stderr=True,
                 mounts=[
                     docker.types.Mount(type='bind', source=f'{cwd}/jira_cli', target='/app/jira_cli', read_only=True),
-                    docker.types.Mount(type='bind', source=tmpdir.name, target='/root/.config/jiracli'),
+                    docker.types.Mount(type='bind', source=tmpdir.name, target='/root/.config/jira-offline'),
                 ],
             )
             # containers.run returns bytes, so encode, print and return

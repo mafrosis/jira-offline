@@ -1,17 +1,17 @@
 version: '3'
 
 services:
-  jiracli:
-    image: mafrosis/jiracli
+  jira-offline:
+    image: mafrosis/jira-offline
     build:
       context: .
     volumes:
       - ./jira_cli:/app/jira_cli
       - ./test:/app/test
-      - ./config:/root/.config/jiracli
+      - ./config:/root/.config/jira-offline
 
   test:
-    image: mafrosis/jiracli-test
+    image: mafrosis/jira-offline-test
     build:
       context: .
       dockerfile: Dockerfile.test

@@ -13,4 +13,4 @@ ADD README.md LICENSE MANIFEST.in setup.py /app/
 ADD jira_cli /app/jira_cli
 RUN pip install -e .
 
-ENTRYPOINT ["jiracli"]
+ENTRYPOINT ["jira"]

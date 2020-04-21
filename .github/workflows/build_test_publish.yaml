@@ -17,7 +17,7 @@ jobs:
 
     - name: Build for python ${{ matrix.python-version }}
       run: |
-        docker-compose build --build-arg PYTHON_VERSION=${{ matrix.python-version }} jiracli
+        docker-compose build --build-arg PYTHON_VERSION=${{ matrix.python-version }} jira-offline
         docker-compose build test
 
     - name: Extra build step for python 3.6 (include dataclasses & typing from pypi)
@@ -25,10 +25,10 @@ jobs:
       run: |
         # Build an updated Docker image including dataclasses lib
         tee Dockerfile.36 > /dev/null <<EOF
-        FROM mafrosis/jiracli-test
+        FROM mafrosis/jira-offline-test
         RUN pip install dataclasses typing
         EOF
-        docker build -f Dockerfile.36 -t mafrosis/jiracli-test .
+        docker build -f Dockerfile.36 -t mafrosis/jira-offline-test .
 
     - name: Lint with pylint
       run: |
@@ -46,7 +46,7 @@ jobs:
       if: matrix.python-version == 3.7 && github.ref == 'refs/heads/master'
       run: |
         echo "$GITHUB_TOKEN" | docker login -u mafrosis --password-stdin docker.pkg.github.com
-        docker tag mafrosis/jiracli docker.pkg.github.com/mafrosis/jiracli/jiracli:dev
-        docker push docker.pkg.github.com/mafrosis/jiracli/jiracli:dev
+        docker tag mafrosis/jira-offline docker.pkg.github.com/mafrosis/jira-offline/jira-offline:dev
+        docker push docker.pkg.github.com/mafrosis/jira-offline/jira-offline:dev
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

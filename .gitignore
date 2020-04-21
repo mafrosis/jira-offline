@@ -3,7 +3,7 @@
 __pycache__
 .coverage
 
-# jiracli config and issues cache file
+# config and issues cache file
 config/
 
 # pycov report
