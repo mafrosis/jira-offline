@@ -1,6 +1,13 @@
 Git-like CLI for using Jira offline
 =================
 
+
+[![Github build status](https://img.shields.io/github/workflow/status/mafrosis/jira-offline/Build-Test-Publish)](https://github.com/mafrosis/jira-offline/actions?query=workflow%3ABuild-Test-Publish)
+[![PyPI version](https://img.shields.io/pypi/v/jira-offline.svg)](https://pypi.python.org/pypi/jira-offline/)
+[![PyPI status](https://img.shields.io/pypi/status/jira-offline.svg)](https://pypi.python.org/pypi/jira-offline/)
+[![PyPI pyversions](https://img.shields.io/pypi/pyversions/jira-offline.svg)](https://pypi.python.org/pypi/jira-offline/)
+[![PyPI license](https://img.shields.io/pypi/l/jira-offline.svg)](https://pypi.python.org/pypi/jira-offline/)
+
 Work offline and sync your changes back to Jira later. Create issues, modify issues, view stats,
 run Jira health queries.. All from a friendly git-like CLI.
 
