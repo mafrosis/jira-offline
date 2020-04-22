@@ -158,8 +158,11 @@ class Jira(collections.abc.MutableMapping):
             # Jira doesn't know project_id, it's created by this application; remove it
             del fields['project_id']
 
-            # create new issue in Jira and update self
+            # create new issue in Jira
             data = api_post(project, 'issue', data={'fields': fields})
+
+            # retrieve the freshly minted Jira issue
+            new_issue: Issue = self.fetch_issue(project, data['key'])
 
         except JiraApiError as e:
             err: str = 'Failed creating new {} "{}" with error "{}"'.format(
@@ -174,8 +177,7 @@ class Jira(collections.abc.MutableMapping):
             if 'cannot be set. It is not on the appropriate screen, or unknown.' in e.inner_message:
                 raise JiraNotConfigured(project.key, project.jira_server, err)
 
-        # transform the API response and add to self
-        new_issue: Issue = jiraapi_object_to_issue(project, data)
+        # add to self under the new key
         self[new_issue.key] = new_issue  # pylint: disable=no-member
 
         if new_issue.issuetype == 'Epic':  # pylint: disable=no-member
@@ -213,6 +215,20 @@ class Jira(collections.abc.MutableMapping):
             logger.error('Failed updating %s with error "%s"', issue.key, e)
 
         return None
+
+
+    def fetch_issue(self, project: ProjectMeta, key: str) -> Issue:  # pylint: disable=no-self-use
+        '''
+        Return a single Issue object from the Jira API by key
+
+        Params:
+            project:  Properties of the project pushing issues to
+            key:      Issue key to lookup on Jira API
+        Returns:
+            Issue dataclass instance
+        '''
+        data = api_get(project, f'issue/{key}')
+        return jiraapi_object_to_issue(project, data)
 
 
     def invalidate_df(self):

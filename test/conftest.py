@@ -55,6 +55,7 @@ def mock_jira(mock_jira_core):
     mock_jira_core.write_issues = mock.Mock()
     mock_jira_core.update_issue = mock.Mock()
     mock_jira_core.new_issue = mock.Mock()
+    mock_jira_core.fetch_issue = mock.Mock()
     mock_jira_core.get_project_meta = mock.Mock()
     return mock_jira_core
 
