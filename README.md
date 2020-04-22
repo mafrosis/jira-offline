@@ -36,14 +36,21 @@ Using the docker image published on Github, the following will get you going ver
 Known Limitations
 -----------------
 
-* You can't change the state of an issue (eg. In Progress -> Done) (#21).
-* You can't change an issue's type from (for example) Bug -> Story (#20).
-* There are mandatory fields required on Jira project screens (#16). 
+See the [Github Issues](https://github.com/mafrosis/jira-offline/issues) for a comprehensive list.
+
+* You can't change the state of an issue (eg. In Progress -> Done)
+([GH21](https://github.com/mafrosis/jira-offline/issues/21)).
+* You can't change an issue's type from (for example) Bug -> Story
+([GH20](https://github.com/mafrosis/jira-offline/issues/20)).
+* There are mandatory fields required on Jira project screens
+([GH16](https://github.com/mafrosis/jira-offline/issues/16)).
 * It's slow. Reading and writing all data to a single JSONL file is inefficient, and the use of the
-  Pandas library is making the CLI slow (#13).
+  Pandas library is making the CLI slow
+([GH13](https://github.com/mafrosis/jira-offline/issues/13)).
 * No support for the same project key from two different Jiras (an edge-case at this stage).
 * There's a known race condition where a Jira project's issuetypes and priority values can be changed
-  whilst working offline. This could mean that broken issues are created offline (#22).
+  whilst working offline. This could mean that broken issues are created offline
+([GH22](https://github.com/mafrosis/jira-offline/issues/22)).
 
 
 Quick Start
