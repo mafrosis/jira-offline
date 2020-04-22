@@ -7,8 +7,8 @@ from typing import Any, Dict, Optional
 
 import requests
 
-from jira_cli.exceptions import JiraApiError, JiraUnavailable
-from jira_cli.models import ProjectMeta
+from jira_offline.exceptions import JiraApiError, JiraUnavailable
+from jira_offline.models import ProjectMeta
 
 
 logger = logging.getLogger('jira')

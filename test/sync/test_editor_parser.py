@@ -1,6 +1,6 @@
 from fixtures import ISSUE_1
-from jira_cli.models import Issue, IssueStatus
-from jira_cli.sync import IssueUpdate, parse_editor_result
+from jira_offline.models import Issue, IssueStatus
+from jira_offline.sync import IssueUpdate, parse_editor_result
 
 
 def test_parse_editor_result__handles_str_type():

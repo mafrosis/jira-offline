@@ -4,9 +4,9 @@ from typing import Optional
 
 import click
 
-from jira_cli import __title__
-from jira_cli.exceptions import UnreadableConfig
-from jira_cli.models import AppConfig
+from jira_offline import __title__
+from jira_offline.exceptions import UnreadableConfig
+from jira_offline.models import AppConfig
 
 
 def load_config():

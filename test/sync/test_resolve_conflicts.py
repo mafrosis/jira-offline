@@ -3,13 +3,13 @@ from unittest import mock
 import pytest
 
 from fixtures import ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF, ISSUE_1_WITH_FIXVERSIONS_DIFF
-from jira_cli.models import Issue
-from jira_cli.sync import (check_resolve_conflicts, ConflictResolutionFailed,
-                           IssueUpdate, manual_conflict_resolution)
+from jira_offline.models import Issue
+from jira_offline.sync import (check_resolve_conflicts, ConflictResolutionFailed,
+                               IssueUpdate, manual_conflict_resolution)
 
 
-@mock.patch('jira_cli.sync.manual_conflict_resolution')
-@mock.patch('jira_cli.sync._build_update')
+@mock.patch('jira_offline.sync.manual_conflict_resolution')
+@mock.patch('jira_offline.sync._build_update')
 def test_check_resolve_conflicts__doesnt_call_conflict_resolution_on_NO_conflict(mock_build_update, mock_manual_conflict_resolution):
     '''
     Ensure that check_resolve_conflicts does NOT call manual_conflict_resolution when no conflicts found
@@ -39,8 +39,8 @@ def test_check_resolve_conflicts__resolved_issue_has_diff_to_original():
     assert update_obj.merged_issue.diff_to_original != []
 
 
-@mock.patch('jira_cli.sync.manual_conflict_resolution')
-@mock.patch('jira_cli.sync._build_update')
+@mock.patch('jira_offline.sync.manual_conflict_resolution')
+@mock.patch('jira_offline.sync._build_update')
 def test_check_resolve_conflicts__returns_result_of_manual_conflict_resolution(mock_build_update, mock_manual_conflict_resolution):
     '''
     Ensure that result of manual_conflict_resolution is returned
@@ -69,8 +69,8 @@ def test_check_resolve_conflicts__returns_result_of_manual_conflict_resolution(m
     assert update_obj.merged_issue == updated_issue
 
 
-@mock.patch('jira_cli.sync.click')
-@mock.patch('jira_cli.sync.parse_editor_result')
+@mock.patch('jira_offline.sync.click')
+@mock.patch('jira_offline.sync.parse_editor_result')
 def test_manual_conflict_resolution__retries_three_times_on_none_return(mock_parse_editor_result, mock_click):
     '''
     A return of None from click.edit() should result in three retries
@@ -93,8 +93,8 @@ def test_manual_conflict_resolution__retries_three_times_on_none_return(mock_par
     assert not mock_parse_editor_result.called
 
 
-@mock.patch('jira_cli.sync.click')
-@mock.patch('jira_cli.sync.parse_editor_result')
+@mock.patch('jira_offline.sync.click')
+@mock.patch('jira_offline.sync.parse_editor_result')
 def test_manual_conflict_resolution__retries_three_times_on_blank_return(mock_parse_editor_result, mock_click):
     '''
     A return of blank from click.edit() should result in three retries
@@ -117,8 +117,8 @@ def test_manual_conflict_resolution__retries_three_times_on_blank_return(mock_pa
     assert not mock_parse_editor_result.called
 
 
-@mock.patch('jira_cli.sync.click')
-@mock.patch('jira_cli.sync.parse_editor_result')
+@mock.patch('jira_offline.sync.click')
+@mock.patch('jira_offline.sync.parse_editor_result')
 def test_manual_conflict_resolution__handles_three_error_strings_in_editor_return(mock_parse_editor_result, mock_click):
     '''
     There are three strings which indicate failure in a conflict resolution string edit
@@ -142,8 +142,8 @@ def test_manual_conflict_resolution__handles_three_error_strings_in_editor_retur
     assert not mock_parse_editor_result.called
 
 
-@mock.patch('jira_cli.sync.click')
-@mock.patch('jira_cli.sync.parse_editor_result')
+@mock.patch('jira_offline.sync.click')
+@mock.patch('jira_offline.sync.parse_editor_result')
 def test_manual_conflict_resolution__contrived_success_case(mock_parse_editor_result, mock_click):
     '''
     If click.edit() returns a non-error, manual_conflict_resolution() should return the same Issue

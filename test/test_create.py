@@ -3,10 +3,10 @@ import copy
 import pytest
 
 from fixtures import EPIC_1, ISSUE_1
-from jira_cli.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce, InvalidIssueType,
-                                 SummaryAlreadyExists)
-from jira_cli.create import create_issue, find_epic_by_reference
-from jira_cli.models import Issue, IssueStatus
+from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce, InvalidIssueType,
+                                     SummaryAlreadyExists)
+from jira_offline.create import create_issue, find_epic_by_reference
+from jira_offline.models import Issue, IssueStatus
 
 
 def test_create__create_issue__loads_issues_when_cache_empty(mock_jira, project):

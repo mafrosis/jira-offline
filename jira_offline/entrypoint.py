@@ -12,14 +12,14 @@ import click
 import pandas as pd
 from tabulate import tabulate
 
-from jira_cli.auth import authenticate
-from jira_cli.create import create_issue, find_epic_by_reference, set_field_on_issue
-from jira_cli.exceptions import CliError, FailedPullingProjectMeta, JiraApiError, ProjectNotConfigured
-from jira_cli.linters import fixversions as lint_fixversions
-from jira_cli.linters import issues_missing_epic as lint_issues_missing_epic
-from jira_cli.main import Jira
-from jira_cli.models import ProjectMeta
-from jira_cli.sync import pull_issues, pull_single_project, push_issues
+from jira_offline.auth import authenticate
+from jira_offline.create import create_issue, find_epic_by_reference, set_field_on_issue
+from jira_offline.exceptions import CliError, FailedPullingProjectMeta, JiraApiError, ProjectNotConfigured
+from jira_offline.linters import fixversions as lint_fixversions
+from jira_offline.linters import issues_missing_epic as lint_issues_missing_epic
+from jira_offline.main import Jira
+from jira_offline.models import ProjectMeta
+from jira_offline.sync import pull_issues, pull_single_project, push_issues
 
 
 logger = logging.getLogger('jira')

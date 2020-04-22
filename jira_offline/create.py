@@ -5,11 +5,11 @@ import logging
 from typing import Optional, TYPE_CHECKING
 import uuid
 
-from jira_cli.exceptions import (DeserializeError, EpicNotFound, EpicSearchStrUsedMoreThanOnce,
-                                 InvalidIssueType, SummaryAlreadyExists)
-from jira_cli.models import Issue, IssueStatus, ProjectMeta
-from jira_cli.utils import get_field_by_name
-from jira_cli.utils.serializer import deserialize_value
+from jira_offline.exceptions import (DeserializeError, EpicNotFound, EpicSearchStrUsedMoreThanOnce,
+                                     InvalidIssueType, SummaryAlreadyExists)
+from jira_offline.models import Issue, IssueStatus, ProjectMeta
+from jira_offline.utils import get_field_by_name
+from jira_offline.utils.serializer import deserialize_value
 
 if TYPE_CHECKING:
     import Jira

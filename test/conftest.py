@@ -8,8 +8,8 @@ import requests
 import docker
 import pytest
 
-from jira_cli.main import Jira
-from jira_cli.models import AppConfig, CustomFields, IssueType, ProjectMeta
+from jira_offline.main import Jira
+from jira_offline.models import AppConfig, CustomFields, IssueType, ProjectMeta
 
 
 @pytest.fixture(params=['customfield_10100', ''])
@@ -35,7 +35,7 @@ def project(customfield_estimate):
 
 
 @pytest.fixture
-@mock.patch('jira_cli.main.load_config')
+@mock.patch('jira_offline.main.load_config')
 def mock_jira_core(mock_load_config, project):
     '''
     Return a Jira class instance with connect method and underlying Jira lib mocked
@@ -174,7 +174,7 @@ def run_in_docker(request):
                 remove=True,
                 stderr=True,
                 mounts=[
-                    docker.types.Mount(type='bind', source=f'{cwd}/jira_cli', target='/app/jira_cli', read_only=True),
+                    docker.types.Mount(type='bind', source=f'{cwd}/jira_offline', target='/app/jira_offline', read_only=True),
                     docker.types.Mount(type='bind', source=tmpdir.name, target='/root/.config/jira-offline'),
                 ],
             )

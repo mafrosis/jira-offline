@@ -8,7 +8,7 @@ import uuid
 import arrow
 import typing_inspect
 
-from jira_cli.exceptions import DeserializeError
+from jira_offline.exceptions import DeserializeError
 
 
 def get_type_class(type_):

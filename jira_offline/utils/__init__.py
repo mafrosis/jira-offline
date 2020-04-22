@@ -10,7 +10,7 @@ def get_field_by_name(field_name):
     Retrieve a field from the Issue dataclass by name
     '''
     # late import prevents circular dependency
-    from jira_cli.models import Issue  # pylint: disable=import-outside-toplevel,cyclic-import
+    from jira_offline.models import Issue  # pylint: disable=import-outside-toplevel,cyclic-import
     for f in dataclasses.fields(Issue):
         if f.metadata.get('property') == field_name or f.name == field_name:
             return f

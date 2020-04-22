@@ -1,12 +1,12 @@
 from unittest import mock
 
 from fixtures import ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF, ISSUE_1_WITH_FIXVERSIONS_DIFF, ISSUE_NEW
-from jira_cli.models import Issue
-from jira_cli.sync import IssueUpdate, push_issues
+from jira_offline.models import Issue
+from jira_offline.sync import IssueUpdate, push_issues
 
 
-@mock.patch('jira_cli.sync.check_resolve_conflicts')
-@mock.patch('jira_cli.sync.issue_to_jiraapi_update')
+@mock.patch('jira_offline.sync.check_resolve_conflicts')
+@mock.patch('jira_offline.sync.issue_to_jiraapi_update')
 def test_push_issues__calls_fetch_and_check_resolve_once_per_issue(
         mock_issue_to_jiraapi_update, mock_check_resolve_conflicts, mock_jira
     ):
@@ -26,8 +26,8 @@ def test_push_issues__calls_fetch_and_check_resolve_once_per_issue(
     assert mock_issue_to_jiraapi_update.call_count == 2
 
 
-@mock.patch('jira_cli.sync.check_resolve_conflicts')
-@mock.patch('jira_cli.sync.issue_to_jiraapi_update')
+@mock.patch('jira_offline.sync.check_resolve_conflicts')
+@mock.patch('jira_offline.sync.issue_to_jiraapi_update')
 def test_push_issues__calls_update_issue_when_issue_has_an_id(
         mock_issue_to_jiraapi_update, mock_check_resolve_conflicts, mock_jira
     ):
@@ -46,8 +46,8 @@ def test_push_issues__calls_update_issue_when_issue_has_an_id(
     assert not mock_jira.new_issue.called
 
 
-@mock.patch('jira_cli.sync.check_resolve_conflicts')
-@mock.patch('jira_cli.sync.issue_to_jiraapi_update')
+@mock.patch('jira_offline.sync.check_resolve_conflicts')
+@mock.patch('jira_offline.sync.issue_to_jiraapi_update')
 def test_push_issues__calls_new_issue_when_issue_doesnt_have_an_id(
         mock_issue_to_jiraapi_update, mock_check_resolve_conflicts, mock_jira
     ):
@@ -66,8 +66,8 @@ def test_push_issues__calls_new_issue_when_issue_doesnt_have_an_id(
     assert mock_jira.new_issue.called
 
 
-@mock.patch('jira_cli.sync.check_resolve_conflicts')
-@mock.patch('jira_cli.sync.issue_to_jiraapi_update')
+@mock.patch('jira_offline.sync.check_resolve_conflicts')
+@mock.patch('jira_offline.sync.issue_to_jiraapi_update')
 def test_push_issues__skips_issues_from_unconfigured_projects(
         mock_issue_to_jiraapi_update, mock_check_resolve_conflicts, mock_jira
     ):

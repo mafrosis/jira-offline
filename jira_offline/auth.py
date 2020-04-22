@@ -11,10 +11,10 @@ import requests
 import requests_oauthlib
 from requests_oauthlib.oauth1_session import TokenRequestDenied
 
-from jira_cli import __title__
-from jira_cli.exceptions import FailedAuthError, JiraApiError, JiraUnavailable, NoAuthenticationMethod
-from jira_cli.models import ProjectMeta, OAuth
-from jira_cli.utils.api import head as api_head
+from jira_offline import __title__
+from jira_offline.exceptions import FailedAuthError, JiraApiError, JiraUnavailable, NoAuthenticationMethod
+from jira_offline.models import ProjectMeta, OAuth
+from jira_offline.utils.api import head as api_head
 
 
 def authenticate(project: ProjectMeta, username: Optional[str]=None, password: Optional[str]=None,

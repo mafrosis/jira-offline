@@ -2,7 +2,7 @@
 
 from setuptools import setup, find_packages
 
-import jira_cli
+import jira_offline
 
 REQUIRES = [
     open('requirements.txt').read()
@@ -10,7 +10,7 @@ REQUIRES = [
 
 setup(
     name='jira-offline',
-    version=jira_cli.__version__,
+    version=jira_offline.__version__,
     description='CLI for using Jira offline',
     long_description_content_type='text/markdown',
     long_description=open('README.md').read(),
@@ -25,7 +25,7 @@ setup(
     license='MIT License',
     entry_points={
         'console_scripts': [
-            'jira=jira_cli.entrypoint:cli'
+            'jira=jira_offline.entrypoint:cli'
         ]
     },
     classifiers=(
