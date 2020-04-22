@@ -89,14 +89,20 @@ Use `clone` to add a project:
     jira clone https://jira.atlassian.com/PROJ
 
 
-Extending This Tool
--------------------
+Comparison to other Jira CLIs
+-----------------------------
 
-### Adding a new field from Jira
+None of the existing clients use the "offline" approach taken by this tool:
 
-It's very easy to include a new field from Jira. Two steps are required:
-
-  1. Include the field in the Issue model in [models.py](./jira_cli/models.py)
-  2. Include the field in the `jiraapi_object_to_issue` method in [sync.py](./jira_cli/sync.py)
-  3. Include the field in the `issue_to_jiraapi_update` method in [sync.py](./jira_cli/sync.py), if
-     it can be written back to Jira
+- [`danshumaker/jira-cli`](https://github.com/danshumaker/jira-cli) -
+A full featured node.js CLI. This might be a better option if `jira-offline` lacks features you need.
+- [`keepcosmos/terjira`](https://github.com/keepcosmos/terjira) -
+Feature-rich Ruby CLI with a neat interactive query function.
+- [`mikepea/go-jira-ui`](https://github.com/mikepea/go-jira-ui) -
+A neat ncurses client focussed on listing issues and making simple changes.
+- [`foxythemes/jira-cli`](https://github.com/foxythemes/jira-cli) -
+A handsome node.js REPL-style interactive CLI. A very different approach from `jira-offline`.
+- [`toabctl/jiracli`](https://github.com/toabctl/jiracli) -
+A simple CLI for Jira. Not actively maintained.
+- [`alisaifee/jira-cli`](https://github.com/alisaifee/jira-cli) -
+Another unmaintained and poorly-documented CLI.
