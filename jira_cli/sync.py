@@ -555,7 +555,9 @@ def push_issues(jira: 'Jira', verbose: bool=False):
             project = jira.config.projects.get(local_issue.project_id)
 
             # retrieve the upstream issue
-            remote_issue = jira.fetch_issue(project, local_issue)
+            remote_issue: Optional[Issue] = None
+            if local_issue.exists:
+                remote_issue = jira.fetch_issue(project, local_issue.key)
 
             # resolve any conflicts with upstream
             update_object: IssueUpdate = check_resolve_conflicts(local_issue, remote_issue)

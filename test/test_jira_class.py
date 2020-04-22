@@ -235,6 +235,9 @@ def test_jira__new_issue__removes_fields_which_cannot_be_posted_for_new_issue(
     # add new issue to the jira object
     mock_jira_core[ISSUE_NEW['key']] = Issue.deserialize(ISSUE_NEW)
 
+    # mock the fetch_issue() call that happens after successful new_issue() call
+    mock_jira_core.fetch_issue = mock.Mock()
+
     mock_jira_core.new_issue(
         project,
         fields={
@@ -276,10 +279,9 @@ def test_jira__new_issue__raises_specific_exceptions(mock_api_post, mock_jira_co
         )
 
 
-@mock.patch('jira_cli.main.jiraapi_object_to_issue', return_value=Issue.deserialize(ISSUE_1))
 @mock.patch('jira_cli.main.api_post')
 def test_jira__new_issue__removes_temp_key_when_new_post_successful(
-        mock_api_post, mock_jiraapi_object_to_issue, mock_jira_core, project
+        mock_api_post, mock_jira_core, project
     ):
     '''
     Ensure a successful post of a new Issue deletes the old temp UUID key from self
@@ -287,8 +289,11 @@ def test_jira__new_issue__removes_temp_key_when_new_post_successful(
     # dont write to disk during tests
     mock_jira_core.write_issues = mock.Mock()
 
-    # add new issue to the jira object
+    # add new issue to the jira object, under temporary key
     mock_jira_core[ISSUE_NEW['key']] = Issue.deserialize(ISSUE_NEW)
+
+    # mock the fetch_issue() call that happens after successful new_issue() call
+    mock_jira_core.fetch_issue = mock.Mock(return_value=Issue.deserialize(ISSUE_1))
 
     mock_jira_core.new_issue(
         project,
@@ -301,7 +306,7 @@ def test_jira__new_issue__removes_temp_key_when_new_post_successful(
         }
     )
 
-    # assert old local-only UUID temp key has been removed
+    # assert temporary key has been removed
     assert ISSUE_NEW['key'] not in mock_jira_core
     # assert new key returned from Jira API has been added (found in return from jiraapi_object_to_issue)
     assert ISSUE_1['key'] in mock_jira_core
@@ -317,18 +322,8 @@ def test_fetch_issue__returns_output_from_jiraapi_object_to_issue(
     '''
     mock_jiraapi_object_to_issue.return_value = 1
 
-    ret = mock_jira_core.fetch_issue(project, Issue.deserialize(ISSUE_1))
+    ret = mock_jira_core.fetch_issue(project, ISSUE_1['key'])
     assert ret == 1
 
+    mock_api_get.assert_called_with(project, 'issue/{}'.format(ISSUE_1['key']))
     assert mock_jiraapi_object_to_issue.called
-
-
-@mock.patch('jira_cli.main.jiraapi_object_to_issue')
-def test_fetch_issue__returns_none_when_issue_is_new(mock_jiraapi_object_to_issue, mock_jira_core, project):
-    '''
-    Ensure jira.fetch_issue() returns None when the passed Issue is new
-    '''
-    ret = mock_jira_core.fetch_issue(project, Issue.deserialize(ISSUE_NEW))
-    assert ret is None
-
-    assert not mock_jiraapi_object_to_issue.called
