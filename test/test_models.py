@@ -1,6 +1,8 @@
+from unittest import mock
+
 import pytest
 
-from jira_cli.exceptions import IssuePriorityInvalid
+from jira_cli.exceptions import IssuePriorityInvalid, UnableToCopyCustomCACert
 from jira_cli.models import Issue
 
 from fixtures import ISSUE_1
@@ -20,7 +22,7 @@ def test_issue_model__priority_property_fails_when_writing_invalid_value(project
 
 def test_issue_model__priority_property_ok_when_writing_valid_value(project):
     '''
-    Ensure that setting an Issue's priority to a value value succeeds
+    Ensure that setting an Issue's priority to a valid value succeeds
     '''
     # deserialize a fixture into an Issue object
     issue1 = Issue.deserialize(ISSUE_1, project_ref=project)
@@ -28,3 +30,30 @@ def test_issue_model__priority_property_ok_when_writing_valid_value(project):
     # set the priority to a valid value
     issue1.priority = 'High'
     assert issue1._priority == 'High'  # pylint: disable=no-member
+
+
+@mock.patch('jira_cli.models.shutil')
+@mock.patch('jira_cli.models.click')
+@mock.patch('jira_cli.models.pathlib')
+def test_project_meta_model__set_ca_cert__calls_copyfile_with_path(mock_pathlib, mock_click, mock_shutil, project):
+    '''
+    Validate shutil.copyfile is called with file path
+    '''
+    mock_click.get_app_dir.return_value = '/tmp'
+    project.set_ca_cert('/tmp/ca.pem')
+
+    mock_shutil.copyfile.assert_called_with('/tmp/ca.pem', '/tmp/99fd9182cfc4c701a8a662f6293f4136201791b4.ca_cert')
+
+
+@mock.patch('jira_cli.models.shutil')
+@mock.patch('jira_cli.models.click')
+@mock.patch('jira_cli.models.pathlib')
+def test_project_meta_model__set_ca_cert__handles_failed_copy(mock_pathlib, mock_click, mock_shutil, project):
+    '''
+    Validate shutil.copyfile is called with file path
+    '''
+    mock_click.get_app_dir.return_value = '/tmp'
+    mock_shutil.copyfile.side_effect = IOError
+
+    with pytest.raises(UnableToCopyCustomCACert):
+        project.set_ca_cert('/tmp/ca.pem')

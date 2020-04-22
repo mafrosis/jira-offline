@@ -1,3 +1,4 @@
 FROM mafrosis/jira-offline
 ADD requirements-dev.txt /app/
 RUN pip install -r requirements-dev.txt
+ENTRYPOINT ["pytest"]

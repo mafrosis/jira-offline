@@ -9,6 +9,7 @@ import json
 import hashlib
 import os
 import pathlib
+import shutil
 import textwrap
 from typing import Any, Dict, Optional, Set, Tuple
 
@@ -21,7 +22,7 @@ from requests_oauthlib import OAuth1
 from tabulate import tabulate
 
 from jira_cli import __title__
-from jira_cli.exceptions import IssuePriorityInvalid, NoAuthenticationMethod
+from jira_cli.exceptions import UnableToCopyCustomCACert, IssuePriorityInvalid, NoAuthenticationMethod
 from jira_cli.utils import classproperty, friendly_title, get_field_by_name
 from jira_cli.utils.serializer import DataclassSerializer, get_enum, get_type_class
 
@@ -76,6 +77,7 @@ class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-att
     issuetypes: Dict[str, IssueType] = field(default_factory=dict)
     custom_fields: CustomFields = field(default_factory=CustomFields)  # type: ignore
     oauth: Optional[OAuth] = field(default=None)
+    ca_cert: Optional[str] = field(default=None)
 
     @property
     def jira_server(self):
@@ -97,6 +99,22 @@ class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-att
     @property
     def id(self) -> str:
         return hashlib.sha1(self.project_uri.encode('utf8')).hexdigest()
+
+    def set_ca_cert(self, ca_cert: str):
+        '''
+        Copy supplied ca_cert file path into application config directory
+        '''
+        # ensure config path exists
+        pathlib.Path(click.get_app_dir(__title__)).mkdir(parents=True, exist_ok=True)
+
+        target_ca_cert_path = os.path.join(click.get_app_dir(__title__), f'{self.id}.ca_cert')
+
+        try:
+            shutil.copyfile(ca_cert, target_ca_cert_path)
+            self.ca_cert = target_ca_cert_path
+        except IOError as e:
+            # permission denied etc
+            raise UnableToCopyCustomCACert(str(e))
 
 
 @dataclass

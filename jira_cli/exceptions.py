@@ -151,3 +151,9 @@ class EpicSearchStrUsedMoreThanOnce(BaseAppException):
             'Unable to map to the specified epic, as two epics match "{}". Please try referencing'
             'the epic by key (eg. JIRA-123)'.format(self.message)
         )
+
+
+class UnableToCopyCustomCACert(BaseAppException):
+    '''Failure when copying a custom CA cert into application config directory'''
+    def format_message(self):
+        return f'Failed copying cert file with error:\n\n{self.message}'

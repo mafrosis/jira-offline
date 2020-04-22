@@ -4,7 +4,7 @@ all: lint typecheck test
 
 .PHONY: test
 test:
-	docker-compose run --rm --entrypoint=pytest test \
+	docker-compose run --rm test \
 		-m 'not integration' \
 		--cov=jira_cli --cov-report term --cov-report html:cov_html \
 		--disable-pytest-warnings \
@@ -12,7 +12,7 @@ test:
 
 .PHONY: integration
 integration:
-	docker-compose run --rm --entrypoint=pytest test \
+	docker-compose run --rm test \
 		-m 'integration' \
 		--hostname=locke:8666 \
 		--username=blackm \
@@ -27,7 +27,7 @@ lint:
 
 .PHONY: typecheck
 typecheck:
-	docker-compose run --rm --entrypoint=pytest test --mypy --mypy-ignore-missing-imports jira_cli/
+	docker-compose run --rm test --mypy --mypy-ignore-missing-imports jira_cli/
 
 
 .PHONY: package
