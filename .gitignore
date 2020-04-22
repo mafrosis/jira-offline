@@ -3,7 +3,7 @@
 __pycache__
 .coverage
 
-# jiracli config and issues cache file
+# config and issues cache file
 config/
 
 # pycov report
@@ -18,3 +18,7 @@ jira_data/
 
 # mypy type linting
 .mypy_cache
+
+# distutils
+build
+dist

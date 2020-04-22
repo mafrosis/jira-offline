@@ -72,7 +72,7 @@ class ProjectNotConfigured(BaseAppException):
     def format_message(self):
         return (
             'The project {key} is not currently configured! You must first load the project with '
-            'this command:\n\n  jiracli clone https://jira.atlassian.com:8080/{key}\n'.format(
+            'this command:\n\n  jira clone https://jira.atlassian.com:8080/{key}\n'.format(
                 key=self.message
             )
         )

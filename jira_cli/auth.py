@@ -110,7 +110,7 @@ def oauth_dance(project: ProjectMeta, consumer_key: str, key_cert_data: str, ver
 
     webbrowser.open_new(auth_url)
 
-    click.echo(f'\nPlease visit this URL to authorize jiracli to access your data:\n    {auth_url}\n')
+    click.echo(f'\nPlease visit this URL to authorize jira-offline to access your data:\n    {auth_url}\n')
     click.confirm(f'Have you authorized this program to connect on your behalf to {jira_url}?', abort=True)
 
     # step 3: get access tokens for validated user

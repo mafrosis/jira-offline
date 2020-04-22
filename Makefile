@@ -28,3 +28,14 @@ lint:
 .PHONY: typecheck
 typecheck:
 	docker-compose run --rm --entrypoint=pytest test --mypy --mypy-ignore-missing-imports jira_cli/
+
+
+.PHONY: package
+package:
+	rm -rf jira_offline.egg-info dist
+	python3 setup.py sdist bdist_wheel
+
+.PHONY: publish
+publish:
+	twine check dist/*
+	twine upload --repository=test dist/*

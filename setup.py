@@ -1,37 +1,31 @@
 #! /usr/bin/env python
 
-import os
-import sys
-
 from setuptools import setup, find_packages
 
 import jira_cli
-
-if sys.argv[-1] == 'publish':
-    os.system('python setup.py sdist upload')
-    sys.exit()
 
 REQUIRES = [
     open('requirements.txt').read()
 ]
 
 setup(
-    name='jira_cli',
+    name='jira-offline',
     version=jira_cli.__version__,
-    description='Jira CLI automation tool',
+    description='CLI for using Jira offline',
+    long_description_content_type='text/markdown',
     long_description=open('README.md').read(),
     author='Matt Black',
     author_email='dev@mafro.net',
-    url='http://github.com/mafrosis/jiracli',
+    url='http://github.com/mafrosis/jira-offline',
     packages=find_packages(exclude=['test']),
     package_data={'': ['LICENSE']},
     package_dir={'': '.'},
     include_package_data=True,
     install_requires=REQUIRES,
-    license=open('LICENSE').read(),
+    license='MIT License',
     entry_points={
         'console_scripts': [
-            'jiracli=jira_cli.entrypoint:cli'
+            'jira=jira_cli.entrypoint:cli'
         ]
     },
     classifiers=(
@@ -40,8 +34,10 @@ setup(
         'Intended Audience :: Developers',
         'Intended Audience :: System Administrators',
         'Natural Language :: English',
-        'License :: OSI Approved :: BSD License',
+        'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
+        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
     ),
 )

@@ -99,7 +99,7 @@ def cli_push(ctx):
 @click.argument('project_uri')
 @click.option('--username', help='Basic auth username to authenicate with')
 @click.option('--password', help='Basic auth password (use with caution!)')
-@click.option('--oauth-app', default='jiracli', help='Jira Application Link consumer name')
+@click.option('--oauth-app', default='jira-offline', help='Jira Application Link consumer name')
 @click.option('--oauth-private-key', help='oAuth private key', type=click.Path(exists=True))
 @click.pass_context
 def cli_clone(ctx, project_uri: str, username: str=None, password: str=None, oauth_app: str=None, oauth_private_key: str=None):
