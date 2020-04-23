@@ -194,38 +194,6 @@ def test_cli_new_fixversions_param_key_is_passed_to_create_issue_with_case_chang
     assert result.exit_code == 0
 
 
-#@mock.patch('jira_offline.entrypoint.Jira')
-#def test_cli_edit_fields_set_correctly_for_epic(mock_jira_local, mock_jira):
-#    '''
-#    Ensure all supplied params are set as fields on an Epic
-#    '''
-#    # set function-local instance of Jira class to our test mock
-#    mock_jira_local.return_value = mock_jira
-#
-#    # add fixture to Jira dict
-#    mock_jira['issue1'] = Issue.deserialize(ISSUE_1)
-#
-#    runner = CliRunner()
-#    result = runner.invoke(cli, ['new', 'TEST', 'Story', 'Summary of issue', '--fix-versions', '0.1'])
-#    assert result.exit_code == 0
-#
-#
-#@mock.patch('jira_offline.entrypoint.Jira')
-#def test_cli_edit_fields_set_correctly_for_non_epic(mock_jira_local, mock_jira):
-#    '''
-#    Ensure all supplied params are set as fields on a non-Epic (Story, Bug etc)
-#    '''
-#    # set function-local instance of Jira class to our test mock
-#    mock_jira_local.return_value = mock_jira
-#
-#    # add fixture to Jira dict
-#    mock_jira['issue1'] = Issue.deserialize(ISSUE_1)
-#
-#    runner = CliRunner()
-#    result = runner.invoke(cli, ['new', 'TEST', 'Story', 'Summary of issue', '--fix-versions', '0.1'])
-#    assert result.exit_code == 0
-#
-#
 @mock.patch('jira_offline.entrypoint.Jira')
 @mock.patch('jira_offline.entrypoint._print_table')
 def test_cli_stats_no_errors_when_no_subcommand_passed(mock_print_table, mock_jira_local, mock_jira):
