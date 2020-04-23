@@ -1,7 +1,7 @@
 from fixtures import (ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF, ISSUE_1_WITH_FIXVERSIONS_DIFF,
                       ISSUE_1_WITH_UPDATED_DIFF, ISSUE_NEW)
-from jira_cli.models import Issue
-from jira_cli.sync import Conflict, _build_update
+from jira_offline.models import Issue
+from jira_offline.sync import Conflict, _build_update
 
 
 def test_build_update__ignores_readonly_fields():

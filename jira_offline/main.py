@@ -9,12 +9,12 @@ from typing import Optional
 import jsonlines
 import pandas as pd
 
-from jira_cli.config import get_cache_filepath, load_config
-from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, JiraApiError,
-                                 JiraNotConfigured, MissingFieldsForNewIssue, ProjectDoesntExist)
-from jira_cli.models import AppConfig, CustomFields, Issue, IssueType, ProjectMeta
-from jira_cli.sync import jiraapi_object_to_issue
-from jira_cli.utils.api import get as api_get, post as api_post, put as api_put
+from jira_offline.config import get_cache_filepath, load_config
+from jira_offline.exceptions import (EpicNotFound, EstimateFieldUnavailable, JiraApiError,
+                                     JiraNotConfigured, MissingFieldsForNewIssue, ProjectDoesntExist)
+from jira_offline.models import AppConfig, CustomFields, Issue, IssueType, ProjectMeta
+from jira_offline.sync import jiraapi_object_to_issue
+from jira_offline.utils.api import get as api_get, post as api_post, put as api_put
 
 
 logger = logging.getLogger('jira')

@@ -4,8 +4,8 @@ Tests for the issue_to_jiraapi_update function in sync module
 import pytest
 
 from fixtures import ISSUE_1
-from jira_cli.models import Issue
-from jira_cli.sync import issue_to_jiraapi_update
+from jira_offline.models import Issue
+from jira_offline.sync import issue_to_jiraapi_update
 
 
 @pytest.mark.parametrize('modified', [

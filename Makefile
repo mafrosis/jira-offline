@@ -6,7 +6,7 @@ all: lint typecheck test
 test:
 	docker-compose run --rm test \
 		-m 'not integration' \
-		--cov=jira_cli --cov-report term --cov-report html:cov_html \
+		--cov=jira_offline --cov-report term --cov-report html:cov_html \
 		--disable-pytest-warnings \
 		test/
 
@@ -22,12 +22,12 @@ integration:
 
 .PHONY: lint
 lint:
-	docker-compose run --rm --entrypoint=pylint test jira_cli/
+	docker-compose run --rm --entrypoint=pylint test jira_offline/
 	docker-compose run --rm --entrypoint=pylint test --rcfile=test/.pylintrc test/
 
 .PHONY: typecheck
 typecheck:
-	docker-compose run --rm test --mypy --mypy-ignore-missing-imports jira_cli/
+	docker-compose run --rm test --mypy --mypy-ignore-missing-imports jira_offline/
 
 
 .PHONY: package

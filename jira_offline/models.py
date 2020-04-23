@@ -21,10 +21,10 @@ from requests.auth import HTTPBasicAuth
 from requests_oauthlib import OAuth1
 from tabulate import tabulate
 
-from jira_cli import __title__
-from jira_cli.exceptions import UnableToCopyCustomCACert, IssuePriorityInvalid, NoAuthenticationMethod
-from jira_cli.utils import classproperty, friendly_title, get_field_by_name
-from jira_cli.utils.serializer import DataclassSerializer, get_enum, get_type_class
+from jira_offline import __title__
+from jira_offline.exceptions import UnableToCopyCustomCACert, IssuePriorityInvalid, NoAuthenticationMethod
+from jira_offline.utils import classproperty, friendly_title, get_field_by_name
+from jira_offline.utils.serializer import DataclassSerializer, get_enum, get_type_class
 
 
 @dataclass

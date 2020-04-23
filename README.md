@@ -1,6 +1,13 @@
 Git-like CLI for using Jira offline
 =================
 
+
+[![Github build status](https://img.shields.io/github/workflow/status/mafrosis/jira-offline/Build-Test-Publish)](https://github.com/mafrosis/jira-offline/actions?query=workflow%3ABuild-Test-Publish)
+[![PyPI version](https://img.shields.io/pypi/v/jira-offline.svg)](https://pypi.python.org/pypi/jira-offline/)
+[![PyPI status](https://img.shields.io/pypi/status/jira-offline.svg)](https://pypi.python.org/pypi/jira-offline/)
+[![PyPI pyversions](https://img.shields.io/pypi/pyversions/jira-offline.svg)](https://pypi.python.org/pypi/jira-offline/)
+[![PyPI license](https://img.shields.io/pypi/l/jira-offline.svg)](https://pypi.python.org/pypi/jira-offline/)
+
 Work offline and sync your changes back to Jira later. Create issues, modify issues, view stats,
 run Jira health queries.. All from a friendly git-like CLI.
 
@@ -10,20 +17,28 @@ Installation
 
 A few options exist:
 
-  1. Use the quickstart to pull and run a docker image (see #quickstart)
-  2. Install with pip into your current user account
-  3. Clone the source code and use docker compose
-
-### Quickstart
-
-Using the docker image published on Github, the following will get you going very quickly:
-
-    docker pull docker.pkg.github.com/mafrosis/jira-offline/jira-offline:dev
-    docker run --rm -it docker.pkg.github.com/mafrosis/jira-offline/jira-offline:dev
+  1. Install globally with pip (not recommended)
+  2. Install with pip
+  3. Pull and run the latest docker image
+  4. Clone the source code and use docker compose
 
 ### Install with pip
 
-    pip install git+https://github.com/mafrosis/jira-offline.git@master
+    pip install jira-offline
+
+### Install with pip, into a virtualenv
+
+    python3 -m venv venv && source venv/bin/activate
+    pip install jira-offline
+
+### Docker image
+
+Unfortunately you need an access token for even public packages hosted on Github. Get yours from
+[your settings](https://github.com/settings/tokens). Pull the docker image and run it:
+
+    echo "$GITHUB_TOKEN" | docker login -u mafrosis --password-stdin docker.pkg.github.com
+    docker pull docker.pkg.github.com/mafrosis/jira-offline/jira-offline:dev
+    docker run --rm -it docker.pkg.github.com/mafrosis/jira-offline/jira-offline:dev
 
 ### Clone and use compose
 
@@ -36,14 +51,21 @@ Using the docker image published on Github, the following will get you going ver
 Known Limitations
 -----------------
 
-* You can't change the state of an issue (eg. In Progress -> Done) (#21).
-* You can't change an issue's type from (for example) Bug -> Story (#20).
-* There are mandatory fields required on Jira project screens (#16). 
+See the [Github Issues](https://github.com/mafrosis/jira-offline/issues) for a comprehensive list.
+
+* You can't change the state of an issue (eg. In Progress -> Done)
+([GH21](https://github.com/mafrosis/jira-offline/issues/21)).
+* You can't change an issue's type from (for example) Bug -> Story
+([GH20](https://github.com/mafrosis/jira-offline/issues/20)).
+* There are mandatory fields required on Jira project screens
+([GH16](https://github.com/mafrosis/jira-offline/issues/16)).
 * It's slow. Reading and writing all data to a single JSONL file is inefficient, and the use of the
-  Pandas library is making the CLI slow (#13).
+  Pandas library is making the CLI slow
+([GH13](https://github.com/mafrosis/jira-offline/issues/13)).
 * No support for the same project key from two different Jiras (an edge-case at this stage).
 * There's a known race condition where a Jira project's issuetypes and priority values can be changed
-  whilst working offline. This could mean that broken issues are created offline (#22).
+  whilst working offline. This could mean that broken issues are created offline
+([GH22](https://github.com/mafrosis/jira-offline/issues/22)).
 
 
 Quick Start
@@ -89,14 +111,20 @@ Use `clone` to add a project:
     jira clone https://jira.atlassian.com/PROJ
 
 
-Extending This Tool
--------------------
+Comparison to other Jira CLIs
+-----------------------------
 
-### Adding a new field from Jira
+None of the existing clients use the "offline" approach taken by this tool:
 
-It's very easy to include a new field from Jira. Two steps are required:
-
-  1. Include the field in the Issue model in [models.py](./jira_cli/models.py)
-  2. Include the field in the `jiraapi_object_to_issue` method in [sync.py](./jira_cli/sync.py)
-  3. Include the field in the `issue_to_jiraapi_update` method in [sync.py](./jira_cli/sync.py), if
-     it can be written back to Jira
+- [`danshumaker/jira-cli`](https://github.com/danshumaker/jira-cli) -
+A full featured node.js CLI. This might be a better option if `jira-offline` lacks features you need.
+- [`keepcosmos/terjira`](https://github.com/keepcosmos/terjira) -
+Feature-rich Ruby CLI with a neat interactive query function.
+- [`mikepea/go-jira-ui`](https://github.com/mikepea/go-jira-ui) -
+A neat ncurses client focussed on listing issues and making simple changes.
+- [`foxythemes/jira-cli`](https://github.com/foxythemes/jira-cli) -
+A handsome node.js REPL-style interactive CLI. A very different approach from `jira-offline`.
+- [`toabctl/jiracli`](https://github.com/toabctl/jiracli) -
+A simple CLI for Jira. Not actively maintained.
+- [`alisaifee/jira-cli`](https://github.com/alisaifee/jira-cli) -
+Another unmaintained and poorly-documented CLI.

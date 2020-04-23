@@ -2,12 +2,12 @@ from unittest import mock
 
 import pytest
 
-from jira_cli.auth import authenticate, get_user_creds
-from jira_cli.models import ProjectMeta
+from jira_offline.auth import authenticate, get_user_creds
+from jira_offline.models import ProjectMeta
 
 
-@mock.patch('jira_cli.auth.get_user_creds')
-@mock.patch('jira_cli.auth.oauth_dance')
+@mock.patch('jira_offline.auth.get_user_creds')
+@mock.patch('jira_offline.auth.oauth_dance')
 @mock.patch('builtins.open')
 def test_authenticate__calls_oauth_dance_when_oauth_params_passed(mock_open, mock_oauth_dance, mock_get_user_creds):
     '''
@@ -22,10 +22,10 @@ def test_authenticate__calls_oauth_dance_when_oauth_params_passed(mock_open, moc
     assert not mock_get_user_creds.called
 
 
-@mock.patch('jira_cli.auth.get_user_creds')
-@mock.patch('jira_cli.auth.oauth_dance')
-@mock.patch('jira_cli.auth._test_jira_connect')
-@mock.patch('jira_cli.auth.click')
+@mock.patch('jira_offline.auth.get_user_creds')
+@mock.patch('jira_offline.auth.oauth_dance')
+@mock.patch('jira_offline.auth._test_jira_connect')
+@mock.patch('jira_offline.auth.click')
 def test_authenticate__calls_get_user_creds_when_username_passed(mock_click, mock_test_jira_connect, mock_oauth_dance, mock_get_user_creds):
     '''
     Ensure get_user_creds() is called when params passed
@@ -42,8 +42,8 @@ def test_authenticate__calls_get_user_creds_when_username_passed(mock_click, moc
     ProjectMeta(key='test'),
     ProjectMeta(key='test', username='test', password='dummy'),
 ])
-@mock.patch('jira_cli.auth._test_jira_connect')
-@mock.patch('jira_cli.auth.click')
+@mock.patch('jira_offline.auth._test_jira_connect')
+@mock.patch('jira_offline.auth.click')
 def test_get_user_creds__calls_click_prompt_and_jira_connect(mock_click, mock_test_jira_connect, project_meta):
     '''
     Ensure that get_user_creds() makes calls to click.prompt and Jira.connect()
@@ -59,8 +59,8 @@ def test_get_user_creds__calls_click_prompt_and_jira_connect(mock_click, mock_te
     assert mock_test_jira_connect.called
 
 
-@mock.patch('jira_cli.auth._test_jira_connect')
-@mock.patch('jira_cli.auth.click')
+@mock.patch('jira_offline.auth._test_jira_connect')
+@mock.patch('jira_offline.auth.click')
 def test_get_user_creds__calls_prompt_only_once_when_username_passed(mock_click, mock_test_jira_connect):
     '''
     Ensure that get_user_creds() only calls click.prompt once when username param is passed

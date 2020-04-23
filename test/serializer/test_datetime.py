@@ -3,7 +3,7 @@ import datetime
 
 from dateutil.tz import tzoffset
 
-from jira_cli.utils.serializer import DataclassSerializer
+from jira_offline.utils.serializer import DataclassSerializer
 
 
 @dataclass

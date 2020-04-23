@@ -2,8 +2,8 @@ from unittest import mock
 
 import pytest
 
-from jira_cli.exceptions import IssuePriorityInvalid, UnableToCopyCustomCACert
-from jira_cli.models import Issue
+from jira_offline.exceptions import IssuePriorityInvalid, UnableToCopyCustomCACert
+from jira_offline.models import Issue
 
 from fixtures import ISSUE_1
 
@@ -32,9 +32,9 @@ def test_issue_model__priority_property_ok_when_writing_valid_value(project):
     assert issue1._priority == 'High'  # pylint: disable=no-member
 
 
-@mock.patch('jira_cli.models.shutil')
-@mock.patch('jira_cli.models.click')
-@mock.patch('jira_cli.models.pathlib')
+@mock.patch('jira_offline.models.shutil')
+@mock.patch('jira_offline.models.click')
+@mock.patch('jira_offline.models.pathlib')
 def test_project_meta_model__set_ca_cert__calls_copyfile_with_path(mock_pathlib, mock_click, mock_shutil, project):
     '''
     Validate shutil.copyfile is called with file path
@@ -45,9 +45,9 @@ def test_project_meta_model__set_ca_cert__calls_copyfile_with_path(mock_pathlib,
     mock_shutil.copyfile.assert_called_with('/tmp/ca.pem', '/tmp/99fd9182cfc4c701a8a662f6293f4136201791b4.ca_cert')
 
 
-@mock.patch('jira_cli.models.shutil')
-@mock.patch('jira_cli.models.click')
-@mock.patch('jira_cli.models.pathlib')
+@mock.patch('jira_offline.models.shutil')
+@mock.patch('jira_offline.models.click')
+@mock.patch('jira_offline.models.pathlib')
 def test_project_meta_model__set_ca_cert__handles_failed_copy(mock_pathlib, mock_click, mock_shutil, project):
     '''
     Validate shutil.copyfile is called with file path

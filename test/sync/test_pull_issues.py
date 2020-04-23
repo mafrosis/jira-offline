@@ -2,12 +2,12 @@ from unittest import mock
 import pytest
 
 from fixtures import ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF, ISSUE_1_WITH_FIXVERSIONS_DIFF, ISSUE_2
-from jira_cli.exceptions import FailedPullingIssues, JiraApiError
-from jira_cli.models import Issue
-from jira_cli.sync import IssueUpdate, pull_issues, pull_single_project
+from jira_offline.exceptions import FailedPullingIssues, JiraApiError
+from jira_offline.models import Issue
+from jira_offline.sync import IssueUpdate, pull_issues, pull_single_project
 
 
-@mock.patch('jira_cli.sync.pull_single_project')
+@mock.patch('jira_offline.sync.pull_single_project')
 def test_pull_issues__does_call_load_issues_when_self_empty(mock_pull_single_project, mock_jira):
     '''
     Ensure pull_issues() calls load_issues() when self (the Jira class dict) is empty
@@ -16,7 +16,7 @@ def test_pull_issues__does_call_load_issues_when_self_empty(mock_pull_single_pro
     assert mock_jira.load_issues.called
 
 
-@mock.patch('jira_cli.sync.pull_single_project')
+@mock.patch('jira_offline.sync.pull_single_project')
 def test_pull_issues__doesnt_call_load_issues_when_self_populated(mock_pull_single_project, mock_jira):
     '''
     Ensure pull_issues() doesn't call load_issues() when self (the Jira class dict) has issues
@@ -28,7 +28,7 @@ def test_pull_issues__doesnt_call_load_issues_when_self_populated(mock_pull_sing
     assert not mock_jira.load_issues.called
 
 
-@mock.patch('jira_cli.sync.pull_single_project')
+@mock.patch('jira_offline.sync.pull_single_project')
 def test_pull_issues__calls_pull_single_project_for_each_project(mock_pull_single_project, mock_jira, project):
     '''
     Ensure that pull_single_project() is called for each project
@@ -37,7 +37,7 @@ def test_pull_issues__calls_pull_single_project_for_each_project(mock_pull_singl
     mock_pull_single_project.assert_called_once_with(mock_jira, project, force=True, verbose=False)
 
 
-@mock.patch('jira_cli.sync.pull_single_project')
+@mock.patch('jira_offline.sync.pull_single_project')
 def test_pull_issues__calls_get_project_meta_for_each_project(mock_pull_single_project, mock_jira, project):
     '''
     Ensure that pull_single_project() is called for each project
@@ -46,7 +46,7 @@ def test_pull_issues__calls_get_project_meta_for_each_project(mock_pull_single_p
     mock_jira.get_project_meta.assert_called_once_with(project)
 
 
-@mock.patch('jira_cli.sync.pull_single_project')
+@mock.patch('jira_offline.sync.pull_single_project')
 def test_pull_issues__pulls_only_specified_projects(mock_pull_single_project, mock_jira, project):
     '''
     Ensure that pull_single_project() is called for each project specified in `projects` parameter
@@ -55,9 +55,9 @@ def test_pull_issues__pulls_only_specified_projects(mock_pull_single_project, mo
     mock_pull_single_project.assert_called_once_with(mock_jira, project, force=True, verbose=False)
 
 
-@mock.patch('jira_cli.sync.jiraapi_object_to_issue')
-@mock.patch('jira_cli.sync.api_get')
-@mock.patch('jira_cli.sync.tqdm')
+@mock.patch('jira_offline.sync.jiraapi_object_to_issue')
+@mock.patch('jira_offline.sync.api_get')
+@mock.patch('jira_offline.sync.tqdm')
 def test_pull_single_project__last_updated_field_causes_filter_query(mock_tqdm, mock_api_get, mock_jiraapi_object_to_issue, mock_jira, project):
     '''
     Test config.last_updated being set causes a filtered query from value of last_updated
@@ -73,9 +73,9 @@ def test_pull_single_project__last_updated_field_causes_filter_query(mock_tqdm, 
     assert mock_api_get.call_args_list[1][1]['params']['jql'] == 'project = TEST AND updated > "2019-01-01 00:00"'
 
 
-@mock.patch('jira_cli.sync.jiraapi_object_to_issue')
-@mock.patch('jira_cli.sync.api_get')
-@mock.patch('jira_cli.sync.tqdm')
+@mock.patch('jira_offline.sync.jiraapi_object_to_issue')
+@mock.patch('jira_offline.sync.api_get')
+@mock.patch('jira_offline.sync.tqdm')
 def test_pull_single_project__last_updated_field_causes_filter_from_waaay_back(mock_tqdm, mock_api_get, mock_jiraapi_object_to_issue, mock_jira, project):
     '''
     Test config.last_updated NOT being set causes a filtered query from 2010-01-01
@@ -88,8 +88,8 @@ def test_pull_single_project__last_updated_field_causes_filter_from_waaay_back(m
     assert mock_api_get.call_args_list[1][1]['params']['jql'] == 'project = TEST AND updated > "2010-01-01 00:00"'
 
 
-@mock.patch('jira_cli.sync.api_get')
-@mock.patch('jira_cli.sync.tqdm')
+@mock.patch('jira_offline.sync.api_get')
+@mock.patch('jira_offline.sync.tqdm')
 def test_pull_single_project__error_handled_when_get_raises_jira_exception(mock_tqdm, mock_api_get, mock_jira, project):
     '''
     Ensure an exception is raised and handled when the get API call raises a Jira exception
@@ -100,9 +100,9 @@ def test_pull_single_project__error_handled_when_get_raises_jira_exception(mock_
         pull_single_project(mock_jira, project, force=False, verbose=False)
 
 
-@mock.patch('jira_cli.sync.jiraapi_object_to_issue')
-@mock.patch('jira_cli.sync.api_get')
-@mock.patch('jira_cli.sync.tqdm')
+@mock.patch('jira_offline.sync.jiraapi_object_to_issue')
+@mock.patch('jira_offline.sync.api_get')
+@mock.patch('jira_offline.sync.tqdm')
 def test_pull_single_project__write_issues_and_config_called(
         mock_tqdm, mock_api_get, mock_jiraapi_object_to_issue, mock_jira, project
     ):
@@ -116,9 +116,9 @@ def test_pull_single_project__write_issues_and_config_called(
     assert mock_jira.config.write_to_disk.called
 
 
-@mock.patch('jira_cli.sync.jiraapi_object_to_issue')
-@mock.patch('jira_cli.sync.api_get')
-@mock.patch('jira_cli.sync.tqdm')
+@mock.patch('jira_offline.sync.jiraapi_object_to_issue')
+@mock.patch('jira_offline.sync.api_get')
+@mock.patch('jira_offline.sync.tqdm')
 def test_pull_single_project__adds_issues_to_self(mock_tqdm, mock_api_get, mock_jiraapi_object_to_issue, mock_jira, project):
     '''
     Ensure that issues returned by search_issues(), are added to the Jira object (which implements dict)
@@ -134,10 +134,10 @@ def test_pull_single_project__adds_issues_to_self(mock_tqdm, mock_api_get, mock_
     assert len(mock_jira.keys()) == 2
 
 
-@mock.patch('jira_cli.sync.check_resolve_conflicts')
-@mock.patch('jira_cli.sync.jiraapi_object_to_issue')
-@mock.patch('jira_cli.sync.api_get')
-@mock.patch('jira_cli.sync.click')
+@mock.patch('jira_offline.sync.check_resolve_conflicts')
+@mock.patch('jira_offline.sync.jiraapi_object_to_issue')
+@mock.patch('jira_offline.sync.api_get')
+@mock.patch('jira_offline.sync.click')
 def test_pull_single_project__check_resolve_conflicts_NOT_called_when_updated_issue_NOT_changed(
         mock_click, mock_api_get, mock_jiraapi_object_to_issue, mock_check_resolve_conflicts, mock_jira, project
     ):
@@ -156,10 +156,10 @@ def test_pull_single_project__check_resolve_conflicts_NOT_called_when_updated_is
     assert mock_check_resolve_conflicts.called is False
 
 
-@mock.patch('jira_cli.sync.check_resolve_conflicts')
-@mock.patch('jira_cli.sync.jiraapi_object_to_issue')
-@mock.patch('jira_cli.sync.api_get')
-@mock.patch('jira_cli.sync.click')
+@mock.patch('jira_offline.sync.check_resolve_conflicts')
+@mock.patch('jira_offline.sync.jiraapi_object_to_issue')
+@mock.patch('jira_offline.sync.api_get')
+@mock.patch('jira_offline.sync.click')
 def test_pull_single_project__check_resolve_conflicts_called_when_local_issue_is_modified(
         mock_click, mock_api_get, mock_jiraapi_object_to_issue, mock_check_resolve_conflicts, mock_jira, project
     ):
@@ -181,10 +181,10 @@ def test_pull_single_project__check_resolve_conflicts_called_when_local_issue_is
     assert mock_check_resolve_conflicts.called is True
 
 
-@mock.patch('jira_cli.sync.check_resolve_conflicts')
-@mock.patch('jira_cli.sync.jiraapi_object_to_issue')
-@mock.patch('jira_cli.sync.api_get')
-@mock.patch('jira_cli.sync.click')
+@mock.patch('jira_offline.sync.check_resolve_conflicts')
+@mock.patch('jira_offline.sync.jiraapi_object_to_issue')
+@mock.patch('jira_offline.sync.api_get')
+@mock.patch('jira_offline.sync.click')
 def test_pull_single_project__return_from_check_resolve_conflicts_added_to_self(
         mock_click, mock_api_get, mock_jiraapi_object_to_issue, mock_check_resolve_conflicts, mock_jira, project
     ):

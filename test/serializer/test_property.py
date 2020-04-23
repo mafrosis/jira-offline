@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
-from jira_cli.utils.serializer import DataclassSerializer
+from jira_offline.utils.serializer import DataclassSerializer
 
 
 @dataclass

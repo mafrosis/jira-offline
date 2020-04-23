@@ -9,13 +9,13 @@ from unittest import mock
 import pytest
 
 from fixtures import EPIC_1, ISSUE_1, ISSUE_MISSING_EPIC, ISSUE_NEW
-from jira_cli.exceptions import (EpicNotFound, EstimateFieldUnavailable, JiraApiError, JiraNotConfigured,
-                                 ProjectDoesntExist)
-from jira_cli.models import CustomFields, Issue, IssueType, ProjectMeta
+from jira_offline.exceptions import (EpicNotFound, EstimateFieldUnavailable, JiraApiError, JiraNotConfigured,
+                                     ProjectDoesntExist)
+from jira_offline.models import CustomFields, Issue, IssueType, ProjectMeta
 
 
-@mock.patch('jira_cli.main.jsonlines')
-@mock.patch('jira_cli.main.os')
+@mock.patch('jira_offline.main.jsonlines')
+@mock.patch('jira_offline.main.os')
 @mock.patch('builtins.open')
 def test_jira__load_issues__calls_deserialize_for_each_line_in_cache(mock_open, mock_os, mock_jsonlines, mock_jira_core):
     '''
@@ -28,12 +28,12 @@ def test_jira__load_issues__calls_deserialize_for_each_line_in_cache(mock_open, 
     # mock contents of issue cache, as read from disk
     mock_jsonlines.Reader.return_value.iter.return_value = [EPIC_1, ISSUE_1, ISSUE_MISSING_EPIC]
 
-    with mock.patch('jira_cli.main.Issue.deserialize') as mock_issue_deserialize:
+    with mock.patch('jira_offline.main.Issue.deserialize') as mock_issue_deserialize:
         mock_jira_core.load_issues()
         assert mock_issue_deserialize.call_count == 3
 
 
-@mock.patch('jira_cli.main.jsonlines')
+@mock.patch('jira_offline.main.jsonlines')
 @mock.patch('builtins.open')
 def test_jira__write_issues__calls_write_all(mock_open, mock_jsonlines, mock_jira_core):
     '''
@@ -47,7 +47,7 @@ def test_jira__write_issues__calls_write_all(mock_open, mock_jsonlines, mock_jir
     assert mock_jsonlines.Writer.return_value.write_all.called
 
 
-@mock.patch('jira_cli.main.jsonlines')
+@mock.patch('jira_offline.main.jsonlines')
 @mock.patch('builtins.open')
 def test_jira__write_issues__calls_serialize_for_each_item_in_self(mock_open, mock_jsonlines, mock_jira_core):
     '''
@@ -57,12 +57,12 @@ def test_jira__write_issues__calls_serialize_for_each_item_in_self(mock_open, mo
     mock_jira_core['issue1'] = Issue.deserialize(ISSUE_1)
     mock_jira_core['issue2'] = Issue.deserialize(ISSUE_MISSING_EPIC)
 
-    with mock.patch('jira_cli.main.Issue.serialize') as mock_issue_serialize:
+    with mock.patch('jira_offline.main.Issue.serialize') as mock_issue_serialize:
         mock_jira_core.write_issues()
         assert mock_issue_serialize.call_count == 3
 
 
-@mock.patch('jira_cli.main.jsonlines')
+@mock.patch('jira_offline.main.jsonlines')
 @mock.patch('builtins.open')
 def test_jira__write_issues__calls_issue_diff_for_existing_issues_only(mock_open, mock_jsonlines, mock_jira_core):
     '''
@@ -71,14 +71,14 @@ def test_jira__write_issues__calls_issue_diff_for_existing_issues_only(mock_open
     mock_jira_core['issue1'] = Issue.deserialize(ISSUE_1)
     mock_jira_core['issue_new'] = Issue.deserialize(ISSUE_NEW)
 
-    with mock.patch('jira_cli.main.Issue.diff'):
+    with mock.patch('jira_offline.main.Issue.diff'):
         mock_jira_core.write_issues()
 
         assert mock_jira_core['issue1'].diff.called
         assert mock_jira_core['issue_new'].diff.called
 
 
-@mock.patch('jira_cli.main.api_get')
+@mock.patch('jira_offline.main.api_get')
 def test_jira__get_project_meta__extracts_issuetypes(mock_api_get, mock_jira_core):
     '''
     Ensure get_project_meta() method parses the issuetypes for a project
@@ -129,7 +129,7 @@ def test_jira__get_project_meta__extracts_issuetypes(mock_api_get, mock_jira_cor
     }
 
 
-@mock.patch('jira_cli.main.api_get')
+@mock.patch('jira_offline.main.api_get')
 def test_jira__get_project_meta__extracts_custom_fields(mock_api_get, mock_jira_core):
     '''
     Ensure get_project_meta() method parses the custom_fields for a project
@@ -174,7 +174,7 @@ def test_jira__get_project_meta__extracts_custom_fields(mock_api_get, mock_jira_
     assert project_meta.custom_fields == CustomFields(epic_name='10104', estimate='10106')
 
 
-@mock.patch('jira_cli.main.api_get')
+@mock.patch('jira_offline.main.api_get')
 def test_jira__get_project_meta__handles_no_priority_for_issuetype(mock_api_get, mock_jira_core):
     '''
     Ensure get_project_meta() method doesn't choke if an issuetype has no priority field
@@ -209,7 +209,7 @@ def test_jira__get_project_meta__handles_no_priority_for_issuetype(mock_api_get,
     assert project_meta.custom_fields == CustomFields(estimate='10106')
 
 
-@mock.patch('jira_cli.main.api_get')
+@mock.patch('jira_offline.main.api_get')
 def test_jira__get_project_meta__raises_project_doesnt_exist(mock_api_get, mock_jira_core):
     '''
     Ensure ProjectDoesntExist exception is raised if nothing returned by API createmeta call
@@ -221,8 +221,8 @@ def test_jira__get_project_meta__raises_project_doesnt_exist(mock_api_get, mock_
         mock_jira_core.get_project_meta(ProjectMeta(key='TEST'))
 
 
-@mock.patch('jira_cli.main.jiraapi_object_to_issue', return_value=Issue.deserialize(ISSUE_1))
-@mock.patch('jira_cli.main.api_post')
+@mock.patch('jira_offline.main.jiraapi_object_to_issue', return_value=Issue.deserialize(ISSUE_1))
+@mock.patch('jira_offline.main.api_post')
 def test_jira__new_issue__removes_fields_which_cannot_be_posted_for_new_issue(
         mock_api_post, mock_jiraapi_object_to_issue, mock_jira_core, project
     ):
@@ -258,7 +258,7 @@ def test_jira__new_issue__removes_fields_which_cannot_be_posted_for_new_issue(
     ("Field 'estimate' cannot be set", EstimateFieldUnavailable),
     ('cannot be set. It is not on the appropriate screen, or unknown.', JiraNotConfigured),
 ])
-@mock.patch('jira_cli.main.api_post')
+@mock.patch('jira_offline.main.api_post')
 def test_jira__new_issue__raises_specific_exceptions(mock_api_post, mock_jira_core, project, error_msg, exception):
     '''
     Ensure correct custom exception is raised when specific string found in Jira API error message
@@ -279,7 +279,7 @@ def test_jira__new_issue__raises_specific_exceptions(mock_api_post, mock_jira_co
         )
 
 
-@mock.patch('jira_cli.main.api_post')
+@mock.patch('jira_offline.main.api_post')
 def test_jira__new_issue__removes_temp_key_when_new_post_successful(
         mock_api_post, mock_jira_core, project
     ):
@@ -312,8 +312,8 @@ def test_jira__new_issue__removes_temp_key_when_new_post_successful(
     assert ISSUE_1['key'] in mock_jira_core
 
 
-@mock.patch('jira_cli.main.jiraapi_object_to_issue')
-@mock.patch('jira_cli.main.api_get')
+@mock.patch('jira_offline.main.jiraapi_object_to_issue')
+@mock.patch('jira_offline.main.api_get')
 def test_fetch_issue__returns_output_from_jiraapi_object_to_issue(
         mock_api_get, mock_jiraapi_object_to_issue, mock_jira_core, project
     ):

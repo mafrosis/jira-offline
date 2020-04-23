@@ -6,7 +6,7 @@ services:
     build:
       context: .
     volumes:
-      - ./jira_cli:/app/jira_cli
+      - ./jira_offline:/app/jira_offline
       - ./test:/app/test
       - ./config:/root/.config/jira-offline
 
@@ -16,7 +16,7 @@ services:
       context: .
       dockerfile: Dockerfile.test
     volumes:
-      - ./jira_cli:/app/jira_cli
+      - ./jira_offline:/app/jira_offline
       - ./test:/app/test
       - /var/run/docker.sock:/var/run/docker.sock
       - /tmp:/tmp
