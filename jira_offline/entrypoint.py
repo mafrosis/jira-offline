@@ -64,8 +64,9 @@ def cli(ctx, verbose: bool=False, debug: bool=False):
 
 
 @cli.command(name='show')
+@click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
 @click.argument('key')
-def cli_show(key):
+def cli_show(key, as_json: bool=False):
     '''
     Pretty print an Issue on the CLI
 
@@ -78,7 +79,12 @@ def cli_show(key):
         click.echo('Unknown issue key')
         raise click.Abort
 
-    click.echo(jira[key])
+    if as_json:
+        output = jira[key].as_json()
+    else:
+        output = str(jira[key])
+
+    click.echo(output)
 
 
 @cli.command(name='push')

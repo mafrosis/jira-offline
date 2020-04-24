@@ -1,5 +1,6 @@
-from unittest import mock
+import json
 import logging
+from unittest import mock
 
 import click
 from click.testing import CliRunner
@@ -118,6 +119,26 @@ def test_cli_show_invalid_issue_key(mock_click, mock_jira_local, mock_jira):
     result = runner.invoke(cli, ['show', 'issue1'])
     assert result.exit_code == 1
     mock_click.echo.assert_called_once_with('Unknown issue key')
+
+
+@mock.patch('jira_offline.entrypoint.Jira')
+def test_cli_show_can_return_json(mock_jira_local, mock_jira):
+    '''
+    Ensure show command can return output as JSON
+    '''
+    # set function-local instance of Jira class to our test mock
+    mock_jira_local.return_value = mock_jira
+
+    # add fixture to Jira dict
+    mock_jira['issue1'] = Issue.deserialize(ISSUE_1)
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ['show', '--json', 'issue1'])
+    assert result.exit_code == 0
+    try:
+        json.loads(f'{result.output}')
+    except json.decoder.JSONDecodeError:
+        pytest.fail('Invalid JSON returned!')
 
 
 @mock.patch('jira_offline.entrypoint.pull_issues')
