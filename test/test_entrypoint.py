@@ -107,8 +107,7 @@ def test_cli_smoketest_empty(mock_authenticate, mock_push_issues, mock_pull_issu
 
 
 @mock.patch('jira_offline.entrypoint.Jira')
-@mock.patch('jira_offline.entrypoint.click')
-def test_cli_show_invalid_issue_key(mock_click, mock_jira_local, mock_jira):
+def test_cli_show_invalid_issue_key(mock_jira_local, mock_jira):
     '''
     Ensure show command errors when passed an invalid/missing Issue key
     '''
@@ -118,7 +117,7 @@ def test_cli_show_invalid_issue_key(mock_click, mock_jira_local, mock_jira):
     runner = CliRunner()
     result = runner.invoke(cli, ['show', 'issue1'])
     assert result.exit_code == 1
-    mock_click.echo.assert_called_once_with('Unknown issue key')
+    assert result.output == 'Unknown issue key\nAborted!\n'
 
 
 @mock.patch('jira_offline.entrypoint.Jira')
