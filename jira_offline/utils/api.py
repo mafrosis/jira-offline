@@ -33,9 +33,20 @@ def _request(method: str, project: ProjectMeta, path: str, params: Optional[Dict
             auth=project.auth,
             verify=project.ca_cert if project.ca_cert else True,
         )
-        logger.debug(
-            '%s %s/rest/api/2/%s %s %s', method, project.jira_server, path, resp.status_code, json.dumps(data)
-        )
+        # log the entire HTTP request for debug mode
+        logger.debug(30 * '-')
+        logger.debug('%s %s/rest/api/2/%s', method, project.jira_server, path)
+        logger.debug('\n'.join([f'{k}: {v}' for k,v in resp.request.headers.items()]))
+        logger.debug('')
+        logger.debug(json.dumps(data))
+        logger.debug('')
+        logger.debug('%s %s/rest/api/2/%s %s', method, project.jira_server, path, resp.status_code)
+        logger.debug('\n'.join([f'{k}: {v}' for k,v in resp.headers.items()]))
+        logger.debug('')
+        logger.debug(resp.text)
+        logger.debug(30 * '-')
+
+        # raise an exception for non-200 range response
         resp.raise_for_status()
 
     except requests.exceptions.HTTPError:
