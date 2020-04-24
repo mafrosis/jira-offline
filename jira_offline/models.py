@@ -240,7 +240,8 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
     def is_inprogress(self) -> bool:
         if self.status in (IssueStatus.InProgress, IssueStatus.InRelease, IssueStatus.Accepted,
                            IssueStatus.EpicInProgress, IssueStatus.StoryInProgress,
-                           IssueStatus.EpicWithSquad, IssueStatus.EpicInReview):
+                           IssueStatus.EpicWithSquad, IssueStatus.EpicInReview, IssueStatus.InDev,
+                           IssueStatus.InTest):
             return True
         return False
 
