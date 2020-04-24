@@ -111,6 +111,37 @@ Use `clone` to add a project:
     jira clone https://jira.atlassian.com/PROJ
 
 
+Debugging
+---------
+
+The simplest way to debug before opening an issue or contributing is to run the application from
+source code in a docker container, using the `test` image.
+
+ 1. Clone the source code to your machine
+
+ 2. Build the main & test docker images:
+
+```
+docker-compose build jira-offline
+docker-compose build test
+```
+
+ 3. Edit `docker-compose.yml` on line 5, to use the `-test` image:
+
+```
+jira-offline:
+  image: mafrosis/jira-offline-test
+```
+
+ 4. Add a breakpoint in the code with `import ipdb; ipdb.set_trace()`
+
+ 5. Run the main docker image, which will then break:
+
+```
+docker-compose run --rm jira-offline <CMD>
+```
+
+
 Comparison to other Jira CLIs
 -----------------------------
 
