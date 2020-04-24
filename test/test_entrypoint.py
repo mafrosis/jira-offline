@@ -215,6 +215,26 @@ def test_cli_new_fixversions_param_key_is_passed_to_create_issue_with_case_chang
 
 
 @mock.patch('jira_offline.entrypoint.Jira')
+def test_cli_new_can_return_json(mock_jira_local, mock_jira):
+    '''
+    Ensure new command can return output as JSON
+    '''
+    # set function-local instance of Jira class to our test mock
+    mock_jira_local.return_value = mock_jira
+
+    # add fixture to Jira dict
+    mock_jira['issue1'] = Issue.deserialize(ISSUE_1)
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ['new', '--json', 'TEST', 'Story', 'Summary of issue'])
+    assert result.exit_code == 0
+    try:
+        json.loads(f'{result.output}')
+    except json.decoder.JSONDecodeError:
+        pytest.fail('Invalid JSON returned!')
+
+
+@mock.patch('jira_offline.entrypoint.Jira')
 @mock.patch('jira_offline.entrypoint._print_table')
 def test_cli_stats_no_errors_when_no_subcommand_passed(mock_print_table, mock_jira_local, mock_jira):
     '''
