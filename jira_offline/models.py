@@ -222,12 +222,12 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
 
     @property
     def is_open(self) -> bool:
-        if self.is_inprogress or self.is_todo:
+        if self.is_inprogress or self.is_todo or self.is_blocked:
             return True
         elif self.is_done or self.is_closed or self.status == IssueStatus.Unspecified:
             return False
         else:
-            raise AttributeError('Issue cannot be determined open or closed!')
+            raise AttributeError(f'Issue {self.key} cannot be determined open or closed!')
 
     @property
     def is_todo(self) -> bool:
@@ -254,6 +254,12 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
     @property
     def is_closed(self) -> bool:
         if self.is_done or self.status in (IssueStatus.Closed, IssueStatus.RiskClosed):
+            return True
+        return False
+
+    @property
+    def is_blocked(self) -> bool:
+        if IssueStatus.Blocked:
             return True
         return False
 
