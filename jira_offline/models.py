@@ -11,7 +11,7 @@ import os
 import pathlib
 import shutil
 import textwrap
-from typing import Any, Dict, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import arrow
 import click
@@ -303,7 +303,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
 
         return issue
 
-    def __str__(self, conflicts: dict=None):
+    def render(self, conflicts: dict=None) -> List[Tuple[str, str]]:
         '''
         Pretty print this Issue
 
@@ -323,15 +323,15 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
             if conflicts and field_name in conflicts:
                 return (
                     ('<<<<<<< base', ''),
-                    render(field_name, conflicts[field_name]['base'], prefix),
+                    render_field(field_name, conflicts[field_name]['base'], prefix),
                     ('=======', ''),
-                    render(field_name, conflicts[field_name]['updated'], prefix),
+                    render_field(field_name, conflicts[field_name]['updated'], prefix),
                     ('>>>>>>> updated', ''),
                 )
             else:
-                return (render(field_name, getattr(self, field_name), prefix),)
+                return (render_field(field_name, getattr(self, field_name), prefix),)
 
-        def render(field_name: str, value: Any, prefix: str=None) -> Tuple[str, str]:
+        def render_field(field_name: str, value: Any, prefix: str=None) -> Tuple[str, str]:
             '''
             Single-field pretty formatting function supporting various types
 
@@ -385,4 +385,10 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
             *fmt('created'),
             *fmt('updated'),
         ]
-        return tabulate(attrs)
+        return attrs
+
+    def __str__(self) -> str:
+        '''
+        Render issue to friendly string
+        '''
+        return tabulate(self.render())
