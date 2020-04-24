@@ -64,8 +64,9 @@ def cli(ctx, verbose: bool=False, debug: bool=False):
 
 
 @cli.command(name='show')
+@click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
 @click.argument('key')
-def cli_show(key):
+def cli_show(key, as_json: bool=False):
     '''
     Pretty print an Issue on the CLI
 
@@ -78,7 +79,12 @@ def cli_show(key):
         click.echo('Unknown issue key')
         raise click.Abort
 
-    click.echo(jira[key])
+    if as_json:
+        output = jira[key].as_json()
+    else:
+        output = str(jira[key])
+
+    click.echo(output)
 
 
 @cli.command(name='push')
@@ -192,6 +198,7 @@ def cli_pull(ctx, projects: str=None, reset_hard: bool=False):
 
 
 @cli.command(name='new')
+@click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
 @click.argument('projectkey')
 @click.argument('issuetype')
 @click.argument('summary')
@@ -204,7 +211,7 @@ def cli_pull(ctx, projects: str=None, reset_hard: bool=False):
 @click.option('--labels', help='Issue labels as comma-separated')
 @click.option('--priority', help='Set the priority of the issue')
 @click.option('--reporter', help='Username of Issue reporter (defaults to creator)')
-def cli_new(projectkey: str, issuetype: str, summary: str, **kwargs):
+def cli_new(projectkey: str, issuetype: str, summary: str, as_json: bool=False, **kwargs):
     '''
     Create a new issue on a project
 
@@ -250,7 +257,12 @@ def cli_new(projectkey: str, issuetype: str, summary: str, **kwargs):
     new_issue = create_issue(jira, project, issuetype, summary, **kwargs)
 
     # display the new issue
-    click.echo(new_issue)
+    if as_json:
+        output = new_issue.as_json()
+    else:
+        output = str(new_issue)
+
+    click.echo(output)
 
 
 @cli.command(name='edit')

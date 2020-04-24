@@ -1,5 +1,6 @@
-from unittest import mock
+import json
 import logging
+from unittest import mock
 
 import click
 from click.testing import CliRunner
@@ -106,8 +107,7 @@ def test_cli_smoketest_empty(mock_authenticate, mock_push_issues, mock_pull_issu
 
 
 @mock.patch('jira_offline.entrypoint.Jira')
-@mock.patch('jira_offline.entrypoint.click')
-def test_cli_show_invalid_issue_key(mock_click, mock_jira_local, mock_jira):
+def test_cli_show_invalid_issue_key(mock_jira_local, mock_jira):
     '''
     Ensure show command errors when passed an invalid/missing Issue key
     '''
@@ -117,7 +117,27 @@ def test_cli_show_invalid_issue_key(mock_click, mock_jira_local, mock_jira):
     runner = CliRunner()
     result = runner.invoke(cli, ['show', 'issue1'])
     assert result.exit_code == 1
-    mock_click.echo.assert_called_once_with('Unknown issue key')
+    assert result.output == 'Unknown issue key\nAborted!\n'
+
+
+@mock.patch('jira_offline.entrypoint.Jira')
+def test_cli_show_can_return_json(mock_jira_local, mock_jira):
+    '''
+    Ensure show command can return output as JSON
+    '''
+    # set function-local instance of Jira class to our test mock
+    mock_jira_local.return_value = mock_jira
+
+    # add fixture to Jira dict
+    mock_jira['issue1'] = Issue.deserialize(ISSUE_1)
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ['show', '--json', 'issue1'])
+    assert result.exit_code == 0
+    try:
+        json.loads(f'{result.output}')
+    except json.decoder.JSONDecodeError:
+        pytest.fail('Invalid JSON returned!')
 
 
 @mock.patch('jira_offline.entrypoint.pull_issues')
@@ -192,6 +212,26 @@ def test_cli_new_fixversions_param_key_is_passed_to_create_issue_with_case_chang
     runner = CliRunner()
     result = runner.invoke(cli, ['new', 'TEST', 'Story', 'Summary of issue', '--fix-versions', '0.1'])
     assert result.exit_code == 0
+
+
+@mock.patch('jira_offline.entrypoint.Jira')
+def test_cli_new_can_return_json(mock_jira_local, mock_jira):
+    '''
+    Ensure new command can return output as JSON
+    '''
+    # set function-local instance of Jira class to our test mock
+    mock_jira_local.return_value = mock_jira
+
+    # add fixture to Jira dict
+    mock_jira['issue1'] = Issue.deserialize(ISSUE_1)
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ['new', '--json', 'TEST', 'Story', 'Summary of issue'])
+    assert result.exit_code == 0
+    try:
+        json.loads(f'{result.output}')
+    except json.decoder.JSONDecodeError:
+        pytest.fail('Invalid JSON returned!')
 
 
 @mock.patch('jira_offline.entrypoint.Jira')

@@ -11,7 +11,7 @@ import os
 import pathlib
 import shutil
 import textwrap
-from typing import Any, Dict, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import arrow
 import click
@@ -222,12 +222,12 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
 
     @property
     def is_open(self) -> bool:
-        if self.is_inprogress or self.is_todo:
+        if self.is_inprogress or self.is_todo or self.is_blocked:
             return True
         elif self.is_done or self.is_closed or self.status == IssueStatus.Unspecified:
             return False
         else:
-            raise AttributeError('Issue cannot be determined open or closed!')
+            raise AttributeError(f'Issue {self.key} cannot be determined open or closed!')
 
     @property
     def is_todo(self) -> bool:
@@ -240,7 +240,8 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
     def is_inprogress(self) -> bool:
         if self.status in (IssueStatus.InProgress, IssueStatus.InRelease, IssueStatus.Accepted,
                            IssueStatus.EpicInProgress, IssueStatus.StoryInProgress,
-                           IssueStatus.EpicWithSquad, IssueStatus.EpicInReview):
+                           IssueStatus.EpicWithSquad, IssueStatus.EpicInReview, IssueStatus.InDev,
+                           IssueStatus.InTest):
             return True
         return False
 
@@ -254,6 +255,12 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
     @property
     def is_closed(self) -> bool:
         if self.is_done or self.status in (IssueStatus.Closed, IssueStatus.RiskClosed):
+            return True
+        return False
+
+    @property
+    def is_blocked(self) -> bool:
+        if IssueStatus.Blocked:
             return True
         return False
 
@@ -303,7 +310,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
 
         return issue
 
-    def __str__(self, conflicts: dict=None):
+    def render(self, conflicts: dict=None) -> List[Tuple[str, str]]:
         '''
         Pretty print this Issue
 
@@ -323,15 +330,15 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
             if conflicts and field_name in conflicts:
                 return (
                     ('<<<<<<< base', ''),
-                    render(field_name, conflicts[field_name]['base'], prefix),
+                    render_field(field_name, conflicts[field_name]['base'], prefix),
                     ('=======', ''),
-                    render(field_name, conflicts[field_name]['updated'], prefix),
+                    render_field(field_name, conflicts[field_name]['updated'], prefix),
                     ('>>>>>>> updated', ''),
                 )
             else:
-                return (render(field_name, getattr(self, field_name), prefix),)
+                return (render_field(field_name, getattr(self, field_name), prefix),)
 
-        def render(field_name: str, value: Any, prefix: str=None) -> Tuple[str, str]:
+        def render_field(field_name: str, value: Any, prefix: str=None) -> Tuple[str, str]:
             '''
             Single-field pretty formatting function supporting various types
 
@@ -385,4 +392,16 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
             *fmt('created'),
             *fmt('updated'),
         ]
-        return tabulate(attrs)
+        return attrs
+
+    def as_json(self) -> str:
+        '''
+        Render issue as JSON
+        '''
+        return json.dumps({a[0]:a[1] for a in self.render()})
+
+    def __str__(self) -> str:
+        '''
+        Render issue to friendly string
+        '''
+        return tabulate(self.render())

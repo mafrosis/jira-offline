@@ -427,7 +427,8 @@ def manual_conflict_resolution(update_object: IssueUpdate) -> Issue:
         update_object:  Instance of IssueUpdate returned from _build_update
     '''
     # render issue to string, including conflict blocks
-    editor_conflict_text = update_object.merged_issue.__str__(update_object.conflicts)
+    issue_data = update_object.merged_issue.render(update_object.conflicts)
+    editor_conflict_text = tabulate(issue_data)
 
     retries = 1
     while retries <= 3:
