@@ -3,6 +3,7 @@ Application CLI entrypoint. Uses the click library to configure commands and sub
 options and help text.
 '''
 import dataclasses
+import json
 import logging
 from typing import Optional, Set
 from urllib.parse import urlparse
@@ -426,12 +427,17 @@ def cli_group_lint_issues_missing_epic(ctx, epic_ref=None):
 
 
 @cli.command(name='ls')
+@click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
 @click.pass_context
-def cli_ls(ctx):
+def cli_ls(ctx, as_json: bool=False):
     '''List Issues on the CLI'''
     jira = Jira()
     jira.load_issues()
-    _print_list(jira.df, verbose=ctx.obj.verbose, include_project_col=len(jira.config.projects) > 1)
+    if as_json:
+        for issue in jira.values():
+            click.echo(json.dumps(issue.serialize()))
+    else:
+        _print_list(jira.df, verbose=ctx.obj.verbose, include_project_col=len(jira.config.projects) > 1)
 
 
 def _print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_project_col: bool=False):

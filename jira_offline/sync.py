@@ -568,7 +568,7 @@ def push_issues(jira: 'Jira', verbose: bool=False):
             )
 
             if update_object.merged_issue.exists:
-                jira.update_issue(project, update_object.merged_issue.key, update_dict)
+                jira.update_issue(project, update_object.merged_issue, update_dict)
                 logger.info(
                     'Updated %s %s', update_object.merged_issue.issuetype, update_object.merged_issue.key
                 )

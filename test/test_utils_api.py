@@ -1,7 +1,5 @@
 from unittest import mock
 
-import requests
-
 from jira_offline.utils.api import _request, head, get, post, put
 
 
@@ -10,7 +8,7 @@ def test_requests__calls_requests_request(mock_requests, project):
     '''
     Dumb test ensuring we call requests.request, and then call response.json()
     '''
-    mock_requests.request.return_value = mock_response = mock.MagicMock(spec=requests.Response)
+    mock_requests.request.return_value = mock_response = mock.MagicMock()
     mock_response.status_code = 200
 
     _request('GET', project, 'path/')

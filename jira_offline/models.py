@@ -398,7 +398,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         '''
         Render issue as JSON
         '''
-        return json.dumps({a[0]:a[1] for a in self.render()})
+        return json.dumps(self.serialize())
 
     def __str__(self) -> str:
         '''

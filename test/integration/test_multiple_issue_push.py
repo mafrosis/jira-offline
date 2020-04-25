@@ -1,5 +1,7 @@
 '''
 End-to-end integration tests which use a real instance of Jira
+
+These tests concern pushing multiple new issues to Jira at once
 '''
 import pytest
 
