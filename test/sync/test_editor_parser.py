@@ -1,5 +1,5 @@
 from fixtures import ISSUE_1
-from jira_offline.models import Issue, IssueStatus
+from jira_offline.models import Issue
 from jira_offline.sync import IssueUpdate, parse_editor_result
 
 
@@ -59,21 +59,6 @@ def test_parse_editor_result__handles_set_type():
         editor_result_raw,
     )
     assert edited_issue.fixVersions == {'0.1', '0.3'}  # pylint: disable=no-member
-
-
-def test_parse_editor_result__handles_enum_type():
-    '''
-    Ensure editor text parser handles enum type
-    '''
-    editor_result_raw = '# Conflict(s) on Issue TEST-71\n\n----------------  --------------------------------------\nSummary           [TEST-71] This is the story summary\nType              Story\nEpic Ref          EPIC-60\nStatus            {status}\nPriority          Normal\nAssignee          danil1\nEstimate\nDescription       This is a story or issue\nFix Version       -  0.1\nLabels\nReporter          danil1\nCreator           danil1\nCreated           a year ago [2018-09-24 08:44:06+10:00]\nUpdated           a year ago [2018-09-24 08:44:06+10:00]\nLast Viewed       a year ago [2018-09-24 08:44:06+10:00]\n----------------  --------------------------------------\n'.format(
-        status=IssueStatus.NotAssessed.value,
-    )
-
-    edited_issue = parse_editor_result(
-        IssueUpdate(merged_issue=Issue.deserialize(ISSUE_1), conflicts={'status'}),
-        editor_result_raw,
-    )
-    assert edited_issue.status == IssueStatus.NotAssessed  # pylint: disable=no-member
 
 
 def test_parse_editor_result__handles_int_type():

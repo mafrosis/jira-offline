@@ -7,7 +7,7 @@ import uuid
 
 from jira_offline.exceptions import (DeserializeError, EpicNotFound, EpicSearchStrUsedMoreThanOnce,
                                      InvalidIssueType, SummaryAlreadyExists)
-from jira_offline.models import Issue, IssueStatus, ProjectMeta
+from jira_offline.models import Issue, ProjectMeta
 from jira_offline.utils import get_field_by_name
 from jira_offline.utils.serializer import deserialize_value
 
@@ -107,9 +107,6 @@ def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: st
     # although description is an API mandatory field, we can survive without one
     if 'description' not in kwargs or not kwargs['description']:
         kwargs['description'] = ''
-
-    # new Issues have no status (Jira project workflow settings will determine this)
-    kwargs['status'] = IssueStatus.Unspecified
 
     for field_name, value in kwargs.items():
         set_field_on_issue(new_issue, field_name, value)

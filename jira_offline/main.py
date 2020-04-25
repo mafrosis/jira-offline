@@ -248,13 +248,9 @@ class Jira(collections.abc.MutableMapping):
         if self._df is None:
             items = {}
             for key, issue in self.items():
-                if issue.issuetype not in ('Delivery Risk', 'Ops/Introduced Risk'):
-                    items[key] = {
-                        k:v for k,v in issue.__dict__.items()
-                        if k not in ('original', 'diff_to_original')
-                    }
-                    # convert IssueStatus enum to string
-                    items[key]['status'] = issue.status.value
-                    items[key]['is_open'] = issue.is_open
+                items[key] = {
+                    k:v for k,v in issue.__dict__.items()
+                    if k not in ('original', 'diff_to_original')
+                }
             self._df = pd.DataFrame.from_dict(items, orient='index')
         return self._df
