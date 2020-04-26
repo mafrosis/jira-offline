@@ -42,6 +42,7 @@ class CustomFields(DataclassSerializer):
 class IssueType(DataclassSerializer):
     name: str = field(default='')
     priorities: Set[str] = field(default_factory=set)
+    statuses: Set[str] = field(default_factory=set)
 
 
 @dataclass

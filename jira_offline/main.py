@@ -135,8 +135,32 @@ class Jira(collections.abc.MutableMapping):
 
             project.custom_fields = custom_fields
 
+            # pull project statuses for issue types
+            self._get_project_issue_statuses(project)
+
         except (IndexError, KeyError) as e:
             raise JiraApiError(f'Missing or bad project meta returned for {project.key} with error "{e.__class__.__name__}({e})"')
+        except JiraApiError as e:
+            raise JiraApiError(f'Failed retrieving project meta for {project.key} with error "{e}"')
+
+
+    def _get_project_issue_statuses(self, project: ProjectMeta):  # pylint: disable=no-self-use
+        '''
+        Pull valid statuses for each issuetype in this project
+
+        Params:
+            project:  Jira project to query
+        '''
+        try:
+            data = api_get(project, f'project/{project.key}/statuses')
+
+            for obj in data:
+                try:
+                    issuetype = project.issuetypes[obj['name']]
+                    issuetype.statuses = {x['name'] for x in obj['statuses']}
+                except KeyError:
+                    logger.debug('Unknown issuetype "%s" returned from /project/{project.key}/statuses', obj['name'])
+
         except JiraApiError as e:
             raise JiraApiError(f'Failed retrieving project meta for {project.key} with error "{e}"')
 
