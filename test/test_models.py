@@ -2,7 +2,7 @@ from unittest import mock
 
 import pytest
 
-from jira_offline.exceptions import IssuePriorityInvalid, UnableToCopyCustomCACert
+from jira_offline.exceptions import InvalidIssuePriority, UnableToCopyCustomCACert
 from jira_offline.models import Issue
 
 from fixtures import ISSUE_1
@@ -15,7 +15,7 @@ def test_issue_model__priority_property_fails_when_writing_invalid_value(project
     # deserialize a fixture into an Issue object
     issue1 = Issue.deserialize(ISSUE_1, project_ref=project)
 
-    with pytest.raises(IssuePriorityInvalid):
+    with pytest.raises(InvalidIssuePriority):
         # set the priority to an invalid value
         issue1.priority = 'Bacon'
 

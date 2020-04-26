@@ -21,7 +21,7 @@ from requests_oauthlib import OAuth1
 from tabulate import tabulate
 
 from jira_offline import __title__
-from jira_offline.exceptions import UnableToCopyCustomCACert, IssuePriorityInvalid, NoAuthenticationMethod
+from jira_offline.exceptions import UnableToCopyCustomCACert, InvalidIssuePriority, NoAuthenticationMethod
 from jira_offline.utils import classproperty, friendly_title, get_field_by_name
 from jira_offline.utils.serializer import DataclassSerializer, get_enum, get_type_class
 
@@ -182,7 +182,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
             raise Exception
 
         if value not in self.project_ref.issuetypes[self.issuetype].priorities:
-            raise IssuePriorityInvalid(
+            raise InvalidIssuePriority(
                 ', '.join(self.project_ref.issuetypes[self.issuetype].priorities)
             )
 
