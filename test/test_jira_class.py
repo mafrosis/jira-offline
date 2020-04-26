@@ -79,7 +79,7 @@ def test_jira__write_issues__calls_issue_diff_for_existing_issues_only(mock_open
 
 
 @mock.patch('jira_offline.main.api_get')
-def test_jira__get_project_meta__extracts_issuetypes(mock_api_get, mock_jira_core):
+def test_jira__get_project_meta__extracts_issuetypes(mock_api_get, mock_jira_core, project):
     '''
     Ensure get_project_meta() method parses the issuetypes for a project
     '''
@@ -91,16 +91,16 @@ def test_jira__get_project_meta__extracts_issuetypes(mock_api_get, mock_jira_cor
             'name': 'Project EGG',
             'issuetypes': [{
                 'id': '5',
-                'name': 'Epic',
+                'name': 'Story',
                 'fields': {
                     'priority': {
                         'name': 'priority',
-                        'allowedValues': [{'name': 'egg'}, {'name': 'bacon'}],
+                        'allowedValues': [{'name': 'High'}, {'name': 'Low'}],
                     },
                 },
             },{
                 'id': '18500',
-                'name': 'Party',
+                'name': 'Custom_IssueType',
                 'fields': {
                     'priority': {
                         'name': 'priority',
@@ -117,20 +117,53 @@ def test_jira__get_project_meta__extracts_issuetypes(mock_api_get, mock_jira_cor
         }]
     }
 
-    project_meta = ProjectMeta(key='BACON')
-
-    mock_jira_core.get_project_meta(project_meta)
+    mock_jira_core.get_project_meta(project)
 
     assert mock_api_get.called
-    assert project_meta.name == 'Project EGG'
-    assert project_meta.issuetypes == {
-        'Epic': IssueType(name='Epic', priorities={'egg', 'bacon'}),
-        'Party': IssueType(name='Party', priorities={'egg', 'bacon'})
+    assert project.name == 'Project EGG'
+    assert project.issuetypes == {
+        'Story': IssueType(name='Story', priorities={'High', 'Low'}),
+        'Custom_IssueType': IssueType(name='Custom_IssueType', priorities={'egg', 'bacon'})
     }
 
 
 @mock.patch('jira_offline.main.api_get')
-def test_jira__get_project_meta__extracts_custom_fields(mock_api_get, mock_jira_core):
+def test_jira__get_project_meta__handles_removal_of_issuetype(mock_api_get, mock_jira_core, project):
+    '''
+    Ensure get_project_meta() method handles when an issuetype is removed from a project on Jira
+
+    The project fixture includes the Story issuetype, this should be removed if not in the API result
+    '''
+    # mock return from Jira createmeta API call
+    mock_api_get.return_value = {
+        'projects': [{
+            'id': '56120',
+            'key': 'EGG',
+            'name': 'Project EGG',
+            'issuetypes': [{
+                'id': '5',
+                'name': 'Epic',
+                'fields': {
+                    'priority': {
+                        'name': 'priority',
+                        'allowedValues': [{'name': 'egg'}, {'name': 'bacon'}],
+                    },
+                },
+            }]
+        }]
+    }
+
+    mock_jira_core.get_project_meta(project)
+
+    assert mock_api_get.called
+    assert project.name == 'Project EGG'
+    assert project.issuetypes == {
+        'Epic': IssueType(name='Epic', priorities={'egg', 'bacon'})
+    }
+
+
+@mock.patch('jira_offline.main.api_get')
+def test_jira__get_project_meta__extracts_custom_fields(mock_api_get, mock_jira_core, project):
     '''
     Ensure get_project_meta() method parses the custom_fields for a project
     '''
@@ -166,16 +199,14 @@ def test_jira__get_project_meta__extracts_custom_fields(mock_api_get, mock_jira_
         }]
     }
 
-    project_meta = ProjectMeta(key='BACON')
-
-    mock_jira_core.get_project_meta(project_meta)
+    mock_jira_core.get_project_meta(project)
 
     assert mock_api_get.called
-    assert project_meta.custom_fields == CustomFields(epic_name='10104', estimate='10106')
+    assert project.custom_fields == CustomFields(epic_name='10104', estimate='10106')
 
 
 @mock.patch('jira_offline.main.api_get')
-def test_jira__get_project_meta__handles_no_priority_for_issuetype(mock_api_get, mock_jira_core):
+def test_jira__get_project_meta__handles_no_priority_for_issuetype(mock_api_get, mock_jira_core, project):
     '''
     Ensure get_project_meta() method doesn't choke if an issuetype has no priority field
     '''
@@ -201,12 +232,10 @@ def test_jira__get_project_meta__handles_no_priority_for_issuetype(mock_api_get,
         }]
     }
 
-    project_meta = ProjectMeta(key='BACON')
-
-    mock_jira_core.get_project_meta(project_meta)
+    mock_jira_core.get_project_meta(project)
 
     assert mock_api_get.called
-    assert project_meta.custom_fields == CustomFields(estimate='10106')
+    assert project.custom_fields == CustomFields(estimate='10106')
 
 
 @mock.patch('jira_offline.main.api_get')

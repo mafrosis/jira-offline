@@ -105,12 +105,17 @@ class Jira(collections.abc.MutableMapping):
             # project friendly name
             project.name = data['projects'][0]['name']
 
+            issuetypes_ = dict()
+
             # extract set of issuetypes, and their priority values returned from the createmeta API
             for x in data['projects'][0]['issuetypes']:
                 it = IssueType(name=x['name'])
                 if x['fields'].get('priority'):
                     it.priorities = {y['name'] for y in x['fields']['priority']['allowedValues']}
-                project.issuetypes[x['name']] = it
+                issuetypes_[x['name']] = it
+
+            # update project issuetypes to latest defined on Jira
+            project.issuetypes = issuetypes_
 
             custom_fields = CustomFields()
 
