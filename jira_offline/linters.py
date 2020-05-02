@@ -57,7 +57,7 @@ def issues_missing_epic(jira: 'Jira', fix: bool=False, epic_ref: str=None) -> pd
     '''
     if fix:
         # iterate issue keys and update issue.epic_ref
-        for key in jira.df[(jira.df.issuetype != 'Epic') & jira.df.epic_ref.isnull() & jira.df.is_open].index:
+        for key in jira.df[(jira.df.issuetype != 'Epic') & jira.df.epic_ref.isnull()].index:
             jira[key].epic_ref = epic_ref
 
         # write updates to disk & invalidate current DataFrame representation
@@ -65,4 +65,4 @@ def issues_missing_epic(jira: 'Jira', fix: bool=False, epic_ref: str=None) -> pd
         jira.invalidate_df()
 
     # return dataframe of open issues missing an epic
-    return jira.df[(jira.df.issuetype != 'Epic') & jira.df.epic_ref.isnull() & jira.df.is_open]
+    return jira.df[(jira.df.issuetype != 'Epic') & jira.df.epic_ref.isnull()]

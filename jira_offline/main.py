@@ -105,12 +105,17 @@ class Jira(collections.abc.MutableMapping):
             # project friendly name
             project.name = data['projects'][0]['name']
 
+            issuetypes_ = dict()
+
             # extract set of issuetypes, and their priority values returned from the createmeta API
             for x in data['projects'][0]['issuetypes']:
                 it = IssueType(name=x['name'])
                 if x['fields'].get('priority'):
                     it.priorities = {y['name'] for y in x['fields']['priority']['allowedValues']}
-                project.issuetypes[x['name']] = it
+                issuetypes_[x['name']] = it
+
+            # update project issuetypes to latest defined on Jira
+            project.issuetypes = issuetypes_
 
             custom_fields = CustomFields()
 
@@ -130,8 +135,32 @@ class Jira(collections.abc.MutableMapping):
 
             project.custom_fields = custom_fields
 
+            # pull project statuses for issue types
+            self._get_project_issue_statuses(project)
+
         except (IndexError, KeyError) as e:
             raise JiraApiError(f'Missing or bad project meta returned for {project.key} with error "{e.__class__.__name__}({e})"')
+        except JiraApiError as e:
+            raise JiraApiError(f'Failed retrieving project meta for {project.key} with error "{e}"')
+
+
+    def _get_project_issue_statuses(self, project: ProjectMeta):  # pylint: disable=no-self-use
+        '''
+        Pull valid statuses for each issuetype in this project
+
+        Params:
+            project:  Jira project to query
+        '''
+        try:
+            data = api_get(project, f'project/{project.key}/statuses')
+
+            for obj in data:
+                try:
+                    issuetype = project.issuetypes[obj['name']]
+                    issuetype.statuses = {x['name'] for x in obj['statuses']}
+                except KeyError:
+                    logger.debug('Unknown issuetype "%s" returned from /project/{project.key}/statuses', obj['name'])
+
         except JiraApiError as e:
             raise JiraApiError(f'Failed retrieving project meta for {project.key} with error "{e}"')
 
@@ -248,13 +277,11 @@ class Jira(collections.abc.MutableMapping):
         if self._df is None:
             items = {}
             for key, issue in self.items():
-                if issue.issuetype not in ('Delivery Risk', 'Ops/Introduced Risk'):
-                    items[key] = {
-                        k:v for k,v in issue.__dict__.items()
-                        if k not in ('original', 'diff_to_original')
-                    }
-                    # convert IssueStatus enum to string
-                    items[key]['status'] = issue.status.value
-                    items[key]['is_open'] = issue.is_open
+                items[key] = {
+                    k:v for k,v in issue.__dict__.items()
+                    if k not in ('original', 'diff_to_original')
+                }
             self._df = pd.DataFrame.from_dict(items, orient='index')
+            # rename the columns sourced from @property on Issue
+            self._df.rename(columns={'_status': 'status', '_priority': 'priority'}, inplace=True)
         return self._df

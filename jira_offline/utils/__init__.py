@@ -25,11 +25,6 @@ def friendly_title(field_name):
     return f.metadata.get('friendly', field_name.replace('_', ' ').title())
 
 
-class classproperty(property):
-    def __get__(self, cls, owner):
-        return classmethod(self.fget).__get__(None, owner)()
-
-
 @contextlib.contextmanager
 def critical_logger(logger_):
     '''

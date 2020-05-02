@@ -3,7 +3,6 @@ Application data structures. Mostly dataclasses inheriting from utils.DataclassS
 '''
 from dataclasses import dataclass, field
 import datetime
-import enum
 import functools
 import json
 import hashlib
@@ -22,8 +21,9 @@ from requests_oauthlib import OAuth1
 from tabulate import tabulate
 
 from jira_offline import __title__
-from jira_offline.exceptions import UnableToCopyCustomCACert, IssuePriorityInvalid, NoAuthenticationMethod
-from jira_offline.utils import classproperty, friendly_title, get_field_by_name
+from jira_offline.exceptions import (UnableToCopyCustomCACert, InvalidIssuePriority, InvalidIssueStatus,
+                                     NoAuthenticationMethod)
+from jira_offline.utils import friendly_title, get_field_by_name
 from jira_offline.utils.serializer import DataclassSerializer, get_enum, get_type_class
 
 
@@ -43,6 +43,7 @@ class CustomFields(DataclassSerializer):
 class IssueType(DataclassSerializer):
     name: str = field(default='')
     priorities: Set[str] = field(default_factory=set)
+    statuses: Set[str] = field(default_factory=set)
 
 
 @dataclass
@@ -131,31 +132,6 @@ class AppConfig(DataclassSerializer):
             f.write('\n')
 
 
-class IssueStatus(enum.Enum):
-    Backlog = 'Backlog'
-    ToDo = 'To Do'
-    InProgress = 'In Progress'
-    StoryInProgress = 'Story in Progress'
-    EpicInProgress = 'Epic in Progress'
-    EpicInReview = 'Epic in Review'
-    EpicWithSquad = 'Epic with Squad'
-    EpicReadyforSquad = 'Epic Ready for Squad'
-    InDev = 'In Dev'
-    InRelease = 'In Release'
-    InTest = 'In Test'
-    Done = 'Done'
-    StoryDone = 'Story Done'
-    EpicDone = 'Epic Done'
-    Closed = 'Closed'
-    RiskClosed = 'Risk Closed'
-    RiskIdentified = 'Risk Identified'
-    NotAssessed = 'Not Assessed'
-    Resolved = 'Resolved'
-    Accepted = 'Accepted'
-    Blocked = 'Blocked'
-    Unspecified = 'n/a'
-
-
 @dataclass  # pylint: disable=too-many-instance-attributes
 class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attributes
     project_id: str = field(metadata={'friendly': 'Project ID', 'readonly': True})
@@ -175,7 +151,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
     labels: Optional[set] = field(default=None)
     _priority: Optional[str] = field(default=None, metadata={'friendly': 'Priority', 'property': 'priority'})
     reporter: Optional[str] = field(default=None)
-    status: Optional[IssueStatus] = field(default=None, metadata={'readonly': True})
+    _status: Optional[str] = field(default=None, metadata={'friendly': 'Status', 'property': 'status', 'readonly': True})
     updated: Optional[datetime.datetime] = field(default=None, metadata={'readonly': True})
 
     # local-only dict which represents serialized Issue last seen on Jira server
@@ -187,9 +163,9 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
 
     project_ref: Optional[ProjectMeta] = field(default=None, repr=False)
 
-    @classproperty
+    @classmethod
     @functools.lru_cache(maxsize=1)
-    def blank(self):
+    def blank(cls):
         '''
         Static class property returning a blank/empty Issue
         '''
@@ -207,11 +183,27 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
             raise Exception
 
         if value not in self.project_ref.issuetypes[self.issuetype].priorities:
-            raise IssuePriorityInvalid(
+            raise InvalidIssuePriority(
                 ', '.join(self.project_ref.issuetypes[self.issuetype].priorities)
             )
 
         self._priority = value
+
+    @property
+    def status(self) -> Optional[str]:
+        return self._status
+
+    @status.setter
+    def status(self, value: str):
+        if not self.project_ref:
+            raise Exception
+
+        if value not in self.project_ref.issuetypes[self.issuetype].statuses:
+            raise InvalidIssueStatus(
+                ', '.join(self.project_ref.issuetypes[self.issuetype].statuses)
+            )
+
+        self._status = value
 
     @property
     def exists(self) -> bool:
@@ -219,50 +211,6 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         Return True if Issue exists on Jira, or False if it's local only
         '''
         return bool(self.id)
-
-    @property
-    def is_open(self) -> bool:
-        if self.is_inprogress or self.is_todo or self.is_blocked:
-            return True
-        elif self.is_done or self.is_closed or self.status == IssueStatus.Unspecified:
-            return False
-        else:
-            raise AttributeError(f'Issue {self.key} cannot be determined open or closed!')
-
-    @property
-    def is_todo(self) -> bool:
-        if self.status in (IssueStatus.Backlog, IssueStatus.ToDo, IssueStatus.RiskIdentified,
-                           IssueStatus.NotAssessed, IssueStatus.EpicReadyforSquad):
-            return True
-        return False
-
-    @property
-    def is_inprogress(self) -> bool:
-        if self.status in (IssueStatus.InProgress, IssueStatus.InRelease, IssueStatus.Accepted,
-                           IssueStatus.EpicInProgress, IssueStatus.StoryInProgress,
-                           IssueStatus.EpicWithSquad, IssueStatus.EpicInReview, IssueStatus.InDev,
-                           IssueStatus.InTest):
-            return True
-        return False
-
-    @property
-    def is_done(self) -> bool:
-        if self.status in (IssueStatus.Done, IssueStatus.StoryDone, IssueStatus.EpicDone,
-                           IssueStatus.Resolved):
-            return True
-        return False
-
-    @property
-    def is_closed(self) -> bool:
-        if self.is_done or self.status in (IssueStatus.Closed, IssueStatus.RiskClosed):
-            return True
-        return False
-
-    @property
-    def is_blocked(self) -> bool:
-        if IssueStatus.Blocked:
-            return True
-        return False
 
     def diff(self, data: dict=None) -> Optional[list]:
         '''

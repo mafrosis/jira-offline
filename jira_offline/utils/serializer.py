@@ -89,7 +89,7 @@ def deserialize_value(type_: type, value: Any) -> Any:  # pylint: disable=too-ma
     elif type_ is set:
         if not isinstance(value, set) and not isinstance(value, list):
         #if not is_typing_instance(value, set) and not is_typing_instance(value, list):
-            raise DeserializeError(f'Value passed to set type must be JSON set or list')
+            raise DeserializeError('Value passed to set type must be JSON set or list')
         return set(value)
 
     elif type_ is int:

@@ -325,7 +325,7 @@ def _build_update(base_issue: Issue, updated_issue: Optional[Issue]) -> IssueUpd
     '''
     if updated_issue is None:
         # for new Issues created offline, the updated_issue must be set to Issue.blank
-        updated_issue = Issue.blank
+        updated_issue = Issue.blank()
 
     # serialize both Issue objects to dict
     base_issue_dict: dict = base_issue.serialize()
@@ -347,7 +347,7 @@ def _build_update(base_issue: Issue, updated_issue: Optional[Issue]) -> IssueUpd
     # fields to ignore during dictdiffer.diff
     ignore_fields = set(['diff_to_original'])
 
-    if updated_issue != Issue.blank:
+    if updated_issue != Issue.blank():
         # ignore readonly fields when diffing new Issues
         ignore_fields.update({f.name for f in dataclasses.fields(Issue) if f.metadata.get('readonly')})
 

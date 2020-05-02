@@ -47,6 +47,24 @@ class InvalidIssueType(BaseAppException):
     '''
 
 
+class InvalidIssueStatus(BaseAppException):
+    '''
+    Each issuetype has a number of configured statuses. An error occurs if an issue is set to an
+    invalid status
+    '''
+    def format_message(self):
+        return f'Invalid status!\n\nYou have the following options:\n{self.message}'
+
+
+class InvalidIssuePriority(BaseAppException):
+    '''
+    Each issuetype has a number of configured priorities. An error occurs if an issue is set to an
+    invalid priority
+    '''
+    def format_message(self):
+        return f'Invalid priority!\n\nYou have the following options:\n{self.message}'
+
+
 class CliError(BaseAppException):
     '''Raised when bad params are passed to a CLI command'''
 
@@ -135,13 +153,7 @@ class JiraUnavailable(BaseAppException):
 class NoAuthenticationMethod(BaseAppException):
     '''Jira.connect was called with no authentication method configured'''
     def format_message(self):
-        return f'No way to authenticate!'
-
-
-class IssuePriorityInvalid(BaseAppException):
-    '''Setting Issue.priority to an invalid string will cause this exception'''
-    def format_message(self):
-        return f'Invalid priority setting!\n\nYou have the following options:\n{self.message}'
+        return 'No way to authenticate!'
 
 
 class EpicSearchStrUsedMoreThanOnce(BaseAppException):

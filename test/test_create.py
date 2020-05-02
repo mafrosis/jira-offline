@@ -6,7 +6,7 @@ from fixtures import EPIC_1, ISSUE_1
 from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce, InvalidIssueType,
                                      SummaryAlreadyExists)
 from jira_offline.create import create_issue, find_epic_by_reference
-from jira_offline.models import Issue, IssueStatus
+from jira_offline.models import Issue
 
 
 def test_create__create_issue__loads_issues_when_cache_empty(mock_jira, project):
@@ -59,15 +59,6 @@ def test_create__create_issue__mandatory_fields_are_set_in_new_issue(mock_jira, 
     assert offline_issue.summary == 'This is a summary'
     assert offline_issue.description == ''
     assert len(offline_issue.key) == 36  # UUID
-
-
-def test_create__create_issue__creates_issues_with_unspecified_status(mock_jira, project):
-    '''
-    Ensure create_issue() sets Issue.status == IssueStatus.Unspecified on new issues
-    '''
-    offline_issue = create_issue(mock_jira, project, 'Story', 'This is a summary')
-
-    assert offline_issue.status == IssueStatus.Unspecified
 
 
 def test_create__create_issue__error_on_existing_summary_for_same_project(mock_jira, project):

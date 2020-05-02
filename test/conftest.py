@@ -29,7 +29,7 @@ def project(customfield_estimate):
         password='dummy',
         custom_fields=CustomFields(epic_ref='1', epic_name='2', estimate=customfield_estimate),
         issuetypes={
-            'Story': IssueType(name='Story', priorities=['High', 'Low']),
+            'Story': IssueType(name='Story', priorities=['High', 'Low'], statuses=['Backlog', 'Done']),
         },
     )
 

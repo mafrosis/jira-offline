@@ -22,7 +22,7 @@ def load_config():
             with open(config_filepath) as f:
                 config = AppConfig.deserialize(json.load(f))
         except IsADirectoryError:
-            raise UnreadableConfig(f'There is a directory at config path (config_filepath)!')
+            raise UnreadableConfig('There is a directory at config path (config_filepath)!')
         except ValueError:
             raise UnreadableConfig('Bad JSON in config file; ignoring')
 
