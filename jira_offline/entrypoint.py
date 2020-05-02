@@ -278,6 +278,7 @@ def cli_new(projectkey: str, issuetype: str, summary: str, as_json: bool=False, 
 @click.option('--priority', help='Set the priority of the issue')
 @click.option('--reporter', help='Username of Issue reporter')
 @click.option('--summary', help='Summary one-liner for this issue')
+@click.option('--status', help='Set issue status to any valid for the issuetype')
 def cli_edit(key, **kwargs):
     '''
     Edit one or more fields on an issue

@@ -47,6 +47,15 @@ class InvalidIssueType(BaseAppException):
     '''
 
 
+class InvalidIssueStatus(BaseAppException):
+    '''
+    Each issuetype has a number of configured statuses. An error occurs if an issue is set to an
+    invalid status
+    '''
+    def format_message(self):
+        return f'Invalid status!\n\nYou have the following options:\n{self.message}'
+
+
 class InvalidIssuePriority(BaseAppException):
     '''
     Each issuetype has a number of configured priorities. An error occurs if an issue is set to an

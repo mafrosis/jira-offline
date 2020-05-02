@@ -282,4 +282,6 @@ class Jira(collections.abc.MutableMapping):
                     if k not in ('original', 'diff_to_original')
                 }
             self._df = pd.DataFrame.from_dict(items, orient='index')
+            # rename the columns sourced from @property on Issue
+            self._df.rename(columns={'_status': 'status', '_priority': 'priority'}, inplace=True)
         return self._df
