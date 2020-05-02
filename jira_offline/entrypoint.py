@@ -162,7 +162,7 @@ def cli_clone(ctx, project_uri: str, username: str=None, password: str=None, oau
     jira.config.write_to_disk()
 
     # and finally pull all the project's issues
-    click.echo(f'Pulling issues..')
+    click.echo('Pulling issues..')
     pull_single_project(jira, project, force=False, verbose=ctx.obj.verbose)
 
 
