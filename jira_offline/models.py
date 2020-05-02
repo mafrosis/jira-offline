@@ -297,10 +297,10 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
             Returns:
                 Pretty field title, formatted value
             '''
-            title = friendly_title(field_name)
+            title = friendly_title(Issue, field_name)
 
             # determine the origin type for this field (thus handling Optional[type])
-            type_ = get_type_class(get_field_by_name(field_name).type)
+            type_ = get_type_class(get_field_by_name(Issue, field_name).type)
 
             if value is None:
                 value = ''

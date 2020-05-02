@@ -5,23 +5,22 @@ import logging
 
 
 @functools.lru_cache()
-def get_field_by_name(field_name):
+def get_field_by_name(cls, field_name: str) -> dataclasses.Field:
     '''
-    Retrieve a field from the Issue dataclass by name
+    Retrieve a field from the supplied dataclass by name
     '''
-    # late import prevents circular dependency
-    from jira_offline.models import Issue  # pylint: disable=import-outside-toplevel,cyclic-import
-    for f in dataclasses.fields(Issue):
+    for f in dataclasses.fields(cls):
         if f.metadata.get('property') == field_name or f.name == field_name:
             return f
+    raise Exception
 
 
 @functools.lru_cache()
-def friendly_title(field_name):
+def friendly_title(cls, field_name: str) -> str:
     '''
-    Util function to convert an Issue dataclass attribute name into a friendly title
+    Util function to convert a dataclass field name into a friendly title
     '''
-    f = get_field_by_name(field_name)
+    f = get_field_by_name(cls, field_name)
     return f.metadata.get('friendly', field_name.replace('_', ' ').title())
 
 
