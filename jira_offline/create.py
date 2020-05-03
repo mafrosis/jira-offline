@@ -141,7 +141,7 @@ def set_field_on_issue(issue: Issue, field_name: str, value: str):
 
     try:
         # convert string value to Issue field type
-        value = deserialize_value(get_field_by_name(field_name).type, value)
+        value = deserialize_value(get_field_by_name(Issue, field_name).type, value)
 
     except DeserializeError as e:
         raise DeserializeError(f'Failed parsing {field_name} with value {value} ({e})')

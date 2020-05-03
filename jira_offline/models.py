@@ -9,10 +9,8 @@ import hashlib
 import os
 import pathlib
 import shutil
-import textwrap
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-import arrow
 import click
 import dictdiffer
 from oauthlib.oauth1 import SIGNATURE_RSA
@@ -23,8 +21,8 @@ from tabulate import tabulate
 from jira_offline import __title__
 from jira_offline.exceptions import (UnableToCopyCustomCACert, InvalidIssuePriority, InvalidIssueStatus,
                                      NoAuthenticationMethod)
-from jira_offline.utils import friendly_title, get_field_by_name
-from jira_offline.utils.serializer import DataclassSerializer, get_enum, get_type_class
+from jira_offline.utils import render_field, render_value
+from jira_offline.utils.serializer import DataclassSerializer
 
 
 @dataclass
@@ -117,6 +115,41 @@ class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-att
             # permission denied etc
             raise UnableToCopyCustomCACert(str(e))
 
+    def render(self) -> List[Tuple[str, str]]:
+        '''
+        Pretty print this project
+        '''
+        def fmt(field_name: str, prefix: str=None) -> Tuple[str, str]:
+            '''
+            Params:
+                field_name: Dataclass field being formatted
+                prefix:     Arbitrary prefix to prepend during string format
+            Returns:
+                Formatted text
+            '''
+            return render_field(ProjectMeta, field_name, getattr(self, field_name), prefix)
+
+        if self.oauth:
+            auth = f'oauth_key={self.oauth.consumer_key}'
+        else:
+            auth = f'username={self.username}, password=****'
+
+        attrs = [
+            fmt('name'),
+            fmt('key'),
+            ('Project URI', self.project_uri),
+            ('Auth', auth),
+            ('Issue Types', render_value(list(self.issuetypes.keys()))),
+            fmt('last_updated'),
+        ]
+        return attrs
+
+    def __str__(self) -> str:
+        '''
+        Render project to friendly string
+        '''
+        return tabulate(self.render())
+
 
 @dataclass
 class AppConfig(DataclassSerializer):
@@ -149,9 +182,13 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
     id: Optional[str] = field(default=None, metadata={'readonly': True})
     key: Optional[str] = field(default=None, metadata={'readonly': True})
     labels: Optional[set] = field(default=None)
-    _priority: Optional[str] = field(default=None, metadata={'friendly': 'Priority', 'property': 'priority'})
+    _priority: Optional[str] = field(
+        default=None, metadata={'friendly': 'Priority', 'property': 'priority'}
+    )
     reporter: Optional[str] = field(default=None)
-    _status: Optional[str] = field(default=None, metadata={'friendly': 'Status', 'property': 'status', 'readonly': True})
+    _status: Optional[str] = field(
+        default=None, metadata={'friendly': 'Status', 'property': 'status', 'readonly': True}
+    )
     updated: Optional[datetime.datetime] = field(default=None, metadata={'readonly': True})
 
     # local-only dict which represents serialized Issue last seen on Jira server
@@ -278,46 +315,13 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
             if conflicts and field_name in conflicts:
                 return (
                     ('<<<<<<< base', ''),
-                    render_field(field_name, conflicts[field_name]['base'], prefix),
+                    render_field(Issue, field_name, conflicts[field_name]['base'], prefix),
                     ('=======', ''),
-                    render_field(field_name, conflicts[field_name]['updated'], prefix),
+                    render_field(Issue, field_name, conflicts[field_name]['updated'], prefix),
                     ('>>>>>>> updated', ''),
                 )
             else:
-                return (render_field(field_name, getattr(self, field_name), prefix),)
-
-        def render_field(field_name: str, value: Any, prefix: str=None) -> Tuple[str, str]:
-            '''
-            Single-field pretty formatting function supporting various types
-
-            Params:
-                field_name: Dataclass field to render
-                value:      Data to be rendered according to format
-                prefix:     Arbitrary prefix to prepend during string format
-            Returns:
-                Pretty field title, formatted value
-            '''
-            title = friendly_title(field_name)
-
-            # determine the origin type for this field (thus handling Optional[type])
-            type_ = get_type_class(get_field_by_name(field_name).type)
-
-            if value is None:
-                value = ''
-            elif type_ is set:
-                value = tabulate([('-', v) for v in value], tablefmt='plain')
-            elif type_ is datetime.datetime:
-                dt = arrow.get(self.created)
-                value = f'{dt.humanize()} [{dt.format()}]'
-            elif get_enum(type_):
-                value = value.value
-            elif value and type_ is str and len(value) > 100:
-                value = '\n'.join(textwrap.wrap(value, width=100))
-
-            if prefix:
-                value = f'{prefix} {value}'
-
-            return title, value
+                return (render_field(Issue, field_name, getattr(self, field_name), prefix),)
 
         if self.issuetype == 'Epic':
             epicdetails = fmt('epic_name')

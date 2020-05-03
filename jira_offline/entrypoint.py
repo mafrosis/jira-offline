@@ -59,7 +59,6 @@ def cli(ctx, verbose: bool=False, debug: bool=False):
     else:
         logger.setLevel(logging.WARNING)
 
-
     sh.setFormatter(formatter)
     ctx.obj = CliParams(verbose=verbose, debug=debug)
 
@@ -100,6 +99,24 @@ def cli_push(ctx):
         raise click.Abort
 
     push_issues(jira, verbose=ctx.obj.verbose)
+
+
+@cli.command(name='projects')
+@click.pass_context
+def cli_projects(ctx):
+    '''
+    View currently cloned projects
+    '''
+    jira = Jira()
+    if ctx.obj.verbose:
+        for p in jira.config.projects.values():
+            click.echo(p)
+    else:
+        click.echo(tabulate(
+            [(p.key, p.name, p.project_uri) for p in jira.config.projects.values()],
+            headers=['Key', 'Name', 'Project URI'],
+            tablefmt='psql'
+        ))
 
 
 @cli.command(name='clone')

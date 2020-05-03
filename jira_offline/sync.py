@@ -481,7 +481,7 @@ def parse_editor_result(update_object: IssueUpdate, editor_result_raw: str) -> I
     '''
     # create dict to lookup a dataclass field by its pretty formatted name
     issue_fields_by_friendly = {
-        friendly_title(f.name):f for f in dataclasses.fields(Issue)
+        friendly_title(Issue, f.name):f for f in dataclasses.fields(Issue)
     }
 
     editor_result: Dict[str, List[str]] = {}
@@ -510,7 +510,7 @@ def parse_editor_result(update_object: IssueUpdate, editor_result_raw: str) -> I
     summary_prefix = f'[{update_object.merged_issue.key}]'
 
     def preprocess_field_value(field_name, val):
-        if is_optional_type(get_field_by_name(field_name).type, set):
+        if is_optional_type(get_field_by_name(Issue, field_name).type, set):
             return [item[1:].strip() for item in val]
         else:
             output = ''.join(val)
