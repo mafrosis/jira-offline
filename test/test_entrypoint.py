@@ -37,7 +37,11 @@ def test_debug_flag_sets_logger_to_debug_level(mock_jira_local, mock_jira):
     assert logging.getLogger('jira').level == logging.DEBUG
 
 
+# 0: CLI command name
+# 1: tuple of "basic" parameters to pass
+# 2: expected return code when Jira dict is empty (used in test_cli_smoketest_empty)
 CLI_COMMAND_MAPPING = [
+    ('projects', tuple(), 0),
     ('ls', tuple(), 1),
     ('show', ('issue1',), 1),
     ('clone', ('https://jira.atlassian.com/TEST1',), 0),
