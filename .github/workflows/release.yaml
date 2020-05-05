@@ -9,6 +9,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Display current python info
+      run: |
+        python -VV
+        pip -V
+
     - name: Checkout
       uses: actions/checkout@master
 
