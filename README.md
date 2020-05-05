@@ -1,8 +1,7 @@
 Git-like CLI for using Jira offline
 =================
 
-
-[![Github build status](https://img.shields.io/github/workflow/status/mafrosis/jira-offline/Build-Test-Publish)](https://github.com/mafrosis/jira-offline/actions?query=workflow%3ABuild-Test-Publish)
+[![Github build status](https://github.com/mafrosis/jira-offline/workflows/build/badge.svg)](https://github.com/mafrosis/jira-offline/actions?query=workflow%3Abuild)
 [![PyPI version](https://img.shields.io/pypi/v/jira-offline.svg)](https://pypi.python.org/pypi/jira-offline/)
 [![PyPI status](https://img.shields.io/pypi/status/jira-offline.svg)](https://pypi.python.org/pypi/jira-offline/)
 [![PyPI pyversions](https://img.shields.io/pypi/pyversions/jira-offline.svg)](https://pypi.python.org/pypi/jira-offline/)
