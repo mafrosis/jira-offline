@@ -46,8 +46,7 @@ jobs:
     - name: Publish dev docker image
       if: matrix.python-version == 3.7 && github.ref == 'refs/heads/master'
       run: |
-        echo "$GITHUB_TOKEN" | docker login -u mafrosis --password-stdin docker.pkg.github.com
-        docker tag mafrosis/jira-offline docker.pkg.github.com/mafrosis/jira-offline/jira-offline:dev
-        docker push docker.pkg.github.com/mafrosis/jira-offline/jira-offline:dev
+        make publish-docker
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: dev
