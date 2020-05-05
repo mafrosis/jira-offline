@@ -62,3 +62,13 @@ jobs:
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+
+    - name: Publish docker image
+      if: steps.extract.outputs.needs_release == 1
+      run: |
+        docker-compose build jira-offline
+        make publish-docker
+        TAG=latest make publish-docker
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: ${{ steps.extract.outputs.version }}
