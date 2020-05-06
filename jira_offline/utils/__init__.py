@@ -88,7 +88,7 @@ def critical_logger(logger_):
     '''
     Context manager which sets a logger to CRITICAL.
 
-    with set_logger_level_critical(logger):
+    with critical_logger(logger):
         ...
     '''
     log_level = logger_.level
