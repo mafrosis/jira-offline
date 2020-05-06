@@ -9,6 +9,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Display current python info
+      run: |
+        python -VV
+        pip -V
+
     - name: Checkout
       uses: actions/checkout@master
 
@@ -23,9 +28,16 @@ jobs:
     - name: Extract version & determine if release needed
       id: extract
       run: |
+        git fetch --depth=1 origin +refs/tags/*:refs/tags/*
         echo "##[set-output name=version;]$(make version)"
         echo "##[set-output name=is_prerelease;]$(make is_prerelease)"
         echo "##[set-output name=needs_release;]$(if git tag | grep -q $(make version); then echo 0; else echo 1; fi)"
+
+    - name: Log extracted variables
+      run: |
+        echo version=${{ steps.extract.outputs.version }}
+        echo is_prerelease=${{ steps.extract.outputs.is_prerelease }}
+        echo needs_release=${{ steps.extract.outputs.needs_release }}
 
     - name: Create Release
       id: create_release
@@ -53,7 +65,17 @@ jobs:
     - name: Publish to Pypi
       if: steps.extract.outputs.needs_release == 1
       run: |
-        make publish
+        make publish-pypi
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+
+    - name: Publish docker image
+      if: steps.extract.outputs.needs_release == 1
+      run: |
+        docker-compose build jira-offline
+        make publish-docker
+        TAG=latest make publish-docker
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: ${{ steps.extract.outputs.version }}

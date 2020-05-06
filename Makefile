@@ -36,8 +36,8 @@ package:
 	rm -rf jira_offline.egg-info dist
 	python3 setup.py sdist bdist_wheel
 
-.PHONY: publish
-publish:
+.PHONY: publish-pypi
+publish-pypi:
 	docker build -f Dockerfile.twine -t mafrosis/twine .
 	docker run --rm -v $$(pwd)/dist:/dist:ro \
 		mafrosis/twine \
@@ -46,6 +46,12 @@ publish:
 		-e TWINE_USERNAME -e TWINE_PASSWORD \
 		mafrosis/twine \
 		upload /dist/*
+
+.PHONY: publish-docker
+publish-docker:
+	echo "$(GITHUB_TOKEN)" | docker login -u mafrosis --password-stdin docker.pkg.github.com
+	docker tag mafrosis/jira-offline docker.pkg.github.com/mafrosis/jira-offline/jira-offline:$(TAG)
+	docker push docker.pkg.github.com/mafrosis/jira-offline/jira-offline:$(TAG)
 
 .PHONY: version
 version:
