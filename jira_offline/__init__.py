@@ -3,7 +3,7 @@
 #
 
 __title__ = 'jira-offline'
-__version__ = '0.1a3'
+__version__ = '0.1a4'
 __build__ = 0x000001
 __author__ = 'mafrosis'
 __license__ = 'Simplified MIT License'
