@@ -28,6 +28,7 @@ jobs:
     - name: Extract version & determine if release needed
       id: extract
       run: |
+        git fetch --depth=1 origin +refs/tags/*:refs/tags/*
         echo "##[set-output name=version;]$(make version)"
         echo "##[set-output name=is_prerelease;]$(make is_prerelease)"
         echo "##[set-output name=needs_release;]$(if git tag | grep -q $(make version); then echo 0; else echo 1; fi)"
