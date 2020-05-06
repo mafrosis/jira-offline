@@ -17,17 +17,17 @@ Installation
 A few options exist:
 
   1. Install globally with pip (not recommended)
-  2. Install with pip
+  2. Install into a virtualenv with pip
   3. Pull and run the latest docker image
   4. Clone the source code and use docker compose
 
-### Install with pip
+### Install globally with pip
 
     pip install jira-offline
 
-### Install with pip, into a virtualenv
+### Install into a virtualenv with pip
 
-    python3 -m venv venv && source venv/bin/activate
+    python3 -m venv jira && source jira/bin/activate
     pip install jira-offline
 
 ### Docker image
@@ -39,7 +39,7 @@ Unfortunately you need an access token for even public packages hosted on Github
     docker pull docker.pkg.github.com/mafrosis/jira-offline/jira-offline:dev
     docker run --rm -it docker.pkg.github.com/mafrosis/jira-offline/jira-offline:dev
 
-### Clone and use compose
+### Clone and use docker compose
 
     git clone https://github.com/mafrosis/jira-offline.git
     cd jira-offline
