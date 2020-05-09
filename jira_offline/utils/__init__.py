@@ -13,9 +13,15 @@ from jira_offline.utils.serializer import get_enum, get_type_class
 
 
 @functools.lru_cache()
-def get_field_by_name(cls, field_name: str) -> dataclasses.Field:
+def get_field_by_name(cls: type, field_name: str) -> dataclasses.Field:
     '''
     Retrieve a field from the supplied dataclass by name
+
+    Params:
+        cls:         The class which has `field_name` as an attrib
+        field_name:  Dataclass field name to find
+    Returns:
+        Dataclass field
     '''
     for f in dataclasses.fields(cls):
         if f.metadata.get('property') == field_name or f.name == field_name:
@@ -24,19 +30,26 @@ def get_field_by_name(cls, field_name: str) -> dataclasses.Field:
 
 
 @functools.lru_cache()
-def friendly_title(cls, field_name: str) -> str:
+def friendly_title(cls: type, field_name: str) -> str:
     '''
     Util function to convert a dataclass field name into a friendly title
+
+    Params:
+        cls:         The class which has `field_name` as an attrib
+        field_name:  Dataclass field to create a title for
+    Returns:
+        Pretty field title
     '''
     f = get_field_by_name(cls, field_name)
     return f.metadata.get('friendly', field_name.replace('_', ' ').title())
 
 
-def render_field(cls, field_name: str, value: Any, prefix: str=None) -> Tuple[str, str]:
+def render_field(cls: type, field_name: str, value: Any, prefix: str=None) -> Tuple[str, str]:
     '''
     Single-field pretty formatting function supporting various types
 
     Params:
+        cls:         The class which has `field_name` as an attrib
         field_name:  Dataclass field to render
         value:       Value to be rendered according to dataclass.field type
         prefix:      Arbitrary prefix to prepend during string format
