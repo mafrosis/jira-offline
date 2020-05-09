@@ -13,8 +13,8 @@ from jira_offline.config import get_cache_filepath, load_config
 from jira_offline.exceptions import (EpicNotFound, EstimateFieldUnavailable, JiraApiError,
                                      JiraNotConfigured, MissingFieldsForNewIssue, ProjectDoesntExist)
 from jira_offline.models import AppConfig, CustomFields, Issue, IssueType, ProjectMeta
-from jira_offline.sync import jiraapi_object_to_issue
 from jira_offline.utils.api import get as api_get, post as api_post, put as api_put
+from jira_offline.utils.convert import jiraapi_object_to_issue
 
 
 logger = logging.getLogger('jira')

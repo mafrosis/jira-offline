@@ -1,3 +1,6 @@
+'''
+Tests for push_issues() in the sync module
+'''
 from unittest import mock
 
 from fixtures import ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF, ISSUE_1_WITH_FIXVERSIONS_DIFF, ISSUE_NEW

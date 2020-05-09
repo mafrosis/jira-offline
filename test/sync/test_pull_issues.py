@@ -1,3 +1,6 @@
+'''
+Tests for pull_issues() and pull_single_project() in the sync module
+'''
 from unittest import mock
 import pytest
 
