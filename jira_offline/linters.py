@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 if TYPE_CHECKING:
-    import Jira
+    from jira_offline.main import Jira
 
 
 logger = logging.getLogger('jira')

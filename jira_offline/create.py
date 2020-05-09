@@ -12,7 +12,7 @@ from jira_offline.utils import get_field_by_name
 from jira_offline.utils.serializer import deserialize_value
 
 if TYPE_CHECKING:
-    import Jira
+    from jira_offline.main import Jira
 
 
 logger = logging.getLogger('jira')

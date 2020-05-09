@@ -24,7 +24,7 @@ from jira_offline.utils.api import get as api_get
 from jira_offline.utils.convert import jiraapi_object_to_issue, issue_to_jiraapi_update
 
 if TYPE_CHECKING:
-    import Jira
+    from jira_offline.main import Jira
 
 
 logger = logging.getLogger('jira')
@@ -48,7 +48,7 @@ def pull_issues(jira: 'Jira', projects: Optional[Set[str]]=None, force: bool=Fal
 
     if projects is None:
         # pull all projects
-        projects_to_pull = jira.config.projects.values()
+        projects_to_pull = list(jira.config.projects.values())
     else:
         # Pull only the projects specified in `projects` parameter, which is a set of Jira project keys
         projects_to_pull = [
@@ -475,8 +475,8 @@ def push_issues(jira: 'Jira', verbose: bool=False):
                     pbar.update(1)
                 continue
 
-            # create local var for the Jira project for this Issue
-            project = jira.config.projects.get(local_issue.project_id)
+            # extract issue's project object into local variable
+            project: ProjectMeta = jira.config.projects[local_issue.project_id]
 
             # retrieve the upstream issue
             remote_issue: Optional[Issue] = None
