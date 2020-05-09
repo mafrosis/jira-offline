@@ -134,12 +134,12 @@ def test_pull_single_project__adds_issues_to_self(mock_tqdm, mock_api_get, mock_
     assert len(mock_jira.keys()) == 2
 
 
-@mock.patch('jira_offline.sync.check_resolve_conflicts')
+@mock.patch('jira_offline.sync.merge_issues')
 @mock.patch('jira_offline.sync.jiraapi_object_to_issue')
 @mock.patch('jira_offline.sync.api_get')
 @mock.patch('jira_offline.sync.click')
-def test_pull_single_project__check_resolve_conflicts_NOT_called_when_updated_issue_NOT_changed(
-        mock_click, mock_api_get, mock_jiraapi_object_to_issue, mock_check_resolve_conflicts, mock_jira, project
+def test_pull_single_project__merge_issues_NOT_called_when_updated_issue_NOT_changed(
+        mock_click, mock_api_get, mock_jiraapi_object_to_issue, mock_merge_issues, mock_jira, project
     ):
     '''
     Check that check_resolve_conflict is NOT called when the Jira object is empty (ie have no issues)
@@ -153,15 +153,15 @@ def test_pull_single_project__check_resolve_conflicts_NOT_called_when_updated_is
     pull_single_project(mock_jira, project, force=False, verbose=False)
 
     # no conflict is found
-    assert mock_check_resolve_conflicts.called is False
+    assert mock_merge_issues.called is False
 
 
-@mock.patch('jira_offline.sync.check_resolve_conflicts')
+@mock.patch('jira_offline.sync.merge_issues')
 @mock.patch('jira_offline.sync.jiraapi_object_to_issue')
 @mock.patch('jira_offline.sync.api_get')
 @mock.patch('jira_offline.sync.click')
-def test_pull_single_project__check_resolve_conflicts_called_when_local_issue_is_modified(
-        mock_click, mock_api_get, mock_jiraapi_object_to_issue, mock_check_resolve_conflicts, mock_jira, project
+def test_pull_single_project__merge_issues_called_when_local_issue_is_modified(
+        mock_click, mock_api_get, mock_jiraapi_object_to_issue, mock_merge_issues, mock_jira, project
     ):
     '''
     Check that check_resolve_conflict is called when the Jira object has the Issue already
@@ -178,15 +178,15 @@ def test_pull_single_project__check_resolve_conflicts_called_when_local_issue_is
     pull_single_project(mock_jira, project, force=False, verbose=False)
 
     # conflict found; resolve conflicts called
-    assert mock_check_resolve_conflicts.called is True
+    assert mock_merge_issues.called is True
 
 
-@mock.patch('jira_offline.sync.check_resolve_conflicts')
+@mock.patch('jira_offline.sync.merge_issues')
 @mock.patch('jira_offline.sync.jiraapi_object_to_issue')
 @mock.patch('jira_offline.sync.api_get')
 @mock.patch('jira_offline.sync.click')
-def test_pull_single_project__return_from_check_resolve_conflicts_added_to_self(
-        mock_click, mock_api_get, mock_jiraapi_object_to_issue, mock_check_resolve_conflicts, mock_jira, project
+def test_pull_single_project__return_from_merge_issues_added_to_self(
+        mock_click, mock_api_get, mock_jiraapi_object_to_issue, mock_merge_issues, mock_jira, project
     ):
     '''
     Check that return from check_resolve_conflict is added to Jira object (which implements dict)
@@ -205,9 +205,9 @@ def test_pull_single_project__return_from_check_resolve_conflicts_added_to_self(
     modified_issue.assignee = 'undertest'
 
     # mock resolve_conflicts function to return modified_issue
-    mock_check_resolve_conflicts.return_value = IssueUpdate(merged_issue=modified_issue)
+    mock_merge_issues.return_value = IssueUpdate(merged_issue=modified_issue)
 
     pull_single_project(mock_jira, project, force=False, verbose=False)
 
-    # validate that return from check_resolve_conflicts is added as TEST-71
+    # validate that return from merge_issues is added as TEST-71
     assert mock_jira['TEST-71'].assignee == 'undertest'

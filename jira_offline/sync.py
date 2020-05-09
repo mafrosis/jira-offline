@@ -115,8 +115,7 @@ def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose
                 try:
                     # determine if local changes have been made
                     if jira[api_issue['key']].diff_to_original:
-                        # when pulling, the remote Issue is considered the base
-                        update_object: IssueUpdate = check_resolve_conflicts(jira[api_issue['key']], issue)
+                        update_object: IssueUpdate = merge_issues(jira[api_issue['key']], issue)
                         issue = update_object.merged_issue
                 except KeyError:
                     pass
@@ -261,9 +260,9 @@ def issue_to_jiraapi_update(project: ProjectMeta, issue: Issue, modified: set) -
     }
 
 
-def check_resolve_conflicts(base_issue: Issue, updated_issue: Optional[Issue]=None) -> IssueUpdate:
+def merge_issues(base_issue: Issue, updated_issue: Optional[Issue]=None) -> IssueUpdate:
     '''
-    Check for and resolve conflicts on a single Issue.
+    Merge two issues and check for conflicts.
 
     Params:
         base_issue:     Base Issue to which we are comparing (has an .original property)
@@ -561,7 +560,7 @@ def push_issues(jira: 'Jira', verbose: bool=False):
                 remote_issue = jira.fetch_issue(project, local_issue.key)
 
             # resolve any conflicts with upstream
-            update_object: IssueUpdate = check_resolve_conflicts(local_issue, remote_issue)
+            update_object: IssueUpdate = merge_issues(local_issue, remote_issue)
 
             update_dict: dict = issue_to_jiraapi_update(
                 project, update_object.merged_issue, update_object.modified

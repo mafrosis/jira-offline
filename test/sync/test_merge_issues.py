@@ -4,22 +4,22 @@ import pytest
 
 from fixtures import ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF, ISSUE_1_WITH_FIXVERSIONS_DIFF
 from jira_offline.models import Issue
-from jira_offline.sync import (check_resolve_conflicts, ConflictResolutionFailed,
+from jira_offline.sync import (merge_issues, ConflictResolutionFailed,
                                IssueUpdate, manual_conflict_resolution)
 
 
 @mock.patch('jira_offline.sync.manual_conflict_resolution')
 @mock.patch('jira_offline.sync._build_update')
-def test_check_resolve_conflicts__doesnt_call_conflict_resolution_on_NO_conflict(mock_build_update, mock_manual_conflict_resolution):
+def test_merge_issues__doesnt_call_conflict_resolution_on_NO_conflict(mock_build_update, mock_manual_conflict_resolution):
     '''
-    Ensure that check_resolve_conflicts does NOT call manual_conflict_resolution when no conflicts found
+    Ensure that merge_issues does NOT call manual_conflict_resolution when no conflicts found
     '''
     issue1 = Issue.deserialize(ISSUE_1)
 
     # mock _build_update to return NO conflicts
     mock_build_update.return_value = IssueUpdate(merged_issue=issue1)
 
-    check_resolve_conflicts(issue1, issue1)
+    merge_issues(issue1, issue1)
 
     # ensure build_update is called
     assert mock_build_update.called is True
@@ -27,21 +27,21 @@ def test_check_resolve_conflicts__doesnt_call_conflict_resolution_on_NO_conflict
     assert mock_manual_conflict_resolution.called is False
 
 
-def test_check_resolve_conflicts__resolved_issue_has_diff_to_original():
+def test_merge_issues__resolved_issue_has_diff_to_original():
     '''
-    Ensure that the resolved Issue returned from check_resolve_conflicts has a diff_to_original attribute
+    Ensure that the resolved Issue returned from merge_issues has a diff_to_original attribute
     '''
     local_issue = Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF)
     updated_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
 
-    update_obj = check_resolve_conflicts(local_issue, updated_issue)
+    update_obj = merge_issues(local_issue, updated_issue)
 
     assert update_obj.merged_issue.diff_to_original != []
 
 
 @mock.patch('jira_offline.sync.manual_conflict_resolution')
 @mock.patch('jira_offline.sync._build_update')
-def test_check_resolve_conflicts__returns_result_of_manual_conflict_resolution(mock_build_update, mock_manual_conflict_resolution):
+def test_merge_issues__returns_result_of_manual_conflict_resolution(mock_build_update, mock_manual_conflict_resolution):
     '''
     Ensure that result of manual_conflict_resolution is returned
     '''
@@ -59,7 +59,7 @@ def test_check_resolve_conflicts__returns_result_of_manual_conflict_resolution(m
     # mock manual_conflict_resolution to return updated issue
     mock_manual_conflict_resolution.return_value = updated_issue
 
-    update_obj = check_resolve_conflicts(local_issue, updated_issue)
+    update_obj = merge_issues(local_issue, updated_issue)
 
     # ensure build_update AND manual_conflict_resolution are called
     mock_build_update.assert_called_once_with(local_issue, updated_issue)
