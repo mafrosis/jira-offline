@@ -1,5 +1,5 @@
 '''
-Tests for the issue_to_jiraapi_update function in sync module
+Tests for the issue_to_jiraapi_update function in utils.convert module
 '''
 import pytest
 
