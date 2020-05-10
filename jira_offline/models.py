@@ -119,15 +119,14 @@ class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-att
         '''
         Pretty print this project
         '''
-        def fmt(field_name: str, prefix: str=None) -> Tuple[str, str]:
+        def fmt(field_name: str) -> Tuple[str, str]:
             '''
             Params:
                 field_name: Dataclass field being formatted
-                prefix:     Arbitrary prefix to prepend during string format
             Returns:
                 Formatted text
             '''
-            return render_field(ProjectMeta, field_name, getattr(self, field_name), prefix)
+            return render_field(ProjectMeta, field_name, getattr(self, field_name))
 
         if self.oauth:
             auth = f'oauth_key={self.oauth.consumer_key}'
