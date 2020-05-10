@@ -22,3 +22,5 @@ jira_data/
 # distutils
 build
 dist
+
+venv
