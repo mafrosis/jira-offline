@@ -44,6 +44,7 @@ CLI_COMMAND_MAPPING = [
     ('projects', tuple(), 0),
     ('ls', tuple(), 1),
     ('show', ('issue1',), 1),
+    ('diff', ('issue1',), 1),
     ('clone', ('https://jira.atlassian.com/TEST1',), 0),
     ('new', ('TEST', 'Story', 'Summary'), 0),
     ('pull', tuple(), 0),

@@ -7,6 +7,7 @@ import textwrap
 from typing import Any, Optional, Tuple
 
 import arrow
+import click
 from tabulate import tabulate
 
 from jira_offline.utils.serializer import get_enum, get_type_class
@@ -44,19 +45,25 @@ def friendly_title(cls: type, field_name: str) -> str:
     return f.metadata.get('friendly', field_name.replace('_', ' ').title())
 
 
-def render_field(cls: type, field_name: str, value: Any, prefix: str=None) -> Tuple[str, str]:
+def render_field(cls: type, field_name: str, value: Any, title_prefix: str=None, value_prefix: str=None,
+                 color: str=None) -> Tuple[str, str]:
     '''
     Single-field pretty formatting function supporting various types
 
     Params:
-        cls:         The class which has `field_name` as an attrib
-        field_name:  Dataclass field to render
-        value:       Value to be rendered according to dataclass.field type
-        prefix:      Arbitrary prefix to prepend during string format
+        cls:           The class which has `field_name` as an attrib
+        field_name:    Dataclass field to render
+        value:         Value to be rendered according to dataclass.field type
+        title_prefix:  Arbitrary string to be prepended to the title
+        value_prefix:  Arbitrary string to be prepended to the field value
+        color:         Render all output in this colour
     Returns:
         Pretty field title, formatted value
     '''
     title = friendly_title(cls, field_name)
+
+    if title_prefix:
+        title = f'{title_prefix}{title}'
 
     # determine the origin type for this field (thus handling Optional[type])
     type_ = get_type_class(get_field_by_name(cls, field_name).type)
@@ -64,8 +71,12 @@ def render_field(cls: type, field_name: str, value: Any, prefix: str=None) -> Tu
     # format value as dataclass.field type
     value = render_value(value, type_)
 
-    if prefix:
-        value = f'{prefix} {value}'
+    if value_prefix:
+        value = f'{value_prefix}{value}'
+
+    if color:
+        title = click.style(f'{title}', fg=color)
+        value = click.style(f'{value}', fg=color)
 
     return title, value
 
