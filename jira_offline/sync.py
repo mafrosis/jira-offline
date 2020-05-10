@@ -184,19 +184,16 @@ class IssueUpdate:
     conflicts: dict = field(default_factory=dict)
 
 
-def merge_issues(base_issue: Issue, updated_issue: Optional[Issue]=None) -> IssueUpdate:
+def merge_issues(base_issue: Issue, updated_issue: Issue) -> IssueUpdate:
     '''
     Merge two issues and check for conflicts.
 
     Params:
         base_issue:     Base Issue to which we are comparing (has an .original property)
-        updated_issue:  Incoming updated Issue - can be None for new (created offline) issues
+        updated_issue:  Incoming updated Issue (or Issue.blank)
     Returns:
         An IssueUpdate object created by _build_update
     '''
-    if not bool(base_issue.id) and updated_issue is not None:
-        raise Exception
-
     # construct an object representing changes/conflicts
     update_object = _build_update(base_issue, updated_issue)
 
@@ -217,9 +214,15 @@ def merge_issues(base_issue: Issue, updated_issue: Optional[Issue]=None) -> Issu
     return update_object
 
 
-def _build_update(base_issue: Issue, updated_issue: Optional[Issue]) -> IssueUpdate:
+def _build_update(base_issue: Issue, updated_issue: Issue) -> IssueUpdate:
     '''
     Generate an object representing an Issue update.
+
+    Params:
+        base_issue:     Base Issue to which we are comparing (has an .original property)
+        updated_issue:  Incoming updated Issue (or Issue.blank)
+    Returns:
+        A dict object including the issue, a set of modified fields, and any conflicts
 
     There are three versions of the Issue at update time:
 
@@ -238,13 +241,7 @@ def _build_update(base_issue: Issue, updated_issue: Optional[Issue]) -> IssueUpd
     https://en.wikipedia.org/wiki/Merge_(version_control)#Three-way_merge
 
     There is an additional case, where the Issue object was created locally offline. In that case,
-    None MUST be passed as the `updated_issue` parameter.
-
-    Params:
-        base_issue:     Base Issue to which we are comparing (has an .original property)
-        updated_issue:  Incoming updated Issue
-    Returns:
-        A dict object including the issue, a set of modified fields, and any conflicts
+    Issue.blank() should be passed as the `updated_issue` parameter.
     '''
     if updated_issue is None:
         # for new Issues created offline, the updated_issue must be set to Issue.blank
@@ -479,9 +476,11 @@ def push_issues(jira: 'Jira', verbose: bool=False):
             project: ProjectMeta = jira.config.projects[local_issue.project_id]
 
             # retrieve the upstream issue
-            remote_issue: Optional[Issue] = None
+            remote_issue: Issue
             if local_issue.exists:
                 remote_issue = jira.fetch_issue(project, local_issue.key)
+            else:
+                remote_issue = Issue.blank()
 
             # resolve any conflicts with upstream
             update_object: IssueUpdate = merge_issues(local_issue, remote_issue)
