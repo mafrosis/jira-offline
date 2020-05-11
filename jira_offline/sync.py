@@ -317,12 +317,12 @@ def _build_update(base_issue: Issue, updated_issue: Issue) -> IssueUpdate:
         if grouped_modified[field_name] == 1:
             value = getattr(updated_issue, field_name)
             if bool(value):
-                setattr(merged_issue, field_name, value)
+                setattr(merged_issue, get_field_by_name(Issue, field_name).name, value)
 
     # mark conflicted fields
     for field_name in grouped_modified:
         if grouped_modified[field_name] > 1:
-            setattr(merged_issue, field_name, Conflict())
+            setattr(merged_issue, get_field_by_name(Issue, field_name).name, Conflict())
 
     # return object modelling this update
     return IssueUpdate(

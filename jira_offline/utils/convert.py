@@ -2,7 +2,6 @@
 Two util functions for converting _from_ an API response to an Issue, and for converting an Issue
 _to_ an object good for an API post.
 '''
-import dataclasses
 from typing import TYPE_CHECKING
 
 from jira_offline.models import Issue
@@ -62,27 +61,28 @@ def issue_to_jiraapi_update(project: 'ProjectMeta', issue: Issue, modified: set)
     Return:
         A JSON-compatible Python dict
     '''
-    # create a mapping of Issue keys (custom fields have a different key on Jira)
-    field_keys: dict = {f.name: f.name for f in dataclasses.fields(Issue)}
+    # serialize all Issue data to be JSON-compatible
+    issue_values: dict = issue.serialize()
+
+    # create a mapping of Issue class properties, as some fields require a different format when
+    # posted to the Jira API
+    field_keys: dict = {k: k for k in issue_values.keys()}
+
+    # add new keys for the custom_fields
     field_keys['epic_ref'] = f'customfield_{project.custom_fields.epic_ref}'
     field_keys['epic_name'] = f'customfield_{project.custom_fields.epic_name}'
 
     # support Issue.estimate aka "Story Points", if in use
     field_keys['estimate'] = f'customfield_{project.custom_fields.estimate}'
 
-    # serialize all Issue data to be JSON-compatible
-    issue_values: dict = issue.serialize()
-    # some fields require a different format via the Jira API
     issue_values['project'] = {'key': issue_values['project']}
 
     for field_name in ('assignee', 'issuetype', 'reporter'):
         if field_name in issue_values:
             issue_values[field_name] = {'name': issue_values[field_name]}
 
-    include_fields: set = set(modified).copy()
-
-    # build an update dict
+    # include only modified fields
     return {
         field_keys[field_name]: issue_values[field_name]
-        for field_name in include_fields
+        for field_name in modified
     }
