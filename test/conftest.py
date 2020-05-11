@@ -104,7 +104,7 @@ def jira_project(request, run_in_docker):
         },
     )
     if resp.status_code > 205:
-        raise Exception
+        raise Exception('{} {}'.format(resp.status_code, resp.text))
 
     # fetch screens for this new project
     resp = requests.get(

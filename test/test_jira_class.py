@@ -302,7 +302,6 @@ def test_jira__new_issue__removes_fields_which_cannot_be_posted_for_new_issue(
         fields={
             'project_id': 'notarealprojecthash',
             'key': ISSUE_NEW['key'],
-            'status': 'Backlog',
             'summary': 'A summary',
             'issuetype': {'name': 'Story'},
         }

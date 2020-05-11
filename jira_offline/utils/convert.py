@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from jira_offline.models import ProjectMeta
 
 
-def jiraapi_object_to_issue(project: 'ProjectMeta', issue: dict) -> 'Issue':
+def jiraapi_object_to_issue(project: 'ProjectMeta', issue: dict) -> Issue:
     '''
     Convert raw JSON from Jira API to Issue object
 
@@ -50,7 +50,7 @@ def jiraapi_object_to_issue(project: 'ProjectMeta', issue: dict) -> 'Issue':
     return Issue.deserialize(jiraapi_object, project_ref=project)
 
 
-def issue_to_jiraapi_update(project: 'ProjectMeta', issue: 'Issue', modified: set) -> dict:
+def issue_to_jiraapi_update(project: 'ProjectMeta', issue: Issue, modified: set) -> dict:
     '''
     Convert an Issue object to a JSON blob to update the Jira API. Handles both new and updated
     Issues.
