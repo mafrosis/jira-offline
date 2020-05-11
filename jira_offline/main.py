@@ -175,15 +175,15 @@ class Jira(collections.abc.MutableMapping):
         Returns:
             The new Issue, including the Jira-generated key field
         '''
-        if 'key' not in fields or 'issuetype' not in fields or \
-           'summary' not in fields or 'status' not in fields:
-            raise MissingFieldsForNewIssue
+        if 'key' not in fields or 'issuetype' not in fields or 'summary' not in fields:
+            raise MissingFieldsForNewIssue(
+                '{} is missing a mandatory field {}'.format(fields['key'], ','.join(fields))
+            )
 
         try:
             # key/status are set by Jira server; remove them
             temp_key = fields['key']
             del fields['key']
-            del fields['status']
             # Jira doesn't know project_id, it's created by this application; remove it
             del fields['project_id']
 

@@ -37,7 +37,7 @@ class SummaryAlreadyExists(BaseAppException):
 
 
 class MissingFieldsForNewIssue(BaseAppException):
-    pass
+    '''Raised when API call to create a new issue is missing a mandatory Issue field'''
 
 
 class InvalidIssueType(BaseAppException):
