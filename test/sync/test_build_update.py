@@ -241,14 +241,14 @@ def test_build_update__new_issue():
 
 def test_build_update__handles_class_property():
     '''
-    Ensure build_update handles @property fields on Issue class (such as priority)
+    Ensure _build_update handles @property fields on Issue class (such as priority)
     '''
     # create unmodified base Issue fixture
     base_issue = Issue.deserialize(ISSUE_1)
     # updated issue has a different priority attrib
     updated_issue = Issue.deserialize(ISSUE_1_WITH_PRIORITY_DIFF)
 
-    update_obj = build_update(base_issue, updated_issue)
+    update_obj = _build_update(base_issue, updated_issue)
 
     assert update_obj.modified == {'priority'}
     assert not update_obj.conflicts
