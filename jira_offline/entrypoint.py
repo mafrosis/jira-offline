@@ -116,6 +116,26 @@ def cli_diff(key: str=None):
                 print_diff(issue)
 
 
+@cli.command(name='reset')
+@click.argument('key')
+def cli_reset(key: str=None):
+    '''
+    Reset an issue back to the last-seen Jira version, dropping any changes made locally
+    '''
+    jira = Jira()
+    jira.load_issues()
+
+    if key not in jira:
+        click.echo('Unknown issue key')
+        raise click.Abort
+
+    # overwrite local changes with the original
+    jira[key] = Issue.deserialize(jira[key].original)
+    jira.write_issues()
+
+    click.echo(f'Reset issue {key}')
+
+
 @cli.command(name='push')
 @click.pass_context
 def cli_push(ctx):
