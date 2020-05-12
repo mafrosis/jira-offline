@@ -15,7 +15,7 @@ from tabulate import tabulate
 
 from jira_offline.auth import authenticate
 from jira_offline.create import create_issue, find_epic_by_reference, set_field_on_issue
-from jira_offline.exceptions import CliError, FailedPullingProjectMeta, JiraApiError, ProjectNotConfigured
+from jira_offline.exceptions import FailedPullingProjectMeta, JiraApiError, ProjectNotConfigured
 from jira_offline.linters import fixversions as lint_fixversions
 from jira_offline.linters import issues_missing_epic as lint_issues_missing_epic
 from jira_offline.main import Jira
@@ -335,7 +335,8 @@ def cli_edit(key, **kwargs):
     jira.load_issues()
 
     if key not in jira:
-        raise CliError(f"Issue {key} doesn't exist!")
+        click.echo('Unknown issue key')
+        raise click.Abort
 
     # validate epic parameters
     if jira[key].issuetype == 'Epic':
