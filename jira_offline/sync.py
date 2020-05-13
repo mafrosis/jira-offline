@@ -192,10 +192,10 @@ def merge_issues(base_issue: Issue, updated_issue: Issue) -> IssueUpdate:
         base_issue:     Base Issue to which we are comparing (has an .original property)
         updated_issue:  Incoming updated Issue (or Issue.blank)
     Returns:
-        An IssueUpdate object created by _build_update
+        An IssueUpdate object created by build_update
     '''
     # construct an object representing changes/conflicts
-    update_object = _build_update(base_issue, updated_issue)
+    update_object = build_update(base_issue, updated_issue)
 
     if update_object.conflicts:
         resolved_issue = manual_conflict_resolution(update_object)
@@ -214,7 +214,7 @@ def merge_issues(base_issue: Issue, updated_issue: Issue) -> IssueUpdate:
     return update_object
 
 
-def _build_update(base_issue: Issue, updated_issue: Issue) -> IssueUpdate:
+def build_update(base_issue: Issue, updated_issue: Issue) -> IssueUpdate:
     '''
     Generate an object representing an Issue update.
 
@@ -344,7 +344,7 @@ def manual_conflict_resolution(update_object: IssueUpdate) -> Issue:
     Manually resolve conflicts with $EDITOR
 
     Params:
-        update_object:  Instance of IssueUpdate returned from _build_update
+        update_object:  Instance of IssueUpdate returned from build_update
     '''
     # render issue to string, including conflict blocks
     issue_data = update_object.merged_issue.render(update_object.conflicts)
@@ -393,7 +393,7 @@ def parse_editor_result(update_object: IssueUpdate, editor_result_raw: str) -> I
     Parse the string returned from the conflict editor
 
     Params:
-        update_object:      Instance of IssueUpdate returned from _build_update
+        update_object:      Instance of IssueUpdate returned from build_update
         editor_result_raw:  Raw text returned by user from `click.edit` during interactive
                             conflict resolution
     Returns:

@@ -9,14 +9,14 @@ from jira_offline.sync import (merge_issues, ConflictResolutionFailed,
 
 
 @mock.patch('jira_offline.sync.manual_conflict_resolution')
-@mock.patch('jira_offline.sync._build_update')
+@mock.patch('jira_offline.sync.build_update')
 def test_merge_issues__doesnt_call_conflict_resolution_on_NO_conflict(mock_build_update, mock_manual_conflict_resolution):
     '''
     Ensure that merge_issues does NOT call manual_conflict_resolution when no conflicts found
     '''
     issue1 = Issue.deserialize(ISSUE_1)
 
-    # mock _build_update to return NO conflicts
+    # mock build_update to return NO conflicts
     mock_build_update.return_value = IssueUpdate(merged_issue=issue1)
 
     merge_issues(issue1, issue1)
@@ -40,7 +40,7 @@ def test_merge_issues__resolved_issue_has_diff_to_original():
 
 
 @mock.patch('jira_offline.sync.manual_conflict_resolution')
-@mock.patch('jira_offline.sync._build_update')
+@mock.patch('jira_offline.sync.build_update')
 def test_merge_issues__returns_result_of_manual_conflict_resolution(mock_build_update, mock_manual_conflict_resolution):
     '''
     Ensure that result of manual_conflict_resolution is returned
@@ -48,7 +48,7 @@ def test_merge_issues__returns_result_of_manual_conflict_resolution(mock_build_u
     local_issue = Issue.deserialize(ISSUE_1)
     updated_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
 
-    # mock _build_update to return conflicts
+    # mock build_update to return conflicts
     update_obj = IssueUpdate(
         merged_issue=local_issue,
         modified={'assignee'},

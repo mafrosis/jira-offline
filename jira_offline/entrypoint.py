@@ -15,12 +15,12 @@ from tabulate import tabulate
 
 from jira_offline.auth import authenticate
 from jira_offline.create import create_issue, find_epic_by_reference, set_field_on_issue
-from jira_offline.exceptions import CliError, FailedPullingProjectMeta, JiraApiError, ProjectNotConfigured
+from jira_offline.exceptions import FailedPullingProjectMeta, JiraApiError, ProjectNotConfigured
 from jira_offline.linters import fixversions as lint_fixversions
 from jira_offline.linters import issues_missing_epic as lint_issues_missing_epic
 from jira_offline.main import Jira
-from jira_offline.models import ProjectMeta
-from jira_offline.sync import pull_issues, pull_single_project, push_issues
+from jira_offline.models import Issue, ProjectMeta
+from jira_offline.sync import build_update, pull_issues, pull_single_project, push_issues
 
 
 logger = logging.getLogger('jira')
@@ -66,7 +66,7 @@ def cli(ctx, verbose: bool=False, debug: bool=False):
 @cli.command(name='show')
 @click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
 @click.argument('key')
-def cli_show(key, as_json: bool=False):
+def cli_show(key: str, as_json: bool=False):
     '''
     Pretty print an Issue on the CLI
 
@@ -85,6 +85,55 @@ def cli_show(key, as_json: bool=False):
         output = str(jira[key])
 
     click.echo(output)
+
+
+@cli.command(name='diff')
+@click.argument('key', required=False)
+def cli_diff(key: str=None):
+    '''
+    Show the diff between changes made locally and the remote issues on Jira
+    '''
+    jira = Jira()
+    jira.load_issues()
+
+    def print_diff(issue: Issue):
+        # run build_update to diff between the remote version of the Issue, and the locally modified one
+        update_obj = build_update(Issue.deserialize(issue.original), issue)
+
+        # print a handsome table
+        click.echo(tabulate(issue.render(modified_fields=update_obj.modified)))
+
+    if key:
+        if key not in jira:
+            click.echo('Unknown issue key')
+            raise click.Abort
+
+        print_diff(jira[key])
+
+    else:
+        for issue in jira.values():
+            if issue.diff_to_original and issue.exists:
+                print_diff(issue)
+
+
+@cli.command(name='reset')
+@click.argument('key')
+def cli_reset(key: str=None):
+    '''
+    Reset an issue back to the last-seen Jira version, dropping any changes made locally
+    '''
+    jira = Jira()
+    jira.load_issues()
+
+    if key not in jira:
+        click.echo('Unknown issue key')
+        raise click.Abort
+
+    # overwrite local changes with the original
+    jira[key] = Issue.deserialize(jira[key].original)
+    jira.write_issues()
+
+    click.echo(f'Reset issue {key}')
 
 
 @cli.command(name='push')
@@ -306,7 +355,8 @@ def cli_edit(key, **kwargs):
     jira.load_issues()
 
     if key not in jira:
-        raise CliError(f"Issue {key} doesn't exist!")
+        click.echo('Unknown issue key')
+        raise click.Abort
 
     # validate epic parameters
     if jira[key].issuetype == 'Epic':

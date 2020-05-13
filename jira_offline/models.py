@@ -254,7 +254,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         the original property. This is written to storage to track changes made offline.
 
         Params:
-            data (optional):  Serialized dict of self (can be passed to avoid double-call to serialize)
+            data:  Serialized dict of self (can be passed to avoid double-call to serialize)
         Returns:
             Return from dictdiffer.diff to be stored in Issue.diff_to_original property
         '''
@@ -294,41 +294,63 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
 
         return issue
 
-    def render(self, conflicts: dict=None) -> List[Tuple[str, str]]:
+
+    def render(self, conflicts: dict=None, modified_fields: set=None) -> List[Tuple[str, str]]:
         '''
-        Pretty print this Issue
+        Pretty print this Issue. When `conflicts` is passed, render attributes as
 
         Params:
-            conflicts:  A conflict object
+            conflicts:        Render conflicting attributes in the git-style
+            modified_fields:  Render coloured output for fields which have been modified
         '''
         def fmt(field_name: str, prefix: str=None) -> Tuple:
             '''
-            Pretty formatting with support for conflicts
+            Pretty formatting with support for diffing and conflicts
 
             Params:
-                field_name: Dataclass field being formatted
-                prefix:     Arbitrary prefix to prepend during string format
+                field_name:  Dataclass field being formatted
+                prefix:      A prefix to prepend in front of the field's value
             Returns:
                 Tuple of formatted-pair tuples
             '''
             if conflicts and field_name in conflicts:
                 return (
                     ('<<<<<<< base', ''),
-                    render_field(Issue, field_name, conflicts[field_name]['base'], prefix),
+                    render_field(Issue, field_name, conflicts[field_name]['base'], value_prefix=prefix),
                     ('=======', ''),
-                    render_field(Issue, field_name, conflicts[field_name]['updated'], prefix),
+                    render_field(Issue, field_name, conflicts[field_name]['updated'], value_prefix=prefix),
                     ('>>>>>>> updated', ''),
                 )
+
+            elif modified_fields and field_name in modified_fields:
+                # render the old version in red with a minus
+                old_value = self.original.get(field_name)
+                if old_value:
+                    old_field = render_field(Issue, field_name, old_value, title_prefix='-',
+                                             value_prefix=prefix, color='red')
+                # render the new version in green with a plus
+                new_value = getattr(self, field_name)
+                if new_value:
+                    new_field = render_field(Issue, field_name, new_value, title_prefix='+',
+                                             value_prefix=prefix, color='green')
+                if old_value and new_value:
+                    return (old_field, new_field)
+                elif old_value:
+                    return (old_field,)
+                else:
+                    return (new_field,)
+
             else:
-                return (render_field(Issue, field_name, getattr(self, field_name), prefix),)
+                return (render_field(Issue, field_name, getattr(self, field_name), title_prefix='\u2800',
+                                     value_prefix=prefix),)
 
         if self.issuetype == 'Epic':
             epicdetails = fmt('epic_name')
         else:
             epicdetails = fmt('epic_ref')
 
-        attrs = [
-            *fmt('summary', prefix=f'[{self.key}]'),
+        return [
+            *fmt('summary', prefix=f'[{self.key}] '),
             *fmt('issuetype'),
             *epicdetails,
             *fmt('status'),
@@ -343,7 +365,6 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
             *fmt('created'),
             *fmt('updated'),
         ]
-        return attrs
 
     def as_json(self) -> str:
         '''

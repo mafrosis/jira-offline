@@ -1,7 +1,7 @@
 from fixtures import (ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF, ISSUE_1_WITH_FIXVERSIONS_DIFF,
                       ISSUE_1_WITH_PRIORITY_DIFF, ISSUE_1_WITH_UPDATED_DIFF, ISSUE_NEW)
 from jira_offline.models import Issue
-from jira_offline.sync import Conflict, _build_update
+from jira_offline.sync import Conflict, build_update
 
 
 def test_build_update__ignores_readonly_fields():
@@ -13,7 +13,7 @@ def test_build_update__ignores_readonly_fields():
     # create modified issue as upstream (readonly field is only one modified)
     updated_issue = Issue.deserialize(ISSUE_1_WITH_UPDATED_DIFF)
 
-    update_obj = _build_update(base_issue, updated_issue)
+    update_obj = build_update(base_issue, updated_issue)
 
     assert update_obj.modified == {'assignee'}
     assert not update_obj.conflicts
@@ -32,7 +32,7 @@ def test_build_update__base_unmodified_and_updated_modified():
     # create modified issue as updated
     updated_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
 
-    update_obj = _build_update(base_issue, updated_issue)
+    update_obj = build_update(base_issue, updated_issue)
 
     assert update_obj.modified == {'assignee'}
     assert not update_obj.conflicts
@@ -50,7 +50,7 @@ def test_build_update__base_modified_and_updated_unmodified():
     # create unmodified updated Issue fixture
     updated_issue = Issue.deserialize(ISSUE_1)
 
-    update_obj = _build_update(base_issue, updated_issue)
+    update_obj = build_update(base_issue, updated_issue)
 
     assert update_obj.modified == {'assignee'}
     assert not update_obj.conflicts
@@ -69,7 +69,7 @@ def test_build_update__base_modified_on_str_type_and_updated_modified_str_type_r
     updated_issue = Issue.deserialize(ISSUE_1)
     updated_issue.assignee = 'murphye'
 
-    update_obj = _build_update(base_issue, updated_issue)
+    update_obj = build_update(base_issue, updated_issue)
 
     assert update_obj.modified == {'assignee'}
     assert update_obj.conflicts == {
@@ -90,7 +90,7 @@ def test_build_update__base_modified_on_set_type_and_updated_modified_set_type_r
     updated_issue = Issue.deserialize(ISSUE_1)
     updated_issue.fixVersions.add('0.3')  # pylint: disable=no-member
 
-    update_obj = _build_update(base_issue, updated_issue)
+    update_obj = build_update(base_issue, updated_issue)
 
     assert update_obj.modified == {'fixVersions'}
     assert update_obj.conflicts == {
@@ -112,7 +112,7 @@ def test_build_update__base_nonconflict_changes_returned_in_merged_issue():
     updated_issue = Issue.deserialize(ISSUE_1)
     updated_issue.assignee = 'murphye'
 
-    update_obj = _build_update(base_issue, updated_issue)
+    update_obj = build_update(base_issue, updated_issue)
 
     assert update_obj.modified == {'assignee', 'summary'}
     assert update_obj.conflicts == {
@@ -135,7 +135,7 @@ def test_build_update__updated_nonconflict_changes_returned_in_merged_issue():
     base_issue = Issue.deserialize(ISSUE_1)
     base_issue.assignee = 'murphye'
 
-    update_obj = _build_update(base_issue, updated_issue)
+    update_obj = build_update(base_issue, updated_issue)
 
     assert update_obj.modified == {'assignee', 'summary'}
     assert update_obj.conflicts == {
@@ -156,7 +156,7 @@ def test_build_update__base_modified_and_updated_modified_on_different_fields():
     # create modified issue as updated
     updated_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
 
-    update_obj = _build_update(base_issue, updated_issue)
+    update_obj = build_update(base_issue, updated_issue)
 
     assert update_obj.modified == {'assignee', 'fixVersions'}
     assert not update_obj.conflicts
@@ -175,7 +175,7 @@ def test_build_update__base_modified_and_updated_modified_on_same_fields_with_sa
     # use the same modified Issue as updated (simulates the same change being made on both sides)
     updated_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
 
-    update_obj = _build_update(base_issue, updated_issue)
+    update_obj = build_update(base_issue, updated_issue)
 
     assert update_obj.modified == {'assignee'}
     assert not update_obj.conflicts
@@ -194,7 +194,7 @@ def test_build_update__base_modified_on_multiple_fields_and_updated_modified_on_
     # make same change on single field on updated Issue
     updated_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
 
-    update_obj = _build_update(base_issue, updated_issue)
+    update_obj = build_update(base_issue, updated_issue)
 
     assert update_obj.modified == {'assignee', 'summary'}
     assert not update_obj.conflicts
@@ -214,7 +214,7 @@ def test_build_update__base_modified_on_single_field_and_updated_modified_on_mul
     updated_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
     updated_issue.summary = 'This is a test'
 
-    update_obj = _build_update(base_issue, updated_issue)
+    update_obj = build_update(base_issue, updated_issue)
 
     assert update_obj.modified == {'assignee', 'summary'}
     assert not update_obj.conflicts
@@ -224,13 +224,13 @@ def test_build_update__base_modified_on_single_field_and_updated_modified_on_mul
 
 def test_build_update__new_issue():
     '''
-    Validate return when calling _build_update with NEW issue
+    Validate return when calling build_update with NEW issue
     '''
     # create a new Issue fixture
     new_issue = Issue.deserialize(ISSUE_NEW)
 
     # for new Issues created offline, the updated_issue is None
-    update_obj = _build_update(new_issue, None)
+    update_obj = build_update(new_issue, None)
 
     # modified fields should match all non-readonly fields
     assert update_obj.modified == set(['project_id', 'key', 'description', 'epic_ref', 'fixVersions', 'issuetype', 'project', 'reporter', 'summary'])
@@ -241,14 +241,14 @@ def test_build_update__new_issue():
 
 def test_build_update__handles_class_property():
     '''
-    Ensure _build_update handles @property fields on Issue class (such as priority)
+    Ensure build_update handles @property fields on Issue class (such as priority)
     '''
     # create unmodified base Issue fixture
     base_issue = Issue.deserialize(ISSUE_1)
     # updated issue has a different priority attrib
     updated_issue = Issue.deserialize(ISSUE_1_WITH_PRIORITY_DIFF)
 
-    update_obj = _build_update(base_issue, updated_issue)
+    update_obj = build_update(base_issue, updated_issue)
 
     assert update_obj.modified == {'priority'}
     assert not update_obj.conflicts
