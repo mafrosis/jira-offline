@@ -12,10 +12,11 @@ from tabulate import tabulate
 from jira_offline.auth import authenticate
 from jira_offline.cli.utils import print_list
 from jira_offline.create import create_issue, find_epic_by_reference, set_field_on_issue
-from jira_offline.exceptions import FailedPullingProjectMeta, JiraApiError, ProjectNotConfigured
+from jira_offline.exceptions import FailedPullingProjectMeta, JiraApiError
 from jira_offline.main import Jira
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.sync import build_update, pull_issues, pull_single_project, push_issues
+from jira_offline.utils import find_project
 
 
 logger = logging.getLogger('jira')
@@ -222,9 +223,9 @@ def cli_pull(ctx, projects: str=None, reset_hard: bool=False):
         projects_set = set(projects.split(','))
 
         # validate all requested projects are configured
+        # find_project will raise an exception if the project key is unknown
         for key in projects_set:
-            if key not in {p.key for p in jira.config.projects.values()}:
-                raise ProjectNotConfigured(key)
+            find_project(jira, key)
 
     if reset_hard:
         if projects:
@@ -269,13 +270,8 @@ def cli_new(projectkey: str, issuetype: str, summary: str, as_json: bool=False, 
 
     jira = Jira()
 
-    try:
-        # extract the ProjectMeta object for the specified project
-        project: ProjectMeta = next(iter(
-            [pm for id, pm in jira.config.projects.items() if pm.key == projectkey]
-        ))
-    except StopIteration:
-        raise ProjectNotConfigured(projectkey)
+    # retrieve the project configuration
+    project = find_project(jira, projectkey)
 
     # validate epic parameters
     if issuetype == 'Epic':
