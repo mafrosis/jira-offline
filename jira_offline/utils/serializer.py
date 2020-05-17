@@ -185,9 +185,8 @@ class DataclassSerializer:
 
             except KeyError as e:
                 # handle key missing from passed dict
-                if isinstance(f.default, dataclasses._MISSING_TYPE) and \
-                   isinstance(f.default_factory, dataclasses._MISSING_TYPE):  # type: ignore # pylint: disable=protected-access
-                    # raise exception if field has no defaults defined
+                # if the missing key's type is non-optional, raise an exception
+                if not typing_inspect.is_optional_type(f.type):
                     raise DeserializeError(f'Missing input data for mandatory key {f.name}')
 
                 continue
