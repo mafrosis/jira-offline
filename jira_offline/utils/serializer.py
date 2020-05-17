@@ -41,9 +41,9 @@ def get_enum(type_: type) -> Optional[type]:
     return None
 
 
-def is_optional_type(type_: type, typ: type) -> bool:
+def istype(type_: type, typ: type) -> bool:
     '''
-    Return True if type_ is typ, else return False
+    Return True if type_ is typ, else return False. Handles Optional types.
     '''
     if typing_inspect.is_optional_type(type_):
         # for typing.Optional, the real type is the first arg, and second is typing.NoneType
