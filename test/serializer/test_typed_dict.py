@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict
+from typing import Optional, Dict
 
 import pytest
 
@@ -16,7 +16,7 @@ class Test(DataclassSerializer):
 
 @dataclass
 class TestWithDefaults(DataclassSerializer):
-    d: Dict[str, Nested] = field(default_factory=dict)
+    d: Optional[Dict[str, Nested]] = field(default_factory=dict)
 
 
 def test_typed_dict_deserialize():

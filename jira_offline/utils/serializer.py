@@ -138,6 +138,17 @@ def serialize_value(type_: type, value: Any) -> Any:  # pylint: disable=too-many
         return value
 
 
+def _validate_optional_fields_have_a_default(field):
+    '''
+    Validate optional fields have a dataclasses.field(default) configured
+    '''
+    if typing_inspect.is_optional_type(field.type) and \
+        isinstance(field.default, dataclasses._MISSING_TYPE) and \
+        isinstance(field.default_factory, dataclasses._MISSING_TYPE):  # pylint: disable=protected-access
+
+        raise DeserializeError(f'Field {field.name} is Optional with no default configured')
+
+
 @dataclasses.dataclass
 class DataclassSerializer:
     @classmethod
@@ -161,6 +172,8 @@ class DataclassSerializer:
 
         for f in dataclasses.fields(cls):
             raw_value = None
+
+            _validate_optional_fields_have_a_default(f)
 
             try:
                 # pull value from dataclass field name, or by property name, if defined on the dataclass.field
