@@ -60,6 +60,9 @@ def deserialize_value(type_: type, value: Any) -> Any:  # pylint: disable=too-ma
     '''
     Utility function to deserialize `value` into `type_`. Used by DataclassSerializer.
     '''
+    if value is None:
+        return None
+
     if typing_inspect.is_optional_type(type_):
         # for typing.Optional, first arg is the real type and second arg is typing.NoneType
         type_ = typing_inspect.get_args(type_)[0]
