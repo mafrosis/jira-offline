@@ -4,7 +4,13 @@ A module for custom application exceptions.
 Many exceptions inherit from ClickException, which gives us handling for free in entrypoint
 functions.
 '''
+import logging
+import traceback
+
 from click import ClickException
+
+
+logger = logging.getLogger('jira')
 
 
 class DeserializeError(ValueError):
@@ -22,6 +28,13 @@ class BaseAppException(ClickException):
     '''Wrapper exception around click.ClickException'''
     def __init__(self, msg=''):  # pylint: disable=useless-super-delegation
         super().__init__(msg)
+
+    def show(self):  # pylint: disable=arguments-differ
+        super().show()
+        # if --debug was passed on CLI, the global logger will be in debug mode
+        # in this case, print a stack trace
+        if logger.level == logging.DEBUG:
+            traceback.print_exc()
 
 
 class EpicNotFound(BaseAppException):
