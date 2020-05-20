@@ -15,6 +15,11 @@ def get_type_class(type_):
     '''
     Attempt to get the origin class for a type. Handle Optional and generic types.
 
+    For example,
+        typing.Dict base type is dict
+        typing.Optional[str] base type is str
+        dict base type is simply dict
+
     This is based on `typing_inspect.get_origin(typ)`
     '''
     if typing_inspect.is_optional_type(type_):
@@ -114,6 +119,8 @@ def deserialize_value(type_: type, value: Any) -> Any:  # pylint: disable=too-ma
 def serialize_value(type_: type, value: Any) -> Any:  # pylint: disable=too-many-return-statements
     '''
     Utility function to serialize `value` into `type_`. Used by DataclassSerializer.
+
+    Note: int type does not need serializing for JSON
     '''
     if typing_inspect.is_optional_type(type_):
         # for typing.Optional, first arg is the real type and second arg is typing.NoneType
@@ -154,14 +161,7 @@ class DataclassSerializer:
     @classmethod
     def deserialize(cls, attrs: dict) -> Any:
         '''
-        Deserialize JSON-compatible dict to dataclass. Supports the following types:
-            - int
-            - decimal.Decimal
-            - datetime.date
-            - datetime.datetime
-            - enum.Enum
-            - set
-            - dataclass
+        Deserialize JSON-compatible dict to dataclass.
 
         Params:
             attrs:  Dict to deserialize into an instance of cls
@@ -192,7 +192,7 @@ class DataclassSerializer:
             except TypeError as e:
                 raise DeserializeError(f'Fatal TypeError for key {f.name} ({e})')
 
-            # extract the base type for a generic type
+            # extract the base type from a typing type (eg. typing.Dict becomes dict)
             base_type = get_type_class(f.type)
 
             # special handling for generic Dict
@@ -215,18 +215,8 @@ class DataclassSerializer:
 
     def serialize(self) -> dict:
         '''
-        Serialize dataclass to JSON-compatible dict. Supports the following types:
-            - int
-            - decimal.Decimal
-            - datetime.date
-            - datetime.datetime
-            - enum.Enum
-            - set
-            - dataclass
-
-        Notes:
-            - includes only fields with repr=True (the dataclass.field default)
-            - int type does not need serializing for JSON
+        Serialize dataclass to JSON-compatible dict. Includes only fields with repr=True (the
+        dataclass.field default).
 
         Returns:
             A JSON-compatible dict
@@ -242,7 +232,7 @@ class DataclassSerializer:
 
             raw_value = self.__dict__.get(f.name)
 
-            # extract the base type for a generic type
+            # extract the base type from a typing type (eg. typing.Dict becomes dict)
             base_type = get_type_class(f.type)
 
             # special handling for generic Dict
