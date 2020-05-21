@@ -192,12 +192,13 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
 
     # local-only dict which represents serialized Issue last seen on Jira server
     # this property is not written to cache and is created at runtme from diff_to_original
-    original: Dict[str, Any] = field(default_factory=dict, repr=False)
+    original: Dict[str, Any] = field(default_factory=dict, metadata={'rw': ''})
 
     # patch of current Issue to dict last seen on Jira server
-    diff_to_original: Optional[list] = field(default=None, repr=False)
+    # "rw" flag instructs serializer to deserialize this only; do not include during serialize()
+    diff_to_original: Optional[list] = field(default=None, metadata={'rw': 'r'})
 
-    project_ref: Optional[ProjectMeta] = field(default=None, repr=False)
+    project_ref: Optional[ProjectMeta] = field(default=None, metadata={'rw': ''})
 
     @classmethod
     @functools.lru_cache(maxsize=1)

@@ -174,6 +174,13 @@ class DataclassSerializer:
         data = {}
 
         for f in dataclasses.fields(cls):
+            # check for field read/write metadata, which determines if fields are ignored
+            # if the "r" field is not present, do not deserialize this field
+            rw_flag = f.metadata.get('rw', 'rw')
+            if 'r' not in rw_flag:
+                #print(f)
+                continue
+
             raw_value = None
 
             _validate_optional_fields_have_a_default(f)
@@ -217,8 +224,7 @@ class DataclassSerializer:
 
     def serialize(self) -> dict:
         '''
-        Serialize dataclass to JSON-compatible dict. Includes only fields with repr=True (the
-        dataclass.field default).
+        Serialize dataclass to JSON-compatible dict.
 
         Returns:
             A JSON-compatible dict
@@ -226,7 +232,10 @@ class DataclassSerializer:
         data = {}
 
         for f in dataclasses.fields(self):
-            if f.repr is False:
+            # check for field read/write metadata, which determines if fields are ignored
+            # if the "w" field is not present, do not serialize this field
+            rw_flag = f.metadata.get('rw', 'rw')
+            if 'w' not in rw_flag:
                 continue
 
             # pull value from dataclass field name, or by property name, if defined on the dataclass.field
