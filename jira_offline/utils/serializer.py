@@ -267,13 +267,14 @@ def _validate_optional_fields_have_a_default(field):
 @dataclasses.dataclass
 class DataclassSerializer:
     @classmethod
-    def deserialize(cls, attrs: dict, tz=None) -> Any:
+    def deserialize(cls, attrs: dict, tz=None, ignore_missing: bool=False) -> Any:
         '''
         Deserialize JSON-compatible dict to dataclass.
 
         Params:
-            attrs:  Dict to deserialize into an instance of cls
-            tz:     Timezone to apply to deserialized date/datetime
+            attrs:           Dict to deserialize into an instance of cls
+            tz:              Timezone to apply to deserialized date/datetime
+            ignore_missing:  Continue deserialize even when mandatory fields are missing
         Returns:
             An instance of cls
         '''
@@ -297,11 +298,11 @@ class DataclassSerializer:
 
             except KeyError as e:
                 # handle key missing from passed dict
-                # if the missing key's type is non-optional, raise an exception
-                if not typing_inspect.is_optional_type(f.type):
-                    raise DeserializeError(f'Missing input data for mandatory key {f.name}')
-
-                continue
+                if ignore_missing is False:
+                    # if the missing key's type is non-optional, raise an exception
+                    if not typing_inspect.is_optional_type(f.type):
+                        raise DeserializeError(f'Missing input data for mandatory key {f.name}')
+                    continue
 
             except TypeError as e:
                 raise DeserializeError(f'Fatal TypeError for key {f.name} ({e})')

@@ -272,18 +272,21 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         return list(dictdiffer.diff(data, self.original, ignore=set(['diff_to_original'])))
 
     @classmethod
-    def deserialize(cls, attrs: dict, project_ref: Optional[ProjectMeta]=None) -> 'Issue':  # pylint: disable=arguments-differ
+    def deserialize(cls, attrs: dict, project_ref: Optional[ProjectMeta]=None, ignore_missing: bool=False) -> 'Issue':  # pylint: disable=arguments-differ
         '''
         Deserialize a dict into an Issue object. Inflate the original Jira issue from the
         diff_to_original property.
 
         Params:
-            attrs:  Dict to deserialize into an Issue
+            attrs:           Dict to deserialize into an Issue
+            project_ref:     Reference to Jira project this Issue belongs to
+            ignore_missing:  Continue deserialize even when mandatory fields are missing
         Returns:
             List from dictdiffer.diff for Issue.diff_to_original property
         '''
         # deserialize supplied dict into an Issue object
-        issue = cast(Issue, super().deserialize(attrs))
+        # use `cast` to cover the mypy typecheck errors the arise from polymorphism
+        issue = cast(Issue, super().deserialize(attrs, ignore_missing=ignore_missing))
 
         if issue.diff_to_original is None:
             issue.diff_to_original = []
