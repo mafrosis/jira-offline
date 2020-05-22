@@ -19,7 +19,7 @@ from jira_offline.exceptions import (EpicNotFound, EstimateFieldUnavailable, Fai
                                      FailedPullingProjectMeta, JiraApiError)
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.utils import critical_logger, friendly_title, get_field_by_name
-from jira_offline.utils.serializer import DeserializeError, is_optional_type
+from jira_offline.utils.serializer import DeserializeError, istype
 from jira_offline.utils.api import get as api_get
 from jira_offline.utils.convert import jiraapi_object_to_issue, issue_to_jiraapi_update
 
@@ -430,7 +430,7 @@ def parse_editor_result(update_object: IssueUpdate, editor_result_raw: str) -> I
     summary_prefix = f'[{update_object.merged_issue.key}]'
 
     def preprocess_field_value(field_name, val):
-        if is_optional_type(get_field_by_name(Issue, field_name).type, set):
+        if istype(get_field_by_name(Issue, field_name).type, set):
             return [item[1:].strip() for item in val]
         else:
             output = ''.join(val)

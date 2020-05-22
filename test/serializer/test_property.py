@@ -1,3 +1,7 @@
+'''
+Tests for the DataclassSerializer fields which are implemented as a private class attribute, with a
+getter/setter @property exposing the field.
+'''
 from dataclasses import dataclass, field
 from typing import Optional
 

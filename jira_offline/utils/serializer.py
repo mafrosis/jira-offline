@@ -15,6 +15,11 @@ def get_type_class(type_):
     '''
     Attempt to get the origin class for a type. Handle Optional and generic types.
 
+    For example,
+        typing.Dict base type is dict
+        typing.Optional[str] base type is str
+        dict base type is simply dict
+
     This is based on `typing_inspect.get_origin(typ)`
     '''
     if typing_inspect.is_optional_type(type_):
@@ -41,9 +46,9 @@ def get_enum(type_: type) -> Optional[type]:
     return None
 
 
-def is_optional_type(type_: type, typ: type) -> bool:
+def istype(type_: type, typ: type) -> bool:
     '''
-    Return True if type_ is typ, else return False
+    Return True if type_ is typ, else return False. Handles Optional types.
     '''
     if typing_inspect.is_optional_type(type_):
         # for typing.Optional, the real type is the first arg, and second is typing.NoneType
@@ -55,6 +60,9 @@ def deserialize_value(type_: type, value: Any) -> Any:  # pylint: disable=too-ma
     '''
     Utility function to deserialize `value` into `type_`. Used by DataclassSerializer.
     '''
+    if value is None:
+        return None
+
     if typing_inspect.is_optional_type(type_):
         # for typing.Optional, first arg is the real type and second arg is typing.NoneType
         type_ = typing_inspect.get_args(type_)[0]
@@ -114,6 +122,8 @@ def deserialize_value(type_: type, value: Any) -> Any:  # pylint: disable=too-ma
 def serialize_value(type_: type, value: Any) -> Any:  # pylint: disable=too-many-return-statements
     '''
     Utility function to serialize `value` into `type_`. Used by DataclassSerializer.
+
+    Note: int type does not need serializing for JSON
     '''
     if typing_inspect.is_optional_type(type_):
         # for typing.Optional, first arg is the real type and second arg is typing.NoneType
@@ -138,19 +148,23 @@ def serialize_value(type_: type, value: Any) -> Any:  # pylint: disable=too-many
         return value
 
 
+def _validate_optional_fields_have_a_default(field):
+    '''
+    Validate optional fields have a dataclasses.field(default) configured
+    '''
+    if typing_inspect.is_optional_type(field.type) and \
+        isinstance(field.default, dataclasses._MISSING_TYPE) and \
+        isinstance(field.default_factory, dataclasses._MISSING_TYPE):  # pylint: disable=protected-access
+
+        raise DeserializeError(f'Field {field.name} is Optional with no default configured')
+
+
 @dataclasses.dataclass
 class DataclassSerializer:
     @classmethod
     def deserialize(cls, attrs: dict) -> Any:
         '''
-        Deserialize JSON-compatible dict to dataclass. Supports the following types:
-            - int
-            - decimal.Decimal
-            - datetime.date
-            - datetime.datetime
-            - enum.Enum
-            - set
-            - dataclass
+        Deserialize JSON-compatible dict to dataclass.
 
         Params:
             attrs:  Dict to deserialize into an instance of cls
@@ -160,7 +174,16 @@ class DataclassSerializer:
         data = {}
 
         for f in dataclasses.fields(cls):
+            # check for field read/write metadata, which determines if fields are ignored
+            # if the "r" field is not present, do not deserialize this field
+            rw_flag = f.metadata.get('rw', 'rw')
+            if 'r' not in rw_flag:
+                #print(f)
+                continue
+
             raw_value = None
+
+            _validate_optional_fields_have_a_default(f)
 
             try:
                 # pull value from dataclass field name, or by property name, if defined on the dataclass.field
@@ -169,9 +192,8 @@ class DataclassSerializer:
 
             except KeyError as e:
                 # handle key missing from passed dict
-                if isinstance(f.default, dataclasses._MISSING_TYPE) and \
-                   isinstance(f.default_factory, dataclasses._MISSING_TYPE):  # type: ignore # pylint: disable=protected-access
-                    # raise exception if field has no defaults defined
+                # if the missing key's type is non-optional, raise an exception
+                if not typing_inspect.is_optional_type(f.type):
                     raise DeserializeError(f'Missing input data for mandatory key {f.name}')
 
                 continue
@@ -179,7 +201,7 @@ class DataclassSerializer:
             except TypeError as e:
                 raise DeserializeError(f'Fatal TypeError for key {f.name} ({e})')
 
-            # extract the base type for a generic type
+            # extract the base type from a typing type (eg. typing.Dict becomes dict)
             base_type = get_type_class(f.type)
 
             # special handling for generic Dict
@@ -202,18 +224,7 @@ class DataclassSerializer:
 
     def serialize(self) -> dict:
         '''
-        Serialize dataclass to JSON-compatible dict. Supports the following types:
-            - int
-            - decimal.Decimal
-            - datetime.date
-            - datetime.datetime
-            - enum.Enum
-            - set
-            - dataclass
-
-        Notes:
-            - includes only fields with repr=True (the dataclass.field default)
-            - int type does not need serializing for JSON
+        Serialize dataclass to JSON-compatible dict.
 
         Returns:
             A JSON-compatible dict
@@ -221,7 +232,10 @@ class DataclassSerializer:
         data = {}
 
         for f in dataclasses.fields(self):
-            if f.repr is False:
+            # check for field read/write metadata, which determines if fields are ignored
+            # if the "w" field is not present, do not serialize this field
+            rw_flag = f.metadata.get('rw', 'rw')
+            if 'w' not in rw_flag:
                 continue
 
             # pull value from dataclass field name, or by property name, if defined on the dataclass.field
@@ -229,7 +243,7 @@ class DataclassSerializer:
 
             raw_value = self.__dict__.get(f.name)
 
-            # extract the base type for a generic type
+            # extract the base type from a typing type (eg. typing.Dict becomes dict)
             base_type = get_type_class(f.type)
 
             # special handling for generic Dict

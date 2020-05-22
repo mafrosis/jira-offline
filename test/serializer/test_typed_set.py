@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Set
+from typing import Optional, Set
 
 import pytest
 
@@ -12,7 +12,7 @@ class Test(DataclassSerializer):
 
 @dataclass
 class TestWithDefaults(DataclassSerializer):
-    s: Set[str] = field(default_factory=set)
+    s: Optional[Set[str]] = field(default_factory=set)
 
 
 def test_typed_set_deserialize():
