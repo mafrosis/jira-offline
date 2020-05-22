@@ -100,7 +100,7 @@ class JiraNotConfigured(BaseAppException):
     '''
     Raised if Jira is not setup correctly
     '''
-    def __init__(self, project_key, jira_server, msg=''):  # pylint: disable=useless-super-delegation
+    def __init__(self, project_key, jira_server, msg=''):
         'Special constructor to make the Jira server details available in a friendly error message'
         self.project_key = project_key
         self.jira_server = jira_server

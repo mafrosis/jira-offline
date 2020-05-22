@@ -74,7 +74,7 @@ class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-att
     hostname: Optional[str] = field(default='jira.atlassian.com')
     last_updated: Optional[str] = field(default=None)
     issuetypes: Dict[str, IssueType] = field(default_factory=dict)
-    custom_fields: CustomFields = field(default_factory=CustomFields)  # type: ignore
+    custom_fields: CustomFields = field(default_factory=CustomFields)
     oauth: Optional[OAuth] = field(default=None)
     ca_cert: Optional[str] = field(default=None)
 
