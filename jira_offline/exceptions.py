@@ -84,6 +84,13 @@ class CliError(BaseAppException):
 
 class UnreadableConfig(BaseAppException):
     '''Raised when load_config cannot read the config file'''
+    def __init__(self, msg, path: str=None):
+        'Special constructor enabling pass of the configuration filepath'
+        self.path = path
+        super().__init__(msg)
+
+    def format_message(self):
+        return f'Unreadble config at {self.path}: {self.message}'
 
 
 class NoProjectsSetup(BaseAppException):
