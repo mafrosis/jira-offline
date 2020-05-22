@@ -260,9 +260,11 @@ def cli_new(projectkey: str, issuetype: str, summary: str, as_json: bool=False, 
     '''
     Create a new issue on a project
 
-    PROJECTKEY    Jira project key for the new issue
-    ISSUETYPE  A valid issue type for the specified project
-    SUMMARY    Mandatory free text oneliner for this issue
+    PROJECTKEY  Jira project key for the new issue
+
+    ISSUETYPE   A valid issue type for the specified project
+
+    SUMMARY     Mandatory free text oneliner for this issue
     '''
     if ',' in projectkey:
         click.echo('You should pass only a single project key')
