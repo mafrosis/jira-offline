@@ -274,13 +274,13 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
     @classmethod
     def deserialize(cls, attrs: dict, project_ref: Optional[ProjectMeta]=None, ignore_missing: bool=False) -> 'Issue':  # pylint: disable=arguments-differ
         '''
-        Deserialize a dict into an Issue object. Inflate the original Jira issue from the
-        diff_to_original property.
+        Deserialize a dict into an Issue object. Inflate the _original_ version of the object from the
+        Issue.diff_to_original field which is written to the cache.
 
         Params:
             attrs:           Dict to deserialize into an Issue
             project_ref:     Reference to Jira project this Issue belongs to
-            ignore_missing:  Continue deserialize even when mandatory fields are missing
+            ignore_missing:  Ignore missing mandatory fields during deserialisation
         Returns:
             List from dictdiffer.diff for Issue.diff_to_original property
         '''

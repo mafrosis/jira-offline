@@ -7,3 +7,4 @@ pytest-cov
 pytest-mypy
 pytest-sugar
 pytest-xdist
+pyfakefs

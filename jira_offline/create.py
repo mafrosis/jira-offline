@@ -2,13 +2,15 @@
 Module for functions related to Issue creation and bulk import.
 '''
 import logging
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, Tuple, TYPE_CHECKING
 import uuid
 
 from jira_offline.exceptions import (DeserializeError, EpicNotFound, EpicSearchStrUsedMoreThanOnce,
-                                     InvalidIssueType, SummaryAlreadyExists)
+                                     ImportFailed, InvalidIssueType, ProjectNotConfigured,
+                                     SummaryAlreadyExists)
 from jira_offline.models import Issue, ProjectMeta
-from jira_offline.utils import get_field_by_name
+from jira_offline.sync import merge_issues
+from jira_offline.utils import find_project, get_field_by_name
 from jira_offline.utils.serializer import deserialize_value
 
 if TYPE_CHECKING:
@@ -147,3 +149,97 @@ def set_field_on_issue(issue: Issue, field_name: str, value: Optional[str]):
         raise DeserializeError(f'Failed parsing {field_name} with value {value} ({e})')
 
     setattr(issue, field_name, value)
+
+
+def import_issue(jira: 'Jira', attrs: dict, lineno: int=None) -> Tuple[Issue, bool]:
+    '''
+    Import a single issue's fields from the passed dict. The issue could be new, or this could be an
+    update to an issue which already exists.
+
+    Params:
+        jira:    Dependency-injected main.Jira object
+        attrs:   Dictionary containing issue fields
+        lineno:  Line number from the import file
+    Returns:
+        Tuple of imported Issue and flag which is true if import is new object
+    '''
+    if 'key' in attrs:
+        # assume this object is an update to an existing Issue
+        return _import_modified_issue(jira, attrs, lineno), False
+    else:
+        # assume this object is a new issue
+        return _import_new_issue(jira, attrs, lineno), True
+
+
+def _import_modified_issue(jira: 'Jira', attrs: dict, lineno: int=None) -> Issue:
+    '''
+    Import an UPDATED issue's fields from the passed dict.
+
+    An update to an existing issue requires:
+        project:  Jira project key
+        key:      Jira issue key
+
+    Params:
+        jira:   Dependency-injected main.Jira object
+        attrs:  Dictionary containing issue fields
+    '''
+    try:
+        # fetch existing issue by key, raising KeyError if unknown
+        existing_issue = jira[attrs['key']]
+
+        # deserialize incoming dict into an Issue object, thus validating the fields and value types
+        # (and, in this case, ignoring any missing mandatory keys)
+        imported_issue = Issue.deserialize(attrs, ignore_missing=True)
+
+    except KeyError:
+        if attrs.get('key'):
+            raise ImportFailed(f'Unknown issue key {attrs["key"]}', lineno)
+        raise ImportFailed('Unknown issue key', lineno)
+
+    except DeserializeError as e:
+        raise ImportFailed(f'Bad issue JSON passed for key {attrs["key"]} ({e})', lineno)
+
+    # merge the imported data into the existing issue
+    update_obj = merge_issues(existing_issue, imported_issue)
+
+    # An imported issue will likely only include a subset of fields, so the merge_issues() function
+    # will flag many fields as being deleted.
+    # Since an import is really an _upsert_, need to reset the original property to that of the
+    # unchanged issue.
+    update_obj.merged_issue.original = existing_issue.serialize()
+
+    # overwrite entry in Jira dict with updated
+    jira[attrs['key']] = update_obj.merged_issue
+    return update_obj.merged_issue
+
+
+def _import_new_issue(jira: 'Jira', attrs: dict, lineno: int=None) -> Issue:
+    '''
+    Import a NEW issue's fields from the passed dict.
+
+    New issues have the required fields as in `create_issue` above:
+        project:    Jira project key
+        issuetype:  Jira issue issuetype
+        summary:    Issue summary string
+
+    Params:
+        jira:   Dependency-injected main.Jira object
+        attrs:  Dictionary containing issue fields
+    '''
+    try:
+        # ensure all mandatory fields are in the import dict
+        for field_name in ('issuetype', 'summary', 'project'):
+            if field_name not in attrs:
+                raise ImportFailed(f'New issue missing field "{field_name}"')
+
+        # extract all mandatory fields from from import attrsect
+        issuetype = attrs.pop('issuetype')
+        summary = attrs.pop('summary')
+
+        # retrieve the project object
+        project = find_project(jira, attrs.pop('project'))
+
+        return create_issue(jira, project, issuetype, summary, **attrs)
+
+    except ProjectNotConfigured:
+        raise ImportFailed(f'Unknown project ref {attrs["project"]} for new issue', lineno)

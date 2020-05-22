@@ -2,6 +2,7 @@
 Module containing the simple top-level commands which do not have any subcommands
 '''
 import json
+import io
 import logging
 from typing import Optional, Set
 from urllib.parse import urlparse
@@ -11,8 +12,8 @@ from tabulate import tabulate
 
 from jira_offline.auth import authenticate
 from jira_offline.cli.utils import print_list
-from jira_offline.create import create_issue, find_epic_by_reference, set_field_on_issue
-from jira_offline.exceptions import FailedPullingProjectMeta, JiraApiError
+from jira_offline.create import create_issue, find_epic_by_reference, import_issue, set_field_on_issue
+from jira_offline.exceptions import FailedPullingProjectMeta, ImportFailed, JiraApiError
 from jira_offline.main import Jira
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.sync import build_update, pull_issues, pull_single_project, push_issues
@@ -73,6 +74,10 @@ def cli_diff(key: str=None):
     jira.load_issues()
 
     def print_diff(issue: Issue):
+        if not issue.exists:
+            click.echo('This issue is new, so no diff is available')
+            raise click.Abort
+
         # run build_update to diff between the remote version of the Issue, and the locally modified one
         update_obj = build_update(Issue.deserialize(issue.original), issue)
 
@@ -356,3 +361,48 @@ def cli_edit(key, **kwargs):
 
     click.echo(jira[key])
     jira.write_issues()
+
+
+@click.command(name='import')
+@click.argument('file', type=click.File('r'))
+def cli_import(file: io.TextIOWrapper):
+    '''
+    Import issues from stdin, or from a filepath
+
+    FILE  Jsonlines format file from which to import issues
+    '''
+    jira = Jira()
+    jira.load_issues()
+
+    no_input = True
+    write = False
+
+    # verbose logging by default during import
+    logger.setLevel(logging.INFO)
+
+    for i, line in enumerate(file.readlines()):
+        if line:
+            no_input = False
+
+            try:
+                issue, is_new = import_issue(jira, json.loads(line), lineno=i+1)
+                write = True
+
+                if is_new:
+                    logger.info('New issue created: %s', issue.summary)
+                else:
+                    logger.info('Issue %s updated', issue.key)
+
+            except json.decoder.JSONDecodeError as e:
+                logger.error('Failed parsing line %s', i+1)
+            except ImportFailed as e:
+                logger.error(e)
+        else:
+            break
+
+    if no_input:
+        click.echo('No data read on stdin or in passed file')
+        raise click.Abort
+
+    if write:
+        jira.write_issues()
