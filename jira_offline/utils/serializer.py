@@ -178,7 +178,6 @@ class DataclassSerializer:
             # if the "r" field is not present, do not deserialize this field
             rw_flag = f.metadata.get('rw', 'rw')
             if 'r' not in rw_flag:
-                #print(f)
                 continue
 
             raw_value = None
