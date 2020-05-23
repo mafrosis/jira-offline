@@ -18,8 +18,17 @@ def customfield_estimate(request):
     return request.param
 
 
+@pytest.fixture(params=[
+    ['High', 'Low'],
+    [],
+])
+def customfield_priority(request):
+    '''Parameterized fixture to feed the project fixture below'''
+    return set(request.param)
+
+
 @pytest.fixture
-def project(customfield_estimate):
+def project(customfield_estimate, customfield_priority):
     '''
     Fixture representing a configured Jira project
     '''
@@ -28,8 +37,9 @@ def project(customfield_estimate):
         username='test',
         password='dummy',
         custom_fields=CustomFields(epic_ref='1', epic_name='2', estimate=customfield_estimate),
+        priorities=customfield_priority,
         issuetypes={
-            'Story': IssueType(name='Story', priorities=['High', 'Low'], statuses=['Backlog', 'Done']),
+            'Story': IssueType(name='Story', statuses=['Backlog', 'Done']),
         },
     )
 

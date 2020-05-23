@@ -79,6 +79,39 @@ def test_jira__write_issues__calls_issue_diff_for_existing_issues_only(mock_open
 
 
 @mock.patch('jira_offline.main.api_get')
+def test_jira__get_project_meta__extracts_priorities(mock_api_get, mock_jira_core, project):
+    '''
+    Ensure get_project_meta() method extracts project priorities from a project
+    '''
+    # mock out call to _get_project_issue_statuses
+    mock_jira_core._get_project_issue_statuses = mock.Mock()
+
+    # mock return from Jira createmeta API call
+    mock_api_get.return_value = {
+        'projects': [{
+            'id': '56120',
+            'key': 'EGG',
+            'name': 'Project EGG',
+            'issuetypes': [{
+                'id': '5',
+                'name': 'Story',
+                'fields': {
+                    'priority': {
+                        'name': 'priority',
+                        'allowedValues': [{'name': 'Egg'}, {'name': 'Bacon'}],
+                    },
+                },
+            }]
+        }]
+    }
+
+    mock_jira_core.get_project_meta(project)
+
+    assert mock_api_get.called
+    assert project.priorities == {'Bacon', 'Egg'}
+
+
+@mock.patch('jira_offline.main.api_get')
 def test_jira__get_project_meta__extracts_issuetypes(mock_api_get, mock_jira_core, project):
     '''
     Ensure get_project_meta() method parses the issuetypes for a project
@@ -96,18 +129,14 @@ def test_jira__get_project_meta__extracts_issuetypes(mock_api_get, mock_jira_cor
                 'id': '5',
                 'name': 'Story',
                 'fields': {
-                    'priority': {
-                        'name': 'priority',
-                        'allowedValues': [{'name': 'High'}, {'name': 'Low'}],
-                    },
+                    'summary': {'name': 'Summary'},
                 },
             },{
                 'id': '18500',
                 'name': 'Custom_IssueType',
                 'fields': {
-                    'priority': {
-                        'name': 'priority',
-                        'allowedValues': [{'name': 'egg'}, {'name': 'bacon'}],
+                    'summary': {
+                        'name': 'Summary'
                     },
                     'customfield_10104': {
                         'schema': {
@@ -123,10 +152,9 @@ def test_jira__get_project_meta__extracts_issuetypes(mock_api_get, mock_jira_cor
     mock_jira_core.get_project_meta(project)
 
     assert mock_api_get.called
-    assert project.name == 'Project EGG'
     assert project.issuetypes == {
-        'Story': IssueType(name='Story', priorities={'High', 'Low'}),
-        'Custom_IssueType': IssueType(name='Custom_IssueType', priorities={'egg', 'bacon'})
+        'Story': IssueType(name='Story'),
+        'Custom_IssueType': IssueType(name='Custom_IssueType')
     }
 
 
@@ -150,10 +178,7 @@ def test_jira__get_project_meta__handles_removal_of_issuetype(mock_api_get, mock
                 'id': '5',
                 'name': 'Epic',
                 'fields': {
-                    'priority': {
-                        'name': 'priority',
-                        'allowedValues': [{'name': 'egg'}, {'name': 'bacon'}],
-                    },
+                    'summary': {'name': 'Summary'},
                 },
             }]
         }]
@@ -162,9 +187,8 @@ def test_jira__get_project_meta__handles_removal_of_issuetype(mock_api_get, mock
     mock_jira_core.get_project_meta(project)
 
     assert mock_api_get.called
-    assert project.name == 'Project EGG'
     assert project.issuetypes == {
-        'Epic': IssueType(name='Epic', priorities={'egg', 'bacon'})
+        'Epic': IssueType(name='Epic')
     }
 
 
@@ -187,9 +211,8 @@ def test_jira__get_project_meta__extracts_custom_fields(mock_api_get, mock_jira_
                 'id': '5',
                 'name': 'Epic',
                 'fields': {
-                    'priority': {
-                        'name': 'priority',
-                        'allowedValues': [{'name': 'egg'}, {'name': 'bacon'}],
+                    'summary': {
+                        'name': 'Summary'
                     },
                     'customfield_10104': {
                         'schema': {

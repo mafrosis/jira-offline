@@ -40,7 +40,6 @@ class CustomFields(DataclassSerializer):
 @dataclass
 class IssueType(DataclassSerializer):
     name: str = field(default='')
-    priorities: Set[str] = field(default_factory=set)
     statuses: Set[str] = field(default_factory=set)
 
 
@@ -75,6 +74,7 @@ class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-att
     last_updated: Optional[str] = field(default=None)
     issuetypes: Dict[str, IssueType] = field(default_factory=dict)
     custom_fields: CustomFields = field(default_factory=CustomFields)
+    priorities: Set[str] = field(default_factory=set)
     oauth: Optional[OAuth] = field(default=None)
     ca_cert: Optional[str] = field(default=None)
 
@@ -219,10 +219,8 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         if not self.project_ref:
             raise Exception
 
-        if value not in self.project_ref.issuetypes[self.issuetype].priorities:
-            raise InvalidIssuePriority(
-                ', '.join(self.project_ref.issuetypes[self.issuetype].priorities)
-            )
+        if value not in self.project_ref.priorities:
+            raise InvalidIssuePriority(', '.join(self.project_ref.priorities))
 
         self._priority = value
 
