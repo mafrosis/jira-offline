@@ -4,7 +4,7 @@ The Jira class in this module is the primary abstraction around the Jira API.
 import collections.abc
 import logging
 import os
-from typing import Optional
+from typing import Dict, Optional, Set
 
 import jsonlines
 import pandas as pd
@@ -105,17 +105,21 @@ class Jira(collections.abc.MutableMapping):
             # project friendly name
             project.name = data['projects'][0]['name']
 
-            issuetypes_ = dict()
+            issuetypes_: Dict[str, IssueType] = dict()
+            priorities_: Set[str] = set()
 
             # extract set of issuetypes, and their priority values returned from the createmeta API
             for x in data['projects'][0]['issuetypes']:
-                it = IssueType(name=x['name'])
-                if x['fields'].get('priority'):
-                    it.priorities = {y['name'] for y in x['fields']['priority']['allowedValues']}
-                issuetypes_[x['name']] = it
+                issuetypes_[x['name']] = IssueType(name=x['name'])
 
-            # update project issuetypes to latest defined on Jira
+                # priority is a project-level setting, which can be extracted from any issue with the
+                # "priority" field
+                if not priorities_ and x['fields'].get('priority'):
+                    priorities_ = {y['name'] for y in x['fields']['priority']['allowedValues']}
+
+            # update project issuetypes & priorities to latest defined on Jira
             project.issuetypes = issuetypes_
+            project.priorities = priorities_
 
             custom_fields = CustomFields()
 
