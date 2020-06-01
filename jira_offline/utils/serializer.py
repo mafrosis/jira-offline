@@ -56,9 +56,15 @@ def istype(type_: type, typ: type) -> bool:
     return typ is type_
 
 
-def deserialize_value(type_: type, value: Any) -> Any:  # pylint: disable=too-many-branches, too-many-return-statements
+def deserialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-branches, too-many-return-statements
     '''
     Utility function to deserialize `value` into `type_`. Used by DataclassSerializer.
+
+    Note that some JSON-compatible types do not need deserializing for JSON (int, dict, list)
+
+    Params:
+        type_:  The dataclass field type
+        value:  Value to serialize to `type_`
     '''
     if value is None:
         return None
@@ -67,47 +73,64 @@ def deserialize_value(type_: type, value: Any) -> Any:  # pylint: disable=too-ma
         # for typing.Optional, first arg is the real type and second arg is typing.NoneType
         type_ = typing_inspect.get_args(type_)[0]
 
-    if dataclasses.is_dataclass(type_):
-        return type_.deserialize(value)  # type: ignore
+    # extract the base type (eg. typing.Dict becomes dict)
+    base_type = get_base_type(type_)
 
-    elif type_ is decimal.Decimal:
+    if dataclasses.is_dataclass(base_type):
+        return base_type.deserialize(value)  # type: ignore
+
+    elif base_type is decimal.Decimal:
         try:
             return decimal.Decimal(value)
         except decimal.InvalidOperation:
             raise DeserializeError(f'Failed deserializing "{value}" to Decimal')
 
-    elif type_ is uuid.UUID:
+    elif base_type is uuid.UUID:
         try:
             return uuid.UUID(value)
         except ValueError:
             raise DeserializeError(f'Failed deserializing "{value}" to UUID')
 
-    elif type_ is datetime.date:
+    elif base_type is datetime.date:
         try:
             return arrow.get(value).datetime.date()
         except arrow.parser.ParserError:
             raise DeserializeError(f'Failed deserializing "{value}" to Arrow datetime.date')
 
-    elif type_ is datetime.datetime:
+    elif base_type is datetime.datetime:
         try:
             return arrow.get(value).datetime
         except arrow.parser.ParserError:
             raise DeserializeError(f'Failed deserializing "{value}" to Arrow datetime.datetime')
 
-    elif type_ is set:
+    elif base_type is set:
         if not isinstance(value, set) and not isinstance(value, list):
-        #if not is_typing_instance(value, set) and not is_typing_instance(value, list):
-            raise DeserializeError('Value passed to set type must be JSON set or list')
+            raise DeserializeError('Value passed to set type must be set or list')
         return set(value)
 
-    elif type_ is int:
+    elif base_type is int:
         try:
             return int(value)
         except (TypeError, ValueError):
             raise DeserializeError(f'Failed deserializing {value} to int')
+
+    elif base_type is dict:
+        # extract key and value types for the Dict
+        generic_key_type, generic_value_type = type_.__args__[0], type_.__args__[1]
+
+        try:
+            # deserialize keys and values individually, constructing a new dict
+            return {
+                deserialize_value(generic_key_type, item_key):
+                    deserialize_value(generic_value_type, item_value)
+                for item_key, item_value in value.items()  # type: ignore
+            }
+        except AttributeError:
+            raise DeserializeError(f'Failed serializing "{value}" to {base_type}')
+
     else:
         # handle enum
-        enum_type = get_enum(type_)
+        enum_type = get_enum(base_type)
         if enum_type:
             try:
                 # convert string to Enum instance
@@ -119,29 +142,52 @@ def deserialize_value(type_: type, value: Any) -> Any:  # pylint: disable=too-ma
         return value
 
 
-def serialize_value(type_: type, value: Any) -> Any:  # pylint: disable=too-many-return-statements
+def serialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-return-statements
     '''
     Utility function to serialize `value` into `type_`. Used by DataclassSerializer.
 
-    Note: int type does not need serializing for JSON
+    Note that some JSON-compatible types do not need serializing for JSON (int, dict, list)
+
+    Params:
+        type_:  The dataclass field type
+        value:  Value to serialize to `type_`
     '''
     if typing_inspect.is_optional_type(type_):
         # for typing.Optional, first arg is the real type and second arg is typing.NoneType
         type_ = typing_inspect.get_args(type_)[0]
 
+    # extract the base type (eg. typing.Dict becomes dict)
+    base_type = get_base_type(type_)
+
     if value is None:
         return None
-    elif dataclasses.is_dataclass(type_):
+
+    elif dataclasses.is_dataclass(base_type):
         return value.serialize()
-    elif isinstance(value, (decimal.Decimal, uuid.UUID)):
+
+    elif base_type in (decimal.Decimal, uuid.UUID):
         return str(value)
-    elif isinstance(value, (datetime.date, datetime.datetime)):
+
+    elif base_type in (datetime.date, datetime.datetime):
         return value.isoformat()
-    elif isinstance(value, set):
+
+    elif base_type in (set,):
         return sorted(list(value))
+
+    elif base_type is dict:
+        # extract key and value types for the Dict
+        generic_key_type, generic_value_type = type_.__args__[0], type_.__args__[1]
+
+        # serialize keys and values individually, constructing a new dict
+        return {
+            serialize_value(generic_key_type, item_key):
+                serialize_value(generic_value_type, item_value)
+            for item_key, item_value in value.items()  # type: ignore
+        }
+
     else:
         # handle enum
-        if get_enum(type_):
+        if get_enum(base_type):
             return value.value
 
         # no serialize necessary
@@ -200,23 +246,7 @@ class DataclassSerializer:
             except TypeError as e:
                 raise DeserializeError(f'Fatal TypeError for key {f.name} ({e})')
 
-            # extract the base type from a typing type (eg. typing.Dict becomes dict)
-            base_type = get_base_type(f.type)
-
-            # special handling for generic Dict
-            if base_type is dict:
-                # extract key and value types for the Dict
-                dict_key_type, dict_value_type = f.type.__args__[0], f.type.__args__[1]
-                try:
-                    # deserialize keys and values individually into a new dict
-                    data[f.name] = {
-                        deserialize_value(dict_key_type, item_key): deserialize_value(dict_value_type, item_value)
-                        for item_key, item_value in raw_value.items()  # type: ignore
-                    }
-                except AttributeError:
-                    raise DeserializeError(f'Failed serializing "{raw_value}" to {f.type}')
-            else:
-                data[f.name] = deserialize_value(base_type, raw_value)
+            data[f.name] = deserialize_value(f.type, raw_value)
 
         return cls(**data)  # type: ignore
 
@@ -240,24 +270,8 @@ class DataclassSerializer:
             # pull value from dataclass field name, or by property name, if defined on the dataclass.field
             write_field_name = f.metadata.get('property', f.name)
 
-            raw_value = self.__dict__.get(f.name)
-
-            # extract the base type from a typing type (eg. typing.Dict becomes dict)
-            base_type = get_base_type(f.type)
-
-            # special handling for generic Dict
-            if base_type is dict:
-                # extract key and value types for the Dict
-                dict_key_type, dict_value_type = f.type.__args__[0], f.type.__args__[1]
-                # deserialize keys and values individually into a new dict
-                data[write_field_name] = {
-                    serialize_value(dict_key_type, item_key):
-                        serialize_value(dict_value_type, item_value)
-                    for item_key, item_value in raw_value.items()  # type: ignore
-                }
-            else:
-                serialized_value = serialize_value(base_type, raw_value)
-                if serialized_value:
-                    data[write_field_name] = serialized_value
+            serialized_value = serialize_value(f.type, self.__dict__.get(f.name))
+            if serialized_value:
+                data[write_field_name] = serialized_value
 
         return data
