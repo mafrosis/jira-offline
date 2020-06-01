@@ -11,9 +11,9 @@ import typing_inspect
 from jira_offline.exceptions import DeserializeError
 
 
-def get_type_class(type_):
+def get_base_type(type_):
     '''
-    Attempt to get the origin class for a type. Handle Optional and generic types.
+    Attempt to get the base or "origin type" for a type. Handle Optional and generic types.
 
     For example,
         typing.Dict base type is dict
@@ -40,7 +40,7 @@ def get_enum(type_: type) -> Optional[type]:
     '''
     Return enum if type_ is a subclass of enum.Enum. Handle typing.Optional.
     '''
-    type_ = get_type_class(type_)
+    type_ = get_base_type(type_)
     if issubclass(type_, enum.Enum):
         return type_
     return None
@@ -201,7 +201,7 @@ class DataclassSerializer:
                 raise DeserializeError(f'Fatal TypeError for key {f.name} ({e})')
 
             # extract the base type from a typing type (eg. typing.Dict becomes dict)
-            base_type = get_type_class(f.type)
+            base_type = get_base_type(f.type)
 
             # special handling for generic Dict
             if base_type is dict:
@@ -243,7 +243,7 @@ class DataclassSerializer:
             raw_value = self.__dict__.get(f.name)
 
             # extract the base type from a typing type (eg. typing.Dict becomes dict)
-            base_type = get_type_class(f.type)
+            base_type = get_base_type(f.type)
 
             # special handling for generic Dict
             if base_type is dict:
