@@ -299,7 +299,10 @@ class DataclassSerializer:
             except TypeError as e:
                 raise DeserializeError(f'Fatal TypeError for key {f.name} ({e})')
 
-            data[f.name] = deserialize_value(f.type, raw_value)
+            try:
+                data[f.name] = deserialize_value(f.type, raw_value)
+            except DeserializeError as e:
+                raise DeserializeError(f'{e} in field {f.name}')
 
         return cls(**data)  # type: ignore
 
