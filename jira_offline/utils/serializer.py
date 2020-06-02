@@ -72,7 +72,7 @@ def istype(type_: type, typ: type) -> bool:
     return typ is unwrap_optional_type(type_)
 
 
-def deserialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-branches, too-many-return-statements
+def deserialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-branches, too-many-return-statements, too-many-statements
     '''
     Utility function to deserialize `value` into `type_`. Used by DataclassSerializer.
 
@@ -150,6 +150,31 @@ def deserialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-bra
 
         # a python dict is JSON-compatible, so no additional conversion necessary
 
+    elif base_type is list and typing_inspect.is_generic_type(type_):
+        if not isinstance(value, list):
+            # additional error handling is required here as python will iterate a string as though its
+            # a list; causing subsequent code to produce incorrect results when a string is fed to
+            # the deserializer
+            raise DeserializeError('Value passed for list types must be list')
+
+        # extract value type for the generic List
+        generic_type = type_.__args__[0]
+
+        try:
+            # deserialize values individually into a new list
+            return [
+                deserialize_value(generic_type, v) for v in value
+            ]
+        except (AttributeError, TypeError):
+            raise DeserializeError(f'Failed serializing "{value}" to {type_}')
+
+    elif base_type is list:
+        # additional error handling for non-generic list type
+        if not isinstance(value, list):
+            raise DeserializeError('Value passed for list types must be list')
+
+        # a python list is JSON-compatible, so no additional conversion necessary
+
     else:
         # handle enum
         enum_type = get_enum(base_type)
@@ -205,6 +230,13 @@ def serialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-retur
                 serialize_value(generic_value_type, item_value)
             for item_key, item_value in value.items()  # type: ignore
         }
+
+    elif base_type is list and typing_inspect.is_generic_type(type_):
+        # extract value type for the generic List
+        generic_type = type_.__args__[0]
+
+        # serialize values individually into a new list
+        return [serialize_value(generic_type, v) for v in value]
 
     else:
         # handle enum
