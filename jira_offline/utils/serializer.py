@@ -11,6 +11,22 @@ import typing_inspect
 from jira_offline.exceptions import DeserializeError
 
 
+def unwrap_optional_type(type_):
+    '''
+    Unwrap typing.Optional around a type.
+
+    For example,
+        typing.Optional[str] is str
+        typing.Optional[dict] is dict
+    '''
+    if typing_inspect.is_optional_type(type_):
+        # typing.Optional can also be written as typing.Union[type, None]
+        # this means the base type is the first arg in the return from typing_inspect.get_args()
+        type_ = typing_inspect.get_args(type_)[0]
+
+    return type_
+
+
 def get_base_type(type_):
     '''
     Attempt to get the base or "origin type" for a type. Handle Optional and generic types.
@@ -22,11 +38,10 @@ def get_base_type(type_):
 
     This is based on `typing_inspect.get_origin(typ)`
     '''
-    if typing_inspect.is_optional_type(type_):
-        # for typing.Optional, the real type is the first arg, and second is typing.NoneType
-        return typing_inspect.get_args(type_)[0]
+    # unwrap any typing.Optional to expose the underlying type
+    type_ = unwrap_optional_type(type_)
 
-    # abort if type is not generic
+    # abort if type is not generic, (ie. not a typing.* type)
     if not typing_inspect.is_generic_type(type_):
         return type_
 
@@ -50,10 +65,7 @@ def istype(type_: type, typ: type) -> bool:
     '''
     Return True if type_ is typ, else return False. Handles Optional types.
     '''
-    if typing_inspect.is_optional_type(type_):
-        # for typing.Optional, the real type is the first arg, and second is typing.NoneType
-        type_ = typing_inspect.get_args(type_)[0]
-    return typ is type_
+    return typ is unwrap_optional_type(type_)
 
 
 def deserialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-branches, too-many-return-statements
@@ -69,9 +81,8 @@ def deserialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-bra
     if value is None:
         return None
 
-    if typing_inspect.is_optional_type(type_):
-        # for typing.Optional, first arg is the real type and second arg is typing.NoneType
-        type_ = typing_inspect.get_args(type_)[0]
+    # unwrap any typing.Optional to expose the underlying type
+    type_ = unwrap_optional_type(type_)
 
     # extract the base type (eg. typing.Dict becomes dict)
     base_type = get_base_type(type_)
@@ -114,8 +125,8 @@ def deserialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-bra
         except (TypeError, ValueError):
             raise DeserializeError(f'Failed deserializing {value} to int')
 
-    elif base_type is dict:
-        # extract key and value types for the Dict
+    elif base_type is dict and typing_inspect.is_generic_type(type_):
+        # extract key and value types for the generic Dict
         generic_key_type, generic_value_type = type_.__args__[0], type_.__args__[1]
 
         try:
@@ -128,6 +139,13 @@ def deserialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-bra
         except AttributeError:
             raise DeserializeError(f'Failed serializing "{value}" to {base_type}')
 
+    elif base_type is dict:
+        # additional error handling for non-generic dict type
+        if not isinstance(value, dict):
+            raise DeserializeError('Value passed for dict types must be dict')
+
+        # a python dict is JSON-compatible, so no additional conversion necessary
+
     else:
         # handle enum
         enum_type = get_enum(base_type)
@@ -138,8 +156,8 @@ def deserialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-bra
             except ValueError:
                 raise DeserializeError(f'Failed deserializing {value} to {type_}')
 
-        # no deserialize necessary
-        return value
+    # no deserialize necessary
+    return value
 
 
 def serialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-return-statements
@@ -152,9 +170,8 @@ def serialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-retur
         type_:  The dataclass field type
         value:  Value to serialize to `type_`
     '''
-    if typing_inspect.is_optional_type(type_):
-        # for typing.Optional, first arg is the real type and second arg is typing.NoneType
-        type_ = typing_inspect.get_args(type_)[0]
+    # unwrap any typing.Optional to expose the underlying type
+    type_ = unwrap_optional_type(type_)
 
     # extract the base type (eg. typing.Dict becomes dict)
     base_type = get_base_type(type_)
@@ -174,8 +191,8 @@ def serialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-retur
     elif base_type in (set,):
         return sorted(list(value))
 
-    elif base_type is dict:
-        # extract key and value types for the Dict
+    elif base_type is dict and typing_inspect.is_generic_type(type_):
+        # extract key and value types for the generic Dict
         generic_key_type, generic_value_type = type_.__args__[0], type_.__args__[1]
 
         # serialize keys and values individually, constructing a new dict
@@ -190,8 +207,8 @@ def serialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-retur
         if get_enum(base_type):
             return value.value
 
-        # no serialize necessary
-        return value
+    # no serialize necessary
+    return value
 
 
 def _validate_optional_fields_have_a_default(field):
