@@ -11,9 +11,29 @@ import typing_inspect
 from jira_offline.exceptions import DeserializeError
 
 
-def get_type_class(type_):
+def unwrap_optional_type(type_):
     '''
-    Attempt to get the origin class for a type. Handle Optional and generic types.
+    Unwrap typing.Optional around a type.
+
+    The parameter evaluate=True _must_ be passed to `get_args` to ensure consistent behaviour across
+    pythons:
+        https://github.com/ilevkivskyi/typing_inspect/blob/master/typing_inspect.py#L410
+
+    For example,
+        typing.Optional[str] is str
+        typing.Optional[dict] is dict
+    '''
+    if typing_inspect.is_optional_type(type_):
+        # typing.Optional is sugar for representing an optional type as typing.Union[type, None]
+        # this means the base type is the first arg in the return from typing_inspect.get_args()
+        type_ = typing_inspect.get_args(type_, evaluate=True)[0]
+
+    return type_
+
+
+def get_base_type(type_):
+    '''
+    Attempt to get the base or "origin type" for a type. Handle Optional and generic types.
 
     For example,
         typing.Dict base type is dict
@@ -22,11 +42,10 @@ def get_type_class(type_):
 
     This is based on `typing_inspect.get_origin(typ)`
     '''
-    if typing_inspect.is_optional_type(type_):
-        # for typing.Optional, the real type is the first arg, and second is typing.NoneType
-        return typing_inspect.get_args(type_)[0]
+    # unwrap any typing.Optional to expose the underlying type
+    type_ = unwrap_optional_type(type_)
 
-    # abort if type is not generic
+    # abort if type is not generic, (ie. not a typing.* type)
     if not typing_inspect.is_generic_type(type_):
         return type_
 
@@ -40,7 +59,7 @@ def get_enum(type_: type) -> Optional[type]:
     '''
     Return enum if type_ is a subclass of enum.Enum. Handle typing.Optional.
     '''
-    type_ = get_type_class(type_)
+    type_ = get_base_type(type_)
     if issubclass(type_, enum.Enum):
         return type_
     return None
@@ -50,64 +69,115 @@ def istype(type_: type, typ: type) -> bool:
     '''
     Return True if type_ is typ, else return False. Handles Optional types.
     '''
-    if typing_inspect.is_optional_type(type_):
-        # for typing.Optional, the real type is the first arg, and second is typing.NoneType
-        type_ = typing_inspect.get_args(type_)[0]
-    return typ is type_
+    return typ is unwrap_optional_type(type_)
 
 
-def deserialize_value(type_: type, value: Any) -> Any:  # pylint: disable=too-many-branches, too-many-return-statements
+def deserialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-branches, too-many-return-statements, too-many-statements
     '''
     Utility function to deserialize `value` into `type_`. Used by DataclassSerializer.
+
+    Note that some JSON-compatible types do not need deserializing for JSON (int, dict, list)
+
+    Params:
+        type_:  The dataclass field type
+        value:  Value to serialize to `type_`
     '''
     if value is None:
         return None
 
-    if typing_inspect.is_optional_type(type_):
-        # for typing.Optional, first arg is the real type and second arg is typing.NoneType
-        type_ = typing_inspect.get_args(type_)[0]
+    # unwrap any typing.Optional to expose the underlying type
+    type_ = unwrap_optional_type(type_)
 
-    if dataclasses.is_dataclass(type_):
-        return type_.deserialize(value)  # type: ignore
+    # extract the base type (eg. typing.Dict becomes dict)
+    base_type = get_base_type(type_)
 
-    elif type_ is decimal.Decimal:
+    if dataclasses.is_dataclass(base_type):
+        return base_type.deserialize(value)  # type: ignore
+
+    elif base_type is decimal.Decimal:
         try:
             return decimal.Decimal(value)
         except decimal.InvalidOperation:
             raise DeserializeError(f'Failed deserializing "{value}" to Decimal')
 
-    elif type_ is uuid.UUID:
+    elif base_type is uuid.UUID:
         try:
             return uuid.UUID(value)
         except ValueError:
             raise DeserializeError(f'Failed deserializing "{value}" to UUID')
 
-    elif type_ is datetime.date:
+    elif base_type is datetime.date:
         try:
             return arrow.get(value).datetime.date()
         except arrow.parser.ParserError:
             raise DeserializeError(f'Failed deserializing "{value}" to Arrow datetime.date')
 
-    elif type_ is datetime.datetime:
+    elif base_type is datetime.datetime:
         try:
             return arrow.get(value).datetime
         except arrow.parser.ParserError:
             raise DeserializeError(f'Failed deserializing "{value}" to Arrow datetime.datetime')
 
-    elif type_ is set:
+    elif base_type is set:
         if not isinstance(value, set) and not isinstance(value, list):
-        #if not is_typing_instance(value, set) and not is_typing_instance(value, list):
-            raise DeserializeError('Value passed to set type must be JSON set or list')
+            raise DeserializeError('Value passed to set type must be set or list')
         return set(value)
 
-    elif type_ is int:
+    elif base_type is int:
         try:
             return int(value)
         except (TypeError, ValueError):
             raise DeserializeError(f'Failed deserializing {value} to int')
+
+    elif base_type is dict and typing_inspect.is_generic_type(type_):
+        # extract key and value types for the generic Dict
+        generic_key_type, generic_value_type = type_.__args__[0], type_.__args__[1]
+
+        try:
+            # deserialize keys and values individually, constructing a new dict
+            return {
+                deserialize_value(generic_key_type, item_key):
+                    deserialize_value(generic_value_type, item_value)
+                for item_key, item_value in value.items()  # type: ignore
+            }
+        except AttributeError:
+            raise DeserializeError(f'Failed serializing "{value}" to {base_type}')
+
+    elif base_type is dict:
+        # additional error handling for non-generic dict type
+        if not isinstance(value, dict):
+            raise DeserializeError('Value passed for dict types must be dict')
+
+        # a python dict is JSON-compatible, so no additional conversion necessary
+
+    elif base_type is list and typing_inspect.is_generic_type(type_):
+        if not isinstance(value, list):
+            # additional error handling is required here as python will iterate a string as though its
+            # a list; causing subsequent code to produce incorrect results when a string is fed to
+            # the deserializer
+            raise DeserializeError('Value passed for list types must be list')
+
+        # extract value type for the generic List
+        generic_type = type_.__args__[0]
+
+        try:
+            # deserialize values individually into a new list
+            return [
+                deserialize_value(generic_type, v) for v in value
+            ]
+        except (AttributeError, TypeError):
+            raise DeserializeError(f'Failed serializing "{value}" to {type_}')
+
+    elif base_type is list:
+        # additional error handling for non-generic list type
+        if not isinstance(value, list):
+            raise DeserializeError('Value passed for list types must be list')
+
+        # a python list is JSON-compatible, so no additional conversion necessary
+
     else:
         # handle enum
-        enum_type = get_enum(type_)
+        enum_type = get_enum(base_type)
         if enum_type:
             try:
                 # convert string to Enum instance
@@ -115,37 +185,66 @@ def deserialize_value(type_: type, value: Any) -> Any:  # pylint: disable=too-ma
             except ValueError:
                 raise DeserializeError(f'Failed deserializing {value} to {type_}')
 
-        # no deserialize necessary
-        return value
+    # no deserialize necessary
+    return value
 
 
-def serialize_value(type_: type, value: Any) -> Any:  # pylint: disable=too-many-return-statements
+def serialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-return-statements
     '''
     Utility function to serialize `value` into `type_`. Used by DataclassSerializer.
 
-    Note: int type does not need serializing for JSON
+    Note that some JSON-compatible types do not need serializing for JSON (int, dict, list)
+
+    Params:
+        type_:  The dataclass field type
+        value:  Value to serialize to `type_`
     '''
-    if typing_inspect.is_optional_type(type_):
-        # for typing.Optional, first arg is the real type and second arg is typing.NoneType
-        type_ = typing_inspect.get_args(type_)[0]
+    # unwrap any typing.Optional to expose the underlying type
+    type_ = unwrap_optional_type(type_)
+
+    # extract the base type (eg. typing.Dict becomes dict)
+    base_type = get_base_type(type_)
 
     if value is None:
         return None
-    elif dataclasses.is_dataclass(type_):
+
+    elif dataclasses.is_dataclass(base_type):
         return value.serialize()
-    elif isinstance(value, (decimal.Decimal, uuid.UUID)):
+
+    elif base_type in (decimal.Decimal, uuid.UUID):
         return str(value)
-    elif isinstance(value, (datetime.date, datetime.datetime)):
+
+    elif base_type in (datetime.date, datetime.datetime):
         return value.isoformat()
-    elif isinstance(value, set):
+
+    elif base_type in (set,):
         return sorted(list(value))
+
+    elif base_type is dict and typing_inspect.is_generic_type(type_):
+        # extract key and value types for the generic Dict
+        generic_key_type, generic_value_type = type_.__args__[0], type_.__args__[1]
+
+        # serialize keys and values individually, constructing a new dict
+        return {
+            serialize_value(generic_key_type, item_key):
+                serialize_value(generic_value_type, item_value)
+            for item_key, item_value in value.items()  # type: ignore
+        }
+
+    elif base_type is list and typing_inspect.is_generic_type(type_):
+        # extract value type for the generic List
+        generic_type = type_.__args__[0]
+
+        # serialize values individually into a new list
+        return [serialize_value(generic_type, v) for v in value]
+
     else:
         # handle enum
-        if get_enum(type_):
+        if get_enum(base_type):
             return value.value
 
-        # no serialize necessary
-        return value
+    # no serialize necessary
+    return value
 
 
 def _validate_optional_fields_have_a_default(field):
@@ -200,23 +299,10 @@ class DataclassSerializer:
             except TypeError as e:
                 raise DeserializeError(f'Fatal TypeError for key {f.name} ({e})')
 
-            # extract the base type from a typing type (eg. typing.Dict becomes dict)
-            base_type = get_type_class(f.type)
-
-            # special handling for generic Dict
-            if base_type is dict:
-                # extract key and value types for the Dict
-                dict_key_type, dict_value_type = f.type.__args__[0], f.type.__args__[1]
-                try:
-                    # deserialize keys and values individually into a new dict
-                    data[f.name] = {
-                        deserialize_value(dict_key_type, item_key): deserialize_value(dict_value_type, item_value)
-                        for item_key, item_value in raw_value.items()  # type: ignore
-                    }
-                except AttributeError:
-                    raise DeserializeError(f'Failed serializing "{raw_value}" to {f.type}')
-            else:
-                data[f.name] = deserialize_value(base_type, raw_value)
+            try:
+                data[f.name] = deserialize_value(f.type, raw_value)
+            except DeserializeError as e:
+                raise DeserializeError(f'{e} in field {f.name}')
 
         return cls(**data)  # type: ignore
 
@@ -240,24 +326,8 @@ class DataclassSerializer:
             # pull value from dataclass field name, or by property name, if defined on the dataclass.field
             write_field_name = f.metadata.get('property', f.name)
 
-            raw_value = self.__dict__.get(f.name)
-
-            # extract the base type from a typing type (eg. typing.Dict becomes dict)
-            base_type = get_type_class(f.type)
-
-            # special handling for generic Dict
-            if base_type is dict:
-                # extract key and value types for the Dict
-                dict_key_type, dict_value_type = f.type.__args__[0], f.type.__args__[1]
-                # deserialize keys and values individually into a new dict
-                data[write_field_name] = {
-                    serialize_value(dict_key_type, item_key):
-                        serialize_value(dict_value_type, item_value)
-                    for item_key, item_value in raw_value.items()  # type: ignore
-                }
-            else:
-                serialized_value = serialize_value(base_type, raw_value)
-                if serialized_value:
-                    data[write_field_name] = serialized_value
+            serialized_value = serialize_value(f.type, self.__dict__.get(f.name))
+            if serialized_value:
+                data[write_field_name] = serialized_value
 
         return data

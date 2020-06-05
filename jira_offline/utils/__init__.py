@@ -10,7 +10,7 @@ import arrow
 import click
 from tabulate import tabulate
 
-from jira_offline.utils.serializer import get_enum, get_type_class
+from jira_offline.utils.serializer import get_enum, get_base_type
 
 
 @functools.lru_cache()
@@ -66,7 +66,7 @@ def render_field(cls: type, field_name: str, value: Any, title_prefix: str=None,
         title = f'{title_prefix}{title}'
 
     # determine the origin type for this field (thus handling Optional[type])
-    type_ = get_type_class(get_field_by_name(cls, field_name).type)
+    type_ = get_base_type(get_field_by_name(cls, field_name).type)
 
     # format value as dataclass.field type
     value = render_value(value, type_)
