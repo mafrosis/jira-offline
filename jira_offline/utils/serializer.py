@@ -15,14 +15,18 @@ def unwrap_optional_type(type_):
     '''
     Unwrap typing.Optional around a type.
 
+    The parameter evaluate=True _must_ be passed to `get_args` to ensure consistent behaviour across
+    pythons:
+        https://github.com/ilevkivskyi/typing_inspect/blob/master/typing_inspect.py#L410
+
     For example,
         typing.Optional[str] is str
         typing.Optional[dict] is dict
     '''
     if typing_inspect.is_optional_type(type_):
-        # typing.Optional can also be written as typing.Union[type, None]
+        # typing.Optional is sugar for representing an optional type as typing.Union[type, None]
         # this means the base type is the first arg in the return from typing_inspect.get_args()
-        type_ = typing_inspect.get_args(type_)[0]
+        type_ = typing_inspect.get_args(type_, evaluate=True)[0]
 
     return type_
 
