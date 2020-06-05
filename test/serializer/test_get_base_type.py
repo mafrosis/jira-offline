@@ -19,6 +19,8 @@ def test__get_base_type__str(type_):
     typing.Dict,
     typing.Dict[str, str],
     typing.Optional[dict],
+    typing.Optional[typing.Dict],
+    typing.Optional[typing.Dict[str, str]],
 ])
 def test__get_base_type__dict(type_):
     '''Ensure the base type is dict'''
