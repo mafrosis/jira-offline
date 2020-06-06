@@ -59,9 +59,9 @@ def get_user_creds(project: ProjectMeta, username: Optional[str]=None, password:
         project.password = click.prompt('Password', type=str, hide_input=True)
 
     # validate Jira connection details
-    if project.username and project.password:
-        if not _test_jira_connect(project):
-            raise FailedAuthError(project.hostname)
+    # if project.username and project.password:
+    #     if not _test_jira_connect(project):
+    #         raise FailedAuthError(project.hostname)
 
 
 def _test_jira_connect(project: ProjectMeta) -> bool:
