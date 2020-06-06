@@ -41,8 +41,8 @@ def pull_issues(jira: 'Jira', projects: Optional[Set[str]]=None, force: bool=Fal
     Params:
         jira:      Dependency-injected main.Jira object
         projects:  Project IDs to pull, if None then pull all configured projects
-        force:     Force reload of *all* issues, not just changed since `last_updated` value
-        verbose:   Verbose print all issues as they're pulled from the API (default is progress bar)
+        force:     Force pull of all issues, not just those changed since project.last_updated
+        verbose:   Verbose print all issues as they're pulled from the API (default: show progress bar)
     '''
     projects_to_pull: List[ProjectMeta]
 
@@ -78,8 +78,8 @@ def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose
     Params:
         jira:     Dependency-injected main.Jira object
         project:  Properties of the Jira project to pull
-        force:    Force reload of *all* issues, not just changed since `last_updated` value
-        verbose:  Verbose print all issues as they're pulled from the API (default is progress bar)
+        force:    Force pull of all issues, not just those changed since project.last_updated
+        verbose:  Verbose print all issues as they're pulled from the API (default: show progress bar)
     '''
     if force or project.last_updated is None:
         # first/forced load; cache must be empty
@@ -113,13 +113,14 @@ def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose
                 # convert from Jira object into Issue dataclass
                 issue = jiraapi_object_to_issue(project, api_issue)
 
-                try:
-                    # determine if local changes have been made
-                    if jira[api_issue['key']].diff_to_original:
-                        update_object: IssueUpdate = merge_issues(jira[api_issue['key']], issue)
-                        issue = update_object.merged_issue
-                except KeyError:
-                    pass
+                if not force:
+                    try:
+                        # determine if local changes have been made
+                        if jira[api_issue['key']].diff_to_original:
+                            update_object: IssueUpdate = merge_issues(jira[api_issue['key']], issue)
+                            issue = update_object.merged_issue
+                    except KeyError:
+                        pass
 
                 # insert issue into Jira dict
                 jira[api_issue['key']] = issue

@@ -61,7 +61,7 @@ def test_pull_issues__pulls_only_specified_projects(mock_pull_single_project, mo
 @mock.patch('jira_offline.sync.jiraapi_object_to_issue')
 @mock.patch('jira_offline.sync.api_get')
 @mock.patch('jira_offline.sync.tqdm')
-def test_pull_single_project__last_updated_field_causes_filter_query(mock_tqdm, mock_api_get, mock_jiraapi_object_to_issue, mock_jira, project):
+def test_pull_single_project__last_updated_set_causes_filter_query_from_last_updated(mock_tqdm, mock_api_get, mock_jiraapi_object_to_issue, mock_jira, project):
     '''
     Test config.last_updated being set causes a filtered query from value of last_updated
     '''
@@ -79,7 +79,7 @@ def test_pull_single_project__last_updated_field_causes_filter_query(mock_tqdm, 
 @mock.patch('jira_offline.sync.jiraapi_object_to_issue')
 @mock.patch('jira_offline.sync.api_get')
 @mock.patch('jira_offline.sync.tqdm')
-def test_pull_single_project__last_updated_field_causes_filter_from_waaay_back(mock_tqdm, mock_api_get, mock_jiraapi_object_to_issue, mock_jira, project):
+def test_pull_single_project__last_updated_missing_causes_filter_from_waaay_back(mock_tqdm, mock_api_get, mock_jiraapi_object_to_issue, mock_jira, project):
     '''
     Test config.last_updated NOT being set causes a filtered query from 2010-01-01
     '''
@@ -87,6 +87,24 @@ def test_pull_single_project__last_updated_field_causes_filter_from_waaay_back(m
     mock_api_get.side_effect = [ {'total': 1}, {'issues': [ISSUE_1]}, {'issues': []} ]
 
     pull_single_project(mock_jira, project, force=False, verbose=False)
+
+    assert mock_api_get.call_args_list[1][1]['params']['jql'] == 'project = TEST AND updated > "2010-01-01 00:00"'
+
+
+@mock.patch('jira_offline.sync.jiraapi_object_to_issue')
+@mock.patch('jira_offline.sync.api_get')
+@mock.patch('jira_offline.sync.tqdm')
+def test_pull_single_project__last_updated_set_AND_force_set_causes_filter_from_waaay_back(mock_tqdm, mock_api_get, mock_jiraapi_object_to_issue, mock_jira, project):
+    '''
+    Test config.last_updated being set causes a filtered query from value of last_updated
+    '''
+    # mock Jira search_issues to return a single result
+    mock_api_get.side_effect = [ {'total': 1}, {'issues': [ISSUE_1]}, {'issues': []} ]
+
+    # mock the only project fixture to have a specific last_updated value
+    mock_jira.config.projects['99fd9182cfc4c701a8a662f6293f4136201791b4'].last_updated = '2019-01-01 00:00'
+
+    pull_single_project(mock_jira, project, force=True, verbose=False)
 
     assert mock_api_get.call_args_list[1][1]['params']['jql'] == 'project = TEST AND updated > "2010-01-01 00:00"'
 
@@ -141,11 +159,11 @@ def test_pull_single_project__adds_issues_to_self(mock_tqdm, mock_api_get, mock_
 @mock.patch('jira_offline.sync.jiraapi_object_to_issue')
 @mock.patch('jira_offline.sync.api_get')
 @mock.patch('jira_offline.sync.click')
-def test_pull_single_project__merge_issues_NOT_called_when_updated_issue_NOT_changed(
+def test_pull_single_project__merge_issues_NOT_called_when_updated_issue_NOT_modified(
         mock_click, mock_api_get, mock_jiraapi_object_to_issue, mock_merge_issues, mock_jira, project
     ):
     '''
-    Check that check_resolve_conflict is NOT called when the Jira object is empty (ie have no issues)
+    Ensure that merge_issues is NOT called when the Issue does not already exist
     '''
     # mock search_issues to return single Issue
     mock_api_get.side_effect = [ {'total': 1}, {'issues': [ISSUE_1]}, {'issues': []} ]
@@ -167,7 +185,7 @@ def test_pull_single_project__merge_issues_called_when_local_issue_is_modified(
         mock_click, mock_api_get, mock_jiraapi_object_to_issue, mock_merge_issues, mock_jira, project
     ):
     '''
-    Check that check_resolve_conflict is called when the Jira object has the Issue already
+    Ensure that merge_issues is called when the Issue already exists
     '''
     # preload the local cache with a modified issue
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
@@ -180,8 +198,33 @@ def test_pull_single_project__merge_issues_called_when_local_issue_is_modified(
 
     pull_single_project(mock_jira, project, force=False, verbose=False)
 
-    # conflict found; resolve conflicts called
+    # conflict found; merge called
     assert mock_merge_issues.called is True
+
+
+@mock.patch('jira_offline.sync.merge_issues')
+@mock.patch('jira_offline.sync.jiraapi_object_to_issue')
+@mock.patch('jira_offline.sync.api_get')
+@mock.patch('jira_offline.sync.click')
+def test_pull_single_project__merge_issues_NOT_called_when_local_issue_is_modified_BUT_force_is_true(
+        mock_click, mock_api_get, mock_jiraapi_object_to_issue, mock_merge_issues, mock_jira, project
+    ):
+    '''
+    Ensure that merge_issues is NOT called the Issue already exists BUT force is called
+    '''
+    # preload the local cache with a modified issue
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
+
+    # mock search_issues to return single object
+    mock_api_get.side_effect = [ {'total': 1}, {'issues': [ISSUE_1]}, {'issues': []} ]
+
+    # mock conversion function to return single Issue
+    mock_jiraapi_object_to_issue.side_effect = [Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF)]
+
+    pull_single_project(mock_jira, project, force=True, verbose=False)
+
+    # conflict found; merge called
+    assert mock_merge_issues.called is False
 
 
 @mock.patch('jira_offline.sync.merge_issues')
@@ -192,7 +235,7 @@ def test_pull_single_project__return_from_merge_issues_added_to_self(
         mock_click, mock_api_get, mock_jiraapi_object_to_issue, mock_merge_issues, mock_jira, project
     ):
     '''
-    Check that return from check_resolve_conflict is added to Jira object (which implements dict)
+    Check that return from merge_issues is added to Jira object (which implements dict)
     '''
     # preload the local cache with a modified issue
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
@@ -207,7 +250,7 @@ def test_pull_single_project__return_from_merge_issues_added_to_self(
 
     modified_issue.assignee = 'undertest'
 
-    # mock resolve_conflicts function to return modified_issue
+    # mock merge_issues function to return modified_issue
     mock_merge_issues.return_value = IssueUpdate(merged_issue=modified_issue)
 
     pull_single_project(mock_jira, project, force=False, verbose=False)
