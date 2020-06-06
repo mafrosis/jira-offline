@@ -77,6 +77,7 @@ class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-att
     priorities: Set[str] = field(default_factory=set)
     oauth: Optional[OAuth] = field(default=None)
     ca_cert: Optional[str] = field(default=None)
+    timezone: Optional[str] = field(default=None)
 
     @property
     def jira_server(self):
