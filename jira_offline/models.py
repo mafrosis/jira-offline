@@ -168,6 +168,26 @@ class AppConfig(DataclassSerializer):
             f.write('\n')
 
 
+@dataclass
+class HistoryItem(DataclassSerializer):
+    author: str = field(metadata={'readonly': True})
+    history_ts: datetime.datetime = field(metadata={'readonly': True, 'friendly': 'Date'})
+    field_name: str = field(metadata={'readonly': True, 'raw': 'field'})
+    from_value: Optional[str] = field(
+        default=None, metadata={'readonly': True, 'friendly': 'From', 'raw': 'fromString'}
+    )
+    to_value: Optional[str] = field(
+        default=None, metadata={'readonly': True, 'friendly': 'To', 'raw': 'toString'}
+    )
+
+    def __str__(self) -> str:
+        '''Render history item to a friendly string'''
+        return "{} changed from '{}' to '{}' by {} {}".format(
+            self.field_name.title(), self.from_value, self.to_value, self.author,
+            render_value(self.history_ts, datetime.datetime),
+        )
+
+
 @dataclass  # pylint: disable=too-many-instance-attributes
 class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attributes
     project_id: str = field(metadata={'friendly': 'Project ID', 'readonly': True})
@@ -194,6 +214,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         default=None, metadata={'friendly': 'Status', 'property': 'status', 'readonly': True}
     )
     updated: Optional[datetime.datetime] = field(default=None, metadata={'readonly': True})
+    history: Optional[List[HistoryItem]] = field(default=None, metadata={'readonly': True})
 
     # local-only dict which represents serialized Issue last seen on Jira server
     # this property is not written to cache and is created at runtme from diff_to_original
@@ -373,6 +394,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
             *fmt('creator'),
             *fmt('created'),
             *fmt('updated'),
+            *fmt('history'),
         ]
 
 

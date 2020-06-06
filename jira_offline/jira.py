@@ -23,6 +23,7 @@ logger = logging.getLogger('jira')
 
 class Jira(collections.abc.MutableMapping):
     _df: Optional[pd.DataFrame] = None
+    _df_full_history: Optional[pd.DataFrame] = None
 
     filter: IssueFilter
 
@@ -327,18 +328,64 @@ class Jira(collections.abc.MutableMapping):
     def invalidate_df(self):
         '''Invalidate internal dataframe, so it's recreated on next access'''
         self._df = None
+        self._df_full_history = None
+
 
     @property
     def df(self) -> pd.DataFrame:
-        '''Convert self (aka a dict) into a pandas DataFrame, and cache'''
-        if self._df is None:
-            items = {}
-            for key, issue in self.items():
-                items[key] = {
-                    k:v for k,v in issue.__dict__.items()
-                    if k not in ('original', 'diff_to_original')
-                }
-            self._df = pd.DataFrame.from_dict(items, orient='index')
-            # rename the columns sourced from @property on Issue
-            self._df.rename(columns={'_status': 'status', '_priority': 'priority'}, inplace=True)
+        '''
+        Convert self (which implements dict interface) into a pandas DataFrame. Drop the history
+        columns, and include one row per issue.
+        '''
+        if self._df is not None:
+            return self._df
+
+        # convert full history dataframe to simple single-issue-per-row dataframe:
+        # - drop history columns
+        # - group the by Issue.key
+        # - squash to single entry per issue with .first()
+        # - remove the named index with .rename_axis(None)
+        self._df = self.df_full_history.drop(
+            ['history_ts', 'field_name', 'from_value', 'to_value'],
+            axis=1
+        ).groupby('key').first().rename_axis(None)
+
+        # include key as a column, not just the index
+        self._df['key'] = self._df.index
+
         return self._df
+
+
+    @property
+    def df_full_history(self) -> pd.DataFrame:
+        '''
+        Convert self (which implements dict interface) into a pandas DataFrame. Include the full
+        history of changes; which means any given issue key will feature in the set multiple times.
+        '''
+        if self._df_full_history is not None:
+            return self._df_full_history
+
+        items = {}
+
+        def _obj(issue):
+            return {
+                k:v for k,v in issue.__dict__.items()
+                if k not in ('original', 'diff_to_original', 'project_ref', 'history')
+            }
+
+        for key, issue in self.items():
+            if not issue.history:
+                items[f'{key}-0'] = _obj(issue)
+                items[f'{key}-0'].update(author=None, history_ts=None, field_name=None, to_value=None, from_value=None)
+                continue
+
+            for i, hist in enumerate(issue.history):
+                items[f'{key}-{i}'] = _obj(issue)
+                items[f'{key}-{i}'].update(hist.__dict__)
+
+        self._df_full_history = pd.DataFrame.from_dict(items, orient='index')
+
+        # rename the columns sourced from @property on Issue
+        self._df_full_history.rename(columns={'_status': 'status', '_priority': 'priority'}, inplace=True)
+
+        return self._df_full_history

@@ -101,7 +101,7 @@ def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose
         while True:
             startAt = page * 25
 
-            params = {'jql': jql, 'startAt': startAt, 'maxResults': 25}
+            params = {'jql': jql, 'startAt': startAt, 'maxResults': 25, 'expand': 'changelog'}
             data = api_get(project, 'search', params=params)
 
             issues = data.get('issues', [])

@@ -47,7 +47,21 @@ def jiraapi_object_to_issue(project: 'ProjectMeta', issue: dict) -> Issue:
     if issue['fields'].get(f'customfield_{project.custom_fields.estimate}'):
         jiraapi_object['estimate'] = issue['fields'][f'customfield_{project.custom_fields.estimate}']
 
-    return Issue.deserialize(jiraapi_object, project_ref=project)
+    if 'changelog' in issue:
+        jiraapi_object['history'] = []
+
+        for change in issue['changelog']['histories']:
+            for item in change['items']:
+                jiraapi_object['history'].append({
+                    'author': change['author']['name'],
+                    'history_ts': change['created'],
+                    'field_name': item['field'],
+                    'from_value': item['fromString'],
+                    'to_value': item['toString'],
+                })
+
+    issue_obj: Issue = Issue.deserialize(jiraapi_object, project_ref=project)
+    return issue_obj
 
 
 def issue_to_jiraapi_update(project: 'ProjectMeta', issue: Issue, modified: set) -> dict:
