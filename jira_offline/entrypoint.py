@@ -175,9 +175,10 @@ def cli_projects(ctx):
 @click.option('--oauth-app', default='jira-offline', help='Jira Application Link consumer name')
 @click.option('--oauth-private-key', help='oAuth private key', type=click.Path(exists=True))
 @click.option('--ca-cert', help='Custom CA cert for the Jira server', type=click.Path(exists=True))
+@click.option('--tz', help='Set the timezone for this Jira project (default: current)')
 @click.pass_context
 def cli_clone(ctx, project_uri: str, username: str=None, password: str=None, oauth_app: str=None,
-              oauth_private_key: str=None, ca_cert: str=None):
+              oauth_private_key: str=None, ca_cert: str=None, tz: str=None):
     '''
     Clone a Jira project to offline
 
@@ -201,6 +202,7 @@ def cli_clone(ctx, project_uri: str, username: str=None, password: str=None, oau
         key=uri.path[1:],
         protocol=uri.scheme,
         hostname=uri.netloc,
+        timezone=tz,
     )
     # store CA cert, if supplied for this Jira
     if ca_cert:

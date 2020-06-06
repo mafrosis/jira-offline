@@ -6,6 +6,7 @@ from typing import Any, Optional
 import uuid
 
 import arrow
+from dateutil.tz import tzlocal
 import typing_inspect
 
 from jira_offline.exceptions import DeserializeError
@@ -72,7 +73,7 @@ def istype(type_: type, typ: type) -> bool:
     return typ is unwrap_optional_type(type_)
 
 
-def deserialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-branches, too-many-return-statements, too-many-statements
+def deserialize_value(type_, value: Any, tz=None) -> Any:  # pylint: disable=too-many-branches, too-many-return-statements, too-many-statements
     '''
     Utility function to deserialize `value` into `type_`. Used by DataclassSerializer.
 
@@ -81,6 +82,7 @@ def deserialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-bra
     Params:
         type_:  The dataclass field type
         value:  Value to serialize to `type_`
+        tz:     Timezone to apply to deserialized date/datetime
     '''
     if value is None:
         return None
@@ -107,14 +109,18 @@ def deserialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-bra
             raise DeserializeError(f'Failed deserializing "{value}" to UUID')
 
     elif base_type is datetime.date:
+        if tz is None:
+            tz = tzlocal()
         try:
-            return arrow.get(value).datetime.date()
+            return arrow.get(value).replace(tzinfo=tz).datetime.date()
         except arrow.parser.ParserError:
             raise DeserializeError(f'Failed deserializing "{value}" to Arrow datetime.date')
 
     elif base_type is datetime.datetime:
+        if tz is None:
+            tz = tzlocal()
         try:
-            return arrow.get(value).datetime
+            return arrow.get(value).replace(tzinfo=tz).datetime
         except arrow.parser.ParserError:
             raise DeserializeError(f'Failed deserializing "{value}" to Arrow datetime.datetime')
 
@@ -136,8 +142,8 @@ def deserialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-bra
         try:
             # deserialize keys and values individually, constructing a new dict
             return {
-                deserialize_value(generic_key_type, item_key):
-                    deserialize_value(generic_value_type, item_value)
+                deserialize_value(generic_key_type, item_key, tz=tz):
+                    deserialize_value(generic_value_type, item_value, tz=tz)
                 for item_key, item_value in value.items()  # type: ignore
             }
         except AttributeError:
@@ -163,7 +169,7 @@ def deserialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-bra
         try:
             # deserialize values individually into a new list
             return [
-                deserialize_value(generic_type, v) for v in value
+                deserialize_value(generic_type, v, tz=tz) for v in value
             ]
         except (AttributeError, TypeError):
             raise DeserializeError(f'Failed serializing "{value}" to {type_}')
@@ -261,12 +267,13 @@ def _validate_optional_fields_have_a_default(field):
 @dataclasses.dataclass
 class DataclassSerializer:
     @classmethod
-    def deserialize(cls, attrs: dict) -> Any:
+    def deserialize(cls, attrs: dict, tz=None) -> Any:
         '''
         Deserialize JSON-compatible dict to dataclass.
 
         Params:
             attrs:  Dict to deserialize into an instance of cls
+            tz:     Timezone to apply to deserialized date/datetime
         Returns:
             An instance of cls
         '''
@@ -300,7 +307,7 @@ class DataclassSerializer:
                 raise DeserializeError(f'Fatal TypeError for key {f.name} ({e})')
 
             try:
-                data[f.name] = deserialize_value(f.type, raw_value)
+                data[f.name] = deserialize_value(f.type, raw_value, tz=tz)
             except DeserializeError as e:
                 raise DeserializeError(f'{e} in field {f.name}')
 
