@@ -27,7 +27,7 @@ lint:
 
 .PHONY: typecheck
 typecheck:
-	docker-compose run --rm test --mypy --mypy-ignore-missing-imports jira_offline/
+	docker-compose run --rm test --mypy jira_offline/
 
 
 .PHONY: package

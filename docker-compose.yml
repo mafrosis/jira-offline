@@ -24,6 +24,7 @@ services:
       - /tmp:/tmp
       - ./pytest.ini:/app/pytest.ini
       - ./.pylintrc:/app/.pylintrc
+      - ./mypy.ini:/app/mypy.ini:ro
 
   jira:
     image: mafrosis/jira
