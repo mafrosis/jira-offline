@@ -5,7 +5,7 @@ from typing import Optional
 import click
 
 from jira_offline import __title__
-from jira_offline.exceptions import UnreadableConfig
+from jira_offline.exceptions import DeserializeError, UnreadableConfig
 from jira_offline.models import AppConfig
 
 
@@ -23,8 +23,10 @@ def load_config():
                 config = AppConfig.deserialize(json.load(f))
         except IsADirectoryError:
             raise UnreadableConfig('There is a directory at config path (config_filepath)!')
-        except ValueError:
-            raise UnreadableConfig('Bad JSON in config file; ignoring')
+        except DeserializeError as e:
+            raise UnreadableConfig(e, path=config_filepath)
+        except json.decoder.JSONDecodeError:
+            raise UnreadableConfig('Bad JSON in config file!', path=config_filepath)
 
     if not config:
         config = AppConfig()
