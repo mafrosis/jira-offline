@@ -215,7 +215,7 @@ def merge_issues(base_issue: Issue, updated_issue: Issue) -> IssueUpdate:
     return update_object
 
 
-def build_update(base_issue: Issue, updated_issue: Issue) -> IssueUpdate:
+def build_update(base_issue: Issue, updated_issue: Optional[Issue]) -> IssueUpdate:
     '''
     Generate an object representing an Issue update.
 

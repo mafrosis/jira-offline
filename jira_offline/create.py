@@ -126,7 +126,7 @@ def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: st
     return new_issue
 
 
-def set_field_on_issue(issue: Issue, field_name: str, value: str):
+def set_field_on_issue(issue: Issue, field_name: str, value: Optional[str]):
     '''
     Use DataclassSerializer.deserialize_value to convert from string to the corrent type, and then
     set the single attribute on the target Issue object.
