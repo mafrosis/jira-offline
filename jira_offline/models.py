@@ -9,7 +9,7 @@ import hashlib
 import os
 import pathlib
 import shutil
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, cast, Dict, List, Optional, Set, Tuple
 
 import click
 import dictdiffer
@@ -278,16 +278,16 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
             List from dictdiffer.diff for Issue.diff_to_original property
         '''
         # deserialize supplied dict into an Issue object
-        issue = super().deserialize(attrs)
+        issue = cast(Issue, super().deserialize(attrs))
 
-        if issue.diff_to_original is None:  # pylint: disable=no-member
+        if issue.diff_to_original is None:
             issue.diff_to_original = []
 
         # if issue exists on Jira server (see `exists` property above)
         if bool(attrs.get('id')):
             # apply the diff_to_original patch to the serialized version of the issue, which
             # recreates the issue dict as last seen on the Jira server
-            issue.original = dictdiffer.patch(issue.diff_to_original, issue.serialize())  # pylint: disable=no-member
+            issue.original = dictdiffer.patch(issue.diff_to_original, issue.serialize())
 
         # store reference to Jira project this Issue belongs to
         issue.project_ref = project_ref

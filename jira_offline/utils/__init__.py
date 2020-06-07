@@ -100,11 +100,11 @@ def render_value(value: Any, type_: Optional[type]=None) -> str:
         dt = arrow.get(value)
         return f'{dt.humanize()} [{dt.format()}]'
     elif get_enum(type_):
-        return value.value
+        return str(value.value)
     elif value and type_ is str and len(value) > 100:
         return '\n'.join(textwrap.wrap(value, width=100))
     else:
-        return value
+        return str(value)
 
 
 @contextlib.contextmanager

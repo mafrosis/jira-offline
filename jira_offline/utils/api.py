@@ -64,7 +64,7 @@ def _request(method: str, project: ProjectMeta, path: str, params: Optional[Dict
         raise JiraUnavailable(e)
 
     try:
-        return resp.json()
+        return resp.json()  # type: ignore[no-any-return]
     except json.decoder.JSONDecodeError:
         return {}
 

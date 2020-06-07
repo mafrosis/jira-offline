@@ -94,7 +94,7 @@ def deserialize_value(type_, value: Any, tz=None) -> Any:  # pylint: disable=too
     base_type = get_base_type(type_)
 
     if dataclasses.is_dataclass(base_type):
-        return base_type.deserialize(value)  # type: ignore
+        return base_type.deserialize(value)
 
     elif base_type is decimal.Decimal:
         try:
@@ -144,7 +144,7 @@ def deserialize_value(type_, value: Any, tz=None) -> Any:  # pylint: disable=too
             return {
                 deserialize_value(generic_key_type, item_key, tz=tz):
                     deserialize_value(generic_value_type, item_value, tz=tz)
-                for item_key, item_value in value.items()  # type: ignore
+                for item_key, item_value in value.items()
             }
         except AttributeError:
             raise DeserializeError(f'Failed serializing "{value}" to {base_type}')
@@ -234,7 +234,7 @@ def serialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-retur
         return {
             serialize_value(generic_key_type, item_key):
                 serialize_value(generic_value_type, item_value)
-            for item_key, item_value in value.items()  # type: ignore
+            for item_key, item_value in value.items()
         }
 
     elif base_type is list and typing_inspect.is_generic_type(type_):

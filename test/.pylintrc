@@ -1,2 +1,2 @@
 [MESSAGES CONTROL]
-disable=duplicate-code, line-too-long, invalid-name, bad-whitespace, import-error, missing-module-docstring, protected-access, unused-argument, too-many-arguments, missing-class-docstring, redefined-outer-name
+disable=bad-whitespace, duplicate-code, invalid-name, import-error, line-too-long, missing-class-docstring, missing-module-docstring, no-member, protected-access, redefined-outer-name, too-many-arguments, unused-argument

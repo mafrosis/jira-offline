@@ -29,7 +29,7 @@ def test_issue_model__status_property_ok_when_writing_valid_value(project):
 
     # set the status to a valid value
     issue1.status = 'Done'
-    assert issue1._status == 'Done'  # pylint: disable=no-member
+    assert issue1._status == 'Done'
 
 
 def test_issue_model__priority_property_fails_when_writing_invalid_value(project):
@@ -58,7 +58,7 @@ def test_issue_model__priority_property_ok_when_writing_valid_value(project):
 
     # set the priority to a valid value
     issue1.priority = 'High'
-    assert issue1._priority == 'High'  # pylint: disable=no-member
+    assert issue1._priority == 'High'
 
 
 def test_issue_model__when_project_has_no_priorities_priority_property_fails_when_writing_any_value(project):

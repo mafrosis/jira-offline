@@ -211,12 +211,12 @@ class Jira(collections.abc.MutableMapping):
                 raise JiraNotConfigured(project.key, project.jira_server, err)
 
         # add to self under the new key
-        self[new_issue.key] = new_issue  # pylint: disable=no-member
+        self[new_issue.key] = new_issue
 
-        if new_issue.issuetype == 'Epic':  # pylint: disable=no-member
+        if new_issue.issuetype == 'Epic':
             # relink any issue linked to this epic to the new Jira-generated key
             for linked_issue in [i for i in self.values() if i.epic_ref == temp_key]:
-                linked_issue.epic_ref = new_issue.key  # pylint: disable=no-member
+                linked_issue.epic_ref = new_issue.key
 
         # remove the placeholder Issue
         del self[temp_key]
