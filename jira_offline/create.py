@@ -123,7 +123,7 @@ def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: st
     jira[new_issue.key] = new_issue
     jira.write_issues()
 
-    return jira[new_issue.key]
+    return new_issue
 
 
 def set_field_on_issue(issue: Issue, field_name: str, value: str):
