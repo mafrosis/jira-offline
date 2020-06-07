@@ -18,7 +18,7 @@ def test_build_update__ignores_readonly_fields():
     assert update_obj.modified == {'assignee'}
     assert not update_obj.conflicts
     assert update_obj.merged_issue.assignee == 'hoganp'
-    assert update_obj.merged_issue.updated == base_issue.updated  # pylint: disable=no-member
+    assert update_obj.merged_issue.updated == base_issue.updated
 
 
 def test_build_update__base_unmodified_and_updated_modified():
@@ -88,7 +88,7 @@ def test_build_update__base_modified_on_set_type_and_updated_modified_set_type_r
     base_issue = Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF)
     # pass a conflicting modified Issue object (on fixVersions set)
     updated_issue = Issue.deserialize(ISSUE_1)
-    updated_issue.fixVersions.add('0.3')  # pylint: disable=no-member
+    updated_issue.fixVersions.add('0.3')
 
     update_obj = build_update(base_issue, updated_issue)
 

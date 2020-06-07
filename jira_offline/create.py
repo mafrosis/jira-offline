@@ -111,11 +111,11 @@ def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: st
     for field_name, value in kwargs.items():
         set_field_on_issue(new_issue, field_name, value)
 
-    if check_summary_exists(jira, new_issue.project, new_issue.summary):  # pylint: disable=no-member
+    if check_summary_exists(jira, new_issue.project, new_issue.summary):
         raise SummaryAlreadyExists
 
-    if new_issue.epic_ref:  # pylint: disable=no-member
-        matched_epic = find_epic_by_reference(jira, new_issue.epic_ref)  # pylint: disable=no-member
+    if new_issue.epic_ref:
+        matched_epic = find_epic_by_reference(jira, new_issue.epic_ref)
         new_issue.epic_ref = matched_epic.key
 
     # use a temporary Issue.key until Jira server creates the actual key at sync-time
