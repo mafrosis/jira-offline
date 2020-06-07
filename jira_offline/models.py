@@ -153,6 +153,7 @@ class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-att
 
 @dataclass
 class AppConfig(DataclassSerializer):
+    schema_version: int = field(default=1)
     projects: Dict[str, ProjectMeta] = field(default_factory=dict)
 
     def write_to_disk(self):

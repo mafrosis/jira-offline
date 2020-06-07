@@ -189,3 +189,9 @@ class UnableToCopyCustomCACert(BaseAppException):
     '''Failure when copying a custom CA cert into application config directory'''
     def format_message(self):
         return f'Failed copying cert file with error:\n\n{self.message}'
+
+
+class FailedConfigUpgrade(BaseAppException):
+    '''Failure when upgrading an app config from one schema to another'''
+    def format_message(self):
+        return 'Failed upgrading the app.config schema. Please re-run with --debug and report this bug.'
