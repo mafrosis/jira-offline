@@ -13,7 +13,7 @@ def load_config():
     '''
     Load app configuration from local JSON file
     '''
-    config_filepath = os.path.join(click.get_app_dir(__title__), 'app.json')
+    config_filepath = get_config_filepath()
 
     config: Optional[AppConfig] = None
 
@@ -34,8 +34,11 @@ def load_config():
     return config
 
 
+def get_config_filepath() -> str:
+    '''Return the path to jira-offline config file'''
+    return os.path.join(click.get_app_dir(__title__), 'app.json')
+
+
 def get_cache_filepath() -> str:
-    '''
-    Return the path to jira-offline issues cache file
-    '''
+    '''Return the path to jira-offline issues cache file'''
     return os.path.join(click.get_app_dir(__title__), 'issue_cache.jsonl')

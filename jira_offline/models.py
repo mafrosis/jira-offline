@@ -159,8 +159,9 @@ class AppConfig(DataclassSerializer):
         # ensure config path exists
         pathlib.Path(click.get_app_dir(__title__)).mkdir(parents=True, exist_ok=True)
 
-        config_filepath = os.path.join(click.get_app_dir(__title__), 'app.json')
-        with open(config_filepath, 'w') as f:
+        # late import to avoid circular dependency
+        from jira_offline.config import get_config_filepath  # pylint: disable=import-outside-toplevel, cyclic-import
+        with open(get_config_filepath(), 'w') as f:
             json.dump(self.serialize(), f)
             f.write('\n')
 
