@@ -22,6 +22,7 @@ def jiraapi_object_to_issue(project: 'ProjectMeta', issue: dict) -> Issue:
     '''
     jiraapi_object = {
         'project_id': project.id,
+        'components': [x['name'] for x in issue['fields']['components']],
         'created': issue['fields']['created'],
         'creator': issue['fields']['creator']['name'],
         'epic_name': issue['fields'].get(f'customfield_{project.custom_fields.epic_name}', None),

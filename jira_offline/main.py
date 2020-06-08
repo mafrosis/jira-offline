@@ -142,6 +142,9 @@ class Jira(collections.abc.MutableMapping):
             # pull project statuses for issue types
             self._get_project_issue_statuses(project)
 
+            # pull project components
+            self._get_project_components(project)
+
         except (IndexError, KeyError) as e:
             raise JiraApiError(f'Missing or bad project meta returned for {project.key} with error "{e.__class__.__name__}({e})"')
         except JiraApiError as e:
@@ -166,7 +169,22 @@ class Jira(collections.abc.MutableMapping):
                     logger.debug('Unknown issuetype "%s" returned from /project/{project.key}/statuses', obj['name'])
 
         except JiraApiError as e:
-            raise JiraApiError(f'Failed retrieving project meta for {project.key} with error "{e}"')
+            raise JiraApiError(f'Failed retrieving issue statuses for {project.key} with error "{e}"')
+
+
+    def _get_project_components(self, project: ProjectMeta):  # pylint: disable=no-self-use
+        '''
+        Pull set of components for this project
+
+        Params:
+            project:  Jira project to query
+        '''
+        try:
+            data = api_get(project, f'project/{project.key}/components')
+            project.components = {x['name'] for x in data}
+
+        except JiraApiError as e:
+            raise JiraApiError(f'Failed retrieving components for {project.key} with error "{e}"')
 
 
     def new_issue(self, project: ProjectMeta, fields: dict) -> Issue:

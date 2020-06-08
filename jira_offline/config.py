@@ -72,4 +72,8 @@ def upgrade_schema(config_json: dict, from_version: int, to_version: int):
 
 
 def config_upgrade_1_to_2(config_json: dict):
-    ''''''
+    '''
+    In version 2, new field ProjectMeta.components was added
+    '''
+    for project_dict in config_json['projects'].values():
+        project_dict['components'] = set()
