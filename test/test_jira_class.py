@@ -83,8 +83,9 @@ def test_jira__get_project_meta__extracts_priorities(mock_api_get, mock_jira_cor
     '''
     Ensure get_project_meta() method extracts project priorities from a project
     '''
-    # mock out call to _get_project_issue_statuses
+    # mock out call to _get_project_issue_statuses and _get_project_components
     mock_jira_core._get_project_issue_statuses = mock.Mock()
+    mock_jira_core._get_project_components = mock.Mock()
 
     # mock return from Jira createmeta API call
     mock_api_get.return_value = {
@@ -116,8 +117,9 @@ def test_jira__get_project_meta__extracts_issuetypes(mock_api_get, mock_jira_cor
     '''
     Ensure get_project_meta() method parses the issuetypes for a project
     '''
-    # mock out call to _get_project_issue_statuses
+    # mock out call to _get_project_issue_statuses and _get_project_components
     mock_jira_core._get_project_issue_statuses = mock.Mock()
+    mock_jira_core._get_project_components = mock.Mock()
 
     # mock return from Jira createmeta API call
     mock_api_get.return_value = {
@@ -165,8 +167,9 @@ def test_jira__get_project_meta__handles_removal_of_issuetype(mock_api_get, mock
 
     The project fixture includes the Story issuetype, this should be removed if not in the API result
     '''
-    # mock out call to _get_project_issue_statuses
+    # mock out call to _get_project_issue_statuses and _get_project_components
     mock_jira_core._get_project_issue_statuses = mock.Mock()
+    mock_jira_core._get_project_components = mock.Mock()
 
     # mock return from Jira createmeta API call
     mock_api_get.return_value = {
@@ -197,8 +200,9 @@ def test_jira__get_project_meta__extracts_custom_fields(mock_api_get, mock_jira_
     '''
     Ensure get_project_meta() method parses the custom_fields for a project
     '''
-    # mock out call to _get_project_issue_statuses
+    # mock out call to _get_project_issue_statuses and _get_project_components
     mock_jira_core._get_project_issue_statuses = mock.Mock()
+    mock_jira_core._get_project_components = mock.Mock()
 
     # mock return from Jira createmeta API call
     mock_api_get.return_value = {
@@ -242,8 +246,9 @@ def test_jira__get_project_meta__handles_no_priority_for_issuetype(mock_api_get,
     '''
     Ensure get_project_meta() method doesn't choke if an issuetype has no priority field
     '''
-    # mock out call to _get_project_issue_statuses
+    # mock out call to _get_project_issue_statuses and _get_project_components
     mock_jira_core._get_project_issue_statuses = mock.Mock()
+    mock_jira_core._get_project_components = mock.Mock()
 
     # mock return from Jira createmeta API call
     mock_api_get.return_value = {
@@ -290,7 +295,7 @@ def test_jira__get_project_issue_statuses__extracts_statuses_for_issuetypes(mock
     '''
     Ensure _get_project_issue_statuses() method doesn't choke if an issuetype has no priority field
     '''
-    # mock return from Jira createmeta API call
+    # mock return from Jira statuses API call
     mock_api_get.return_value = [{
         'id': '10005',
         'name': 'Story',
@@ -301,6 +306,26 @@ def test_jira__get_project_issue_statuses__extracts_statuses_for_issuetypes(mock
 
     assert mock_api_get.called
     assert project.issuetypes['Story'].statuses == {'Egg', 'Bacon'}
+
+
+@mock.patch('jira_offline.main.api_get')
+def test_jira__get_project_components__does_not_fail(mock_api_get, mock_jira_core, project):
+    '''
+    Ensure _get_project_components() method has no dumb errors
+    '''
+    # mock return from Jira components API call
+    mock_api_get.return_value = [{
+        'id': '10005',
+        'name': 'Egg',
+    },{
+        'id': '10006',
+        'name': 'Bacon',
+    }]
+
+    mock_jira_core._get_project_components(project)
+
+    assert mock_api_get.called
+    assert project.components == {'Egg', 'Bacon'}
 
 
 @mock.patch('jira_offline.main.jiraapi_object_to_issue', return_value=Issue.deserialize(ISSUE_1))

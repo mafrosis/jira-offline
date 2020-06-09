@@ -75,6 +75,7 @@ class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-att
     issuetypes: Dict[str, IssueType] = field(default_factory=dict)
     custom_fields: CustomFields = field(default_factory=CustomFields)
     priorities: Set[str] = field(default_factory=set)
+    components: Set[str] = field(default_factory=set)
     oauth: Optional[OAuth] = field(default=None)
     ca_cert: Optional[str] = field(default=None)
     timezone: Optional[str] = field(default=None)
@@ -140,6 +141,7 @@ class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-att
             ('Project URI', self.project_uri),
             ('Auth', auth),
             ('Issue Types', render_value(list(self.issuetypes.keys()))),
+            ('Components', render_value(self.components)),
             fmt('last_updated'),
         ]
         return attrs
@@ -153,14 +155,16 @@ class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-att
 
 @dataclass
 class AppConfig(DataclassSerializer):
+    schema_version: int = field(default=2)
     projects: Dict[str, ProjectMeta] = field(default_factory=dict)
 
     def write_to_disk(self):
         # ensure config path exists
         pathlib.Path(click.get_app_dir(__title__)).mkdir(parents=True, exist_ok=True)
 
-        config_filepath = os.path.join(click.get_app_dir(__title__), 'app.json')
-        with open(config_filepath, 'w') as f:
+        # late import to avoid circular dependency
+        from jira_offline.config import get_config_filepath  # pylint: disable=import-outside-toplevel, cyclic-import
+        with open(get_config_filepath(), 'w') as f:
             json.dump(self.serialize(), f)
             f.write('\n')
 
@@ -179,6 +183,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
     estimate: Optional[int] = field(default=None)
     description: Optional[str] = field(default=None)
     fixVersions: Optional[set] = field(default=None, metadata={'friendly': 'Fix Version'})
+    components: Optional[set] = field(default=None)
     id: Optional[str] = field(default=None, metadata={'readonly': True})
     key: Optional[str] = field(default=None, metadata={'readonly': True})
     labels: Optional[set] = field(default=None)
@@ -360,6 +365,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
             *fmt('description'),
             *fmt('fixVersions'),
             *fmt('labels'),
+            *fmt('components'),
             *fmt('reporter'),
             *fmt('creator'),
             *fmt('created'),
