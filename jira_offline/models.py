@@ -75,7 +75,7 @@ class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-att
     issuetypes: Dict[str, IssueType] = field(default_factory=dict)
     custom_fields: CustomFields = field(default_factory=CustomFields)
     priorities: Set[str] = field(default_factory=set)
-    components: Set[str] = field(default_factory=set)
+    components: Optional[Set[str]] = field(default_factory=set)  # type: ignore[assignment]
     oauth: Optional[OAuth] = field(default=None)
     ca_cert: Optional[str] = field(default=None)
     timezone: Optional[str] = field(default=None)
