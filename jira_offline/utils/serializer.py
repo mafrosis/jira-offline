@@ -311,7 +311,7 @@ class DataclassSerializer:
             except DeserializeError as e:
                 raise DeserializeError(f'{e} in field {f.name}')
 
-        return cls(**data)  # type: ignore
+        return cls(**data)  # type: ignore[call-arg]
 
 
     def serialize(self) -> dict:

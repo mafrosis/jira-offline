@@ -253,7 +253,7 @@ def cli_pull(ctx, projects: str=None, reset_hard: bool=False):
 
     if reset_hard:
         if projects:
-            reset_warning = '\n'.join(projects_set)  # type: ignore
+            reset_warning = '\n'.join(projects_set)  # type: ignore[arg-type]
         else:
             reset_warning = '\n'.join([p.key for p in jira.config.projects.values()])
 
