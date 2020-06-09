@@ -53,8 +53,8 @@ CLI_COMMAND_MAPPING = [
     ('edit', ('issue1', '--summary', 'Egg'), 1),
     ('stats', ('issuetype',), 1),
     ('stats', ('status',), 1),
-    ('stats', ('fixversions',), 1),
-    ('lint', ('fixversions',), 1),
+    ('stats', ('fix-versions',), 1),
+    ('lint', ('fix-versions',), 1),
     ('lint', ('issues-missing-epic',), 1),
 ]
 
@@ -207,20 +207,6 @@ def test_cli_new_error_when_passed_epic_ref_for_epic(mock_jira_local, mock_jira)
 
 
 @mock.patch('jira_offline.entrypoint.Jira')
-@mock.patch('jira_offline.entrypoint.create_issue')
-def test_cli_new_fixversions_param_key_is_passed_to_create_issue_with_case_change(mock_create_issue, mock_jira_local, mock_jira):
-    '''
-    Ensure the --fixversions param is passed into create_issue() as fixVersions
-    '''
-    # set function-local instance of Jira class to our test mock
-    mock_jira_local.return_value = mock_jira
-
-    runner = CliRunner()
-    result = runner.invoke(cli, ['new', 'TEST', 'Story', 'Summary of issue', '--fix-versions', '0.1'])
-    assert result.exit_code == 0
-
-
-@mock.patch('jira_offline.entrypoint.Jira')
 def test_cli_new_can_return_json(mock_jira_local, mock_jira):
     '''
     Ensure new command can return output as JSON
@@ -260,45 +246,45 @@ def test_cli_stats_no_errors_when_no_subcommand_passed(mock_print_table, mock_ji
 
 
 @mock.patch('jira_offline.entrypoint.Jira')
-@mock.patch('jira_offline.entrypoint.lint_fixversions')
-def test_cli_lint_fixversions_echo(mock_lint_fixversions, mock_jira_local, mock_jira):
+@mock.patch('jira_offline.entrypoint.lint_fix_versions')
+def test_cli_lint_fix_versions_echo(mock_lint_fix_versions, mock_jira_local, mock_jira):
     '''
-    Ensure lint fixversions command calls click.echo without error
+    Ensure lint fix-versions command calls click.echo without error
     '''
     # set function-local instance of Jira class to our test mock
     mock_jira_local.return_value = mock_jira
 
     runner = CliRunner()
-    result = runner.invoke(cli, ['lint', 'fixversions'])
+    result = runner.invoke(cli, ['lint', 'fix-versions'])
     assert result.exit_code == 0
-    assert mock_lint_fixversions.called
-    assert result.output.endswith(' issues missing the fixVersions field\n')
+    assert mock_lint_fix_versions.called
+    assert result.output.endswith(' issues missing the fix_versions field\n')
 
 
-@mock.patch('jira_offline.entrypoint.lint_fixversions')
-def test_cli_lint_fixversions_fix_requires_words(mock_lint_fixversions):
+@mock.patch('jira_offline.entrypoint.lint_fix_versions')
+def test_cli_lint_fix_versions_fix_requires_words(mock_lint_fix_versions):
     '''
-    Ensure lint fixversions with --fix param errors without --value
+    Ensure lint fix-versions with --fix param errors without --value
     '''
     runner = CliRunner()
-    result = runner.invoke(cli, ['lint', '--fix', 'fixversions'])
+    result = runner.invoke(cli, ['lint', '--fix', 'fix-versions'])
     assert result.exit_code != 0
     assert result.output.endswith('You must pass --value with --fix\n')
 
 
 @mock.patch('jira_offline.entrypoint.Jira')
-@mock.patch('jira_offline.entrypoint.lint_fixversions')
-def test_cli_lint_fixversions_fix_passes_words_to_lint_func(mock_lint_fixversions, mock_jira_local, mock_jira):
+@mock.patch('jira_offline.entrypoint.lint_fix_versions')
+def test_cli_lint_fix_versions_fix_passes_words_to_lint_func(mock_lint_fix_versions, mock_jira_local, mock_jira):
     '''
-    Ensure lint fixversions with --fix and --value correctly calls lint_fixversions
+    Ensure lint fix-versions with --fix and --value correctly calls lint_fix_versions
     '''
     # set function-local instance of Jira class to our test mock
     mock_jira_local.return_value = mock_jira
 
     runner = CliRunner()
-    result = runner.invoke(cli, ['lint', '--fix', 'fixversions', '--value', '0.1'])
+    result = runner.invoke(cli, ['lint', '--fix', 'fix-versions', '--value', '0.1'])
     assert result.exit_code == 0
-    mock_lint_fixversions.assert_called_with(mock_jira, fix=True, value='0.1')
+    mock_lint_fix_versions.assert_called_with(mock_jira, fix=True, value='0.1')
 
 
 @mock.patch('jira_offline.entrypoint.Jira')

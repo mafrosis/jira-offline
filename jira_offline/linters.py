@@ -10,14 +10,14 @@ if TYPE_CHECKING:
 logger = logging.getLogger('jira')
 
 
-def fixversions(jira: 'Jira', fix: bool=False, value: str=None) -> pd.DataFrame:
+def fix_versions(jira: 'Jira', fix: bool=False, value: str=None) -> pd.DataFrame:
     '''
-    Lint on issues missing fixVersions field
+    Lint on issues missing fix_versions field
 
     Params:
         jira:   Dependency-injected main.Jira object
         fix:    Flag to indicate if a fix should be applied
-        value:  Value to append to Issue's fixVersions
+        value:  Value to append to Issue.fix_versions
     '''
     if fix and not value:
         raise Exception
@@ -28,13 +28,13 @@ def fixversions(jira: 'Jira', fix: bool=False, value: str=None) -> pd.DataFrame:
 
         # iterate only epics
         for epic_ref in jira.df[jira.df.issuetype == 'Epic'].index:
-            if not jira[epic_ref].fixVersions:
+            if not jira[epic_ref].fix_versions:
                 continue
 
-            # if value is in the epic's fixVersions field
-            if value in jira[epic_ref].fixVersions:
-                # filter for all issues under this epic, and add value to fixVersions
-                jira.df[jira.df.epic_ref == jira[epic_ref].key].fixVersions.apply(
+            # if value is in the epic's fix_versions field
+            if value in jira[epic_ref].fix_versions:
+                # filter for all issues under this epic, and add value to fix_versions
+                jira.df[jira.df.epic_ref == jira[epic_ref].key].fix_versions.apply(
                     lambda x: {value} if x is None else x.add(value)
                 )
 
@@ -43,7 +43,7 @@ def fixversions(jira: 'Jira', fix: bool=False, value: str=None) -> pd.DataFrame:
         jira.invalidate_df()
 
     # return dataframe of issues with empty fixversions field
-    return jira.df[jira.df.fixVersions.apply(lambda x: x is None or len(x) == 0)]
+    return jira.df[jira.df.fix_versions.apply(lambda x: x is None or len(x) == 0)]
 
 
 def issues_missing_epic(jira: 'Jira', fix: bool=False, epic_ref: str=None) -> pd.DataFrame:

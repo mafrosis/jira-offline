@@ -10,7 +10,7 @@ from jira_offline.sync import issue_to_jiraapi_update
 
 @pytest.mark.parametrize('modified', [
     {'assignee'},
-    {'fixVersions', 'summary'},
+    {'fix_versions', 'summary'},
 ])
 def test_issue_to_jiraapi_update__returns_only_fields_passed_in_modified(mock_jira, project, modified):
     '''
@@ -48,13 +48,13 @@ def test_issue_to_jiraapi_update__all_fields_are_returned_for_new_issue(mock_jir
     issue_dict = issue_to_jiraapi_update(
         project,
         Issue.deserialize(ISSUE_1),
-        {'issuetype', 'project', 'summary', 'epic_ref', 'description', 'fixVersions', 'reporter'}
+        {'issuetype', 'project', 'summary', 'epic_ref', 'description', 'fix_versions', 'reporter'}
     )
 
     assert issue_dict == {
         'customfield_1': 'TEST-1',
         'description': 'This is a story or issue',
-        'fixVersions': ['0.1'],
+        'fix_versions': ['0.1'],
         'issuetype': {'name': 'Story'},
         'project': {'key': 'TEST'},
         'reporter': {'name': 'danil1'},

@@ -182,7 +182,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
     epic_ref: Optional[str] = field(default=None)
     estimate: Optional[int] = field(default=None)
     description: Optional[str] = field(default=None)
-    fixVersions: Optional[set] = field(default=None, metadata={'friendly': 'Fix Version'})
+    fix_versions: Optional[set] = field(default=None, metadata={'friendly': 'Fix Version'})
     components: Optional[set] = field(default=None)
     id: Optional[str] = field(default=None, metadata={'readonly': True})
     key: Optional[str] = field(default=None, metadata={'readonly': True})
@@ -363,7 +363,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
             *fmt('assignee'),
             *fmt('estimate'),
             *fmt('description'),
-            *fmt('fixVersions'),
+            *fmt('fix_versions'),
             *fmt('labels'),
             *fmt('components'),
             *fmt('reporter'),

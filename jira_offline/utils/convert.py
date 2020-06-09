@@ -28,7 +28,7 @@ def jiraapi_object_to_issue(project: 'ProjectMeta', issue: dict) -> Issue:
         'epic_name': issue['fields'].get(f'customfield_{project.custom_fields.epic_name}', None),
         'epic_ref': issue['fields'].get(f'customfield_{project.custom_fields.epic_ref}', None),
         'description': issue['fields']['description'],
-        'fixVersions': {x['name'] for x in issue['fields']['fixVersions']},
+        'fix_versions': {x['name'] for x in issue['fields']['fixVersions']},
         'id': issue['id'],
         'issuetype': issue['fields']['issuetype']['name'],
         'key': issue['key'],

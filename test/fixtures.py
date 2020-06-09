@@ -4,7 +4,7 @@ ISSUE_1 = {
     'created': '2018-09-24T08:44:06.000+10:00',
     'creator': 'danil1',
     'description': 'This is a story or issue',
-    'fixVersions': ['0.1'],
+    'fix_versions': ['0.1'],
     'issuetype': 'Story',
     'id': '1231',
     'key': 'TEST-71',
@@ -25,7 +25,7 @@ ISSUE_1_WITH_UPDATED_DIFF = {
     'created': '2018-09-24T08:44:06.000+10:00',
     'creator': 'danil1',
     'description': 'This is a story or issue',
-    'fixVersions': ['0.1'],
+    'fix_versions': ['0.1'],
     'issuetype': 'Story',
     'id': '1232',
     'key': 'TEST-71',
@@ -46,7 +46,7 @@ ISSUE_1_WITH_PRIORITY_DIFF = {
     'created': '2018-09-24T08:44:06.000+10:00',
     'creator': 'danil1',
     'description': 'This is a story or issue',
-    'fixVersions': ['0.1'],
+    'fix_versions': ['0.1'],
     'issuetype': 'Story',
     'id': '1231',
     'key': 'TEST-71',
@@ -67,7 +67,7 @@ ISSUE_1_WITH_ASSIGNEE_DIFF = {
     'created': '2018-09-24T08:44:06.000+10:00',
     'creator': 'danil1',
     'description': 'This is a story or issue',
-    'fixVersions': ['0.1'],
+    'fix_versions': ['0.1'],
     'issuetype': 'Story',
     'id': '1233',
     'key': 'TEST-71',
@@ -88,7 +88,7 @@ ISSUE_1_WITH_FIXVERSIONS_DIFF = {
     'created': '2018-09-24T08:44:06.000+10:00',
     'creator': 'danil1',
     'description': 'This is a story or issue',
-    'fixVersions': ['0.1', '0.2'],
+    'fix_versions': ['0.1', '0.2'],
     'issuetype': 'Story',
     'id': '1234',
     'key': 'TEST-71',
@@ -100,7 +100,7 @@ ISSUE_1_WITH_FIXVERSIONS_DIFF = {
     'summary': 'This is the story summary',
     'updated': '2019-08-20T16:41:19.000+10:00',
     'epic_ref': 'TEST-1',
-    'diff_to_original': [('remove', 'fixVersions', [(1, '0.2')])]
+    'diff_to_original': [('remove', 'fix_versions', [(1, '0.2')])]
 }
 
 ISSUE_2 = {
@@ -109,7 +109,7 @@ ISSUE_2 = {
     'created': '2018-09-24T08:44:06.000+10:00',
     'creator': 'danil1',
     'description': 'This is a story or issue',
-    'fixVersions': [],
+    'fix_versions': [],
     'issuetype': 'Story',
     'id': '1235',
     'key': 'TEST-72',
@@ -129,7 +129,7 @@ ISSUE_MISSING_EPIC = {
     'created': '2018-09-24T08:44:06.000+10:00',
     'creator': 'danil1',
     'description': 'This is a story or issue',
-    'fixVersions': [],
+    'fix_versions': [],
     'issuetype': 'Story',
     'id': '1236',
     'key': 'TEST-73',
@@ -152,14 +152,14 @@ ISSUE_NEW = {
     'reporter': 'danil1',
     'summary': 'This is the story summary',
     'epic_ref': 'TEST-1',
-    'fixVersions': ['0.1'],
+    'fix_versions': ['0.1'],
 }
 
 EPIC_1 = {
     'project_id': '99fd9182cfc4c701a8a662f6293f4136201791b4',
     'created': '2018-09-24T08:44:06.000+10:00',
     'creator': 'danil1',
-    'fixVersions': ['0.1'],
+    'fix_versions': ['0.1'],
     'issuetype': 'Epic',
     'id': '2345',
     'key': 'TEST-1',
