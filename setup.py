@@ -25,7 +25,7 @@ setup(
     license='MIT License',
     entry_points={
         'console_scripts': [
-            'jira=jira_offline.entrypoint:cli'
+            'jira=jira_offline.cli:cli'
         ]
     },
     classifiers=(
