@@ -1,23 +1,18 @@
 '''
-Application CLI entrypoint. Uses the click library to configure commands and subcommands, arguments,
-options and help text.
+Module containing the simple top-level commands which do not have any subcommands
 '''
-import dataclasses
 import json
 import logging
 from typing import Optional, Set
 from urllib.parse import urlparse
 
-import arrow
 import click
-import pandas as pd
 from tabulate import tabulate
 
 from jira_offline.auth import authenticate
+from jira_offline.cli.utils import print_list
 from jira_offline.create import create_issue, find_epic_by_reference, set_field_on_issue
 from jira_offline.exceptions import FailedPullingProjectMeta, JiraApiError, ProjectNotConfigured
-from jira_offline.linters import fix_versions as lint_fix_versions
-from jira_offline.linters import issues_missing_epic as lint_issues_missing_epic
 from jira_offline.main import Jira
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.sync import build_update, pull_issues, pull_single_project, push_issues
@@ -29,41 +24,7 @@ logger.addHandler(sh)
 logger.setLevel(logging.ERROR)
 
 
-@dataclasses.dataclass
-class LintParams:
-    fix: bool
-
-@dataclasses.dataclass
-class CliParams:
-    verbose: bool = dataclasses.field(default=False)
-    debug: bool = dataclasses.field(default=False)
-    lint: Optional[LintParams] = dataclasses.field(default=None)
-
-@click.group()
-@click.option('--verbose', '-v', is_flag=True, help='Display INFO level logging')
-@click.option('--debug', '-d', is_flag=True, help='Display DEBUG level logging')
-@click.pass_context
-def cli(ctx, verbose: bool=False, debug: bool=False):
-    '''Base CLI options'''
-    # setup the logger
-    formatter = logging.Formatter('%(levelname)s: %(message)s')
-
-    # handle --verbose and --debug
-    if debug:
-        verbose = True
-        logger.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(levelname)s: %(module)s:%(lineno)s - %(message)s')
-
-    elif verbose:
-        logger.setLevel(logging.INFO)
-    else:
-        logger.setLevel(logging.WARNING)
-
-    sh.setFormatter(formatter)
-    ctx.obj = CliParams(verbose=verbose, debug=debug)
-
-
-@cli.command(name='show')
+@click.command(name='show')
 @click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
 @click.argument('key')
 def cli_show(key: str, as_json: bool=False):
@@ -87,7 +48,21 @@ def cli_show(key: str, as_json: bool=False):
     click.echo(output)
 
 
-@cli.command(name='diff')
+@click.command(name='ls')
+@click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
+@click.pass_context
+def cli_ls(ctx, as_json: bool=False):
+    '''List Issues on the CLI'''
+    jira = Jira()
+    jira.load_issues()
+    if as_json:
+        for issue in jira.values():
+            click.echo(json.dumps(issue.serialize()))
+    else:
+        print_list(jira.df, verbose=ctx.obj.verbose, include_project_col=len(jira.config.projects) > 1)
+
+
+@click.command(name='diff')
 @click.argument('key', required=False)
 def cli_diff(key: str=None):
     '''
@@ -116,7 +91,7 @@ def cli_diff(key: str=None):
                 print_diff(issue)
 
 
-@cli.command(name='reset')
+@click.command(name='reset')
 @click.argument('key')
 def cli_reset(key: str=None):
     '''
@@ -136,7 +111,7 @@ def cli_reset(key: str=None):
     click.echo(f'Reset issue {key}')
 
 
-@cli.command(name='push')
+@click.command(name='push')
 @click.pass_context
 def cli_push(ctx):
     '''Synchronise changes back to Jira server'''
@@ -150,7 +125,7 @@ def cli_push(ctx):
     push_issues(jira, verbose=ctx.obj.verbose)
 
 
-@cli.command(name='projects')
+@click.command(name='projects')
 @click.pass_context
 def cli_projects(ctx):
     '''
@@ -168,7 +143,7 @@ def cli_projects(ctx):
         ))
 
 
-@cli.command(name='clone')
+@click.command(name='clone')
 @click.argument('project_uri')
 @click.option('--username', help='Basic auth username to authenicate with')
 @click.option('--password', help='Basic auth password (use with caution!)')
@@ -234,7 +209,7 @@ def cli_clone(ctx, project_uri: str, username: str=None, password: str=None, oau
     pull_single_project(jira, project, force=False, verbose=ctx.obj.verbose)
 
 
-@cli.command(name='pull')
+@click.command(name='pull')
 @click.option('--projects', help='Jira project keys')
 @click.option('--reset-hard', is_flag=True, help='Force reload of all issues. This will destroy any local changes!')
 @click.pass_context
@@ -266,7 +241,7 @@ def cli_pull(ctx, projects: str=None, reset_hard: bool=False):
     pull_issues(jira, projects=projects_set, force=reset_hard, verbose=ctx.obj.verbose)
 
 
-@cli.command(name='new')
+@click.command(name='new')
 @click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
 @click.argument('projectkey')
 @click.argument('issuetype')
@@ -332,7 +307,7 @@ def cli_new(projectkey: str, issuetype: str, summary: str, as_json: bool=False, 
     click.echo(output)
 
 
-@cli.command(name='edit')
+@click.command(name='edit')
 @click.argument('key')
 @click.option('--assignee', help='Username of person assigned to complete the Issue')
 @click.option('--description', help='Long description of Issue')
@@ -383,186 +358,3 @@ def cli_edit(key, **kwargs):
 
     click.echo(jira[key])
     jira.write_issues()
-
-
-@cli.group(name='stats', invoke_without_command=True)
-@click.pass_context
-def cli_group_stats(ctx):
-    '''Generate stats on Jira data'''
-    ctx.obj.jira = Jira()
-    ctx.obj.jira.load_issues()
-
-    if ctx.invoked_subcommand is None:
-        for subcommand in (cli_stats_issuetype, cli_stats_status, cli_stats_fixversions):
-            ctx.invoke(subcommand)
-
-@cli_group_stats.command(name='issuetype')
-@click.pass_context
-def cli_stats_issuetype(ctx):
-    '''Stats on issue type'''
-    jira = ctx.obj.jira
-    aggregated_issuetype = jira.df.groupby([jira.df.issuetype]).size().to_frame(name='count')
-    _print_table(aggregated_issuetype)
-
-@cli_group_stats.command(name='status')
-@click.pass_context
-def cli_stats_status(ctx):
-    '''Stats on ticket status'''
-    jira = ctx.obj.jira
-    aggregated_status = jira.df.groupby([jira.df.status]).size().to_frame(name='count')
-    _print_table(aggregated_status)
-
-@cli_group_stats.command(name='fix-versions')
-@click.pass_context
-def cli_stats_fixversions(ctx):
-    '''Stats on issue fix-versions'''
-    jira = ctx.obj.jira
-    jira.df.fix_versions = jira.df.fix_versions.apply(lambda x: ','.join(x) if x else '')
-    aggregated_fix_versions = jira.df.groupby([jira.df.fix_versions]).size().to_frame(name='count')
-    _print_table(aggregated_fix_versions)
-
-
-@cli.group(name='lint')
-@click.option('--fix', is_flag=True, help='Attempt to fix the errors automatically')
-@click.pass_context
-def cli_group_lint(ctx, fix=False):
-    'Report on common mistakes in Jira issues'
-    ctx.obj.lint = LintParams(fix=fix)
-
-@cli_group_lint.command(name='fix-versions')
-@click.option('--value', help='Value set in fix_versions. Used with --fix.')
-@click.pass_context
-def cli_group_lint_fixversions(ctx, value=None):
-    '''
-    Lint on missing fix_versions field
-    '''
-    if ctx.obj.lint.fix and not value:
-        raise click.BadParameter('You must pass --value with --fix', ctx)
-
-    if value:
-        if not ctx.obj.lint.fix:
-            logger.warning('Passing --value without --fix has no effect')
-
-    jira = Jira()
-    jira.load_issues()
-
-    # query issues missing the fix_versions field
-    df = lint_fix_versions(jira, fix=False)
-    initial_missing_count = len(df)
-
-    if ctx.obj.lint.fix:
-        df = lint_fix_versions(jira, fix=ctx.obj.lint.fix, value=value)
-
-        click.echo(f'Updated fix_versions on {initial_missing_count - len(df)} issues')
-    else:
-        click.echo(f'There are {len(df)} issues missing the fix_versions field')
-
-    if ctx.obj.verbose:
-        _print_list(df, verbose=ctx.obj.verbose)
-
-@cli_group_lint.command(name='issues-missing-epic')
-@click.option('--epic-ref', help='Epic to set on issues with no epic. Used with --fix.')
-@click.pass_context
-def cli_group_lint_issues_missing_epic(ctx, epic_ref=None):
-    '''
-    Lint issues without an epic set
-    '''
-    if ctx.obj.lint.fix and not epic_ref:
-        raise click.BadParameter('You must pass --epic_ref with --fix', ctx)
-
-    if epic_ref:
-        if not ctx.obj.lint.fix:
-            logger.warning('Passing --epic-ref without --fix has no effect')
-
-    jira = Jira()
-    jira.load_issues()
-
-    # query issues missing the epic field
-    df = lint_issues_missing_epic(jira, fix=False)
-    initial_missing_count = len(df)
-
-    if ctx.obj.lint.fix:
-        df = lint_issues_missing_epic(jira, fix=ctx.obj.lint.fix, epic_ref=epic_ref)
-
-        click.echo(f'Set epic to {epic_ref} on {initial_missing_count - len(df)} issues')
-    else:
-        click.echo(f'There are {len(df)} issues missing an epic')
-
-    if ctx.obj.verbose:
-        _print_list(df, verbose=ctx.obj.verbose)
-
-
-@cli.command(name='ls')
-@click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
-@click.pass_context
-def cli_ls(ctx, as_json: bool=False):
-    '''List Issues on the CLI'''
-    jira = Jira()
-    jira.load_issues()
-    if as_json:
-        for issue in jira.values():
-            click.echo(json.dumps(issue.serialize()))
-    else:
-        _print_list(jira.df, verbose=ctx.obj.verbose, include_project_col=len(jira.config.projects) > 1)
-
-
-def _print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_project_col: bool=False):
-    '''
-    Helper to print abbreviated list of issues
-
-    Params:
-        df:                   Issues to display in a DataFrame
-        width:                Crop width for the summary string
-        verbose:              Display more information
-        include_project_col:  Include the Issue.project field in a column
-    '''
-    if df.empty:
-        click.echo('No issues in the cache')
-        raise click.Abort
-
-    if include_project_col:
-        fields = ['project']
-    else:
-        fields = []
-
-    if not verbose:
-        fields += ['issuetype', 'epic_ref', 'summary', 'assignee', 'updated']
-    else:
-        fields += [
-            'issuetype', 'epic_ref', 'epic_name', 'summary', 'assignee', 'fix_versions', 'updated'
-        ]
-        width = 200
-
-    # pretty dates for non-verbose
-    def format_datetime(raw):
-        if not raw or pd.isnull(raw):
-            return ''
-        dt = arrow.get(raw)
-        if verbose:
-            return f'{dt.format()}'
-        else:
-            return f'{dt.humanize()}'
-    df.updated = df.updated.apply(format_datetime)
-
-    # shorten the summary field for printing
-    df.summary = df.loc[:]['summary'].str.slice(0, width)
-
-    # abbreviate UUID issue keys (these are on offline-created Issues)
-    def abbrev_key(key):
-        if key is None:
-            return ''
-        if len(key) == 36:
-            return key[0:8]
-        return key
-    df.set_index(df.key.apply(abbrev_key), inplace=True)
-    df.epic_ref = df.epic_ref.apply(abbrev_key)
-
-    if verbose:
-        df.fix_versions = df.fix_versions.apply(lambda x: '' if not x else ','.join(x))
-
-    _print_table(df[fields])
-
-
-def _print_table(df):
-    '''Helper to pretty print dataframes'''
-    click.echo(tabulate(df, headers='keys', tablefmt='psql'))
