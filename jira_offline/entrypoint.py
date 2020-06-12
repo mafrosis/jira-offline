@@ -16,7 +16,7 @@ from tabulate import tabulate
 from jira_offline.auth import authenticate
 from jira_offline.create import create_issue, find_epic_by_reference, set_field_on_issue
 from jira_offline.exceptions import FailedPullingProjectMeta, JiraApiError, ProjectNotConfigured
-from jira_offline.linters import fixversions as lint_fixversions
+from jira_offline.linters import fix_versions as lint_fix_versions
 from jira_offline.linters import issues_missing_epic as lint_issues_missing_epic
 from jira_offline.main import Jira
 from jira_offline.models import Issue, ProjectMeta
@@ -314,11 +314,9 @@ def cli_new(projectkey: str, issuetype: str, summary: str, as_json: bool=False, 
         if kwargs.get('epic_name'):
             click.echo('Parameter --epic-name is ignored for anything other than an Epic')
 
-    # parse fixVersions and labels
+    # parse fix_versions and labels
     if kwargs.get('fix_versions'):
-        # note key change of --fix_versions -> Issue.fixVersions
-        kwargs['fixVersions'] = set(kwargs['fix_versions'].split(','))
-        del kwargs['fix_versions']
+        kwargs['fix_versions'] = set(kwargs['fix_versions'].split(','))
     if kwargs.get('labels'):
         kwargs['labels'] = set(kwargs['labels'].split(','))
 
@@ -369,11 +367,9 @@ def cli_edit(key, **kwargs):
         if kwargs.get('epic_name'):
             click.echo('Parameter --epic-name is ignored for anything other than an Epic')
 
-    # parse fixVersions and labels
+    # parse fix_versions and labels
     if kwargs.get('fix_versions'):
-        # note key change of --fix-versions -> Issue.fixVersions
-        kwargs['fixVersions'] = set(kwargs['fix_versions'].split(','))
-        del kwargs['fix_versions']
+        kwargs['fix_versions'] = set(kwargs['fix_versions'].split(','))
     if kwargs.get('labels'):
         kwargs['labels'] = set(kwargs['labels'].split(','))
 
@@ -416,14 +412,14 @@ def cli_stats_status(ctx):
     aggregated_status = jira.df.groupby([jira.df.status]).size().to_frame(name='count')
     _print_table(aggregated_status)
 
-@cli_group_stats.command(name='fixversions')
+@cli_group_stats.command(name='fix-versions')
 @click.pass_context
 def cli_stats_fixversions(ctx):
-    '''Stats on ticket fixversions'''
+    '''Stats on issue fix-versions'''
     jira = ctx.obj.jira
-    jira.df.fixVersions = jira.df.fixVersions.apply(lambda x: ','.join(x) if x else '')
-    aggregated_fixVersions = jira.df.groupby([jira.df.fixVersions]).size().to_frame(name='count')
-    _print_table(aggregated_fixVersions)
+    jira.df.fix_versions = jira.df.fix_versions.apply(lambda x: ','.join(x) if x else '')
+    aggregated_fix_versions = jira.df.groupby([jira.df.fix_versions]).size().to_frame(name='count')
+    _print_table(aggregated_fix_versions)
 
 
 @cli.group(name='lint')
@@ -433,12 +429,12 @@ def cli_group_lint(ctx, fix=False):
     'Report on common mistakes in Jira issues'
     ctx.obj.lint = LintParams(fix=fix)
 
-@cli_group_lint.command(name='fixversions')
-@click.option('--value', help='Value set in fixVersions. Used with --fix.')
+@cli_group_lint.command(name='fix-versions')
+@click.option('--value', help='Value set in fix_versions. Used with --fix.')
 @click.pass_context
 def cli_group_lint_fixversions(ctx, value=None):
     '''
-    Lint on missing fixVersions field
+    Lint on missing fix_versions field
     '''
     if ctx.obj.lint.fix and not value:
         raise click.BadParameter('You must pass --value with --fix', ctx)
@@ -450,16 +446,16 @@ def cli_group_lint_fixversions(ctx, value=None):
     jira = Jira()
     jira.load_issues()
 
-    # query issues missing the fixVersions field
-    df = lint_fixversions(jira, fix=False)
+    # query issues missing the fix_versions field
+    df = lint_fix_versions(jira, fix=False)
     initial_missing_count = len(df)
 
     if ctx.obj.lint.fix:
-        df = lint_fixversions(jira, fix=ctx.obj.lint.fix, value=value)
+        df = lint_fix_versions(jira, fix=ctx.obj.lint.fix, value=value)
 
-        click.echo(f'Updated fixVersions on {initial_missing_count - len(df)} issues')
+        click.echo(f'Updated fix_versions on {initial_missing_count - len(df)} issues')
     else:
-        click.echo(f'There are {len(df)} issues missing the fixVersions field')
+        click.echo(f'There are {len(df)} issues missing the fix_versions field')
 
     if ctx.obj.verbose:
         _print_list(df, verbose=ctx.obj.verbose)
@@ -533,7 +529,7 @@ def _print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pr
         fields += ['issuetype', 'epic_ref', 'summary', 'assignee', 'updated']
     else:
         fields += [
-            'issuetype', 'epic_ref', 'epic_name', 'summary', 'assignee', 'fixVersions', 'updated'
+            'issuetype', 'epic_ref', 'epic_name', 'summary', 'assignee', 'fix_versions', 'updated'
         ]
         width = 200
 
@@ -562,7 +558,7 @@ def _print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pr
     df.epic_ref = df.epic_ref.apply(abbrev_key)
 
     if verbose:
-        df.fixVersions = df.fixVersions.apply(lambda x: '' if not x else ','.join(x))
+        df.fix_versions = df.fix_versions.apply(lambda x: '' if not x else ','.join(x))
 
     _print_table(df[fields])
 

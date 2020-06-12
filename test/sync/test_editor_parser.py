@@ -50,15 +50,15 @@ def test_parse_editor_result__handles_set_type():
     '''
     Ensure editor text parser handles set type
     '''
-    editor_result_raw = '# Conflict(s) on Issue TEST-71\n\n----------------  --------------------------------------\nSummary           [TEST-71] This is the story summary\nType              Story\nEpic Ref          EPIC-60\nStatus            Story Done\nPriority          Normal\nAssignee          danil1\nEstimate\nDescription       This is a story or issue\nFix Version{fixVersions}\nLabels\nReporter          danil1\nCreator           danil1\nCreated           a year ago [2018-09-24 08:44:06+10:00]\nUpdated           a year ago [2018-09-24 08:44:06+10:00]\nLast Viewed       a year ago [2018-09-24 08:44:06+10:00]\n----------------  --------------------------------------\n'.format(
-        fixVersions='       -  0.1\n       -  0.3',
+    editor_result_raw = '# Conflict(s) on Issue TEST-71\n\n----------------  --------------------------------------\nSummary           [TEST-71] This is the story summary\nType              Story\nEpic Ref          EPIC-60\nStatus            Story Done\nPriority          Normal\nAssignee          danil1\nEstimate\nDescription       This is a story or issue\nFix Version{fix_versions}\nLabels\nReporter          danil1\nCreator           danil1\nCreated           a year ago [2018-09-24 08:44:06+10:00]\nUpdated           a year ago [2018-09-24 08:44:06+10:00]\nLast Viewed       a year ago [2018-09-24 08:44:06+10:00]\n----------------  --------------------------------------\n'.format(
+        fix_versions='       -  0.1\n       -  0.3',
     )
 
     edited_issue = parse_editor_result(
-        IssueUpdate(merged_issue=Issue.deserialize(ISSUE_1), conflicts={'fixVersions'}),
+        IssueUpdate(merged_issue=Issue.deserialize(ISSUE_1), conflicts={'fix_versions'}),
         editor_result_raw,
     )
-    assert edited_issue.fixVersions == {'0.1', '0.3'}
+    assert edited_issue.fix_versions == {'0.1', '0.3'}
 
 
 def test_parse_editor_result__handles_int_type():

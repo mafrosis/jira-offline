@@ -86,17 +86,17 @@ def test_build_update__base_modified_on_set_type_and_updated_modified_set_type_r
     '''
     # create a modified base Issue fixture
     base_issue = Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF)
-    # pass a conflicting modified Issue object (on fixVersions set)
+    # pass a conflicting modified Issue object (on fix_versions set)
     updated_issue = Issue.deserialize(ISSUE_1)
-    updated_issue.fixVersions.add('0.3')
+    updated_issue.fix_versions.add('0.3')
 
     update_obj = build_update(base_issue, updated_issue)
 
-    assert update_obj.modified == {'fixVersions'}
+    assert update_obj.modified == {'fix_versions'}
     assert update_obj.conflicts == {
-        'fixVersions': {'original': ['0.1'], 'updated': ['0.1', '0.3'], 'base': ['0.1', '0.2']}
+        'fix_versions': {'original': ['0.1'], 'updated': ['0.1', '0.3'], 'base': ['0.1', '0.2']}
     }
-    assert isinstance(update_obj.merged_issue.fixVersions, Conflict)
+    assert isinstance(update_obj.merged_issue.fix_versions, Conflict)
 
 
 def test_build_update__base_nonconflict_changes_returned_in_merged_issue():
@@ -158,9 +158,9 @@ def test_build_update__base_modified_and_updated_modified_on_different_fields():
 
     update_obj = build_update(base_issue, updated_issue)
 
-    assert update_obj.modified == {'assignee', 'fixVersions'}
+    assert update_obj.modified == {'assignee', 'fix_versions'}
     assert not update_obj.conflicts
-    assert update_obj.merged_issue.fixVersions == {'0.1', '0.2'}
+    assert update_obj.merged_issue.fix_versions == {'0.1', '0.2'}
     assert update_obj.merged_issue.assignee == 'hoganp'
 
 
@@ -233,7 +233,7 @@ def test_build_update__new_issue():
     update_obj = build_update(new_issue, None)
 
     # modified fields should match all non-readonly fields
-    assert update_obj.modified == set(['project_id', 'key', 'description', 'epic_ref', 'fixVersions', 'issuetype', 'project', 'reporter', 'summary'])
+    assert update_obj.modified == set(['project_id', 'key', 'description', 'epic_ref', 'fix_versions', 'issuetype', 'project', 'reporter', 'summary'])
     assert not update_obj.conflicts
     for field in update_obj.modified:
         assert getattr(update_obj.merged_issue, field) == getattr(new_issue, field)
