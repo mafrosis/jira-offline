@@ -15,7 +15,7 @@ from jira_offline.utils.serializer import get_enum, get_base_type
 
 if TYPE_CHECKING:
     from jira_offline.models import ProjectMeta  # pylint: disable=cyclic-import
-    from jira_offline.main import Jira  # pylint: disable=cyclic-import
+    from jira_offline.jira import Jira  # pylint: disable=cyclic-import
 
 
 @functools.lru_cache()
@@ -40,7 +40,7 @@ def find_project(jira: 'Jira', projectkey: str) -> 'ProjectMeta':
     Extract the project configuration object for the specified project key
 
     Params:
-        jira:        Dependency-injected main.Jira object
+        jira:        Dependency-injected jira.Jira object
         projectkey:  Short Jira project key
     '''
     try:

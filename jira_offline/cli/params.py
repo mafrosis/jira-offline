@@ -8,7 +8,7 @@ subcommand group.
 from dataclasses import dataclass, field
 from typing import Optional
 
-from jira_offline.main import Jira
+from jira_offline.jira import Jira
 
 
 @dataclass

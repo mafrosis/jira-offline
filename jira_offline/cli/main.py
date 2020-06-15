@@ -13,7 +13,7 @@ from tabulate import tabulate
 from jira_offline.auth import authenticate
 from jira_offline.create import create_issue, find_epic_by_reference, import_issue, set_field_on_issue
 from jira_offline.exceptions import FailedPullingProjectMeta, ImportFailed, JiraApiError
-from jira_offline.main import Jira
+from jira_offline.jira import Jira
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.sync import pull_issues, pull_single_project, push_issues
 from jira_offline.utils import find_project

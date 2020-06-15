@@ -17,7 +17,7 @@ from jira_offline.cli.main import (cli_clone, cli_diff, cli_edit, cli_ls, cli_ne
                                    cli_pull, cli_push, cli_reset, cli_show, cli_import)
 from jira_offline.cli.linters import cli_lint
 from jira_offline.cli.stats import cli_stats
-from jira_offline.main import Jira
+from jira_offline.jira import Jira
 
 
 logger = logging.getLogger('jira')

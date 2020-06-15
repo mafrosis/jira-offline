@@ -8,7 +8,7 @@ import pytest
 
 from fixtures import ISSUE_1
 from jira_offline.cli import cli
-from jira_offline.main import Issue
+from jira_offline.jira import Issue
 
 
 @mock.patch('jira_offline.cli.Jira')

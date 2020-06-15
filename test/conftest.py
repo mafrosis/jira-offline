@@ -8,7 +8,7 @@ import requests
 import docker
 import pytest
 
-from jira_offline.main import Jira
+from jira_offline.jira import Jira
 from jira_offline.models import AppConfig, CustomFields, IssueType, ProjectMeta
 
 
@@ -45,7 +45,7 @@ def project(customfield_estimate, customfield_priority):
 
 
 @pytest.fixture
-@mock.patch('jira_offline.main.load_config')
+@mock.patch('jira_offline.jira.load_config')
 def mock_jira_core(mock_load_config, project):
     '''
     Return a Jira class instance with connect method and underlying Jira lib mocked

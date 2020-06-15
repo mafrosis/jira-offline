@@ -25,7 +25,7 @@ from jira_offline.utils.convert import jiraapi_object_to_issue, issue_to_jiraapi
 from jira_offline.utils.serializer import DeserializeError, istype
 
 if TYPE_CHECKING:
-    from jira_offline.main import Jira
+    from jira_offline.jira import Jira
 
 
 logger = logging.getLogger('jira')
@@ -40,7 +40,7 @@ def pull_issues(jira: 'Jira', projects: Optional[Set[str]]=None, force: bool=Fal
     Pull changed issues from upstream Jira API
 
     Params:
-        jira:      Dependency-injected main.Jira object
+        jira:      Dependency-injected jira.Jira object
         projects:  Project IDs to pull, if None then pull all configured projects
         force:     Force pull of all issues, not just those changed since project.last_updated
         verbose:   Verbose print all issues as they're pulled from the API (default: show progress bar)
@@ -73,7 +73,7 @@ def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose
     Pull changed issues from upstream Jira API
 
     Params:
-        jira:     Dependency-injected main.Jira object
+        jira:     Dependency-injected jira.Jira object
         project:  Properties of the Jira project to pull
         force:    Force pull of all issues, not just those changed since project.last_updated
         verbose:  Verbose print all issues as they're pulled from the API (default: show progress bar)
@@ -456,7 +456,7 @@ def push_issues(jira: 'Jira', verbose: bool=False):
     Push new/changed issues back to Jira server
 
     Params:
-        jira:     Dependency-injected main.Jira object
+        jira:     Dependency-injected jira.Jira object
         verbose:  Verbose print all issues as they're pushed to Jira server (default is progress bar)
     '''
     def _run(issues: list, pbar=None) -> int:
