@@ -3,7 +3,6 @@ Module containing the stats command group, and all its subcommands
 '''
 import click
 
-from jira_offline.main import Jira
 from jira_offline.utils.cli import print_table
 
 
@@ -11,7 +10,7 @@ from jira_offline.utils.cli import print_table
 @click.pass_context
 def cli_stats(ctx):
     '''Generate stats on Jira data'''
-    ctx.obj.jira = Jira()
+    # load issues here for all subcommands in the group
     ctx.obj.jira.load_issues()
 
     if ctx.invoked_subcommand is None:

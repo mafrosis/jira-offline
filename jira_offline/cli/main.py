@@ -26,13 +26,14 @@ logger = logging.getLogger('jira')
 @click.command(name='show')
 @click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
 @click.argument('key')
-def cli_show(key: str, as_json: bool=False):
+@click.pass_context
+def cli_show(ctx, key: str, as_json: bool=False):
     '''
     Pretty print an Issue on the CLI
 
     KEY - Jira issue key
     '''
-    jira = Jira()
+    jira: Jira = ctx.obj.jira
     jira.load_issues()
 
     if key not in jira:
@@ -52,8 +53,9 @@ def cli_show(key: str, as_json: bool=False):
 @click.pass_context
 def cli_ls(ctx, as_json: bool=False):
     '''List Issues on the CLI'''
-    jira = Jira()
+    jira: Jira = ctx.obj.jira
     jira.load_issues()
+
     if as_json:
         for issue in jira.values():
             click.echo(json.dumps(issue.serialize()))
@@ -63,11 +65,12 @@ def cli_ls(ctx, as_json: bool=False):
 
 @click.command(name='diff')
 @click.argument('key', required=False)
-def cli_diff(key: str=None):
+@click.pass_context
+def cli_diff(ctx, key: str=None):
     '''
     Show the diff between changes made locally and the remote issues on Jira
     '''
-    jira = Jira()
+    jira: Jira = ctx.obj.jira
     jira.load_issues()
 
     if key:
@@ -85,11 +88,12 @@ def cli_diff(key: str=None):
 
 @click.command(name='reset')
 @click.argument('key')
-def cli_reset(key: str=None):
+@click.pass_context
+def cli_reset(ctx, key: str=None):
     '''
     Reset an issue back to the last-seen Jira version, dropping any changes made locally
     '''
-    jira = Jira()
+    jira: Jira = ctx.obj.jira
     jira.load_issues()
 
     if key not in jira:
@@ -107,7 +111,7 @@ def cli_reset(key: str=None):
 @click.pass_context
 def cli_push(ctx):
     '''Synchronise changes back to Jira server'''
-    jira = Jira()
+    jira: Jira = ctx.obj.jira
     jira.load_issues()
 
     if not jira:
@@ -123,7 +127,7 @@ def cli_projects(ctx):
     '''
     View currently cloned projects
     '''
-    jira = Jira()
+    jira: Jira = ctx.obj.jira
     if ctx.obj.verbose:
         for p in jira.config.projects.values():
             click.echo(p)
@@ -175,7 +179,7 @@ def cli_clone(ctx, project_uri: str, username: str=None, password: str=None, oau
     if ca_cert:
         project.set_ca_cert(ca_cert)
 
-    jira = Jira()
+    jira: Jira = ctx.obj.jira
     if project.id in jira.config.projects:
         click.echo(f'Already cloned {project.project_uri}')
         raise click.Abort
@@ -207,7 +211,7 @@ def cli_clone(ctx, project_uri: str, username: str=None, password: str=None, oau
 @click.pass_context
 def cli_pull(ctx, projects: str=None, reset_hard: bool=False):
     '''Fetch and cache all Jira issues'''
-    jira = Jira()
+    jira: Jira = ctx.obj.jira
 
     projects_set: Optional[Set[str]] = None
     if projects:
@@ -247,7 +251,8 @@ def cli_pull(ctx, projects: str=None, reset_hard: bool=False):
 @click.option('--labels', help='Issue labels as comma-separated')
 @click.option('--priority', help='Set the priority of the issue')
 @click.option('--reporter', help='Username of Issue reporter (defaults to creator)')
-def cli_new(projectkey: str, issuetype: str, summary: str, as_json: bool=False, **kwargs):
+@click.pass_context
+def cli_new(ctx, projectkey: str, issuetype: str, summary: str, as_json: bool=False, **kwargs):
     '''
     Create a new issue on a project
 
@@ -261,7 +266,7 @@ def cli_new(projectkey: str, issuetype: str, summary: str, as_json: bool=False, 
         click.echo('You should pass only a single project key')
         raise click.Abort
 
-    jira = Jira()
+    jira: Jira = ctx.obj.jira
 
     # retrieve the project configuration
     project = find_project(jira, projectkey)
@@ -309,13 +314,14 @@ def cli_new(projectkey: str, issuetype: str, summary: str, as_json: bool=False, 
 @click.option('--reporter', help='Username of Issue reporter')
 @click.option('--summary', help='Summary one-liner for this issue')
 @click.option('--status', help='Set issue status to any valid for the issuetype')
-def cli_edit(key, **kwargs):
+@click.pass_context
+def cli_edit(ctx, key, **kwargs):
     '''
     Edit one or more fields on an issue
 
     KEY - Jira issue key
     '''
-    jira = Jira()
+    jira: Jira = ctx.obj.jira
     jira.load_issues()
 
     if key not in jira:

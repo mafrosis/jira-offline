@@ -8,7 +8,6 @@ import click
 from jira_offline.cli.params import CliParams
 from jira_offline.linters import fix_versions as lint_fix_versions
 from jira_offline.linters import issues_missing_epic as lint_issues_missing_epic
-from jira_offline.main import Jira
 from jira_offline.utils.cli import print_list
 
 
@@ -21,6 +20,9 @@ logger = logging.getLogger('jira')
 def cli_lint(ctx, fix=False):
     'Report on common mistakes in Jira issues'
     ctx.obj.lint = CliParams.LintParams(fix=fix)
+
+    # load issues here for all subcommands in the group
+    ctx.obj.jira.load_issues()
 
 
 @cli_lint.command(name='fix-versions')
@@ -37,8 +39,7 @@ def cli_lint_fix_versions(ctx, value=None):
         if not ctx.obj.lint.fix:
             logger.warning('Passing --value without --fix has no effect')
 
-    jira = Jira()
-    jira.load_issues()
+    jira = ctx.obj.jira
 
     # query issues missing the fix_versions field
     df = lint_fix_versions(jira, fix=False)
@@ -69,8 +70,7 @@ def cli_lint_issues_missing_epic(ctx, epic_ref=None):
         if not ctx.obj.lint.fix:
             logger.warning('Passing --epic-ref without --fix has no effect')
 
-    jira = Jira()
-    jira.load_issues()
+    jira = ctx.obj.jira
 
     # query issues missing the epic field
     df = lint_issues_missing_epic(jira, fix=False)

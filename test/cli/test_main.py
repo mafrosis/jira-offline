@@ -11,7 +11,7 @@ from jira_offline.cli import cli
 from jira_offline.main import Issue
 
 
-@mock.patch('jira_offline.cli.main.Jira')
+@mock.patch('jira_offline.cli.Jira')
 def test_verbose_flag_sets_logger_to_info_level(mock_jira_local, mock_jira):
     '''
     Ensure the --verbose flag correctly sets the logger level
@@ -24,7 +24,7 @@ def test_verbose_flag_sets_logger_to_info_level(mock_jira_local, mock_jira):
     assert logging.getLogger('jira').level == logging.INFO
 
 
-@mock.patch('jira_offline.cli.main.Jira')
+@mock.patch('jira_offline.cli.Jira')
 def test_debug_flag_sets_logger_to_debug_level(mock_jira_local, mock_jira):
     '''
     Ensure the --debug flag correctly sets the logger level
@@ -37,7 +37,7 @@ def test_debug_flag_sets_logger_to_debug_level(mock_jira_local, mock_jira):
     assert logging.getLogger('jira').level == logging.DEBUG
 
 
-@mock.patch('jira_offline.cli.main.Jira')
+@mock.patch('jira_offline.cli.Jira')
 def test_cli_show_invalid_issue_key(mock_jira_local, mock_jira):
     '''
     Ensure show command errors when passed an invalid/missing Issue key
@@ -51,7 +51,7 @@ def test_cli_show_invalid_issue_key(mock_jira_local, mock_jira):
     assert result.output == 'Unknown issue key\nAborted!\n'
 
 
-@mock.patch('jira_offline.cli.main.Jira')
+@mock.patch('jira_offline.cli.Jira')
 def test_cli_show_can_return_json(mock_jira_local, mock_jira):
     '''
     Ensure show command can return output as JSON
@@ -72,7 +72,7 @@ def test_cli_show_can_return_json(mock_jira_local, mock_jira):
 
 
 @mock.patch('jira_offline.cli.main.pull_issues')
-@mock.patch('jira_offline.cli.main.Jira')
+@mock.patch('jira_offline.cli.Jira')
 def test_cli_pull_reset_hard_flag_calls_confirm_abort(mock_jira_local, mock_pull_issues, mock_jira):
     '''
     Ensure pull --reset-hard calls click.confirm() with abort=True flag
@@ -89,7 +89,7 @@ def test_cli_pull_reset_hard_flag_calls_confirm_abort(mock_jira_local, mock_pull
     assert not mock_pull_issues.called
 
 
-@mock.patch('jira_offline.cli.main.Jira')
+@mock.patch('jira_offline.cli.Jira')
 def test_cli_new_error_when_passed_project_not_in_config(mock_jira_local, mock_jira):
     '''
     Ensure an error happens when the passed --project is missing from config.projects
@@ -103,7 +103,7 @@ def test_cli_new_error_when_passed_project_not_in_config(mock_jira_local, mock_j
     assert not mock_jira.new_issue.called
 
 
-@mock.patch('jira_offline.cli.main.Jira')
+@mock.patch('jira_offline.cli.Jira')
 def test_cli_new_error_when_not_passed_epic_name_for_epic(mock_jira_local, mock_jira):
     '''
     Ensure an error happens when --epic-name is not passed for Epic creation
@@ -117,7 +117,7 @@ def test_cli_new_error_when_not_passed_epic_name_for_epic(mock_jira_local, mock_
     assert not mock_jira.new_issue.called
 
 
-@mock.patch('jira_offline.cli.main.Jira')
+@mock.patch('jira_offline.cli.Jira')
 def test_cli_new_error_when_passed_epic_ref_for_epic(mock_jira_local, mock_jira):
     '''
     Ensure an error happens when --epic-ref is passed for Epic creation
@@ -131,7 +131,7 @@ def test_cli_new_error_when_passed_epic_ref_for_epic(mock_jira_local, mock_jira)
     assert not mock_jira.new_issue.called
 
 
-@mock.patch('jira_offline.cli.main.Jira')
+@mock.patch('jira_offline.cli.Jira')
 def test_cli_new_can_return_json(mock_jira_local, mock_jira):
     '''
     Ensure new command can return output as JSON

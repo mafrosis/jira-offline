@@ -57,10 +57,6 @@ def pull_issues(jira: 'Jira', projects: Optional[Set[str]]=None, force: bool=Fal
             if project.key in projects
         ]
 
-    # if the issue cache is not yet loaded, load before pull
-    if not jira:
-        jira.load_issues()
-
     for project in projects_to_pull:
         try:
             # Since the ProjectMeta defines options for how issues are created, we need to keep it
@@ -82,6 +78,10 @@ def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose
         force:    Force pull of all issues, not just those changed since project.last_updated
         verbose:  Verbose print all issues as they're pulled from the API (default: show progress bar)
     '''
+    # if the issue cache is not yet loaded, load before pull
+    if not bool(jira):
+        jira.load_issues()
+
     if force or project.last_updated is None:
         # first/forced load; cache must be empty
         last_updated = '2010-01-01 00:00'

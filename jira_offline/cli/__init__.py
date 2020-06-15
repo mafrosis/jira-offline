@@ -17,6 +17,7 @@ from jira_offline.cli.main import (cli_clone, cli_diff, cli_edit, cli_ls, cli_ne
                                    cli_pull, cli_push, cli_reset, cli_show, cli_import)
 from jira_offline.cli.linters import cli_lint
 from jira_offline.cli.stats import cli_stats
+from jira_offline.main import Jira
 
 
 logger = logging.getLogger('jira')
@@ -46,7 +47,10 @@ def cli(ctx, verbose: bool=False, debug: bool=False):
         logger.setLevel(logging.WARNING)
 
     sh.setFormatter(formatter)
-    ctx.obj = CliParams(verbose=verbose, debug=debug)
+
+    # instantiate the Jira object for the application and wrap it into CLI params which are passed
+    # down through click to the CLI function called
+    ctx.obj = CliParams(Jira(), verbose=verbose, debug=debug)
 
 
 cli.add_command(cli_clone)

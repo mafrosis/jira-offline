@@ -15,7 +15,7 @@ LINT_SUBCOMMANDS = [
 
 
 @pytest.mark.parametrize('subcommand', LINT_SUBCOMMANDS)
-@mock.patch('jira_offline.cli.linters.Jira')
+@mock.patch('jira_offline.cli.Jira')
 def test_lint_smoketest(mock_jira_local, mock_jira, subcommand):
     '''
     Dumb smoke test function to check for errors via CLI - when the jira-offline issue cache has a
@@ -34,7 +34,7 @@ def test_lint_smoketest(mock_jira_local, mock_jira, subcommand):
 
 
 @pytest.mark.parametrize('subcommand', LINT_SUBCOMMANDS)
-@mock.patch('jira_offline.cli.linters.Jira')
+@mock.patch('jira_offline.cli.Jira')
 def test_lint_smoketest_empty(mock_jira_local, mock_jira, subcommand):
     '''
     Dumb smoke test function to check for errors via CLI - when the jira-offline issue cache is empty
@@ -48,7 +48,7 @@ def test_lint_smoketest_empty(mock_jira_local, mock_jira, subcommand):
     assert result.exit_code == 1
 
 
-@mock.patch('jira_offline.cli.linters.Jira')
+@mock.patch('jira_offline.cli.Jira')
 @mock.patch('jira_offline.cli.linters.lint_fix_versions')
 def test_cli_lint_fix_versions_echo(mock_lint_fix_versions, mock_jira_local, mock_jira):
     '''
@@ -75,7 +75,7 @@ def test_cli_lint_fix_versions_fix_requires_words(mock_lint_fix_versions):
     assert result.output.endswith('You must pass --value with --fix\n')
 
 
-@mock.patch('jira_offline.cli.linters.Jira')
+@mock.patch('jira_offline.cli.Jira')
 @mock.patch('jira_offline.cli.linters.lint_fix_versions')
 def test_cli_lint_fix_versions_fix_passes_words_to_lint_func(mock_lint_fix_versions, mock_jira_local, mock_jira):
     '''
@@ -90,7 +90,7 @@ def test_cli_lint_fix_versions_fix_passes_words_to_lint_func(mock_lint_fix_versi
     mock_lint_fix_versions.assert_called_with(mock_jira, fix=True, value='0.1')
 
 
-@mock.patch('jira_offline.cli.linters.Jira')
+@mock.patch('jira_offline.cli.Jira')
 @mock.patch('jira_offline.cli.linters.lint_issues_missing_epic')
 def test_cli_lint_issues_missing_epic_echo(mock_lint_issues_missing_epic, mock_jira_local, mock_jira):
     '''
@@ -117,7 +117,7 @@ def test_cli_lint_issues_missing_epic_fix_requires_epic_ref(mock_lint_issues_mis
     assert result.output.endswith('You must pass --epic_ref with --fix\n')
 
 
-@mock.patch('jira_offline.cli.linters.Jira')
+@mock.patch('jira_offline.cli.Jira')
 @mock.patch('jira_offline.cli.linters.lint_issues_missing_epic')
 def test_cli_lint_issues_missing_epic_fix_passes_epic_ref_to_lint_func(mock_lint_issues_missing_epic, mock_jira_local, mock_jira):
     '''
