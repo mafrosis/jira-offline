@@ -13,9 +13,6 @@ from jira_offline.main import Jira
 
 
 logger = logging.getLogger('jira')
-sh = logging.StreamHandler()
-logger.addHandler(sh)
-logger.setLevel(logging.ERROR)
 
 
 @click.group(name='lint')

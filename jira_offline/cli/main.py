@@ -21,9 +21,6 @@ from jira_offline.utils import find_project
 
 
 logger = logging.getLogger('jira')
-sh = logging.StreamHandler()
-logger.addHandler(sh)
-logger.setLevel(logging.ERROR)
 
 
 @click.command(name='show')
