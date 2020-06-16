@@ -6,7 +6,7 @@ from typing import Any, Optional
 import uuid
 
 import arrow
-from dateutil.tz import tzlocal
+from dateutil.tz import gettz, tzlocal
 import typing_inspect
 
 from jira_offline.exceptions import DeserializeError
@@ -73,7 +73,7 @@ def istype(type_: type, typ: type) -> bool:
     return typ is unwrap_optional_type(type_)
 
 
-def deserialize_value(type_, value: Any, tz=None) -> Any:  # pylint: disable=too-many-branches, too-many-return-statements, too-many-statements
+def deserialize_value(type_, value: Any, tz: Optional[datetime.tzinfo]=None) -> Any:  # pylint: disable=too-many-branches, too-many-return-statements, too-many-statements
     '''
     Utility function to deserialize `value` into `type_`. Used by DataclassSerializer.
 
@@ -267,7 +267,7 @@ def _validate_optional_fields_have_a_default(field):
 @dataclasses.dataclass
 class DataclassSerializer:
     @classmethod
-    def deserialize(cls, attrs: dict, tz=None, ignore_missing: bool=False) -> Any:
+    def deserialize(cls, attrs: dict, tz: Optional[str]=None, ignore_missing: bool=False) -> Any:
         '''
         Deserialize JSON-compatible dict to dataclass.
 
@@ -308,7 +308,13 @@ class DataclassSerializer:
                 raise DeserializeError(f'Fatal TypeError for key {f.name} ({e})')
 
             try:
-                data[f.name] = deserialize_value(f.type, raw_value, tz=tz)
+                if tz:
+                    tzobj = gettz(tz)
+                else:
+                    tzobj = None
+
+                data[f.name] = deserialize_value(f.type, raw_value, tz=tzobj)
+
             except DeserializeError as e:
                 raise DeserializeError(f'{e} in field {f.name}')
 

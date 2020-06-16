@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import datetime
 
-from dateutil.tz import gettz, tzlocal, tzoffset, tzutc
+from dateutil.tz import gettz, tzlocal, tzoffset
 import pytest
 
 from jira_offline.utils.serializer import DataclassSerializer
@@ -13,12 +13,12 @@ class Test(DataclassSerializer):
 
 
 @pytest.mark.parametrize('tz_iso,tz_obj,tz_name', [
-    ('', tzutc(), None),
-    ('+00:00', tzutc(), None),
+    ('', tzlocal(), None),
+    ('+00:00', tzlocal(), None),
     ('+10:00', tzlocal(), None),
     ('-06:00', tzlocal(), None),
-    ('', tzutc(), 'UTC'),
-    ('+00:00', tzutc(), 'UTC'),
+    ('', gettz('UTC'), 'UTC'),
+    ('+00:00', gettz('UTC'), 'UTC'),
     ('+10:00', gettz('Australia/Melbourne'), 'Australia/Melbourne'),
     ('+00:00', gettz('Etc/GMT'), 'Etc/GMT'),
 ])
@@ -53,7 +53,7 @@ def test_datetime_deserialize_roundtrip(tz_iso, tz_name):
 
 
 @pytest.mark.parametrize('tz_iso,tz_obj', [
-    ('+00:00', tzutc()),
+    ('+00:00', tzlocal()),
     ('+10:00', tzoffset(None, 36000)),
     ('+10:00', gettz('Australia/Melbourne')),
 ])
@@ -66,10 +66,8 @@ def test_datetime_serialize(tz_iso, tz_obj):
 
 
 @pytest.mark.parametrize('tz_obj,tz_name', [
-    (tzutc(), None),
     (tzlocal(), None),
-    (tzlocal(), None),
-    (tzutc(), 'UTC'),
+    (gettz('UTC'), 'UTC'),
     (gettz('Australia/Melbourne'), 'Australia/Melbourne'),
     (gettz('Etc/GMT'), 'Etc/GMT'),
 ])

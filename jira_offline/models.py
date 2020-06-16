@@ -272,7 +272,8 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         return list(dictdiffer.diff(data, self.original, ignore=set(['diff_to_original'])))
 
     @classmethod
-    def deserialize(cls, attrs: dict, project_ref: Optional[ProjectMeta]=None, ignore_missing: bool=False) -> 'Issue':  # pylint: disable=arguments-differ
+    def deserialize(cls, attrs: dict, project_ref: Optional[ProjectMeta]=None,  # type: ignore[override] # pylint: disable=arguments-differ
+                    ignore_missing: bool=False) -> 'Issue':
         '''
         Deserialize a dict into an Issue object. Inflate the _original_ version of the object from the
         Issue.diff_to_original field which is written to the cache.
