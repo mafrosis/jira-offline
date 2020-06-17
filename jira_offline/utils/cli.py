@@ -6,6 +6,8 @@ import click
 import pandas as pd
 from tabulate import tabulate
 
+from jira_offline.models import Issue
+
 
 def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_project_col: bool=False):
     '''
@@ -73,3 +75,18 @@ def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pro
 def print_table(df):
     '''Helper to pretty print dataframes'''
     click.echo(tabulate(df, headers='keys', tablefmt='psql'))
+
+
+def print_diff(issue: Issue):
+    if not issue.exists:
+        click.echo('This issue is new, so no diff is available')
+        raise click.Abort
+
+    # late import to avoid cyclic import
+    from jira_offline.sync import build_update  # pylint: disable=import-outside-toplevel, cyclic-import
+
+    # run build_update to diff between the remote version of the Issue, and the locally modified one
+    update_obj = build_update(Issue.deserialize(issue.original), issue)
+
+    # print a handsome table
+    click.echo(tabulate(issue.render(modified_fields=update_obj.modified)))

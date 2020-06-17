@@ -15,9 +15,9 @@ from jira_offline.create import create_issue, find_epic_by_reference, import_iss
 from jira_offline.exceptions import FailedPullingProjectMeta, ImportFailed, JiraApiError
 from jira_offline.main import Jira
 from jira_offline.models import Issue, ProjectMeta
-from jira_offline.sync import build_update, pull_issues, pull_single_project, push_issues
+from jira_offline.sync import pull_issues, pull_single_project, push_issues
 from jira_offline.utils import find_project
-from jira_offline.utils.cli import print_list
+from jira_offline.utils.cli import print_diff, print_list
 
 
 logger = logging.getLogger('jira')
@@ -69,17 +69,6 @@ def cli_diff(key: str=None):
     '''
     jira = Jira()
     jira.load_issues()
-
-    def print_diff(issue: Issue):
-        if not issue.exists:
-            click.echo('This issue is new, so no diff is available')
-            raise click.Abort
-
-        # run build_update to diff between the remote version of the Issue, and the locally modified one
-        update_obj = build_update(Issue.deserialize(issue.original), issue)
-
-        # print a handsome table
-        click.echo(tabulate(issue.render(modified_fields=update_obj.modified)))
 
     if key:
         if key not in jira:
@@ -356,7 +345,7 @@ def cli_edit(key, **kwargs):
         matched_epic = find_epic_by_reference(jira, kwargs['epic_ref'])
         jira[key].epic_ref = matched_epic.key
 
-    click.echo(jira[key])
+    print_diff(jira[key])
     jira.write_issues()
 
 
