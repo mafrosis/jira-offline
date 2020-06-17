@@ -376,6 +376,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
             *fmt('updated'),
         ]
 
+
     def as_json(self) -> str:
         '''
         Render issue as JSON

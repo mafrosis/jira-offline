@@ -38,6 +38,9 @@ def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pro
         ]
         width = 200
 
+    if 'assignee' not in df:
+        df['assignee'] = ''
+
     # replace all NaNs in the DataFrame with blank str
     df.fillna('', inplace=True)
 
