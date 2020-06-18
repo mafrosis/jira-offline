@@ -19,9 +19,9 @@ from jira_offline.exceptions import (EpicNotFound, EstimateFieldUnavailable, Fai
                                      FailedPullingProjectMeta, JiraApiError)
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.utils import critical_logger, friendly_title, get_field_by_name
-from jira_offline.utils.serializer import DeserializeError, istype
 from jira_offline.utils.api import get as api_get
 from jira_offline.utils.convert import jiraapi_object_to_issue, issue_to_jiraapi_update
+from jira_offline.utils.serializer import DeserializeError, istype
 
 if TYPE_CHECKING:
     from jira_offline.main import Jira

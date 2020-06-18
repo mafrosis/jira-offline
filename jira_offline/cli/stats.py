@@ -3,8 +3,8 @@ Module containing the stats command group, and all its subcommands
 '''
 import click
 
-from jira_offline.cli.utils import print_table
 from jira_offline.main import Jira
+from jira_offline.utils.cli import print_table
 
 
 @click.group(name='stats', invoke_without_command=True)
