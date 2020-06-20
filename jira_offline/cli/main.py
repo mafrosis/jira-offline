@@ -2,6 +2,7 @@
 Module containing the simple top-level commands which do not have any subcommands
 '''
 import json
+import io
 import logging
 from typing import Optional, Set
 from urllib.parse import urlparse
@@ -10,18 +11,16 @@ import click
 from tabulate import tabulate
 
 from jira_offline.auth import authenticate
-from jira_offline.cli.utils import print_list
-from jira_offline.create import create_issue, find_epic_by_reference, set_field_on_issue
-from jira_offline.exceptions import FailedPullingProjectMeta, JiraApiError, ProjectNotConfigured
+from jira_offline.create import create_issue, find_epic_by_reference, import_issue, set_field_on_issue
+from jira_offline.exceptions import FailedPullingProjectMeta, ImportFailed, JiraApiError
 from jira_offline.main import Jira
 from jira_offline.models import Issue, ProjectMeta
-from jira_offline.sync import build_update, pull_issues, pull_single_project, push_issues
+from jira_offline.sync import pull_issues, pull_single_project, push_issues
+from jira_offline.utils import find_project
+from jira_offline.utils.cli import print_diff, print_list
 
 
 logger = logging.getLogger('jira')
-sh = logging.StreamHandler()
-logger.addHandler(sh)
-logger.setLevel(logging.ERROR)
 
 
 @click.command(name='show')
@@ -70,13 +69,6 @@ def cli_diff(key: str=None):
     '''
     jira = Jira()
     jira.load_issues()
-
-    def print_diff(issue: Issue):
-        # run build_update to diff between the remote version of the Issue, and the locally modified one
-        update_obj = build_update(Issue.deserialize(issue.original), issue)
-
-        # print a handsome table
-        click.echo(tabulate(issue.render(modified_fields=update_obj.modified)))
 
     if key:
         if key not in jira:
@@ -222,9 +214,9 @@ def cli_pull(ctx, projects: str=None, reset_hard: bool=False):
         projects_set = set(projects.split(','))
 
         # validate all requested projects are configured
+        # find_project will raise an exception if the project key is unknown
         for key in projects_set:
-            if key not in {p.key for p in jira.config.projects.values()}:
-                raise ProjectNotConfigured(key)
+            find_project(jira, key)
 
     if reset_hard:
         if projects:
@@ -259,9 +251,11 @@ def cli_new(projectkey: str, issuetype: str, summary: str, as_json: bool=False, 
     '''
     Create a new issue on a project
 
-    PROJECTKEY    Jira project key for the new issue
-    ISSUETYPE  A valid issue type for the specified project
-    SUMMARY    Mandatory free text oneliner for this issue
+    PROJECTKEY  Jira project key for the new issue
+
+    ISSUETYPE   A valid issue type for the specified project
+
+    SUMMARY     Mandatory free text oneliner for this issue
     '''
     if ',' in projectkey:
         click.echo('You should pass only a single project key')
@@ -269,13 +263,8 @@ def cli_new(projectkey: str, issuetype: str, summary: str, as_json: bool=False, 
 
     jira = Jira()
 
-    try:
-        # extract the ProjectMeta object for the specified project
-        project: ProjectMeta = next(iter(
-            [pm for id, pm in jira.config.projects.items() if pm.key == projectkey]
-        ))
-    except StopIteration:
-        raise ProjectNotConfigured(projectkey)
+    # retrieve the project configuration
+    project = find_project(jira, projectkey)
 
     # validate epic parameters
     if issuetype == 'Epic':
@@ -356,5 +345,50 @@ def cli_edit(key, **kwargs):
         matched_epic = find_epic_by_reference(jira, kwargs['epic_ref'])
         jira[key].epic_ref = matched_epic.key
 
-    click.echo(jira[key])
+    print_diff(jira[key])
     jira.write_issues()
+
+
+@click.command(name='import')
+@click.argument('file', type=click.File('r'))
+def cli_import(file: io.TextIOWrapper):
+    '''
+    Import issues from stdin, or from a filepath
+
+    FILE  Jsonlines format file from which to import issues
+    '''
+    jira = Jira()
+    jira.load_issues()
+
+    no_input = True
+    write = False
+
+    # verbose logging by default during import
+    logger.setLevel(logging.INFO)
+
+    for i, line in enumerate(file.readlines()):
+        if line:
+            no_input = False
+
+            try:
+                issue, is_new = import_issue(jira, json.loads(line), lineno=i+1)
+                write = True
+
+                if is_new:
+                    logger.info('New issue created: %s', issue.summary)
+                else:
+                    logger.info('Issue %s updated', issue.key)
+
+            except json.decoder.JSONDecodeError as e:
+                logger.error('Failed parsing line %s', i+1)
+            except ImportFailed as e:
+                logger.error(e)
+        else:
+            break
+
+    if no_input:
+        click.echo('No data read on stdin or in passed file')
+        raise click.Abort
+
+    if write:
+        jira.write_issues()

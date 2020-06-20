@@ -272,18 +272,22 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         return list(dictdiffer.diff(data, self.original, ignore=set(['diff_to_original'])))
 
     @classmethod
-    def deserialize(cls, attrs: dict, project_ref: Optional[ProjectMeta]=None) -> 'Issue':  # pylint: disable=arguments-differ
+    def deserialize(cls, attrs: dict, project_ref: Optional[ProjectMeta]=None,  # type: ignore[override] # pylint: disable=arguments-differ
+                    ignore_missing: bool=False) -> 'Issue':
         '''
-        Deserialize a dict into an Issue object. Inflate the original Jira issue from the
-        diff_to_original property.
+        Deserialize a dict into an Issue object. Inflate the _original_ version of the object from the
+        Issue.diff_to_original field which is written to the cache.
 
         Params:
-            attrs:  Dict to deserialize into an Issue
+            attrs:           Dict to deserialize into an Issue
+            project_ref:     Reference to Jira project this Issue belongs to
+            ignore_missing:  Ignore missing mandatory fields during deserialisation
         Returns:
             List from dictdiffer.diff for Issue.diff_to_original property
         '''
         # deserialize supplied dict into an Issue object
-        issue = cast(Issue, super().deserialize(attrs))
+        # use `cast` to cover the mypy typecheck errors the arise from polymorphism
+        issue = cast(Issue, super().deserialize(attrs, ignore_missing=ignore_missing))
 
         if issue.diff_to_original is None:
             issue.diff_to_original = []
@@ -371,6 +375,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
             *fmt('created'),
             *fmt('updated'),
         ]
+
 
     def as_json(self) -> str:
         '''

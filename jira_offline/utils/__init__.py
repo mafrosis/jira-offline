@@ -4,13 +4,18 @@ import datetime
 import functools
 import logging
 import textwrap
-from typing import Any, Optional, Tuple
+from typing import Any, Optional, Tuple, TYPE_CHECKING
 
 import arrow
 import click
 from tabulate import tabulate
 
+from jira_offline.exceptions import ProjectNotConfigured
 from jira_offline.utils.serializer import get_enum, get_base_type
+
+if TYPE_CHECKING:
+    from jira_offline.models import ProjectMeta  # pylint: disable=cyclic-import
+    from jira_offline.main import Jira  # pylint: disable=cyclic-import
 
 
 @functools.lru_cache()
@@ -28,6 +33,22 @@ def get_field_by_name(cls: type, field_name: str) -> dataclasses.Field:
         if f.metadata.get('property') == field_name or f.name == field_name:
             return f
     raise Exception
+
+
+def find_project(jira: 'Jira', projectkey: str) -> 'ProjectMeta':
+    '''
+    Extract the project configuration object for the specified project key
+
+    Params:
+        jira:        Dependency-injected main.Jira object
+        projectkey:  Short Jira project key
+    '''
+    try:
+        return next(iter(
+            [pm for id, pm in jira.config.projects.items() if pm.key == projectkey]
+        ))
+    except StopIteration:
+        raise ProjectNotConfigured(projectkey)
 
 
 @functools.lru_cache()

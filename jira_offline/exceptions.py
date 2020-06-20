@@ -195,3 +195,16 @@ class FailedConfigUpgrade(BaseAppException):
     '''Failure when upgrading an app config from one schema to another'''
     def format_message(self):
         return 'Failed upgrading the app.config schema. Please re-run with --debug and report this bug.'
+
+
+class ImportFailed(BaseAppException):
+    '''Failure when importing a JSON object as an Issue'''
+    def __init__(self, msg, lineno=None):
+        self.lineno = lineno
+        super().__init__(msg)
+
+    def format_message(self):
+        if self.lineno:
+            return '{} on line {}'.format(self.message, self.lineno)
+        else:
+            return self.message

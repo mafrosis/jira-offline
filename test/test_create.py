@@ -1,11 +1,13 @@
 import copy
+from unittest import mock
 
 import pytest
 
 from fixtures import EPIC_1, ISSUE_1
-from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce, InvalidIssueType,
-                                     SummaryAlreadyExists)
-from jira_offline.create import create_issue, find_epic_by_reference
+from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce, ImportFailed,
+                                     InvalidIssueType, SummaryAlreadyExists)
+from jira_offline.create import (create_issue, find_epic_by_reference, import_issue, _import_new_issue,
+                                 _import_modified_issue)
 from jira_offline.models import Issue
 
 
@@ -171,3 +173,115 @@ def test_create__find_epic_by_reference__raise_on_duplicate_ref_string(mock_jira
 
     with pytest.raises(EpicSearchStrUsedMoreThanOnce):
         find_epic_by_reference(mock_jira, 'This is an epic')
+
+
+@mock.patch('jira_offline.create._import_new_issue')
+def test_create__import_issue__calls_import_new_when_obj_missing_key(mock_import_new, mock_jira):
+    '''
+    Ensure import_issue calls _import_new_issue
+    '''
+    _, is_new = import_issue(mock_jira, {})
+    assert mock_import_new.called
+    assert is_new is True
+
+
+@mock.patch('jira_offline.create._import_modified_issue')
+def test_create__import_issue__calls_import_updated_when_obj_has_key(mock_import_modified, mock_jira):
+    '''
+    Ensure import_issue calls _import_updated
+    '''
+    _, is_new = import_issue(mock_jira, {'key': 'EGG'})
+    assert mock_import_modified.called
+    assert is_new is False
+
+
+def test_create__import_modified_issue__merges_writable_fields(mock_jira):
+    '''
+    Ensure _import_modified_issue() merges imported data onto writable fields
+
+    This test notably doesn't mock the function merge_issues(); failures in this test will uncover
+    problems in functions down the callstack
+    '''
+    # add an Issue fixture to the Jira dict
+    mock_jira[ISSUE_1['key']] = Issue.deserialize(ISSUE_1)
+
+    # import some modified fields for Issue key=issue1
+    import_dict = {
+        'key': ISSUE_1['key'],
+        'estimate': 99,
+        'description': 'bacon',
+    }
+
+    imported_issue = _import_modified_issue(mock_jira, import_dict)
+    assert isinstance(imported_issue, Issue)
+    assert imported_issue.key == ISSUE_1['key']
+    assert imported_issue.estimate == 99
+    assert imported_issue.description == 'bacon'
+
+
+def test_create__import_modified_issue__doesnt_merge_readonly_fields(mock_jira):
+    '''
+    Ensure _import_modified_issue() doesnt merge imported data onto readonly fields
+
+    This test notably doesn't mock the function merge_issues(); failures in this test will uncover
+    problems in functions down the callstack
+    '''
+    # add an Issue fixture to the Jira dict
+    mock_jira[ISSUE_1['key']] = Issue.deserialize(ISSUE_1)
+
+    # import some readonly fields for Issue key=issue1
+    import_dict = {'key': ISSUE_1['key'], 'project_id': 'sausage'}
+
+    imported_issue = _import_modified_issue(mock_jira, import_dict)
+    assert imported_issue.project_id == '99fd9182cfc4c701a8a662f6293f4136201791b4'
+
+
+def test_create__import_modified_issue__produces_issue_with_diff(mock_jira):
+    '''
+    Ensure _import_modified_issue() produces an Issue with a diff
+
+    This test also doesn't mock the function merge_issues(); however, failures here are a problem
+    in _import_modified_issue()
+    '''
+    # add an Issue fixture to the Jira dict
+    mock_jira[ISSUE_1['key']] = Issue.deserialize(ISSUE_1)
+
+    # import some readonly fields for Issue key=issue1
+    import_dict = {'key': ISSUE_1['key'], 'assignee': 'sausage'}
+
+    imported_issue = _import_modified_issue(mock_jira, import_dict)
+    assert imported_issue.assignee == 'sausage'
+    assert imported_issue.diff() == [('change', 'assignee', ('sausage', 'danil1'))]
+
+
+@mock.patch('jira_offline.create.find_project')
+@mock.patch('jira_offline.create.create_issue')
+def test_create__import_new_issue__calls_create_issue(mock_create_issue, mock_find_project, mock_jira, project):
+    '''
+    Ensure _import_new_issue() calls create_issue with the correct params
+    '''
+    mock_find_project.return_value = project
+
+    import_dict = {
+        'project': ISSUE_1['project'],
+        'issuetype': 'Epic',
+        'summary': 'Egg',
+        'estimate': 99,
+        'description': 'bacon',
+    }
+
+    _import_new_issue(mock_jira, import_dict)
+    mock_create_issue.assert_called_with(mock_jira, project, 'Epic', 'Egg', estimate=99, description='bacon')
+
+
+@pytest.mark.parametrize('keys', [
+    (('project', 'issuetype')),
+    (('project', 'summary')),
+    (('issuetype', 'summary')),
+])
+def test_create__import_new_issue__raises_on_key_missing(mock_jira, keys):
+    '''
+    Ensure _import_new_issue() raises when mandatory keys are missing
+    '''
+    with pytest.raises(ImportFailed):
+        _import_new_issue(mock_jira, {k[0]:1 for k in zip(keys)})

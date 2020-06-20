@@ -6,7 +6,7 @@ from typing import Any, Optional
 import uuid
 
 import arrow
-from dateutil.tz import tzlocal
+from dateutil.tz import gettz, tzlocal
 import typing_inspect
 
 from jira_offline.exceptions import DeserializeError
@@ -73,7 +73,7 @@ def istype(type_: type, typ: type) -> bool:
     return typ is unwrap_optional_type(type_)
 
 
-def deserialize_value(type_, value: Any, tz=None) -> Any:  # pylint: disable=too-many-branches, too-many-return-statements, too-many-statements
+def deserialize_value(type_, value: Any, tz: Optional[datetime.tzinfo]=None) -> Any:  # pylint: disable=too-many-branches, too-many-return-statements, too-many-statements
     '''
     Utility function to deserialize `value` into `type_`. Used by DataclassSerializer.
 
@@ -267,13 +267,14 @@ def _validate_optional_fields_have_a_default(field):
 @dataclasses.dataclass
 class DataclassSerializer:
     @classmethod
-    def deserialize(cls, attrs: dict, tz=None) -> Any:
+    def deserialize(cls, attrs: dict, tz: Optional[str]=None, ignore_missing: bool=False) -> Any:
         '''
         Deserialize JSON-compatible dict to dataclass.
 
         Params:
-            attrs:  Dict to deserialize into an instance of cls
-            tz:     Timezone to apply to deserialized date/datetime
+            attrs:           Dict to deserialize into an instance of cls
+            tz:              Timezone to apply to deserialized date/datetime
+            ignore_missing:  Continue deserialize even when mandatory fields are missing
         Returns:
             An instance of cls
         '''
@@ -297,17 +298,23 @@ class DataclassSerializer:
 
             except KeyError as e:
                 # handle key missing from passed dict
-                # if the missing key's type is non-optional, raise an exception
-                if not typing_inspect.is_optional_type(f.type):
-                    raise DeserializeError(f'Missing input data for mandatory key {f.name}')
-
-                continue
+                if ignore_missing is False:
+                    # if the missing key's type is non-optional, raise an exception
+                    if not typing_inspect.is_optional_type(f.type):
+                        raise DeserializeError(f'Missing input data for mandatory key {f.name}')
+                    continue
 
             except TypeError as e:
                 raise DeserializeError(f'Fatal TypeError for key {f.name} ({e})')
 
             try:
-                data[f.name] = deserialize_value(f.type, raw_value, tz=tz)
+                if tz:
+                    tzobj = gettz(tz)
+                else:
+                    tzobj = None
+
+                data[f.name] = deserialize_value(f.type, raw_value, tz=tzobj)
+
             except DeserializeError as e:
                 raise DeserializeError(f'{e} in field {f.name}')
 

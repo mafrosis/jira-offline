@@ -6,16 +6,13 @@ import logging
 import click
 
 from jira_offline.cli.params import CliParams
-from jira_offline.cli.utils import print_list
 from jira_offline.linters import fix_versions as lint_fix_versions
 from jira_offline.linters import issues_missing_epic as lint_issues_missing_epic
 from jira_offline.main import Jira
+from jira_offline.utils.cli import print_list
 
 
 logger = logging.getLogger('jira')
-sh = logging.StreamHandler()
-logger.addHandler(sh)
-logger.setLevel(logging.ERROR)
 
 
 @click.group(name='lint')
