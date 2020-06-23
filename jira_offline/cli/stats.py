@@ -7,9 +7,13 @@ from jira_offline.utils.cli import print_table
 
 
 @click.group(name='stats', invoke_without_command=True)
+@click.option('--project', help='Filter for a specific project')
 @click.pass_context
-def cli_stats(ctx):
+def cli_stats(ctx, project: str=None):
     '''Generate stats on Jira data'''
+    # filter issues by project
+    ctx.obj.jira.filter.project = project
+
     # load issues here for all subcommands in the group
     ctx.obj.jira.load_issues()
 

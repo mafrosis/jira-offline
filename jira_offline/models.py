@@ -388,3 +388,17 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         Render issue to friendly string
         '''
         return tabulate(self.render())
+
+
+@dataclass
+class IssueFilter:
+    '''Encapsulates any filters passed in via CLI'''
+    project: Optional[str] = field(default=None)
+
+    def compare(self, issue: Issue) -> bool:
+        '''Compare passed Issue object against the class attributes'''
+
+        if self.project is None:
+            return True
+
+        return issue.project == self.project

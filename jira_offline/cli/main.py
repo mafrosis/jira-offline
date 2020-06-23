@@ -50,11 +50,15 @@ def cli_show(ctx, key: str, as_json: bool=False):
 
 @click.command(name='ls')
 @click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
+@click.option('--project', help='Filter for a specific project')
 @click.pass_context
-def cli_ls(ctx, as_json: bool=False):
+def cli_ls(ctx, as_json: bool=False, project: str=None):
     '''List Issues on the CLI'''
     jira: Jira = ctx.obj.jira
     jira.load_issues()
+
+    # filter issues on project
+    jira.filter.project = project
 
     if as_json:
         for issue in jira.values():

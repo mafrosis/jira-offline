@@ -8,7 +8,7 @@ from unittest import mock
 
 import pytest
 
-from fixtures import EPIC_1, ISSUE_1, ISSUE_MISSING_EPIC, ISSUE_NEW
+from fixtures import EPIC_1, ISSUE_1, ISSUE_2, ISSUE_MISSING_EPIC, ISSUE_NEW
 from jira_offline.exceptions import (EpicNotFound, EstimateFieldUnavailable, JiraApiError, JiraNotConfigured,
                                      ProjectDoesntExist)
 from jira_offline.models import CustomFields, Issue, IssueType, ProjectMeta
@@ -433,3 +433,53 @@ def test_fetch_issue__returns_output_from_jiraapi_object_to_issue(
 
     mock_api_get.assert_called_with(project, 'issue/{}'.format(ISSUE_1['key']))
     assert mock_jiraapi_object_to_issue.called
+
+
+def test_keys__respect_the_filter(mock_jira_core):
+    '''
+    Ensure that jira.keys() respects a configured jira.filter parameter
+    '''
+    mock_jira_core['issue1'] = Issue.deserialize(ISSUE_1)
+    mock_jira_core['issue2'] = Issue.deserialize(ISSUE_2)
+    mock_jira_core['issue2'].project = 'SECOND'
+
+    assert list(mock_jira_core.keys()) == ['issue1', 'issue2']
+
+    mock_jira_core.filter.project = 'SECOND'
+
+    assert list(mock_jira_core.keys()) == ['issue2']
+
+
+def test_values__respect_the_filter(mock_jira_core):
+    '''
+    Ensure that jira.values() respects a configured jira.filter parameter
+    '''
+    mock_jira_core['issue1'] = Issue.deserialize(ISSUE_1)
+    mock_jira_core['issue2'] = Issue.deserialize(ISSUE_2)
+    mock_jira_core['issue2'].project = 'SECOND'
+
+    assert list(mock_jira_core.values()) == [mock_jira_core['issue1'], mock_jira_core['issue2']]
+
+    mock_jira_core.filter.project = 'SECOND'
+
+    assert list(mock_jira_core.values()) == [mock_jira_core['issue2']]
+
+
+def test_items__respect_the_filter(mock_jira_core):
+    '''
+    Ensure that jira.items() respects a configured jira.filter parameter
+    '''
+    mock_jira_core['issue1'] = Issue.deserialize(ISSUE_1)
+    mock_jira_core['issue2'] = Issue.deserialize(ISSUE_2)
+    mock_jira_core['issue2'].project = 'SECOND'
+
+    assert list(mock_jira_core.items()) == [
+        ('issue1', mock_jira_core['issue1']),
+        ('issue2', mock_jira_core['issue2']),
+    ]
+
+    mock_jira_core.filter.project = 'SECOND'
+
+    assert list(mock_jira_core.items()) == [
+        ('issue2', mock_jira_core['issue2']),
+    ]

@@ -15,7 +15,7 @@ from jira_offline.jira import Jira
 class CliParams:
     @dataclass
     class LintParams:
-        'Special params for the `jira lint` subcommand group'
+        '''Special params for the `jira lint` subcommand group'''
         fix: bool
 
     jira: Jira

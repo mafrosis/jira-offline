@@ -16,10 +16,14 @@ logger = logging.getLogger('jira')
 
 @click.group(name='lint')
 @click.option('--fix', is_flag=True, help='Attempt to fix the errors automatically')
+@click.option('--project', help='Filter for a specific project')
 @click.pass_context
-def cli_lint(ctx, fix=False):
+def cli_lint(ctx, fix: bool=False, project: str=None):
     'Report on common mistakes in Jira issues'
     ctx.obj.lint = CliParams.LintParams(fix=fix)
+
+    # filter issues by project
+    ctx.obj.jira.filter.project = project
 
     # load issues here for all subcommands in the group
     ctx.obj.jira.load_issues()
@@ -28,7 +32,7 @@ def cli_lint(ctx, fix=False):
 @cli_lint.command(name='fix-versions')
 @click.option('--value', help='Value set in fix_versions. Used with --fix.')
 @click.pass_context
-def cli_lint_fix_versions(ctx, value=None):
+def cli_lint_fix_versions(ctx, value: str=None):
     '''
     Lint on missing fix_versions field
     '''
@@ -59,7 +63,7 @@ def cli_lint_fix_versions(ctx, value=None):
 @cli_lint.command(name='issues-missing-epic')
 @click.option('--epic-ref', help='Epic to set on issues with no epic. Used with --fix.')
 @click.pass_context
-def cli_lint_issues_missing_epic(ctx, epic_ref=None):
+def cli_lint_issues_missing_epic(ctx, epic_ref: str=None):
     '''
     Lint issues without an epic set
     '''

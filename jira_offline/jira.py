@@ -12,7 +12,7 @@ import pandas as pd
 from jira_offline.config import get_cache_filepath, load_config
 from jira_offline.exceptions import (EpicNotFound, EstimateFieldUnavailable, JiraApiError,
                                      JiraNotConfigured, MissingFieldsForNewIssue, ProjectDoesntExist)
-from jira_offline.models import AppConfig, CustomFields, Issue, IssueType, ProjectMeta
+from jira_offline.models import AppConfig, CustomFields, IssueFilter, Issue, IssueType, ProjectMeta
 from jira_offline.utils.api import get as api_get, post as api_post, put as api_put
 from jira_offline.utils.convert import jiraapi_object_to_issue
 
@@ -21,8 +21,10 @@ logger = logging.getLogger('jira')
 
 
 class Jira(collections.abc.MutableMapping):
-    _connections = None
     _df: Optional[pd.DataFrame] = None
+
+    filter: IssueFilter
+
 
     def __init__(self, *args, **kwargs):
         self.store = dict()
@@ -30,6 +32,10 @@ class Jira(collections.abc.MutableMapping):
 
         # load application config without prompting
         self.config: AppConfig = load_config()
+
+        # initialise an empty filter
+        self.filter = IssueFilter()
+
 
     def __getitem__(self, key):
         return self.store[key]
@@ -40,11 +46,55 @@ class Jira(collections.abc.MutableMapping):
     def __delitem__(self, key):
         del self.store[key]
 
+
     def __iter__(self):
         return iter(self.store)
 
     def __len__(self):
         return len(self.store)
+
+
+    class KeysView(collections.abc.KeysView):
+        '''Override KeysView to enable filtering via __iter__'''
+        def __init__(self, mapping, filter_):
+            self._filter = filter_
+            super().__init__(mapping)
+
+        def __iter__(self):
+            for key in self._mapping:
+                if self._filter.compare(self._mapping[key]):
+                    yield key
+
+    class ItemsView(collections.abc.ItemsView):
+        '''Override ItemsView to enable filtering via __iter__'''
+        def __init__(self, mapping, filter_):
+            self._filter = filter_
+            super().__init__(mapping)
+
+        def __iter__(self):
+            for key in self._mapping:
+                if self._filter.compare(self._mapping[key]):
+                    yield (key, self._mapping[key])
+
+    class ValuesView(collections.abc.ValuesView):
+        '''Override ValuesView to enable filtering via __iter__'''
+        def __init__(self, mapping, filter_):
+            self._filter = filter_
+            super().__init__(mapping)
+
+        def __iter__(self):
+            for key in self._mapping:
+                if self._filter.compare(self._mapping[key]):
+                    yield self._mapping[key]
+
+    def keys(self):
+        return Jira.KeysView(self, self.filter)
+
+    def items(self):
+        return Jira.ItemsView(self, self.filter)
+
+    def values(self):
+        return Jira.ValuesView(self, self.filter)
 
 
     def load_issues(self) -> None:
