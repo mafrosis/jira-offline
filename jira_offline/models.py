@@ -51,9 +51,7 @@ class OAuth(DataclassSerializer):
     key_cert: Optional[str] = field(default=None)
 
     def asoauth1(self) -> OAuth1:
-        '''
-        Return an OAuth1 object compatible with requests
-        '''
+        '''Return an OAuth1 object compatible with requests'''
         return OAuth1(
             self.consumer_key,
             rsa_key=self.key_cert,
@@ -147,9 +145,7 @@ class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-att
         return attrs
 
     def __str__(self) -> str:
-        '''
-        Render project to friendly string
-        '''
+        '''Render project to friendly string'''
         return tabulate(self.render())
 
 

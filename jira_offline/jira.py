@@ -338,14 +338,7 @@ class Jira(collections.abc.MutableMapping):
 
     @property
     def df(self) -> pd.DataFrame:
-        '''
-        Convert self (aka a dict) into pandas DataFrame
-
-        - Drop original, diff_to_original fields
-        - Drop any issue with issuetype of Risk
-        - Include issue.status as a string
-        - Include issue.is_open flag
-        '''
+        '''Convert self (aka a dict) into a pandas DataFrame, and cache'''
         if self._df is None:
             items = {}
             for key, issue in self.items():
