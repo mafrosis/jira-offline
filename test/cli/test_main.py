@@ -6,7 +6,7 @@ import click
 from click.testing import CliRunner
 import pytest
 
-from fixtures import ISSUE_1
+from fixtures import ISSUE_1, ISSUE_NEW
 from jira_offline.cli import cli
 from jira_offline.jira import Issue
 
@@ -133,3 +133,39 @@ def test_cli_new_error_when_passed_epic_ref_for_epic(mock_jira_local, mock_jira)
     result = runner.invoke(cli, ['new', 'TEST', 'Epic', 'Summary of issue', '--epic-ref', 'TEST-1'])
     assert result.exit_code == 1
     assert not mock_jira.new_issue.called
+
+
+@mock.patch('jira_offline.cli.Jira')
+def test_cli_edit_can_change_an_existing_issue(mock_jira_local, mock_jira):
+    '''
+    Ensure success when editing an existing issue
+    '''
+    # set function-local instance of Jira class to our test mock
+    mock_jira_local.return_value = mock_jira
+
+    # add fixture to Jira dict
+    mock_jira['issue1'] = Issue.deserialize(ISSUE_1)
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ['edit', 'issue1', '--summary', 'A new summary'])
+    assert result.exit_code == 0
+    assert mock_jira['issue1'].summary == 'A new summary'
+    assert mock_jira.write_issues.called
+
+
+@mock.patch('jira_offline.cli.Jira')
+def test_cli_edit_can_change_a_new_issue(mock_jira_local, mock_jira):
+    '''
+    Ensure success when editing a new issue
+    '''
+    # set function-local instance of Jira class to our test mock
+    mock_jira_local.return_value = mock_jira
+
+    # add new issue fixture to Jira dict
+    mock_jira['issue_new'] = Issue.deserialize(ISSUE_NEW)
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ['edit', 'issue_new', '--summary', 'A new summary'])
+    assert result.exit_code == 0
+    assert mock_jira['issue_new'].summary == 'A new summary'
+    assert mock_jira.write_issues.called

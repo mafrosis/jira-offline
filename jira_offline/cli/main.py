@@ -82,6 +82,10 @@ def cli_diff(ctx, key: str=None):
             click.echo('Unknown issue key')
             raise click.Abort
 
+        if not jira[key].exists:
+            click.echo('This issue is new, so no diff is available')
+            raise click.Abort
+
         print_diff(jira[key])
 
     else:
