@@ -1,6 +1,7 @@
 '''
 This module contains functions for authenticating a user against a Jira server
 '''
+import logging
 from typing import Optional
 from urllib.parse import parse_qsl
 import webbrowser
@@ -14,7 +15,10 @@ from requests_oauthlib.oauth1_session import TokenRequestDenied
 from jira_offline import __title__
 from jira_offline.exceptions import FailedAuthError, JiraApiError, JiraUnavailable, NoAuthenticationMethod
 from jira_offline.models import ProjectMeta, OAuth
-from jira_offline.utils.api import head as api_head
+from jira_offline.utils.api import get as api_get
+
+
+logger = logging.getLogger('jira')
 
 
 def authenticate(project: ProjectMeta, username: Optional[str]=None, password: Optional[str]=None,
@@ -72,7 +76,7 @@ def _test_jira_connect(project: ProjectMeta) -> bool:
         project:  Properties of the project we're authenticating against
     '''
     try:
-        api_head(project, 'mypermissions')
+        api_get(project, 'mypermissions', params={'permissions': 'BROWSE_PROJECTS'})
         return True
     except JiraApiError:
         return False
