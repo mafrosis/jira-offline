@@ -51,8 +51,12 @@ def test_cli_show_invalid_issue_key(mock_jira_local, mock_jira):
     assert result.output == 'Unknown issue key\nAborted!\n'
 
 
+@pytest.mark.parametrize('command,params', [
+    ('show', ('--json', 'issue1')),
+    ('new', ('--json', 'TEST', 'Story', 'Summary of issue')),
+])
 @mock.patch('jira_offline.cli.Jira')
-def test_cli_show_can_return_json(mock_jira_local, mock_jira):
+def test_cli_commands_can_return_json(mock_jira_local, mock_jira, command, params):
     '''
     Ensure show command can return output as JSON
     '''
@@ -63,7 +67,7 @@ def test_cli_show_can_return_json(mock_jira_local, mock_jira):
     mock_jira['issue1'] = Issue.deserialize(ISSUE_1)
 
     runner = CliRunner()
-    result = runner.invoke(cli, ['show', '--json', 'issue1'])
+    result = runner.invoke(cli, [command, *params])
     assert result.exit_code == 0
     try:
         json.loads(f'{result.output}')
@@ -129,23 +133,3 @@ def test_cli_new_error_when_passed_epic_ref_for_epic(mock_jira_local, mock_jira)
     result = runner.invoke(cli, ['new', 'TEST', 'Epic', 'Summary of issue', '--epic-ref', 'TEST-1'])
     assert result.exit_code == 1
     assert not mock_jira.new_issue.called
-
-
-@mock.patch('jira_offline.cli.Jira')
-def test_cli_new_can_return_json(mock_jira_local, mock_jira):
-    '''
-    Ensure new command can return output as JSON
-    '''
-    # set function-local instance of Jira class to our test mock
-    mock_jira_local.return_value = mock_jira
-
-    # add fixture to Jira dict
-    mock_jira['issue1'] = Issue.deserialize(ISSUE_1)
-
-    runner = CliRunner()
-    result = runner.invoke(cli, ['new', '--json', 'TEST', 'Story', 'Summary of issue'])
-    assert result.exit_code == 0
-    try:
-        json.loads(f'{result.output}')
-    except json.decoder.JSONDecodeError:
-        pytest.fail('Invalid JSON returned!')
