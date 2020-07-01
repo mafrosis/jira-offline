@@ -246,10 +246,10 @@ def cli_pull(ctx, projects: str=None, reset_hard: bool=False):
 
 
 @click.command(name='new')
-@click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
 @click.argument('projectkey')
 @click.argument('issuetype')
 @click.argument('summary')
+@click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
 @click.option('--assignee', help='Username of person assigned to complete the Issue')
 @click.option('--description', help='Long description of Issue')
 @click.option('--epic-name', help='Short epic name')
@@ -311,6 +311,7 @@ def cli_new(ctx, projectkey: str, issuetype: str, summary: str, as_json: bool=Fa
 
 @click.command(name='edit')
 @click.argument('key')
+@click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
 @click.option('--assignee', help='Username of person assigned to complete the Issue')
 @click.option('--description', help='Long description of Issue')
 @click.option('--epic-name', help='Short epic name')
@@ -323,7 +324,7 @@ def cli_new(ctx, projectkey: str, issuetype: str, summary: str, as_json: bool=Fa
 @click.option('--summary', help='Summary one-liner for this issue')
 @click.option('--status', help='Set issue status to any valid for the issuetype')
 @click.pass_context
-def cli_edit(ctx, key, **kwargs):
+def cli_edit(ctx, key: str, as_json: bool=False, **kwargs):
     '''
     Edit one or more fields on an issue
 
@@ -359,7 +360,13 @@ def cli_edit(ctx, key, **kwargs):
         matched_epic = find_epic_by_reference(jira, kwargs['epic_ref'])
         jira[key].epic_ref = matched_epic.key
 
-    print_diff(jira[key])
+    if as_json:
+        # display the edited issue as JSON
+        click.echo(jira[key].as_json())
+    else:
+        # print diff of edited issue
+        print_diff(jira[key])
+
     jira.write_issues()
 
 

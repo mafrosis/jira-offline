@@ -54,6 +54,7 @@ def test_cli_show_invalid_issue_key(mock_jira_local, mock_jira):
 @pytest.mark.parametrize('command,params', [
     ('show', ('--json', 'issue1')),
     ('new', ('--json', 'TEST', 'Story', 'Summary of issue')),
+    ('edit', ('--json', 'issue1', '--summary', 'A new summary')),
 ])
 @mock.patch('jira_offline.cli.Jira')
 def test_cli_commands_can_return_json(mock_jira_local, mock_jira, command, params):
