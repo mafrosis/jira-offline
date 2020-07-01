@@ -82,8 +82,9 @@ def print_table(df):
 
 def print_diff(issue: Issue):
     if not issue.exists:
-        click.echo('This issue is new, so no diff is available')
-        raise click.Abort
+        # this issue was locally created offline so no diff is available; just do a plain print
+        click.echo(issue)
+        return
 
     # late import to avoid cyclic import
     from jira_offline.sync import build_update  # pylint: disable=import-outside-toplevel, cyclic-import

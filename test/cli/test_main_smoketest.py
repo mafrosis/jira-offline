@@ -11,7 +11,7 @@ import pytest
 
 from fixtures import ISSUE_1
 from jira_offline.cli import cli
-from jira_offline.main import Issue
+from jira_offline.jira import Issue
 
 
 # 0: CLI command name
@@ -32,7 +32,7 @@ CLI_COMMAND_MAPPING = [
 
 
 @pytest.mark.parametrize('command,params,_', CLI_COMMAND_MAPPING)
-@mock.patch('jira_offline.cli.main.Jira')
+@mock.patch('jira_offline.cli.Jira')
 @mock.patch('jira_offline.cli.main.create_issue')
 @mock.patch('jira_offline.cli.main.pull_single_project')
 @mock.patch('jira_offline.cli.main.pull_issues')
@@ -57,7 +57,7 @@ def test_main_smoketest(mock_authenticate, mock_push_issues, mock_pull_issues,
 
 
 @pytest.mark.parametrize('command,params,exit_code', CLI_COMMAND_MAPPING)
-@mock.patch('jira_offline.cli.main.Jira')
+@mock.patch('jira_offline.cli.Jira')
 @mock.patch('jira_offline.cli.main.create_issue')
 @mock.patch('jira_offline.cli.main.pull_single_project')
 @mock.patch('jira_offline.cli.main.pull_issues')

@@ -11,15 +11,6 @@ from jira_offline.sync import IssueUpdate, pull_issues, pull_single_project
 
 
 @mock.patch('jira_offline.sync.pull_single_project')
-def test_pull_issues__does_call_load_issues_when_self_empty(mock_pull_single_project, mock_jira):
-    '''
-    Ensure pull_issues() calls load_issues() when self (the Jira class dict) is empty
-    '''
-    pull_issues(mock_jira)
-    assert mock_jira.load_issues.called
-
-
-@mock.patch('jira_offline.sync.pull_single_project')
 def test_pull_issues__doesnt_call_load_issues_when_self_populated(mock_pull_single_project, mock_jira):
     '''
     Ensure pull_issues() doesn't call load_issues() when self (the Jira class dict) has issues
@@ -56,6 +47,20 @@ def test_pull_issues__pulls_only_specified_projects(mock_pull_single_project, mo
     '''
     pull_issues(mock_jira, projects={'TEST'}, force=True, verbose=False)
     mock_pull_single_project.assert_called_once_with(mock_jira, project, force=True, verbose=False)
+
+
+@mock.patch('jira_offline.sync.jiraapi_object_to_issue')
+@mock.patch('jira_offline.sync.api_get')
+@mock.patch('jira_offline.sync.tqdm')
+def test_pull_single_project__calls_load_issues_when_self_empty(mock_tqdm, mock_api_get, mock_jiraapi_object_to_issue, mock_jira, project):
+    '''
+    Ensure pull_single_project() calls load_issues() when self (the Jira class dict) is empty
+    '''
+    # mock Jira search_issues to return no results
+    mock_api_get.side_effect = [ {'total': 0}, {'issues': []} ]
+
+    pull_single_project(mock_jira, project, force=False, verbose=False)
+    assert mock_jira.load_issues.called
 
 
 @mock.patch('jira_offline.sync.jiraapi_object_to_issue')

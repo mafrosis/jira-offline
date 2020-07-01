@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 if TYPE_CHECKING:
-    from jira_offline.main import Jira
+    from jira_offline.jira import Jira
 
 
 logger = logging.getLogger('jira')
@@ -15,7 +15,7 @@ def fix_versions(jira: 'Jira', fix: bool=False, value: str=None) -> pd.DataFrame
     Lint on issues missing fix_versions field
 
     Params:
-        jira:   Dependency-injected main.Jira object
+        jira:   Dependency-injected jira.Jira object
         fix:    Flag to indicate if a fix should be applied
         value:  Value to append to Issue.fix_versions
     '''
@@ -51,7 +51,7 @@ def issues_missing_epic(jira: 'Jira', fix: bool=False, epic_ref: str=None) -> pd
     Lint issues without an epic set, default to Open issues only.
 
     Params:
-        jira:      Dependency-injected main.Jira object
+        jira:      Dependency-injected jira.Jira object
         fix:       Flag to indicate if a fix should be applied
         epic_ref:  Epic to set on issues with no epic (only applicable when fix=True)
     '''

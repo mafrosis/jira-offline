@@ -14,7 +14,7 @@ from jira_offline.utils import find_project, get_field_by_name
 from jira_offline.utils.serializer import deserialize_value
 
 if TYPE_CHECKING:
-    from jira_offline.main import Jira
+    from jira_offline.jira import Jira
 
 
 logger = logging.getLogger('jira')
@@ -30,7 +30,7 @@ def find_epic_by_reference(jira: 'Jira', epic_ref_string: str) -> Issue:
         3. Issue.epic_name
 
     Params:
-        jira:             Dependency-injected main.Jira object
+        jira:             Dependency-injected jira.Jira object
         epic_ref_string:  String by which to find an epic
     Returns:
         Issue for matched Epic object
@@ -65,7 +65,7 @@ def check_summary_exists(jira: 'Jira', project_key: str, summary: str) -> bool:
     Check if summary string already used in project with project_key
 
     Params:
-        jira:         Dependency-injected main.Jira object
+        jira:         Dependency-injected jira.Jira object
         project_key:  Jira project key
         summary:      Issue.summary field
     '''
@@ -82,7 +82,7 @@ def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: st
     Create a new Issue
 
     Params:
-        jira:       Dependency-injected main.Jira object
+        jira:       Dependency-injected jira.Jira object
         project:    Project properties on which to create the new issue
         issuetype:  Issue.issuetype
         summary:    Issue.summary
@@ -157,7 +157,7 @@ def import_issue(jira: 'Jira', attrs: dict, lineno: int=None) -> Tuple[Issue, bo
     update to an issue which already exists.
 
     Params:
-        jira:    Dependency-injected main.Jira object
+        jira:    Dependency-injected jira.Jira object
         attrs:   Dictionary containing issue fields
         lineno:  Line number from the import file
     Returns:
@@ -180,7 +180,7 @@ def _import_modified_issue(jira: 'Jira', attrs: dict, lineno: int=None) -> Issue
         key:      Jira issue key
 
     Params:
-        jira:   Dependency-injected main.Jira object
+        jira:   Dependency-injected jira.Jira object
         attrs:  Dictionary containing issue fields
     '''
     try:
@@ -223,7 +223,7 @@ def _import_new_issue(jira: 'Jira', attrs: dict, lineno: int=None) -> Issue:
         summary:    Issue summary string
 
     Params:
-        jira:   Dependency-injected main.Jira object
+        jira:   Dependency-injected jira.Jira object
         attrs:  Dictionary containing issue fields
     '''
     try:

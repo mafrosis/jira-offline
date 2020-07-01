@@ -5,7 +5,7 @@ import pytest
 
 from fixtures import ISSUE_1
 from jira_offline.cli import cli
-from jira_offline.main import Issue
+from jira_offline.jira import Issue
 
 
 STATS_SUBCOMMANDS = [
@@ -16,7 +16,7 @@ STATS_SUBCOMMANDS = [
 
 
 @pytest.mark.parametrize('subcommand', STATS_SUBCOMMANDS)
-@mock.patch('jira_offline.cli.stats.Jira')
+@mock.patch('jira_offline.cli.Jira')
 def test_stats_smoketest(mock_jira_local, mock_jira, subcommand):
     '''
     Dumb smoke test function to check for errors via CLI - when the jira-offline issue cache has a
@@ -35,7 +35,7 @@ def test_stats_smoketest(mock_jira_local, mock_jira, subcommand):
 
 
 @pytest.mark.parametrize('subcommand', STATS_SUBCOMMANDS)
-@mock.patch('jira_offline.cli.stats.Jira')
+@mock.patch('jira_offline.cli.Jira')
 def test_stats_smoketest_empty(mock_jira_local, mock_jira, subcommand):
     '''
     Dumb smoke test function to check for errors via CLI - when the jira-offline issue cache is empty
@@ -49,7 +49,7 @@ def test_stats_smoketest_empty(mock_jira_local, mock_jira, subcommand):
     assert result.exit_code == 1
 
 
-@mock.patch('jira_offline.cli.stats.Jira')
+@mock.patch('jira_offline.cli.Jira')
 @mock.patch('jira_offline.cli.stats.print_table')
 def test_cli_stats_no_errors_when_no_subcommand_passed(mock_print_table, mock_jira_local, mock_jira):
     '''
