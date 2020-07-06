@@ -24,7 +24,7 @@ def jiraapi_object_to_issue(project: 'ProjectMeta', issue: dict) -> Issue:
         'project_id': project.id,
         'components': [x['name'] for x in issue['fields']['components']],
         'created': issue['fields']['created'],
-        'creator': issue['fields']['creator']['name'],
+        'creator': issue['fields']['creator']['displayName'],
         'epic_name': issue['fields'].get(f'customfield_{project.custom_fields.epic_name}', None),
         'epic_ref': issue['fields'].get(f'customfield_{project.custom_fields.epic_ref}', None),
         'description': issue['fields']['description'],
@@ -35,13 +35,13 @@ def jiraapi_object_to_issue(project: 'ProjectMeta', issue: dict) -> Issue:
         'labels': issue['fields']['labels'],
         'priority': issue['fields']['priority']['name'] if issue['fields']['priority'] else '',
         'project': issue['fields']['project']['key'],
-        'reporter': issue['fields']['reporter']['name'],
+        'reporter': issue['fields']['reporter']['displayName'],
         'status': issue['fields']['status']['name'],
         'summary': issue['fields']['summary'],
         'updated': issue['fields']['updated'],
     }
     if issue['fields'].get('assignee'):
-        jiraapi_object['assignee'] = issue['fields']['assignee']['name']
+        jiraapi_object['assignee'] = issue['fields']['assignee']['displayName']
 
     # support Issue.estimate aka "Story Points", if in use
     if issue['fields'].get(f'customfield_{project.custom_fields.estimate}'):

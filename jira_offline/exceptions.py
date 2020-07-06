@@ -20,8 +20,11 @@ class DeserializeError(ValueError):
 class JiraApiError(Exception):
     '''Custom exception wrapping Jira library base exception'''
     def __init__(self, message='', inner_message=''):
-        self.inner_message = inner_message
+        self.inner_message = inner_message.strip()
         super().__init__(message)
+
+    def __str__(self):
+        return '{} ({})'.format(self.args[0], self.inner_message)  # pylint: disable=unsubscriptable-object
 
 
 class BaseAppException(ClickException):

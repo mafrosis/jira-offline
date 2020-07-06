@@ -57,7 +57,7 @@ def _request(method: str, project: ProjectMeta, path: str, params: Optional[Dict
             try:
                 inner_message = resp.json().get('errorMessages')
             except json.decoder.JSONDecodeError:
-                pass
+                inner_message = f'{resp.text}'
             raise JiraApiError(msg, inner_message=inner_message)
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:

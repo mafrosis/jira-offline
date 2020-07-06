@@ -1,6 +1,7 @@
 '''
 This module contains functions for authenticating a user against a Jira server
 '''
+import logging
 from typing import Optional
 from urllib.parse import parse_qsl
 import webbrowser
@@ -14,7 +15,10 @@ from requests_oauthlib.oauth1_session import TokenRequestDenied
 from jira_offline import __title__
 from jira_offline.exceptions import FailedAuthError, JiraApiError, JiraUnavailable, NoAuthenticationMethod
 from jira_offline.models import ProjectMeta, OAuth
-from jira_offline.utils.api import head as api_head
+from jira_offline.utils.api import get as api_get
+
+
+logger = logging.getLogger('jira')
 
 
 def authenticate(project: ProjectMeta, username: Optional[str]=None, password: Optional[str]=None,
@@ -60,22 +64,26 @@ def get_user_creds(project: ProjectMeta, username: Optional[str]=None, password:
 
     # validate Jira connection details
     if project.username and project.password:
-        if not _test_jira_connect(project):
-            raise FailedAuthError(project.hostname)
+        try:
+            _test_jira_connect(project)
+        except JiraApiError as e:
+            if 'Basic authentication with passwords is deprecated' in str(e):
+                raise FailedAuthError(
+                    'Basic authentication with passwords is deprecated, use an API token from '
+                    'https://id.atlassian.com/manage-profile/security/api-tokens'
+                )
+            raise FailedAuthError(str(e))
 
 
-def _test_jira_connect(project: ProjectMeta) -> bool:
+def _test_jira_connect(project: ProjectMeta):
     '''
-    Test connection to Jira API to validate config object credentials
+    Test connection to Jira API to validate config object credentials. Raises a JiraApiError on
+    failure.
 
     Params:
         project:  Properties of the project we're authenticating against
     '''
-    try:
-        api_head(project, 'mypermissions')
-        return True
-    except JiraApiError:
-        return False
+    api_get(project, 'mypermissions', params={'permissions': 'BROWSE_PROJECTS'})
 
 
 def oauth_dance(project: ProjectMeta, consumer_key: str, key_cert_data: str, verify: Optional[bool]=None):
