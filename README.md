@@ -67,6 +67,19 @@ See the [Github Issues](https://github.com/mafrosis/jira-offline/issues) for a c
 ([GH22](https://github.com/mafrosis/jira-offline/issues/22)).
 
 
+Jira Cloud vs Jira Server
+-------------------------
+
+`jira-offline` ought to work for both Jira Cloud and Jira Server. If you have trouble, please open
+an [issue](https://github.com/mafrosis/jira-offline/issues)!
+
+### Differences
+
+In Jira Cloud, you have the option to [create an API token](https://id.atlassian.com/manage-profile/security/api-tokens).
+This is recommended, rather than using your plain password. You use the token in the same way as the
+password when using [basic auth](#basic-auth).
+
+
 Quick Start
 -----------
 
@@ -88,12 +101,12 @@ password into the config file on disk*.
 
     jira clone --username benji https://jira.atlassian.com/PROJ
 
-You will be prompted for your password.
+You will be prompted for your password, or API token if you're using Jira Cloud.
 
 #### oAuth
 
 oAuth is preferred, as it's token based and doesn't require your password. However it requires the
-setup of an `Application Link` on the Jira server.
+setup of an [`Application Link` on the Jira server](https://github.com/mafrosis/jira-offline/wiki/Configuring-Jira-for-oAuth-with-jira-offline).
 
     jira clone --oauth-private-key=applink.pem https://jira.atlassian.com/PROJ
 
