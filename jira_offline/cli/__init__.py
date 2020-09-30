@@ -31,7 +31,6 @@ logger.setLevel(logging.ERROR)
 @click.option('--debug', '-d', is_flag=True, help='Display DEBUG level logging')
 @click.pass_context
 def cli(ctx, verbose: bool=False, debug: bool=False):
-    '''Base CLI options'''
     # setup the logger
     formatter = logging.Formatter('%(levelname)s: %(message)s')
 
