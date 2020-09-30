@@ -370,7 +370,7 @@ def test_jira__new_issue__raises_specific_exceptions(mock_api_post, mock_jira_co
     Ensure correct custom exception is raised when specific string found in Jira API error message
     '''
     # mock the Jira library to raise
-    mock_api_post.side_effect = JiraApiError(inner_message=error_msg)
+    mock_api_post.side_effect = JiraApiError(error_msg)
 
     with pytest.raises(exception):
         mock_jira_core.new_issue(

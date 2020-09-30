@@ -18,196 +18,239 @@ class DeserializeError(ValueError):
 
 
 class JiraApiError(Exception):
-    '''Custom exception wrapping Jira library base exception'''
-    def __init__(self, message='', inner_message=''):
-        self.inner_message = inner_message.strip()
+    '''
+    Custom base exception for handling error cases from the Jira API
+    '''
+    def __init__(self, message='', status_code=None, method=None, path=None):
+        self.status_code = status_code
+        self.method = method
+        self.path = path
+        self.message = message
         super().__init__(message)
 
     def __str__(self):
-        return '{} ({})'.format(self.args[0], self.inner_message)  # pylint: disable=unsubscriptable-object
+        if self.status_code:
+            return f'{self.status_code} returned from {self.method} /rest/api/2/{self.path}\n\n{self.message}'
+        else:
+            return self.message
 
 
 class BaseAppException(ClickException):
-    '''Wrapper exception around click.ClickException'''
-    def __init__(self, msg=''):  # pylint: disable=useless-super-delegation
-        super().__init__(msg)
+    '''
+    Base exception inherited by all general usage execeptions.
+    Inherits click.ClickException, so that when raised, these are conveniently handled by the click
+    library and the output `format_message` is printed on the CLI.
+    '''
+    def __init__(self, extra_message='', dynamic_message=''):
+        self.extra_message = str(extra_message).strip()
+        super().__init__(dynamic_message)
 
     def show(self):  # pylint: disable=arguments-differ
         super().show()
-        # if --debug was passed on CLI, the global logger will be in debug mode
-        # in this case, print a stack trace
+        # if --debug was passed on CLI, the global logger will be at logging.DEBUG.  In this case,
+        # print a stack trace
         if logger.level == logging.DEBUG:
             traceback.print_exc()
 
+    def format_message(self):
+        # if --debug or --verbose were passed on CLI, the global logger will be at logging.INFO
+        # or logging.DEBUG. In these cases, print the extra message.
+        if self.extra_message and logger.level <= logging.INFO:
+            return f'{str(self)}\n\n{self.extra_message}'
+        else:
+            return str(self)
 
+    def __str__(self):
+        return self.__doc__
+
+
+class DynamicBaseAppException(BaseAppException):
+    '''
+    Simple wrapper around BaseAppException for the case where different error message strings are
+    passed to an exception constructor depending on the case. See `UnreadableConfig` in config.py
+    for an example.
+    '''
+    def __init__(self, message=''):
+        super().__init__(dynamic_message=message)
+
+    def __str__(self):
+        return str(self.message)
+
+
+# Raised when attempting map an issue to an epic that doesnt exist
 class EpicNotFound(BaseAppException):
-    '''Raised when attempting map an issue to an epic that doesnt exist'''
-    def format_message(self):
-        return f"Epic doesn't exist! ({self.message})"
+    """Epic {} doesn't exist!"""
+
+    def __init__(self, epic_ref):
+        self.epic_ref = epic_ref
+        super().__init__()
+
+    def __str__(self):
+        return self.__doc__.format(self.epic_ref)
 
 
+# Raised when creating an issue where the summary text is already used in another issue
 class SummaryAlreadyExists(BaseAppException):
-    '''Raised when creating an issue where the summary text is already used in another issue'''
-    def format_message(self):
-        return 'The exact summary text supplied is already in use.'
+    'The exact summary text supplied is already in use. Summary strings should be unique.'
 
 
+# Raised when the API call to create a new issue is missing a mandatory Issue fields
 class MissingFieldsForNewIssue(BaseAppException):
-    '''Raised when API call to create a new issue is missing a mandatory Issue field'''
+    'Mandatory fields missing on call to create a new issue'
 
 
 class InvalidIssueType(BaseAppException):
     '''
-    Only a small set of issuetypes are available on each project. An error occurs if create_issue is
-    called with an invalid issuetype
+    Only a small set of issuetypes are available on each project. An error occurs if `create_issue`
+    is called with an invalid issuetype
     '''
 
 
+# Each issuetype has a number of configured statuses. It's an error to set an invalid status
 class InvalidIssueStatus(BaseAppException):
-    '''
-    Each issuetype has a number of configured statuses. An error occurs if an issue is set to an
-    invalid status
-    '''
-    def format_message(self):
-        return f'Invalid status!\n\nYou have the following options:\n{self.message}'
+    'Invalid status!\n\nYou have the following options:\n{}'
+
+    def __init__(self, options):
+        self.options = options
+        super().__init__('')
+
+    def __str__(self):
+        return self.__doc__.format(self.options)
 
 
+# Each issuetype has a number of configured priorities. It's an error to set an invalid priority
 class InvalidIssuePriority(BaseAppException):
-    '''
-    Each issuetype has a number of configured priorities. An error occurs if an issue is set to an
-    invalid priority
-    '''
-    def format_message(self):
-        return f'Invalid priority!\n\nYou have the following options:\n{self.message}'
+    'Invalid priority!\n\nYou have the following options:\n{self.message}'
+
+    def __init__(self, options):
+        self.options = options
+        super().__init__('')
+
+    def __str__(self):
+        return self.__doc__.format(self.options)
 
 
 class CliError(BaseAppException):
-    '''Raised when bad params are passed to a CLI command'''
+    'Raised when bad params are passed to a CLI command'
 
 
-class UnreadableConfig(BaseAppException):
-    '''Raised when load_config cannot read the config file'''
-    def __init__(self, msg, path: str=None):
-        'Special constructor enabling pass of the configuration filepath'
+# Raised when load_config cannot read the config file
+class UnreadableConfig(DynamicBaseAppException):
+    def __init__(self, message, path: str=None):
         self.path = path
-        super().__init__(msg)
+        super().__init__(message)
 
-    def format_message(self):
-        return f'Unreadble config at {self.path}: {self.message}'
+    def __str__(self):
+        msg = self.message
+        if self.path:
+            msg += f' at {self.path}'
+        return msg
 
 
+# Raised when pull_issues is called without any projects setup to pull
 class NoProjectsSetup(BaseAppException):
-    '''Raised when pull_issues is called without any projects setup to pull'''
-    def format_message(self):
-        return 'No projects setup, use the clone command.'
+    'No projects setup, use the clone command.'
 
 
+# Raised when specified project key doesnt exist in Jira
 class ProjectDoesntExist(BaseAppException):
-    '''Raised when specified project key doesnt exist in Jira'''
-    def format_message(self):
-        return f'Project {self.message} does not exist!'
+    'Project {} does not exist!'
+
+    def __init__(self, project_ref):
+        self.project_ref = project_ref
+        super().__init__('')
+
+    def __str__(self):
+        return self.__doc__.format(self.project_ref)
 
 
+# Raised when trying to pull a project which has not been cloned
 class ProjectNotConfigured(BaseAppException):
-    '''Raised when trying to pull a project which has not been cloned'''
-    def format_message(self):
-        return (
-            'The project {key} is not currently configured! You must first load the project with '
-            'this command:\n\n  jira clone https://jira.atlassian.com:8080/{key}\n'.format(
-                key=self.message
-            )
-        )
+    'The project {key} is not currently configured! You must first load the project with this command:\n\n  jira clone https://jira.atlassian.com:8080/{key}'
+
+    def __init__(self, key):
+        self.key = key
+        super().__init__('')
+
+    def __str__(self):
+        return self.__doc__.format(key=self.key)
 
 
+# Raised if Jira is not setup correctly
 class JiraNotConfigured(BaseAppException):
-    '''
-    Raised if Jira is not setup correctly
-    '''
-    def __init__(self, project_key, jira_server, msg=''):
-        'Special constructor to make the Jira server details available in a friendly error message'
-        self.project_key = project_key
-        self.jira_server = jira_server
-        super().__init__(msg)
-
-    def format_message(self):
-        msg = '''Jira screens are not configured correctly. Unable to continue.
+    '''Jira screens are not configured correctly. Unable to continue.
 
 Go to your Jira project screens configuration:
 {host}/plugins/servlet/project-config/{proj}/screens
 
-Ensure that "Story Points" is on the fields list.'''.strip().format(
-    host=self.jira_server, proj=self.project_key
-)
+Ensure that "Story Points" is on the fields list.'''
 
-        if self.message:
-            msg += f'\n\n  > {msg}'
+    def __init__(self, project_key, jira_server, extra_message=''):
+        self.project_key = project_key
+        self.jira_server = jira_server
+        self.extra_message = extra_message
+        super().__init__('')
 
-        return msg
+    def __str__(self):
+        self.__doc__.format(host=self.jira_server, proj=self.project_key)
 
 
+# Raised when Story Points field is missing
 class EstimateFieldUnavailable(JiraNotConfigured):
-    '''Raised when Story Points field is missing'''
+    pass
 
 
 class FailedPullingProjectMeta(BaseAppException):
-    '''Jira library error pulling project meta data'''
-    def format_message(self):
-        return f'Failed to clone the project. Please try again! ({self.message})'
+    'Failed to fetch project metadata. Please try again!'
 
 
 class FailedPullingIssues(BaseAppException):
-    '''Jira library error pulling project issues'''
-    def format_message(self):
-        return f'Failed pulling project issues. Please try again! ({self.message})'
+    'Failed pulling project issues. Please try again!'
 
 
 class FailedAuthError(BaseAppException):
-    '''Failed oAuth flow'''
-    def format_message(self):
-        return f'Failed to authenticate with Jira ({self.message})'
+    'Failed to authenticate with Jira'
 
 
 class JiraUnavailable(BaseAppException):
-    '''Couldnt talk to Jira'''
-    def format_message(self):
-        return f'Jira appears unavailable ({self.message})'
+    'Jira appears unavailable'
 
 
+# Jira.connect was called with no authentication method configured
 class NoAuthenticationMethod(BaseAppException):
-    '''Jira.connect was called with no authentication method configured'''
-    def format_message(self):
-        return 'No way to authenticate!'
+    'No way to authenticate!'
 
 
+# Raised when trying to link an epic by a summary/epic name that has been used multiple times
 class EpicSearchStrUsedMoreThanOnce(BaseAppException):
-    '''Raised when trying to link an epic by a summary/epic name that has been used multiple times'''
-    def format_message(self):
-        return (
-            'Unable to map to the specified epic, as two epics match "{}". Please try referencing'
-            'the epic by key (eg. JIRA-123)'.format(self.message)
-        )
+    'Unable to map to the specified epic, as two epics match "{}". Please try referencing the epic by key (eg. JIRA-123)'
+
+    def __init__(self, epic_summary):
+        self.epic_summary = epic_summary
+        super().__init__('')
+
+    def __str__(self):
+        return self.__doc__.format(self.epic_summary)
 
 
+# Failure when copying a custom CA cert into application config directory
 class UnableToCopyCustomCACert(BaseAppException):
-    '''Failure when copying a custom CA cert into application config directory'''
-    def format_message(self):
-        return f'Failed copying cert file with error:\n\n{self.message}'
+    'Failed copying certificate file'
 
 
+# Failure when upgrading an app config from one schema to another
 class FailedConfigUpgrade(BaseAppException):
-    '''Failure when upgrading an app config from one schema to another'''
-    def format_message(self):
-        return 'Failed upgrading the app.config schema. Please re-run with --debug and report this bug.'
+    'Failed upgrading the app.config schema. Please re-run with --debug and report this bug.'
 
 
-class ImportFailed(BaseAppException):
-    '''Failure when importing a JSON object as an Issue'''
-    def __init__(self, msg, lineno=None):
+# Failure when importing a JSON object as an Issue
+class ImportFailed(DynamicBaseAppException):
+    def __init__(self, message, lineno=None):
         self.lineno = lineno
-        super().__init__(msg)
+        super().__init__(message)
 
-    def format_message(self):
+    def __str__(self):
+        msg = self.message
         if self.lineno:
-            return '{} on line {}'.format(self.message, self.lineno)
-        else:
-            return self.message
+            msg += f' on line {self.lineno}'
+        return msg

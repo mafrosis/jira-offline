@@ -197,8 +197,6 @@ class Jira(collections.abc.MutableMapping):
 
         except (IndexError, KeyError) as e:
             raise JiraApiError(f'Missing or bad project meta returned for {project.key} with error "{e.__class__.__name__}({e})"')
-        except JiraApiError as e:
-            raise JiraApiError(f'Failed retrieving project meta for {project.key} with error "{e}"')
 
 
     def _get_project_issue_statuses(self, project: ProjectMeta):  # pylint: disable=no-self-use
@@ -208,18 +206,14 @@ class Jira(collections.abc.MutableMapping):
         Params:
             project:  Jira project to query
         '''
-        try:
-            data = api_get(project, f'project/{project.key}/statuses')
+        data = api_get(project, f'project/{project.key}/statuses')
 
-            for obj in data:
-                try:
-                    issuetype = project.issuetypes[obj['name']]
-                    issuetype.statuses = {x['name'] for x in obj['statuses']}
-                except KeyError:
-                    logger.debug('Unknown issuetype "%s" returned from /project/{project.key}/statuses', obj['name'])
-
-        except JiraApiError as e:
-            raise JiraApiError(f'Failed retrieving issue statuses for {project.key} with error "{e}"')
+        for obj in data:
+            try:
+                issuetype = project.issuetypes[obj['name']]
+                issuetype.statuses = {x['name'] for x in obj['statuses']}
+            except KeyError:
+                logger.debug('Unknown issuetype "%s" returned from /project/{project.key}/statuses', obj['name'])
 
 
     def _get_project_components(self, project: ProjectMeta):  # pylint: disable=no-self-use
@@ -229,12 +223,8 @@ class Jira(collections.abc.MutableMapping):
         Params:
             project:  Jira project to query
         '''
-        try:
-            data = api_get(project, f'project/{project.key}/components')
-            project.components = {x['name'] for x in data}
-
-        except JiraApiError as e:
-            raise JiraApiError(f'Failed retrieving components for {project.key} with error "{e}"')
+        data = api_get(project, f'project/{project.key}/components')
+        project.components = {x['name'] for x in data}
 
 
     def new_issue(self, project: ProjectMeta, fields: dict) -> Issue:
@@ -269,13 +259,13 @@ class Jira(collections.abc.MutableMapping):
             err: str = 'Failed creating new {} "{}" with error "{}"'.format(
                 fields['issuetype']['name'],
                 fields['summary'],
-                e.inner_message
+                e.message
             )
-            if e.inner_message == 'gh.epic.error.not.found':
+            if e.message == 'gh.epic.error.not.found':
                 raise EpicNotFound(err)
-            if "Field 'estimate' cannot be set" in e.inner_message:
+            if "Field 'estimate' cannot be set" in e.message:
                 raise EstimateFieldUnavailable(project.key, project.jira_server)
-            if 'cannot be set. It is not on the appropriate screen, or unknown.' in e.inner_message:
+            if 'cannot be set. It is not on the appropriate screen, or unknown.' in e.message:
                 raise JiraNotConfigured(project.key, project.jira_server, err)
 
         # add to self under the new key
