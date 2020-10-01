@@ -15,6 +15,7 @@ from jira_offline.exceptions import (EpicNotFound, EstimateFieldUnavailable, Jir
 from jira_offline.models import AppConfig, CustomFields, IssueFilter, Issue, IssueType, ProjectMeta
 from jira_offline.utils.api import get as api_get, post as api_post, put as api_put
 from jira_offline.utils.convert import jiraapi_object_to_issue
+from jira_offline.utils.decorators import auth_retry
 
 
 logger = logging.getLogger('jira')
@@ -139,6 +140,7 @@ class Jira(collections.abc.MutableMapping):
             writer.write_all(issues_json)
 
 
+    @auth_retry()
     def get_project_meta(self, project: ProjectMeta):  # pylint: disable=no-self-use
         '''
         Load additional Jira project meta data from Jira's createmeta API

@@ -78,6 +78,9 @@ class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-att
     ca_cert: Optional[str] = field(default=None)
     timezone: Optional[str] = field(default=None)
 
+    # reference to parent AppConfig class
+    config: Optional['AppConfig'] = field(default=None, metadata={'rw': ''})
+
     @property
     def jira_server(self):
         return f'{self.protocol}://{self.hostname}'
