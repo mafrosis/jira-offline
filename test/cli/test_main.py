@@ -46,15 +46,15 @@ def test_cli_show_invalid_issue_key(mock_jira_local, mock_jira):
     mock_jira_local.return_value = mock_jira
 
     runner = CliRunner()
-    result = runner.invoke(cli, ['show', 'issue1'])
+    result = runner.invoke(cli, ['show', 'TEST-71'])
     assert result.exit_code == 1
     assert result.output == 'Unknown issue key\nAborted!\n'
 
 
 @pytest.mark.parametrize('command,params', [
-    ('show', ('--json', 'issue1')),
+    ('show', ('--json', 'TEST-71')),
     ('new', ('--json', 'TEST', 'Story', 'Summary of issue')),
-    ('edit', ('--json', 'issue1', '--summary', 'A new summary')),
+    ('edit', ('--json', 'TEST-71', '--summary', 'A new summary')),
 ])
 @mock.patch('jira_offline.cli.Jira')
 def test_cli_commands_can_return_json(mock_jira_local, mock_jira, command, params):
@@ -65,7 +65,7 @@ def test_cli_commands_can_return_json(mock_jira_local, mock_jira, command, param
     mock_jira_local.return_value = mock_jira
 
     # add fixture to Jira dict
-    mock_jira['issue1'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
     runner = CliRunner()
     result = runner.invoke(cli, [command, *params])
@@ -145,12 +145,12 @@ def test_cli_edit_can_change_an_existing_issue(mock_jira_local, mock_jira):
     mock_jira_local.return_value = mock_jira
 
     # add fixture to Jira dict
-    mock_jira['issue1'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
     runner = CliRunner()
-    result = runner.invoke(cli, ['edit', 'issue1', '--summary', 'A new summary'])
+    result = runner.invoke(cli, ['edit', 'TEST-71', '--summary', 'A new summary'])
     assert result.exit_code == 0
-    assert mock_jira['issue1'].summary == 'A new summary'
+    assert mock_jira['TEST-71'].summary == 'A new summary'
     assert mock_jira.write_issues.called
 
 

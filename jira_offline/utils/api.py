@@ -51,17 +51,16 @@ def _request(method: str, project: ProjectMeta, path: str, params: Optional[Dict
 
     except requests.exceptions.HTTPError:
         if resp.status_code >= 400:
-            msg = f'HTTP {resp.status_code} returned from {method} /rest/api/2/{path}'
-
-            inner_message = None
+            message = ''
             try:
-                inner_message = resp.json().get('errorMessages')
+                message = resp.json().get('errorMessages')
             except json.decoder.JSONDecodeError:
-                inner_message = f'{resp.text}'
-            raise JiraApiError(msg, inner_message=inner_message)
+                if 'text/html' not in resp.headers['Content-Type']:
+                    message = f'{resp.text}'
+            raise JiraApiError(message, status_code=resp.status_code, method=method, path=path)
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-        raise JiraUnavailable(e)
+        raise JiraUnavailable(str(e))
 
     try:
         return resp.json()  # type: ignore[no-any-return]

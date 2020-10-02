@@ -26,7 +26,7 @@ def test_stats_smoketest(mock_jira_local, mock_jira, subcommand):
     mock_jira_local.return_value = mock_jira
 
     # add fixture to Jira dict
-    mock_jira['issue1'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
     runner = CliRunner()
     result = runner.invoke(cli, ['stats', subcommand])
@@ -60,7 +60,7 @@ def test_cli_stats_no_errors_when_no_subcommand_passed(mock_print_table, mock_ji
     mock_jira_local.return_value = mock_jira
 
     # add fixture to Jira dict
-    mock_jira['issue1'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
     runner = CliRunner()
     result = runner.invoke(cli, ['stats'])

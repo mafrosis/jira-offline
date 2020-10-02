@@ -48,9 +48,9 @@ def find_epic_by_reference(jira: 'Jira', epic_ref_string: str) -> Issue:
 
         if epic_ref_string in (epic.summary, epic.epic_name):
             if matched_epic:
-                # finding two epics that match epic_ref_string is a terminal problem, because you
-                # can only link an issue to a single epic
-                raise EpicSearchStrUsedMoreThanOnce
+                # finding two epics that match epic_ref_string is an exception, as you can only link
+                # an issue to a single epic
+                raise EpicSearchStrUsedMoreThanOnce(epic_ref_string)
 
             matched_epic = epic
 

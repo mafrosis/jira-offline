@@ -26,7 +26,7 @@ def load_config():
             with open(config_filepath) as f:
                 config_json = json.load(f)
         except IsADirectoryError:
-            raise UnreadableConfig('There is a directory at config path (config_filepath)!')
+            raise UnreadableConfig(f'There is already a directory at {config_filepath}')
         except json.decoder.JSONDecodeError:
             raise UnreadableConfig('Bad JSON in config file!', path=config_filepath)
 

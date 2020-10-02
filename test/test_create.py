@@ -25,7 +25,7 @@ def test_create__create_issue__does_not_load_issues_when_cache_full(mock_jira, p
     Ensure create_issue() NOT calls load_issues() when the cache is full
     '''
     # add an Issue fixture to the Jira dict
-    mock_jira['issue1'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-72'] = Issue.deserialize(ISSUE_1)
 
     create_issue(mock_jira, project, 'Story', 'This is a summary')
 
@@ -68,11 +68,11 @@ def test_create__create_issue__error_on_existing_summary_for_same_project(mock_j
     Check that create_issue() raises an error where summary string already exists for same project
     '''
     # add an Issue fixture to the Jira dict
-    mock_jira['issue1'] = Issue.deserialize(ISSUE_1)
-    mock_jira['issue1'].project = 'TEST'
+    mock_jira['TEST-72'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-72'].project = 'TEST'
 
     with pytest.raises(SummaryAlreadyExists):
-        create_issue(mock_jira, project, 'Story', mock_jira['issue1'].summary)
+        create_issue(mock_jira, project, 'Story', mock_jira['TEST-72'].summary)
 
 
 def test_create__create_issue__NO_error_on_existing_summary_for_different_project(mock_jira, project):
@@ -81,12 +81,12 @@ def test_create__create_issue__NO_error_on_existing_summary_for_different_projec
     different project (means it's likely a duplicate)
     '''
     # add an Issue fixture to the Jira dict
-    mock_jira['issue1'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-72'] = Issue.deserialize(ISSUE_1)
 
     unknown_project = copy.deepcopy(project)
     unknown_project.key = 'UNKN'
 
-    offline_issue = create_issue(mock_jira, unknown_project, 'Story', mock_jira['issue1'].summary)
+    offline_issue = create_issue(mock_jira, unknown_project, 'Story', mock_jira['TEST-72'].summary)
     assert len(offline_issue.key) == 36  # UUID
 
 
@@ -96,7 +96,7 @@ def test_create__create_issue__raises_exception_when_passed_an_unknown_epic_ref(
     existing epic on either summary OR epic_name
     '''
     # add an Epic fixture to the Jira dict
-    mock_jira['epic1'] = Issue.deserialize(EPIC_1)
+    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
 
     with pytest.raises(EpicNotFound):
         create_issue(mock_jira, project, 'Story', 'This is summary', epic_ref='Nothing')
@@ -112,12 +112,12 @@ def test_create__create_issue__issue_is_mapped_to_existing_epic_summary(mock_jir
     when supplied epic_ref matches the epic's summary OR epic_name
     '''
     # add an Epic fixture to the Jira dict
-    mock_jira['epic1'] = Issue.deserialize(EPIC_1)
+    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
 
     new_issue = create_issue(mock_jira, project, 'Story', 'This is summary', epic_ref=epic_ref_value)
 
     # assert new Issue to linked to the epic
-    assert new_issue.epic_ref == mock_jira['epic1'].key
+    assert new_issue.epic_ref == mock_jira['TEST-1'].key
 
 
 def test_create__find_epic_by_reference__match_by_key(mock_jira):
@@ -136,10 +136,10 @@ def test_create__find_epic_by_reference__match_by_summary(mock_jira):
     Ensure find_epic_by_reference() returns an Issue of epic type when passed a summary
     '''
     # add an Epic fixture to the Jira dict
-    mock_jira['epic1'] = Issue.deserialize(EPIC_1)
+    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
 
     epic = find_epic_by_reference(mock_jira, 'This is an epic')
-    assert epic == mock_jira['epic1']
+    assert epic == mock_jira['TEST-1']
 
 
 def test_create__find_epic_by_reference__match_by_epic_name(mock_jira):
@@ -147,10 +147,10 @@ def test_create__find_epic_by_reference__match_by_epic_name(mock_jira):
     Ensure find_epic_by_reference() returns an Issue of epic type when passed an epic_name
     '''
     # add an Epic fixture to the Jira dict
-    mock_jira['epic1'] = Issue.deserialize(EPIC_1)
+    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
 
     epic = find_epic_by_reference(mock_jira, '0.1: Epic about a thing')
-    assert epic == mock_jira['epic1']
+    assert epic == mock_jira['TEST-1']
 
 
 def test_create__find_epic_by_reference__raise_on_failed_to_match(mock_jira):
@@ -203,18 +203,18 @@ def test_create__import_modified_issue__merges_writable_fields(mock_jira):
     problems in functions down the callstack
     '''
     # add an Issue fixture to the Jira dict
-    mock_jira[ISSUE_1['key']] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
     # import some modified fields for Issue key=issue1
     import_dict = {
-        'key': ISSUE_1['key'],
+        'key': 'TEST-71',
         'estimate': 99,
         'description': 'bacon',
     }
 
     imported_issue = _import_modified_issue(mock_jira, import_dict)
     assert isinstance(imported_issue, Issue)
-    assert imported_issue.key == ISSUE_1['key']
+    assert imported_issue.key == 'TEST-71'
     assert imported_issue.estimate == 99
     assert imported_issue.description == 'bacon'
 
@@ -227,10 +227,10 @@ def test_create__import_modified_issue__doesnt_merge_readonly_fields(mock_jira):
     problems in functions down the callstack
     '''
     # add an Issue fixture to the Jira dict
-    mock_jira[ISSUE_1['key']] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
     # import some readonly fields for Issue key=issue1
-    import_dict = {'key': ISSUE_1['key'], 'project_id': 'sausage'}
+    import_dict = {'key': 'TEST-71', 'project_id': 'sausage'}
 
     imported_issue = _import_modified_issue(mock_jira, import_dict)
     assert imported_issue.project_id == '99fd9182cfc4c701a8a662f6293f4136201791b4'
@@ -244,10 +244,10 @@ def test_create__import_modified_issue__produces_issue_with_diff(mock_jira):
     in _import_modified_issue()
     '''
     # add an Issue fixture to the Jira dict
-    mock_jira[ISSUE_1['key']] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
     # import some readonly fields for Issue key=issue1
-    import_dict = {'key': ISSUE_1['key'], 'assignee': 'sausage'}
+    import_dict = {'key': 'TEST-71', 'assignee': 'sausage'}
 
     imported_issue = _import_modified_issue(mock_jira, import_dict)
     assert imported_issue.assignee == 'sausage'
