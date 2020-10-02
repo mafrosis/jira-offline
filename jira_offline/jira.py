@@ -243,10 +243,10 @@ class Jira(collections.abc.MutableMapping):
             )
 
         try:
-            # key/status are set by Jira server; remove them
+            # key is set by Jira server; remove it
             temp_key = fields['key']
             del fields['key']
-            # Jira doesn't know project_id, it's created by this application; remove it
+            # project_id is application data; remove it
             del fields['project_id']
 
             # create new issue in Jira

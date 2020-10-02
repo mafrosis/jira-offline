@@ -197,7 +197,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
     original: Dict[str, Any] = field(default_factory=dict, metadata={'rw': ''})
 
     # patch of current Issue to dict last seen on Jira server
-    # "rw" flag instructs serializer to deserialize this only; do not include during serialize()
+    # "rw" flag instructs serializer to read/deserialize this only; do not include during writes
     diff_to_original: Optional[list] = field(default=None, metadata={'rw': 'r'})
 
     project_ref: Optional[ProjectMeta] = field(default=None, metadata={'rw': ''})
