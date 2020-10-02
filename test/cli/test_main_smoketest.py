@@ -20,14 +20,14 @@ from jira_offline.jira import Issue
 CLI_COMMAND_MAPPING = [
     ('projects', tuple(), 0),
     ('ls', tuple(), 1),
-    ('show', ('issue1',), 1),
-    ('diff', ('issue1',), 1),
-    ('reset', ('issue1',), 1),
+    ('show', ('TEST-71',), 1),
+    ('diff', ('TEST-71',), 1),
+    ('reset', ('TEST-71',), 1),
     ('clone', ('https://jira.atlassian.com/TEST1',), 0),
     ('new', ('TEST', 'Story', 'Summary'), 0),
     ('pull', tuple(), 0),
     ('push', tuple(), 1),
-    ('edit', ('issue1', '--summary', 'Egg'), 1),
+    ('edit', ('TEST-71', '--summary', 'Egg'), 1),
 ]
 
 
@@ -48,7 +48,7 @@ def test_main_smoketest(mock_authenticate, mock_push_issues, mock_pull_issues,
     mock_jira_local.return_value = mock_jira
 
     # add fixture to Jira dict
-    mock_jira['issue1'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
     runner = CliRunner()
     result = runner.invoke(cli, [command, *params])

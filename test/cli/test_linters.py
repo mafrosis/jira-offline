@@ -25,7 +25,7 @@ def test_lint_smoketest(mock_jira_local, mock_jira, subcommand):
     mock_jira_local.return_value = mock_jira
 
     # add fixture to Jira dict
-    mock_jira['issue1'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
     runner = CliRunner()
     result = runner.invoke(cli, ['lint', subcommand])

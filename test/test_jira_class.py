@@ -40,7 +40,7 @@ def test_jira__write_issues__calls_write_all(mock_open, mock_jsonlines, mock_jir
     Ensure write_issues calls jsonlines.write_all. If this test is failing it indicates a bug in the
     write_issues() method.
     '''
-    mock_jira_core['epic1'] = Issue.deserialize(EPIC_1)
+    mock_jira_core['TEST-1'] = Issue.deserialize(EPIC_1)
 
     mock_jira_core.write_issues()
 
@@ -53,9 +53,9 @@ def test_jira__write_issues__calls_serialize_for_each_item_in_self(mock_open, mo
     '''
     Ensure write_issues calls Issue.serialize for each line in self (which implements dict)
     '''
-    mock_jira_core['epic1'] = Issue.deserialize(EPIC_1)
-    mock_jira_core['issue1'] = Issue.deserialize(ISSUE_1)
-    mock_jira_core['issue2'] = Issue.deserialize(ISSUE_MISSING_EPIC)
+    mock_jira_core['TEST-1'] = Issue.deserialize(EPIC_1)
+    mock_jira_core['TEST-71'] = Issue.deserialize(ISSUE_1)
+    mock_jira_core['TEST-72'] = Issue.deserialize(ISSUE_MISSING_EPIC)
 
     with mock.patch('jira_offline.jira.Issue.serialize') as mock_issue_serialize:
         mock_jira_core.write_issues()
@@ -68,14 +68,14 @@ def test_jira__write_issues__calls_issue_diff_for_existing_issues_only(mock_open
     '''
     Ensure write_issues calls Issue.serialize for each line in self (which implements dict)
     '''
-    mock_jira_core['issue1'] = Issue.deserialize(ISSUE_1)
-    mock_jira_core['issue_new'] = Issue.deserialize(ISSUE_NEW)
+    mock_jira_core['TEST-71'] = Issue.deserialize(ISSUE_1)
+    mock_jira_core[ISSUE_NEW['key']] = Issue.deserialize(ISSUE_NEW)
 
     with mock.patch('jira_offline.jira.Issue.diff'):
         mock_jira_core.write_issues()
 
-        assert mock_jira_core['issue1'].diff.called
-        assert mock_jira_core['issue_new'].diff.called
+        assert mock_jira_core['TEST-71'].diff.called
+        assert mock_jira_core[ISSUE_NEW['key']].diff.called
 
 
 @mock.patch('jira_offline.jira.api_get')
@@ -439,47 +439,47 @@ def test_keys__respect_the_filter(mock_jira_core):
     '''
     Ensure that jira.keys() respects a configured jira.filter parameter
     '''
-    mock_jira_core['issue1'] = Issue.deserialize(ISSUE_1)
-    mock_jira_core['issue2'] = Issue.deserialize(ISSUE_2)
-    mock_jira_core['issue2'].project = 'SECOND'
+    mock_jira_core['TEST-71'] = Issue.deserialize(ISSUE_1)
+    mock_jira_core['TEST-72'] = Issue.deserialize(ISSUE_2)
+    mock_jira_core['TEST-72'].project = 'SECOND'
 
-    assert list(mock_jira_core.keys()) == ['issue1', 'issue2']
+    assert list(mock_jira_core.keys()) == ['TEST-71', 'TEST-72']
 
     mock_jira_core.filter.project = 'SECOND'
 
-    assert list(mock_jira_core.keys()) == ['issue2']
+    assert list(mock_jira_core.keys()) == ['TEST-72']
 
 
 def test_values__respect_the_filter(mock_jira_core):
     '''
     Ensure that jira.values() respects a configured jira.filter parameter
     '''
-    mock_jira_core['issue1'] = Issue.deserialize(ISSUE_1)
-    mock_jira_core['issue2'] = Issue.deserialize(ISSUE_2)
-    mock_jira_core['issue2'].project = 'SECOND'
+    mock_jira_core['TEST-71'] = Issue.deserialize(ISSUE_1)
+    mock_jira_core['TEST-72'] = Issue.deserialize(ISSUE_2)
+    mock_jira_core['TEST-72'].project = 'SECOND'
 
-    assert list(mock_jira_core.values()) == [mock_jira_core['issue1'], mock_jira_core['issue2']]
+    assert list(mock_jira_core.values()) == [mock_jira_core['TEST-71'], mock_jira_core['TEST-72']]
 
     mock_jira_core.filter.project = 'SECOND'
 
-    assert list(mock_jira_core.values()) == [mock_jira_core['issue2']]
+    assert list(mock_jira_core.values()) == [mock_jira_core['TEST-72']]
 
 
 def test_items__respect_the_filter(mock_jira_core):
     '''
     Ensure that jira.items() respects a configured jira.filter parameter
     '''
-    mock_jira_core['issue1'] = Issue.deserialize(ISSUE_1)
-    mock_jira_core['issue2'] = Issue.deserialize(ISSUE_2)
-    mock_jira_core['issue2'].project = 'SECOND'
+    mock_jira_core['TEST-71'] = Issue.deserialize(ISSUE_1)
+    mock_jira_core['TEST-72'] = Issue.deserialize(ISSUE_2)
+    mock_jira_core['TEST-72'].project = 'SECOND'
 
     assert list(mock_jira_core.items()) == [
-        ('issue1', mock_jira_core['issue1']),
-        ('issue2', mock_jira_core['issue2']),
+        ('TEST-71', mock_jira_core['TEST-71']),
+        ('TEST-72', mock_jira_core['TEST-72']),
     ]
 
     mock_jira_core.filter.project = 'SECOND'
 
     assert list(mock_jira_core.items()) == [
-        ('issue2', mock_jira_core['issue2']),
+        ('TEST-72', mock_jira_core['TEST-72']),
     ]
