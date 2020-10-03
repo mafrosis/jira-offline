@@ -9,8 +9,8 @@ from unittest import mock
 import pytest
 
 from fixtures import EPIC_1, ISSUE_1, ISSUE_2, ISSUE_MISSING_EPIC, ISSUE_NEW
-from jira_offline.exceptions import (EpicNotFound, EstimateFieldUnavailable, JiraApiError, JiraNotConfigured,
-                                     ProjectDoesntExist)
+from jira_offline.exceptions import (EpicNotFound, EstimateFieldUnavailable, FailedAuthError,
+                                     JiraApiError, JiraNotConfigured, ProjectDoesntExist)
 from jira_offline.models import CustomFields, Issue, IssueType, ProjectMeta
 
 
@@ -276,6 +276,23 @@ def test_jira__get_project_meta__handles_no_priority_for_issuetype(mock_api_get,
 
     assert mock_api_get.called
     assert project.custom_fields == CustomFields(estimate='10106')
+
+
+@mock.patch('jira_offline.utils.decorators.get_user_creds')
+@mock.patch('jira_offline.utils.api._request', side_effect=FailedAuthError)
+def test_jira__get_project_meta__auth_retry_decorator(mock_api_request, mock_get_user_creds, mock_jira_core, project):
+    '''
+    Ensure a password prompt is shown when we have an API authentication failure
+    '''
+    # mock out call to _get_project_issue_statuses and _get_project_components
+    mock_jira_core._get_project_issue_statuses = mock.Mock()
+    mock_jira_core._get_project_components = mock.Mock()
+
+    # swallow the second FailedAuthError, the first one _should_ trigger a call to `get_user_creds`
+    with pytest.raises(FailedAuthError):
+        mock_jira_core.get_project_meta(project)
+
+    assert mock_get_user_creds.called is True
 
 
 @mock.patch('jira_offline.jira.api_get')

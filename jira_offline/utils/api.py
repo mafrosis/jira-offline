@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 
 import requests
 
-from jira_offline.exceptions import JiraApiError, JiraUnavailable
+from jira_offline.exceptions import FailedAuthError, JiraApiError, JiraUnavailable
 from jira_offline.models import ProjectMeta
 
 
@@ -50,6 +50,9 @@ def _request(method: str, project: ProjectMeta, path: str, params: Optional[Dict
         resp.raise_for_status()
 
     except requests.exceptions.HTTPError:
+        if resp.status_code in (401, 403):
+            raise FailedAuthError
+
         if resp.status_code >= 400:
             message = ''
             try:

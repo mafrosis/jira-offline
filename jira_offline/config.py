@@ -42,6 +42,10 @@ def load_config():
         # ensure schema is set to latest
         config.schema_version = AppConfig().schema_version
 
+        # ensure each ProjectMeta instance has a reference to the AppConfig instance
+        for p in config.projects.values():
+            p.config = config
+
     if not config:
         config = AppConfig()
 
