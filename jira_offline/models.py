@@ -119,16 +119,10 @@ class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-att
             raise UnableToCopyCustomCACert(str(e))
 
     def render(self) -> List[Tuple[str, str]]:
-        '''
-        Pretty print this project
-        '''
+        '''Render object as a raw list of tuples'''
+
         def fmt(field_name: str) -> Tuple[str, str]:
-            '''
-            Params:
-                field_name: Dataclass field being formatted
-            Returns:
-                Formatted text
-            '''
+            '''Helper simply wrapping `render_field` for this class'''
             return render_field(ProjectMeta, field_name, getattr(self, field_name))
 
         if self.oauth:
@@ -305,11 +299,11 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
 
     def render(self, conflicts: dict=None, modified_fields: set=None) -> List[Tuple[str, str]]:
         '''
-        Pretty print this Issue. When `conflicts` is passed, render attributes as
+        Render object as a raw list of tuples.
 
         Params:
-            conflicts:        Render conflicting attributes in the git-style
-            modified_fields:  Render coloured output for fields which have been modified
+            conflicts:        Render conflicting fields in the style of git-merge
+            modified_fields:  Render modified fields with colours in the style of git-diff
         '''
         def fmt(field_name: str, prefix: str=None) -> Tuple:
             '''
