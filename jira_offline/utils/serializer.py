@@ -293,8 +293,7 @@ class DataclassSerializer:
 
             try:
                 # pull value from dataclass field name, or by property name, if defined on the dataclass.field
-                field_name = f.metadata.get('property', f.name)
-                raw_value = attrs[field_name]
+                raw_value = attrs[f.name]
 
             except KeyError as e:
                 # handle key missing from passed dict
@@ -337,11 +336,8 @@ class DataclassSerializer:
             if 'w' not in rw_flag:
                 continue
 
-            # pull value from dataclass field name, or by property name, if defined on the dataclass.field
-            write_field_name = f.metadata.get('property', f.name)
-
-            serialized_value = serialize_value(f.type, self.__dict__.get(f.name))
+            serialized_value = serialize_value(f.type, getattr(self, f.name))
             if serialized_value:
-                data[write_field_name] = serialized_value
+                data[f.name] = serialized_value
 
         return data
