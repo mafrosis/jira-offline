@@ -161,7 +161,7 @@ def cli_clone(ctx, project_uri: str, username: str=None, password: str=None, oau
     '''
     Clone a Jira project to offline
 
-    PROJECT - Jira project key to configure and pull
+    PROJECT_URI - Jira project URI to setup and clone, for example: https://jira.atlassian.com:8080/PROJ
     '''
     uri = urlparse(project_uri)
 
