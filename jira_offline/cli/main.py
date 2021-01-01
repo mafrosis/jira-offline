@@ -372,13 +372,14 @@ def cli_edit(ctx, key: str, as_json: bool=False, **kwargs):
 
 @click.command(name='import')
 @click.argument('file', type=click.File('r'))
-def cli_import(file: io.TextIOWrapper):
+@click.pass_context
+def cli_import(ctx, file: io.TextIOWrapper):
     '''
     Import issues from stdin, or from a filepath
 
     FILE  Jsonlines format file from which to import issues
     '''
-    jira = Jira()
+    jira: Jira = ctx.obj.jira
     jira.load_issues()
 
     no_input = True
