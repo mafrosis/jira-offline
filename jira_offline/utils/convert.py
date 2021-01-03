@@ -34,7 +34,6 @@ def jiraapi_object_to_issue(project: 'ProjectMeta', issue: dict) -> Issue:
         'key': issue['key'],
         'labels': issue['fields']['labels'],
         'priority': issue['fields']['priority']['name'] if issue['fields']['priority'] else '',
-        'project': issue['fields']['project']['key'],
         'reporter': issue['fields']['reporter']['displayName'],
         'status': issue['fields']['status']['name'],
         'summary': issue['fields']['summary'],
@@ -47,7 +46,7 @@ def jiraapi_object_to_issue(project: 'ProjectMeta', issue: dict) -> Issue:
     if issue['fields'].get(f'customfield_{project.custom_fields.estimate}'):
         jiraapi_object['estimate'] = issue['fields'][f'customfield_{project.custom_fields.estimate}']
 
-    return Issue.deserialize(jiraapi_object, project_ref=project)
+    return Issue.deserialize(jiraapi_object, project=project)
 
 
 def issue_to_jiraapi_update(project: 'ProjectMeta', issue: Issue, modified: set) -> dict:
@@ -75,8 +74,6 @@ def issue_to_jiraapi_update(project: 'ProjectMeta', issue: Issue, modified: set)
 
     # support Issue.estimate aka "Story Points", if in use
     field_keys['estimate'] = f'customfield_{project.custom_fields.estimate}'
-
-    issue_values['project'] = {'key': issue_values['project']}
 
     for field_name in ('assignee', 'issuetype', 'reporter'):
         if field_name in issue_values:

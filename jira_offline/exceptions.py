@@ -156,12 +156,12 @@ class NoProjectsSetup(BaseAppException):
 class ProjectDoesntExist(BaseAppException):
     'Project {} does not exist!'
 
-    def __init__(self, project_ref):
-        self.project_ref = project_ref
+    def __init__(self, project):
+        self.project = project
         super().__init__('')
 
     def __str__(self):
-        return self.__doc__.format(self.project_ref)
+        return self.__doc__.format(self.project)
 
 
 # Raised when trying to pull a project which has not been cloned

@@ -35,20 +35,20 @@ def get_field_by_name(cls: type, field_name: str) -> dataclasses.Field:
     raise Exception
 
 
-def find_project(jira: 'Jira', projectkey: str) -> 'ProjectMeta':
+def find_project(jira: 'Jira', project_key: str) -> 'ProjectMeta':
     '''
     Extract the project configuration object for the specified project key
 
     Params:
         jira:        Dependency-injected jira.Jira object
-        projectkey:  Short Jira project key
+        project_key:  Short Jira project key
     '''
     try:
         return next(iter(
-            [pm for id, pm in jira.config.projects.items() if pm.key == projectkey]
+            [pm for id, pm in jira.config.projects.items() if pm.key == project_key]
         ))
     except StopIteration:
-        raise ProjectNotConfigured(projectkey)
+        raise ProjectNotConfigured(project_key)
 
 
 @functools.lru_cache()

@@ -58,7 +58,7 @@ def cli_ls(ctx, as_json: bool=False, project: str=None):
     jira.load_issues()
 
     # filter issues on project
-    jira.filter.project = project
+    jira.filter.project_key = project
 
     if as_json:
         for issue in jira.values():

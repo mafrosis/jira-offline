@@ -456,13 +456,12 @@ def test_keys__respect_the_filter(mock_jira_core):
     '''
     Ensure that jira.keys() respects a configured jira.filter parameter
     '''
-    mock_jira_core['TEST-71'] = Issue.deserialize(ISSUE_1)
-    mock_jira_core['TEST-72'] = Issue.deserialize(ISSUE_2)
-    mock_jira_core['TEST-72'].project = 'SECOND'
+    mock_jira_core['TEST-71'] = Issue.deserialize(ISSUE_1, project=ProjectMeta('FIRST'))
+    mock_jira_core['TEST-72'] = Issue.deserialize(ISSUE_2, project=ProjectMeta('SECOND'))
 
     assert list(mock_jira_core.keys()) == ['TEST-71', 'TEST-72']
 
-    mock_jira_core.filter.project = 'SECOND'
+    mock_jira_core.filter.project_key = 'SECOND'
 
     assert list(mock_jira_core.keys()) == ['TEST-72']
 
@@ -471,13 +470,12 @@ def test_values__respect_the_filter(mock_jira_core):
     '''
     Ensure that jira.values() respects a configured jira.filter parameter
     '''
-    mock_jira_core['TEST-71'] = Issue.deserialize(ISSUE_1)
-    mock_jira_core['TEST-72'] = Issue.deserialize(ISSUE_2)
-    mock_jira_core['TEST-72'].project = 'SECOND'
+    mock_jira_core['TEST-71'] = Issue.deserialize(ISSUE_1, project=ProjectMeta('FIRST'))
+    mock_jira_core['TEST-72'] = Issue.deserialize(ISSUE_2, project=ProjectMeta('SECOND'))
 
     assert list(mock_jira_core.values()) == [mock_jira_core['TEST-71'], mock_jira_core['TEST-72']]
 
-    mock_jira_core.filter.project = 'SECOND'
+    mock_jira_core.filter.project_key = 'SECOND'
 
     assert list(mock_jira_core.values()) == [mock_jira_core['TEST-72']]
 
@@ -486,16 +484,15 @@ def test_items__respect_the_filter(mock_jira_core):
     '''
     Ensure that jira.items() respects a configured jira.filter parameter
     '''
-    mock_jira_core['TEST-71'] = Issue.deserialize(ISSUE_1)
-    mock_jira_core['TEST-72'] = Issue.deserialize(ISSUE_2)
-    mock_jira_core['TEST-72'].project = 'SECOND'
+    mock_jira_core['TEST-71'] = Issue.deserialize(ISSUE_1, project=ProjectMeta('FIRST'))
+    mock_jira_core['TEST-72'] = Issue.deserialize(ISSUE_2, project=ProjectMeta('SECOND'))
 
     assert list(mock_jira_core.items()) == [
         ('TEST-71', mock_jira_core['TEST-71']),
         ('TEST-72', mock_jira_core['TEST-72']),
     ]
 
-    mock_jira_core.filter.project = 'SECOND'
+    mock_jira_core.filter.project_key = 'SECOND'
 
     assert list(mock_jira_core.items()) == [
         ('TEST-72', mock_jira_core['TEST-72']),

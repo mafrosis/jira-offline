@@ -165,7 +165,9 @@ class AppConfig(DataclassSerializer):
 class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attributes
     project_id: str = field(metadata={'friendly': 'Project ID', 'readonly': True})
     issuetype: str = field(metadata={'friendly': 'Type', 'readonly': True})
-    project: str = field(metadata={'readonly': True})
+
+    project: ProjectMeta = field(repr=False, metadata={'rw': ''})
+
     summary: str
     assignee: Optional[str] = field(default=None)
     created: Optional[datetime.datetime] = field(default=None, metadata={'readonly': True})
@@ -192,7 +194,9 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
     # "rw" flag instructs serializer to read/deserialize this only; do not include during writes
     diff_to_original: Optional[list] = field(default=None, metadata={'rw': 'r'})
 
-    project_ref: Optional[ProjectMeta] = field(default=None, metadata={'rw': ''})
+    @property
+    def project_key(self) -> str:
+        return self.project.key
 
     @classmethod
     @functools.lru_cache(maxsize=1)
@@ -200,7 +204,9 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         '''
         Static class property returning a blank/empty Issue
         '''
-        blank_issue = Issue(project_id='', project='', issuetype='', summary='', description='')
+        blank_issue = Issue(
+            project_id='', project=ProjectMeta(key=''), issuetype='', summary='', description=''
+        )
         blank_issue.original = blank_issue.serialize()
         return blank_issue
 
@@ -230,7 +236,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         return list(dictdiffer.diff(data, self.original, ignore=set(['diff_to_original'])))
 
     @classmethod
-    def deserialize(cls, attrs: dict, project_ref: Optional[ProjectMeta]=None,  # type: ignore[override] # pylint: disable=arguments-differ
+    def deserialize(cls, attrs: dict, project: Optional[ProjectMeta]=None,  # type: ignore[override] # pylint: disable=arguments-differ
                     ignore_missing: bool=False) -> 'Issue':
         '''
         Deserialize a dict into an Issue object. Inflate the _original_ version of the object from the
@@ -238,14 +244,19 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
 
         Params:
             attrs:           Dict to deserialize into an Issue
-            project_ref:     Reference to Jira project this Issue belongs to
+            project:         Reference to Jira project this Issue belongs to
             ignore_missing:  Ignore missing mandatory fields during deserialisation
         Returns:
             List from dictdiffer.diff for Issue.diff_to_original property
         '''
         # deserialize supplied dict into an Issue object
         # use `cast` to cover the mypy typecheck errors the arise from polymorphism
-        issue = cast(Issue, super().deserialize(attrs, ignore_missing=ignore_missing))
+        issue = cast(
+            Issue,
+            super().deserialize(
+                attrs, ignore_missing=ignore_missing, constructor_kwargs={'project': project},
+            )
+        )
 
         if issue.diff_to_original is None:
             issue.diff_to_original = []
@@ -255,9 +266,6 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
             # apply the diff_to_original patch to the serialized version of the issue, which
             # recreates the issue dict as last seen on the Jira server
             issue.original = dictdiffer.patch(issue.diff_to_original, issue.serialize())
-
-        # store reference to Jira project this Issue belongs to
-        issue.project_ref = project_ref
 
         return issue
 
@@ -351,12 +359,12 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
 @dataclass
 class IssueFilter:
     '''Encapsulates any filters passed in via CLI'''
-    project: Optional[str] = field(default=None)
+    project_key: Optional[str] = field(default=None)
 
     def compare(self, issue: Issue) -> bool:
         '''Compare passed Issue object against the class attributes'''
 
-        if self.project is None:
+        if self.project_key is None:
             return True
 
-        return issue.project == self.project
+        return issue.project.key == self.project_key
