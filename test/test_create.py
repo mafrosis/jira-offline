@@ -56,7 +56,7 @@ def test_create__create_issue__mandatory_fields_are_set_in_new_issue(mock_jira, 
     '''
     offline_issue = create_issue(mock_jira, project, 'Story', 'This is a summary')
 
-    assert offline_issue.project == 'TEST'
+    assert offline_issue.project == project
     assert offline_issue.issuetype == 'Story'
     assert offline_issue.summary == 'This is a summary'
     assert offline_issue.description == ''
@@ -68,8 +68,7 @@ def test_create__create_issue__error_on_existing_summary_for_same_project(mock_j
     Check that create_issue() raises an error where summary string already exists for same project
     '''
     # add an Issue fixture to the Jira dict
-    mock_jira['TEST-72'] = Issue.deserialize(ISSUE_1)
-    mock_jira['TEST-72'].project = 'TEST'
+    mock_jira['TEST-72'] = Issue.deserialize(ISSUE_1, project=project)
 
     with pytest.raises(SummaryAlreadyExists):
         create_issue(mock_jira, project, 'Story', mock_jira['TEST-72'].summary)
@@ -263,7 +262,7 @@ def test_create__import_new_issue__calls_create_issue(mock_create_issue, mock_fi
     mock_find_project.return_value = project
 
     import_dict = {
-        'project': ISSUE_1['project'],
+        'project': 'TEST',
         'issuetype': 'Epic',
         'summary': 'Egg',
         'estimate': 99,

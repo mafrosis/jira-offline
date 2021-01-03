@@ -108,7 +108,7 @@ class Jira(collections.abc.MutableMapping):
                 with open(cache_filepath) as f:
                     for obj in jsonlines.Reader(f.readlines()).iter(type=dict):
                         self[obj['key']] = Issue.deserialize(
-                            obj, project_ref=self.config.projects[obj['project_id']]
+                            obj, project=self.config.projects[obj['project_id']]
                         )
 
             except (KeyError, TypeError, jsonlines.Error):

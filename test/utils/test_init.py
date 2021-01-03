@@ -19,9 +19,9 @@ def test_find_project__returns_projectmeta_object(mock_jira):
     assert project.password == 'dummy'
 
 
-def test_find_project__raises_when_projectkey_not_found(mock_jira):
+def test_find_project__raises_when_project_key_not_found(mock_jira):
     '''
-    Ensure find_project raises ProjectNotConfigured for an invalid projectkey
+    Ensure find_project raises ProjectNotConfigured for an invalid project_key
     '''
     with pytest.raises(ProjectNotConfigured):
         find_project(mock_jira, 'UNKNOWN')

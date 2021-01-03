@@ -60,7 +60,7 @@ def find_epic_by_reference(jira: 'Jira', epic_ref_string: str) -> Issue:
     return matched_epic
 
 
-def check_summary_exists(jira: 'Jira', project_key: str, summary: str) -> bool:
+def check_summary_exists(jira: 'Jira', project: ProjectMeta, summary: str) -> bool:
     '''
     Check if summary string already used in project with project_key
 
@@ -70,7 +70,7 @@ def check_summary_exists(jira: 'Jira', project_key: str, summary: str) -> bool:
         summary:      Issue.summary field
     '''
     for issue in jira.values():
-        if issue.project != project_key:
+        if issue.project != project:
             continue
         if issue.summary == summary:
             return True
@@ -99,11 +99,10 @@ def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: st
     new_issue = Issue.deserialize(
         {
             'project_id': project.id,
-            'project': project.key,
             'issuetype': issuetype,
             'summary': summary,
         },
-        project_ref=project
+        project=project
     )
 
     # although description is an API mandatory field, we can survive without one

@@ -265,14 +265,16 @@ def _validate_optional_fields_have_a_default(field):
 @dataclasses.dataclass
 class DataclassSerializer:
     @classmethod
-    def deserialize(cls, attrs: dict, tz: Optional[str]=None, ignore_missing: bool=False) -> Any:
+    def deserialize(cls, attrs: dict, tz: Optional[str]=None, ignore_missing: bool=False,
+                    constructor_kwargs: Optional[dict]=None) -> Any:
         '''
         Deserialize JSON-compatible dict to dataclass.
 
         Params:
-            attrs:           Dict to deserialize into an instance of cls
-            tz:              Timezone to apply to deserialized date/datetime
-            ignore_missing:  Continue deserialize even when mandatory fields are missing
+            attrs:               Dict to deserialize into an instance of cls
+            tz:                  Timezone to apply to deserialized date/datetime
+            ignore_missing:      Continue deserialize even when mandatory fields are missing
+            constructor_kwargs:  Additional kwargs to pass to `cls` dataclass constructor
         Returns:
             An instance of cls
         '''
@@ -314,6 +316,10 @@ class DataclassSerializer:
 
             except DeserializeError as e:
                 raise DeserializeError(f'{e} in field {f.name}')
+
+        # feed additional kwargs to the target class constructor
+        if constructor_kwargs:
+            data.update(constructor_kwargs)
 
         return cls(**data)  # type: ignore[call-arg]
 

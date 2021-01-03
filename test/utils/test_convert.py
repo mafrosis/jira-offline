@@ -5,7 +5,7 @@ import pytest
 
 from fixtures import ISSUE_1
 from jira_offline.models import Issue
-from jira_offline.sync import issue_to_jiraapi_update
+from jira_offline.utils.convert import issue_to_jiraapi_update
 
 
 @pytest.mark.parametrize('modified', [
@@ -48,7 +48,7 @@ def test_issue_to_jiraapi_update__all_fields_are_returned_for_new_issue(mock_jir
     issue_dict = issue_to_jiraapi_update(
         project,
         Issue.deserialize(ISSUE_1),
-        {'issuetype', 'project', 'summary', 'epic_ref', 'description', 'fix_versions', 'reporter'}
+        {'issuetype', 'summary', 'epic_ref', 'description', 'fix_versions', 'reporter'}
     )
 
     assert issue_dict == {
@@ -56,7 +56,6 @@ def test_issue_to_jiraapi_update__all_fields_are_returned_for_new_issue(mock_jir
         'description': 'This is a story or issue',
         'fix_versions': ['0.1'],
         'issuetype': {'name': 'Story'},
-        'project': {'key': 'TEST'},
         'reporter': {'name': 'danil1'},
         'summary': 'This is the story summary',
     }
