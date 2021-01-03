@@ -27,7 +27,7 @@ def test_create_new_issue_and_edit_before_push(jira_project, run_in_docker):
     assert 'INFO: Pushed 1 of 1 issues' in output
 
     # load and parse all current issues (there will be only 1!)
-    output = run_in_docker(jira_project, f'ls --json')
+    output = run_in_docker(jira_project, 'ls --json')
     data = json.loads(output)
 
     # ensure edit we successful
@@ -51,7 +51,7 @@ def test_edit_existing_issue_and_push(jira_project, run_in_docker):
     setup()
 
     # load and parse all current issues (there will be only 1!)
-    output = run_in_docker(jira_project, f'ls --json')
+    output = run_in_docker(jira_project, 'ls --json')
     data = json.loads(output)
 
     # edit the issue
@@ -62,7 +62,7 @@ def test_edit_existing_issue_and_push(jira_project, run_in_docker):
     assert 'INFO: Pushed 1 of 1 issues' in output
 
     # load and parse all current issues (there will be only 1!)
-    output = run_in_docker(jira_project, f'ls --json')
+    output = run_in_docker(jira_project, 'ls --json')
     data = json.loads(output)
 
     # ensure edit was successful

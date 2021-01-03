@@ -197,7 +197,7 @@ def run_in_docker(request):
             return ret
 
         except docker.errors.ContainerError as e:
-            raise Exception(f'Docker run failed during integration test ({e})')
+            raise Exception(f'Docker run failed during integration test ({e})') from e
 
     yield wrapped
     tmpdir.cleanup()
