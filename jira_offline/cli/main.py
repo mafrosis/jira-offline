@@ -161,7 +161,7 @@ def cli_clone(ctx, project_uri: str, username: str=None, password: str=None, oau
     '''
     Clone a Jira project to offline
 
-    PROJECT - Jira project key to configure and pull
+    PROJECT_URI - Jira project URI to setup and clone, for example: https://jira.atlassian.com:8080/PROJ
     '''
     uri = urlparse(project_uri)
 
@@ -372,13 +372,14 @@ def cli_edit(ctx, key: str, as_json: bool=False, **kwargs):
 
 @click.command(name='import')
 @click.argument('file', type=click.File('r'))
-def cli_import(file: io.TextIOWrapper):
+@click.pass_context
+def cli_import(ctx, file: io.TextIOWrapper):
     '''
     Import issues from stdin, or from a filepath
 
     FILE  Jsonlines format file from which to import issues
     '''
-    jira = Jira()
+    jira: Jira = ctx.obj.jira
     jira.load_issues()
 
     no_input = True

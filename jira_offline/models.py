@@ -19,8 +19,7 @@ from requests_oauthlib import OAuth1
 from tabulate import tabulate
 
 from jira_offline import __title__
-from jira_offline.exceptions import (UnableToCopyCustomCACert, InvalidIssuePriority, InvalidIssueStatus,
-                                     NoAuthenticationMethod)
+from jira_offline.exceptions import (UnableToCopyCustomCACert, NoAuthenticationMethod)
 from jira_offline.utils import render_field, render_value
 from jira_offline.utils.serializer import DataclassSerializer
 
@@ -119,16 +118,10 @@ class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-att
             raise UnableToCopyCustomCACert(str(e))
 
     def render(self) -> List[Tuple[str, str]]:
-        '''
-        Pretty print this project
-        '''
+        '''Render object as a raw list of tuples'''
+
         def fmt(field_name: str) -> Tuple[str, str]:
-            '''
-            Params:
-                field_name: Dataclass field being formatted
-            Returns:
-                Formatted text
-            '''
+            '''Helper simply wrapping `render_field` for this class'''
             return render_field(ProjectMeta, field_name, getattr(self, field_name))
 
         if self.oauth:
@@ -186,13 +179,9 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
     id: Optional[str] = field(default=None, metadata={'readonly': True})
     key: Optional[str] = field(default=None, metadata={'readonly': True})
     labels: Optional[set] = field(default=None)
-    _priority: Optional[str] = field(
-        default=None, metadata={'friendly': 'Priority', 'property': 'priority'}
-    )
+    priority: Optional[str] = field(default=None, metadata={'friendly': 'Priority'})
     reporter: Optional[str] = field(default=None)
-    _status: Optional[str] = field(
-        default=None, metadata={'friendly': 'Status', 'property': 'status', 'readonly': True}
-    )
+    status: Optional[str] = field(default=None, metadata={'friendly': 'Status', 'readonly': True})
     updated: Optional[datetime.datetime] = field(default=None, metadata={'readonly': True})
 
     # local-only dict which represents serialized Issue last seen on Jira server
@@ -214,36 +203,6 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         blank_issue = Issue(project_id='', project='', issuetype='', summary='', description='')
         blank_issue.original = blank_issue.serialize()
         return blank_issue
-
-    @property
-    def priority(self) -> Optional[str]:
-        return self._priority
-
-    @priority.setter
-    def priority(self, value: str):
-        if not self.project_ref:
-            raise Exception
-
-        if value not in self.project_ref.priorities:
-            raise InvalidIssuePriority(', '.join(self.project_ref.priorities))
-
-        self._priority = value
-
-    @property
-    def status(self) -> Optional[str]:
-        return self._status
-
-    @status.setter
-    def status(self, value: str):
-        if not self.project_ref:
-            raise Exception
-
-        if value not in self.project_ref.issuetypes[self.issuetype].statuses:
-            raise InvalidIssueStatus(
-                ', '.join(self.project_ref.issuetypes[self.issuetype].statuses)
-            )
-
-        self._status = value
 
     @property
     def exists(self) -> bool:
@@ -305,11 +264,11 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
 
     def render(self, conflicts: dict=None, modified_fields: set=None) -> List[Tuple[str, str]]:
         '''
-        Pretty print this Issue. When `conflicts` is passed, render attributes as
+        Render object as a raw list of tuples.
 
         Params:
-            conflicts:        Render conflicting attributes in the git-style
-            modified_fields:  Render coloured output for fields which have been modified
+            conflicts:        Render conflicting fields in the style of git-merge
+            modified_fields:  Render modified fields with colours in the style of git-diff
         '''
         def fmt(field_name: str, prefix: str=None) -> Tuple:
             '''
@@ -362,7 +321,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
             *fmt('issuetype'),
             *epicdetails,
             *fmt('status'),
-            *fmt('_priority'),
+            *fmt('priority'),
             *fmt('assignee'),
             *fmt('estimate'),
             *fmt('description'),
