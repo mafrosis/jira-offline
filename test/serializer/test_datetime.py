@@ -39,7 +39,7 @@ def test_datetime_deserialize(tz_iso, tz_obj, tz_name):
 
 
 @pytest.mark.parametrize('tz_iso,tz_name', [
-    ('+00:00', None),
+    ('+10:00', None),
     ('+00:00', 'UTC'),
     ('+10:00', 'Australia/Melbourne'),
     ('+00:00', 'Etc/GMT'),
@@ -53,7 +53,7 @@ def test_datetime_deserialize_roundtrip(tz_iso, tz_name):
 
 
 @pytest.mark.parametrize('tz_iso,tz_obj', [
-    ('+00:00', tzlocal()),
+    ('+10:00', tzlocal()),
     ('+10:00', tzoffset(None, 36000)),
     ('+10:00', gettz('Australia/Melbourne')),
 ])

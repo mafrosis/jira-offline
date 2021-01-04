@@ -1,4 +1,11 @@
 FROM mafrosis/jira-offline
+
+# install lint, test, packaging tools
 ADD requirements-dev.txt /app/
 RUN pip install -r requirements-dev.txt
+
+# set a legitimate timezone for the test environment
+ENV TZ=Australia/Melbourne
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 ENTRYPOINT ["pytest"]
