@@ -1,6 +1,6 @@
 arrow>0.15,<0.16
 click>7,<8
-cryptography>2.9,<3
+cryptography>=3.2
 dataclasses; python_version<='3.6'
 dictdiffer>0.8,<0.9
 jsonlines>=1.2,<1.3
