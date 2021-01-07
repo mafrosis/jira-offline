@@ -1,8 +1,10 @@
 '''
 Module for functions related to Issue creation and bulk import.
 '''
+import datetime
 import logging
 from typing import Optional, Tuple, TYPE_CHECKING
+from tzlocal import get_localzone
 import uuid
 
 from jira_offline.exceptions import (DeserializeError, EpicNotFound, EpicSearchStrUsedMoreThanOnce,
@@ -110,7 +112,7 @@ def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: st
         kwargs['description'] = ''
 
     for field_name, value in kwargs.items():
-        set_field_on_issue(new_issue, field_name, value)
+        set_field_on_issue(new_issue, field_name, value, project.timezone)
 
     if check_summary_exists(jira, new_issue.project, new_issue.summary):
         raise SummaryAlreadyExists
@@ -127,7 +129,8 @@ def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: st
     return new_issue
 
 
-def set_field_on_issue(issue: Issue, field_name: str, value: Optional[str]):
+def set_field_on_issue(issue: Issue, field_name: str, value: Optional[str],
+                       tz: Optional[datetime.tzinfo]=None):
     '''
     Use DataclassSerializer.deserialize_value to convert from string to the corrent type, and then
     set the single attribute on the target Issue object.
@@ -140,9 +143,12 @@ def set_field_on_issue(issue: Issue, field_name: str, value: Optional[str]):
     if value is None:
         return
 
+    if tz is None:
+        tz = get_localzone()
+
     try:
         # convert string value to Issue field type
-        value = deserialize_value(get_field_by_name(Issue, field_name).type, value)
+        value = deserialize_value(get_field_by_name(Issue, field_name).type, value, tz)
 
     except DeserializeError as e:
         raise DeserializeError(f'Failed parsing {field_name} with value {value} ({e})')

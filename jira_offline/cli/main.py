@@ -8,7 +8,9 @@ from typing import Optional, Set
 from urllib.parse import urlparse
 
 import click
+import pytz
 from tabulate import tabulate
+from tzlocal import get_localzone
 
 from jira_offline.auth import authenticate
 from jira_offline.create import create_issue, find_epic_by_reference, import_issue, set_field_on_issue
@@ -181,7 +183,7 @@ def cli_clone(ctx, project_uri: str, username: str=None, password: str=None, oau
         key=uri.path[1:],
         protocol=uri.scheme,
         hostname=uri.netloc,
-        timezone=tz,
+        timezone=pytz.timezone(tz) if tz else get_localzone(),
     )
     # store CA cert, if supplied for this Jira
     if ca_cert:

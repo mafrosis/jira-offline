@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 import datetime
 
-from dateutil.tz import gettz, tzlocal, tzoffset
+from dateutil.tz import gettz, tzoffset, tzutc
 import pytest
+from tzlocal import get_localzone
 
 from jira_offline.utils.serializer import DataclassSerializer
 
@@ -12,17 +13,17 @@ class Test(DataclassSerializer):
     dt: datetime.datetime
 
 
-@pytest.mark.parametrize('tz_iso,tz_obj,tz_name', [
-    ('', tzlocal(), None),
-    ('+00:00', tzlocal(), None),
-    ('+10:00', tzlocal(), None),
-    ('-06:00', tzlocal(), None),
-    ('', gettz('UTC'), 'UTC'),
-    ('+00:00', gettz('UTC'), 'UTC'),
-    ('+10:00', gettz('Australia/Melbourne'), 'Australia/Melbourne'),
-    ('+00:00', gettz('Etc/GMT'), 'Etc/GMT'),
+@pytest.mark.parametrize('tz_iso,tz_name', [
+    ('', None),
+    ('+00:00', None),
+    ('+10:00', None),
+    ('-06:00', None),
+    ('', 'UTC'),
+    ('+00:00', 'UTC'),
+    ('+10:00', 'Australia/Melbourne'),
+    ('+00:00', 'Etc/GMT'),
 ])
-def test_datetime_deserialize(tz_iso, tz_obj, tz_name):
+def test_datetime_deserialize(tz_iso, tz_name):
     """
     Test datetime deserializes, with a variety of timezones
     """
@@ -35,7 +36,17 @@ def test_datetime_deserialize(tz_iso, tz_obj, tz_name):
     assert obj.dt.minute == 44
     assert obj.dt.second == 6
     assert obj.dt.microsecond == 333777
-    assert obj.dt.tzinfo == tz_obj
+
+    # NOTE: generally one should avoid logic in tests, but in this case the complexity cost is low
+    # and it keeps the code & fixtures very simple
+
+    if tz_name is None:
+        # logic mirrors the serializer approach to determining default timezone
+        tz_name = get_localzone().zone
+
+    # The dateutil API sadly returns tzutc() objects for UTC, and tzfile() instances for other
+    # timezones
+    assert obj.dt.tzinfo == tzutc() if tz_name == 'UTC' else gettz(tz_name)
 
 
 @pytest.mark.parametrize('tz_iso,tz_name', [
@@ -53,7 +64,7 @@ def test_datetime_deserialize_roundtrip(tz_iso, tz_name):
 
 
 @pytest.mark.parametrize('tz_iso,tz_obj', [
-    ('+10:00', tzlocal()),
+    ('+10:00', gettz(get_localzone().zone)),
     ('+10:00', tzoffset(None, 36000)),
     ('+10:00', gettz('Australia/Melbourne')),
 ])
@@ -66,7 +77,7 @@ def test_datetime_serialize(tz_iso, tz_obj):
 
 
 @pytest.mark.parametrize('tz_obj,tz_name', [
-    (tzlocal(), None),
+    (gettz(get_localzone().zone), None),
     (gettz('UTC'), 'UTC'),
     (gettz('Australia/Melbourne'), 'Australia/Melbourne'),
     (gettz('Etc/GMT'), 'Etc/GMT'),
@@ -86,4 +97,7 @@ def test_datetime_serialize_roundtrip(tz_obj, tz_name):
     assert obj.dt.minute == 44
     assert obj.dt.second == 6
     assert obj.dt.microsecond == 333777
-    assert obj.dt.tzinfo == tz_obj
+
+    # The dateutil API sadly returns tzutc() objects for UTC, and tzfile() instances for other
+    # timezones
+    assert obj.dt.tzinfo == tzutc() if tz_name == 'UTC' else gettz(tz_name)

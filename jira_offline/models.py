@@ -17,6 +17,7 @@ from oauthlib.oauth1 import SIGNATURE_RSA
 from requests.auth import HTTPBasicAuth
 from requests_oauthlib import OAuth1
 from tabulate import tabulate
+from tzlocal import get_localzone
 
 from jira_offline import __title__
 from jira_offline.exceptions import (UnableToCopyCustomCACert, NoAuthenticationMethod)
@@ -75,7 +76,7 @@ class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-att
     components: Optional[Set[str]] = field(default_factory=set)  # type: ignore[assignment]
     oauth: Optional[OAuth] = field(default=None)
     ca_cert: Optional[str] = field(default=None)
-    timezone: Optional[str] = field(default=None)
+    timezone: datetime.tzinfo = field(default=get_localzone())
 
     # reference to parent AppConfig class
     config: Optional['AppConfig'] = field(default=None, metadata={'rw': ''})
@@ -254,7 +255,10 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         issue = cast(
             Issue,
             super().deserialize(
-                attrs, ignore_missing=ignore_missing, constructor_kwargs={'project': project},
+                attrs,
+                project.timezone if project else None,
+                ignore_missing=ignore_missing,
+                constructor_kwargs={'project': project},
             )
         )
 

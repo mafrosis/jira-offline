@@ -6,8 +6,9 @@ from typing import Any, Optional
 import uuid
 
 import arrow
-from dateutil.tz import gettz, tzlocal
+import pytz
 import typing_inspect
+from tzlocal import get_localzone
 
 from jira_offline.exceptions import DeserializeError
 
@@ -73,7 +74,7 @@ def istype(type_: type, typ: type) -> bool:
     return typ is unwrap_optional_type(type_)
 
 
-def deserialize_value(type_, value: Any, tz: Optional[datetime.tzinfo]=None) -> Any:  # pylint: disable=too-many-branches, too-many-return-statements, too-many-statements
+def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:  # pylint: disable=too-many-branches, too-many-return-statements, too-many-statements
     '''
     Utility function to deserialize `value` into `type_`. Used by DataclassSerializer.
 
@@ -109,20 +110,19 @@ def deserialize_value(type_, value: Any, tz: Optional[datetime.tzinfo]=None) -> 
             raise DeserializeError(f'Failed deserializing "{value}" to UUID')
 
     elif base_type is datetime.date:
-        if tz is None:
-            tz = tzlocal()
         try:
             return arrow.get(value).replace(tzinfo=tz).datetime.date()
         except arrow.parser.ParserError:
             raise DeserializeError(f'Failed deserializing "{value}" to Arrow datetime.date')
 
     elif base_type is datetime.datetime:
-        if tz is None:
-            tz = tzlocal()
         try:
             return arrow.get(value).replace(tzinfo=tz).datetime
         except arrow.parser.ParserError:
             raise DeserializeError(f'Failed deserializing "{value}" to Arrow datetime.datetime')
+
+    elif base_type is datetime.tzinfo:
+        return pytz.timezone(value)
 
     elif base_type is set:
         if not isinstance(value, set) and not isinstance(value, list):
@@ -223,7 +223,10 @@ def serialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-retur
     elif base_type in (datetime.date, datetime.datetime):
         return value.isoformat()
 
-    elif base_type in (set,):
+    elif base_type is datetime.tzinfo:
+        return str(value)
+
+    elif base_type is set:
         return sorted(list(value))
 
     elif base_type is dict and typing_inspect.is_generic_type(type_):
@@ -265,7 +268,7 @@ def _validate_optional_fields_have_a_default(field):
 @dataclasses.dataclass
 class DataclassSerializer:
     @classmethod
-    def deserialize(cls, attrs: dict, tz: Optional[str]=None, ignore_missing: bool=False,
+    def deserialize(cls, attrs: dict, tz: Optional[datetime.tzinfo]=None, ignore_missing: bool=False,
                     constructor_kwargs: Optional[dict]=None) -> Any:
         '''
         Deserialize JSON-compatible dict to dataclass.
@@ -307,12 +310,11 @@ class DataclassSerializer:
                 raise DeserializeError(f'Fatal TypeError for key {f.name} ({e})')
 
             try:
-                if tz:
-                    tzobj = gettz(tz)
-                else:
-                    tzobj = None
-
-                data[f.name] = deserialize_value(f.type, raw_value, tz=tzobj)
+                data[f.name] = deserialize_value(
+                    f.type,
+                    raw_value,
+                    tz=tz if tz else get_localzone()
+                )
 
             except DeserializeError as e:
                 raise DeserializeError(f'{e} in field {f.name}')

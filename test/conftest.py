@@ -7,6 +7,9 @@ from requests.auth import HTTPBasicAuth
 import requests
 import docker
 import pytest
+import pytz
+
+from tzlocal import get_localzone
 
 from jira_offline.jira import Jira
 from jira_offline.models import AppConfig, CustomFields, IssueType, ProjectMeta
@@ -27,8 +30,14 @@ def customfield_priority(request):
     return set(request.param)
 
 
+@pytest.fixture(params=[get_localzone(), pytz.timezone('Europe/London')])
+def timezone(request):
+    '''Parameterized fixture to feed the project fixture below'''
+    return request.param
+
+
 @pytest.fixture
-def project(customfield_estimate, customfield_priority):
+def project(customfield_estimate, customfield_priority, timezone):
     '''
     Fixture representing a configured Jira project
     '''
@@ -38,6 +47,7 @@ def project(customfield_estimate, customfield_priority):
         password='dummy',
         custom_fields=CustomFields(epic_ref='1', epic_name='2', estimate=customfield_estimate),
         priorities=customfield_priority,
+        timezone=timezone,
         issuetypes={
             'Story': IssueType(name='Story', statuses=['Backlog', 'Done']),
         },
