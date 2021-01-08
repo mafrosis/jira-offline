@@ -8,8 +8,7 @@ from tzlocal import get_localzone
 import uuid
 
 from jira_offline.exceptions import (DeserializeError, EpicNotFound, EpicSearchStrUsedMoreThanOnce,
-                                     ImportFailed, InvalidIssueType, ProjectNotConfigured,
-                                     SummaryAlreadyExists)
+                                     ImportFailed, InvalidIssueType, ProjectNotConfigured)
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.sync import merge_issues
 from jira_offline.utils import find_project, get_field_by_name
@@ -62,23 +61,6 @@ def find_epic_by_reference(jira: 'Jira', epic_ref_string: str) -> Issue:
     return matched_epic
 
 
-def check_summary_exists(jira: 'Jira', project: ProjectMeta, summary: str) -> bool:
-    '''
-    Check if summary string already used in project with project_key
-
-    Params:
-        jira:         Dependency-injected jira.Jira object
-        project_key:  Jira project key
-        summary:      Issue.summary field
-    '''
-    for issue in jira.values():
-        if issue.project != project:
-            continue
-        if issue.summary == summary:
-            return True
-    return False
-
-
 def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: str, **kwargs) -> Issue:
     '''
     Create a new Issue
@@ -113,9 +95,6 @@ def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: st
 
     for field_name, value in kwargs.items():
         set_field_on_issue(new_issue, field_name, value, project.timezone)
-
-    if check_summary_exists(jira, new_issue.project, new_issue.summary):
-        raise SummaryAlreadyExists
 
     if new_issue.epic_ref:
         matched_epic = find_epic_by_reference(jira, new_issue.epic_ref)

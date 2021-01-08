@@ -89,11 +89,6 @@ class EpicNotFound(BaseAppException):
         return self.__doc__.format(self.epic_ref)
 
 
-# Raised when creating an issue where the summary text is already used in another issue
-class SummaryAlreadyExists(BaseAppException):
-    'The exact summary text supplied is already in use. Summary strings should be unique.'
-
-
 # Raised when the API call to create a new issue is missing a mandatory Issue fields
 class MissingFieldsForNewIssue(BaseAppException):
     'Mandatory fields missing on call to create a new issue'
