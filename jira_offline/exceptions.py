@@ -171,6 +171,12 @@ class ProjectNotConfigured(BaseAppException):
         return self.__doc__.format(key=self.key)
 
 
+class BadProjectMetaUri(BaseAppException):
+    '''Badly formed Jira project URI passed, must be of the form:
+
+https://jira.atlassian.com:8080/PROJ'''
+
+
 # Raised if Jira is not setup correctly
 class JiraNotConfigured(BaseAppException):
     '''Jira screens are not configured correctly. Unable to continue.

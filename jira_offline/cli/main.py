@@ -5,16 +5,14 @@ import json
 import io
 import logging
 from typing import Optional, Set
-from urllib.parse import urlparse
 
 import click
-import pytz
 from tabulate import tabulate
-from tzlocal import get_localzone
 
 from jira_offline.auth import authenticate
 from jira_offline.create import create_issue, find_epic_by_reference, import_issue, set_field_on_issue
-from jira_offline.exceptions import FailedPullingProjectMeta, ImportFailed, JiraApiError
+from jira_offline.exceptions import (BadProjectMetaUri, FailedPullingProjectMeta, ImportFailed,
+                                     JiraApiError)
 from jira_offline.jira import Jira
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.sync import pull_issues, pull_single_project, push_issues
@@ -165,26 +163,16 @@ def cli_clone(ctx, project_uri: str, username: str=None, password: str=None, oau
 
     PROJECT_URI - Jira project URI to setup and clone, for example: https://jira.atlassian.com:8080/PROJ
     '''
-    uri = urlparse(project_uri)
-
     if username and oauth_private_key:
         click.echo('You cannot supply both username and oauth params together')
         raise click.Abort
 
-    if not uri.scheme or not uri.netloc or not uri.path:
-        click.echo((
-            'Badly formed Jira project URI passed, must be of the form:\n'
-            '  https://jira.atlassian.com:8080/PROJ'
-        ))
+    try:
+        project = ProjectMeta.factory(project_uri, tz)
+    except BadProjectMetaUri as e:
+        click.echo(e)
         raise click.Abort
 
-    # create a new project
-    project = ProjectMeta(
-        key=uri.path[1:],
-        protocol=uri.scheme,
-        hostname=uri.netloc,
-        timezone=pytz.timezone(tz) if tz else get_localzone(),
-    )
     # store CA cert, if supplied for this Jira
     if ca_cert:
         project.set_ca_cert(ca_cert)

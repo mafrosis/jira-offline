@@ -10,17 +10,19 @@ import os
 import pathlib
 import shutil
 from typing import Any, cast, Dict, List, Optional, Set, Tuple
+from urllib.parse import urlparse
 
 import click
 import dictdiffer
 from oauthlib.oauth1 import SIGNATURE_RSA
 from requests.auth import HTTPBasicAuth
 from requests_oauthlib import OAuth1
+import pytz
 from tabulate import tabulate
 from tzlocal import get_localzone
 
 from jira_offline import __title__
-from jira_offline.exceptions import (UnableToCopyCustomCACert, NoAuthenticationMethod)
+from jira_offline.exceptions import (BadProjectMetaUri, UnableToCopyCustomCACert, NoAuthenticationMethod)
 from jira_offline.utils import render_field, render_value
 from jira_offline.utils.serializer import DataclassSerializer
 
@@ -101,6 +103,20 @@ class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-att
     @property
     def id(self) -> str:
         return hashlib.sha1(self.project_uri.encode('utf8')).hexdigest()
+
+    @classmethod
+    def factory(cls, project_uri: str, timezone: Optional[str]=None) -> 'ProjectMeta':
+        uri = urlparse(project_uri)
+
+        if not uri.scheme or not uri.netloc or not uri.path:
+            raise BadProjectMetaUri
+
+        return ProjectMeta(
+            key=uri.path[1:],
+            protocol=uri.scheme,
+            hostname=uri.netloc,
+            timezone=pytz.timezone(timezone) if timezone else get_localzone(),
+        )
 
     def set_ca_cert(self, ca_cert: str):
         '''
