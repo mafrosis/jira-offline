@@ -10,9 +10,19 @@ class Test(DataclassSerializer):
     l: list
 
 
-def test_list_deserialize():
+def test_list_deserialize_from_list():
     """
-    Test list deserializes
+    Test list deserializes from list (JSON compatible)
+    """
+    obj = Test.deserialize({
+        'l': ['abc', 'def']
+    })
+    assert isinstance(obj.l, list)
+    assert obj.l == ['abc', 'def']
+
+def test_list_deserialize_from_numpy_ndarray():
+    """
+    Test list deserializes from numpy.ndarray
     """
     obj = Test.deserialize({
         'l': ['abc', 'def']

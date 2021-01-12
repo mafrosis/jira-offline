@@ -9,6 +9,7 @@ import arrow
 import pytz
 import typing_inspect
 from tzlocal import get_localzone
+import numpy
 
 from jira_offline.exceptions import DeserializeError
 
@@ -125,8 +126,8 @@ def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:  # pylint:
         return pytz.timezone(value)
 
     elif base_type is set:
-        if not isinstance(value, set) and not isinstance(value, list):
-            raise DeserializeError('Value passed to set type must be set or list')
+        if not isinstance(value, (set, list, numpy.ndarray)):
+            raise DeserializeError('Value passed to set type must be set, list or numpy.ndarray')
         return set(value)
 
     elif base_type is int:
@@ -157,11 +158,11 @@ def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:  # pylint:
         # a python dict is JSON-compatible, so no additional conversion necessary
 
     elif base_type is list and typing_inspect.is_generic_type(type_):
-        if not isinstance(value, list):
+        if not isinstance(value, (list, numpy.ndarray)):
             # additional error handling is required here as python will iterate a string as though its
             # a list; causing subsequent code to produce incorrect results when a string is fed to
             # the deserializer
-            raise DeserializeError('Value passed for list types must be list')
+            raise DeserializeError('Value passed for list types must be list or numpy.ndarray')
 
         # extract value type for the generic List
         generic_type = type_.__args__[0]
@@ -176,10 +177,10 @@ def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:  # pylint:
 
     elif base_type is list:
         # additional error handling for non-generic list type
-        if not isinstance(value, list):
-            raise DeserializeError('Value passed for list types must be list')
+        if not isinstance(value, (list, numpy.ndarray)):
+            raise DeserializeError('Value passed for list types must be list or numpy.ndarray')
 
-        # a python list is JSON-compatible, so no additional conversion necessary
+        return list(value)
 
     else:
         # handle enum
@@ -246,6 +247,9 @@ def serialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-retur
 
         # serialize values individually into a new list
         return [serialize_value(generic_type, v) for v in value]
+
+    elif base_type is numpy.bool_:
+        return bool(value)
 
     else:
         # handle enum

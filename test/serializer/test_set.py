@@ -14,7 +14,9 @@ def test_set_deserialize_from_list():
     """
     Test set deserializes from list (JSON compatible)
     """
-    obj = Test.deserialize({'s': ['1', '2', '3']})
+    obj = Test.deserialize({
+        's': ['1', '2', '3']
+    })
     assert isinstance(obj.s, set)
     assert obj.s == {'1', '2', '3'}
 
@@ -22,7 +24,19 @@ def test_set_deserialize_from_set():
     """
     Test set deserializes from set
     """
-    obj = Test.deserialize({'s': {'1', '2', '3'}})
+    obj = Test.deserialize({
+        's': {'1', '2', '3'}
+    })
+    assert isinstance(obj.s, set)
+    assert obj.s == {'1', '2', '3'}
+
+def test_set_deserialize_from_numpy_ndarray():
+    """
+    Test set deserializes from numpy.ndarray
+    """
+    obj = Test.deserialize({
+        's': ['1', '2', '3']
+    })
     assert isinstance(obj.s, set)
     assert obj.s == {'1', '2', '3'}
 
