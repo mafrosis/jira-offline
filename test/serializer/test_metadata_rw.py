@@ -1,5 +1,5 @@
 '''
-Tests for the DataclassSerializer when fields have the "rw" metadata property set.
+Tests for the DataclassSerializer when fields have the "serialize" metadata property set.
 '''
 from typing import Optional
 
@@ -10,57 +10,44 @@ from jira_offline.utils.serializer import DataclassSerializer
 
 @dataclass
 class Test(DataclassSerializer):
-    r: Optional[str]    = field(default=None, metadata={'rw': 'r'})
-    w: Optional[str]    = field(default=None, metadata={'rw': 'w'})
-    rw: Optional[str]   = field(default=None, metadata={'rw': 'rw'})
-    none: Optional[str] = field(default=None, metadata={'rw': ''})
+    f1: Optional[str] = field(default=None, metadata={'serialize': False})
+    f2: Optional[str] = field(default=None, metadata={'serialize': True})
+    f3: Optional[str] = field(default=None)
 
 
-def test_r_field_metadata_field_succeeds_deserialize():
+def test_deserialize_fails__metadata_serialize_is_false():
     """
-    Test fields with metadata rw=r SUCCEEDs deserialize
+    Test a field with metadata serialize=False IS NOT deserialized from passed dict
     """
-    assert Test.deserialize({'r': 'teststring'}).r == 'teststring'
+    assert Test.deserialize({'f1': 'teststring'}).f1 is None
 
-def test_w_field_metadata_field_fails_deserialize():
+def test_deserialize_succeeds__metadata_serialize_is_true():
     """
-    Test fields with metadata rw=w FAILs deserialize
+    Test a field with metadata serialize=True IS deserialized from passed dict
     """
-    assert Test.deserialize({'w': 'teststring'}).w is None
+    assert Test.deserialize({'f2': 'teststring'}).f2 == 'teststring'
 
-def test_rw_field_metadata_field_succeeds_deserialize():
+def test_deserialize_succeeds__metadata_serialize_is_absent():
     """
-    Test fields with metadata rw=rw SUCCEEDs deserialize
+    Test a field with absent metadata serialize IS deserialized from passed dict
     """
-    assert Test.deserialize({'rw': 'teststring'}).rw == 'teststring'
-
-def test_none_field_metadata_field_fails_deserialize():
-    """
-    Test fields with metadata rw=none FAILs deserialize
-    """
-    assert Test.deserialize({'none': 'teststring'}).none is None
+    assert Test.deserialize({'f3': 'teststring'}).f3 == 'teststring'
 
 
-def test_r_field_metadata_field_fails_serialize():
+def test_serialize_fails__metadata_serialize_is_false():
     """
-    Test fields with metadata rw=r SUCCEEDs deserialize
+    Test a field with metadata serialize=False IS NOT serialized from passed dict
     """
-    assert 'r' not in Test(r='teststring').serialize()
+    assert 'f1' not in Test(f1='teststring').serialize()
 
-def test_w_field_metadata_field_succeeds_serialize():
+def test_serialize_succeeds__metadata_serialize_is_true():
     """
-    Test fields with metadata rw=w SUCCEEDs serialize
+    Test a field with metadata serialize=True IS serialized from passed dict
     """
-    assert Test(w='teststring').serialize()['w'] == 'teststring'
+    assert Test(f2='teststring').serialize()['f2'] == 'teststring'
 
-def test_rw_field_metadata_field_fails_serialize():
+def test_serialize_succeeds__metadata_serialize_is_absent():
     """
-    Test fields with metadata rw=rw SUCCEEDs deserialize
+    Test a field with absent metadata serialize IS serialized from passed dict
     """
-    assert Test(rw='teststring').serialize()['rw'] == 'teststring'
-
-def test_none_field_metadata_field_succeeds_serialize():
-    """
-    Test fields with metadata rw=none SUCCEEDs serialize
-    """
-    assert 'none' not in Test(none='teststring').serialize()
+    assert Test(f3='teststring').serialize()['f3'] == 'teststring'

@@ -288,10 +288,9 @@ class DataclassSerializer:
         data = {}
 
         for f in dataclasses.fields(cls):
-            # check for field read/write metadata, which determines if fields are ignored
-            # if the "r" field is not present, do not deserialize this field
-            rw_flag = f.metadata.get('rw', 'rw')
-            if 'r' not in rw_flag:
+            # check for metadata on the field specifying not to serialize/deserialize this field
+            serialize_flag = f.metadata.get('serialize', True)
+            if not serialize_flag:
                 continue
 
             raw_value = None
@@ -340,10 +339,9 @@ class DataclassSerializer:
         data = {}
 
         for f in dataclasses.fields(self):
-            # check for field read/write metadata, which determines if fields are ignored
-            # if the "w" field is not present, do not serialize this field
-            rw_flag = f.metadata.get('rw', 'rw')
-            if 'w' not in rw_flag:
+            # check for metadata on the field specifying not to serialize/deserialize this field
+            serialize_flag = f.metadata.get('serialize', True)
+            if not serialize_flag:
                 continue
 
             serialized_value = serialize_value(f.type, getattr(self, f.name))

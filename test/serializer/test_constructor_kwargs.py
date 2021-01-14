@@ -9,7 +9,7 @@ from jira_offline.utils.serializer import DataclassSerializer
 @dataclass
 class Test(DataclassSerializer):
     m: int
-    r: int = field(repr=False, metadata={'rw': ''})
+    r: int = field(repr=False, metadata={'serialize': False})
 
 
 def test_deserialize_extra_kwargs_passed_to_target_class():

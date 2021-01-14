@@ -81,7 +81,7 @@ class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-att
     timezone: datetime.tzinfo = field(default=get_localzone())
 
     # reference to parent AppConfig class
-    config: Optional['AppConfig'] = field(default=None, metadata={'rw': ''})
+    config: Optional['AppConfig'] = field(default=None, metadata={'serialize': False})
 
     @property
     def jira_server(self):
@@ -183,7 +183,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
     project_id: str = field(metadata={'friendly': 'Project ID', 'readonly': True})
     issuetype: str = field(metadata={'friendly': 'Type', 'readonly': True})
 
-    project: ProjectMeta = field(repr=False, metadata={'rw': ''})
+    project: ProjectMeta = field(repr=False, metadata={'serialize': False})
 
     summary: str
     assignee: Optional[str] = field(default=None)
@@ -203,13 +203,12 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
     status: Optional[str] = field(default=None, metadata={'friendly': 'Status', 'readonly': True})
     updated: Optional[datetime.datetime] = field(default=None, metadata={'readonly': True})
 
-    # local-only dict which represents serialized Issue last seen on Jira server
-    # this property is not written to cache and is created at runtme from diff_to_original
-    original: Dict[str, Any] = field(default_factory=dict, metadata={'rw': ''})
+    # dict which represents serialized Issue last seen on Jira server
+    # this attribute is not written to cache, and is created at runtme from Issue.diff_to_original
+    original: Dict[str, Any] = field(default_factory=dict, metadata={'serialize': False})
 
     # patch of current Issue to dict last seen on Jira server
-    # "rw" flag instructs serializer to read/deserialize this only; do not include during writes
-    diff_to_original: Optional[list] = field(default=None, metadata={'rw': 'r'})
+    diff_to_original: Optional[list] = field(default=None)
 
     @property
     def project_key(self) -> str:
