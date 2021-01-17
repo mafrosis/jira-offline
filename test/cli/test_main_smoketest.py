@@ -32,47 +32,44 @@ CLI_COMMAND_MAPPING = [
 
 
 @pytest.mark.parametrize('command,params,_', CLI_COMMAND_MAPPING)
-@mock.patch('jira_offline.cli.Jira')
 @mock.patch('jira_offline.cli.main.create_issue')
 @mock.patch('jira_offline.cli.main.pull_single_project')
 @mock.patch('jira_offline.cli.main.pull_issues')
 @mock.patch('jira_offline.cli.main.push_issues')
 @mock.patch('jira_offline.cli.main.authenticate')
 def test_main_smoketest(mock_authenticate, mock_push_issues, mock_pull_issues,
-                        mock_pull_single_project, mock_create_issue,
-                        mock_jira_local, mock_jira, command, params, _):
+                        mock_pull_single_project, mock_create_issue, mock_jira, command, params, _):
     '''
     Test when the jira-offline issue cache has a single issue
     '''
-    # set function-local instance of Jira class to our test mock
-    mock_jira_local.return_value = mock_jira
-
     # add fixture to Jira dict
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
     runner = CliRunner()
-    result = runner.invoke(cli, [command, *params])
+
+    with mock.patch('jira_offline.cli.main.jira', mock_jira):
+        result = runner.invoke(cli, [command, *params])
+
     # CLI should always exit zero
     assert result.exit_code == 0
 
 
 @pytest.mark.parametrize('command,params,exit_code', CLI_COMMAND_MAPPING)
-@mock.patch('jira_offline.cli.Jira')
 @mock.patch('jira_offline.cli.main.create_issue')
 @mock.patch('jira_offline.cli.main.pull_single_project')
 @mock.patch('jira_offline.cli.main.pull_issues')
 @mock.patch('jira_offline.cli.main.push_issues')
 @mock.patch('jira_offline.cli.main.authenticate')
 def test_main_smoketest_empty(mock_authenticate, mock_push_issues, mock_pull_issues,
-                              mock_pull_single_project, mock_create_issue,  mock_jira_local,
-                              mock_jira, command, params, exit_code):
+                              mock_pull_single_project, mock_create_issue,  mock_jira, command,
+                              params, exit_code):
     '''
     Test when the jira-offline issue cache is empty
     '''
-    # set function-local instance of Jira class to our test mock
-    mock_jira_local.return_value = mock_jira
-
     runner = CliRunner()
-    result = runner.invoke(cli, [command, *params])
+
+    with mock.patch('jira_offline.cli.main.jira', mock_jira):
+        result = runner.invoke(cli, [command, *params])
+
     # some CLI commands will exit with error, others will not..
     assert result.exit_code == exit_code

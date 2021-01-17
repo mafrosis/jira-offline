@@ -11,13 +11,11 @@ from typing import Optional
 
 import click
 
-from jira_offline.cli.params import CliParams
-
+from jira_offline.cli.linters import cli_lint
 from jira_offline.cli.main import (cli_clone, cli_diff, cli_edit, cli_ls, cli_new, cli_projects,
                                    cli_pull, cli_push, cli_reset, cli_show, cli_import)
-from jira_offline.cli.linters import cli_lint
+from jira_offline.cli.params import CliParams
 from jira_offline.cli.stats import cli_stats
-from jira_offline.jira import Jira
 
 
 logger = logging.getLogger('jira')
@@ -49,7 +47,7 @@ def cli(ctx, verbose: bool=False, debug: bool=False):
 
     # instantiate the Jira object for the application and wrap it into CLI params which are passed
     # down through click to the CLI function called
-    ctx.obj = CliParams(Jira(), verbose=verbose, debug=debug)
+    ctx.obj = CliParams(verbose=verbose, debug=debug)
 
 
 cli.add_command(cli_clone)

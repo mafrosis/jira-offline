@@ -8,8 +8,6 @@ subcommand group.
 from dataclasses import dataclass, field
 from typing import Optional
 
-from jira_offline.jira import Jira
-
 
 @dataclass
 class CliParams:
@@ -17,8 +15,6 @@ class CliParams:
     class LintParams:
         '''Special params for the `jira lint` subcommand group'''
         fix: bool
-
-    jira: Jira
 
     verbose: bool = field(default=False)
     debug: bool = field(default=False)

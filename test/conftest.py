@@ -65,6 +65,7 @@ def mock_jira_core(mock_load_config, project):
     # ensure each ProjectMeta instance has a reference to the AppConfig instance
     # in normal operation, this is done in `load_config` in config.py, and so applies to all projects
     project.config = jira.config
+    # never write to disk during tests
     jira.config.write_to_disk = mock.Mock()
     return jira
 

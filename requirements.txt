@@ -6,6 +6,7 @@ dictdiffer>0.8,<0.9
 jsonlines>=1.2,<1.3
 oauthlib>=3.1,<3.2
 pandas>=0.25.2,<1.1
+ProxyTypes==0.10.0
 pyjwt>1.7,<2
 requests>=2.22,<2.24
 requests_oauthlib>=1.3,<1.4
