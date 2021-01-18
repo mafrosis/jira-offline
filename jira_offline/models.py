@@ -195,7 +195,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
     description: Optional[str] = field(default=None)
     fix_versions: Optional[set] = field(default=None, metadata={'friendly': 'Fix Version'})
     components: Optional[set] = field(default=None)
-    id: Optional[str] = field(default=None, metadata={'readonly': True})
+    id: Optional[int] = field(default=None, metadata={'readonly': True})
     key: Optional[str] = field(default=None, metadata={'readonly': True})
     labels: Optional[set] = field(default=None)
     priority: Optional[str] = field(default=None, metadata={'friendly': 'Priority'})
