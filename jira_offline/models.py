@@ -3,6 +3,7 @@ Application data structures. Mostly dataclasses inheriting from utils.DataclassS
 '''
 from dataclasses import dataclass, field
 import datetime
+import decimal
 import functools
 import json
 import hashlib
@@ -182,16 +183,15 @@ class AppConfig(DataclassSerializer):
 class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attributes
     project_id: str = field(metadata={'friendly': 'Project ID', 'readonly': True})
     issuetype: str = field(metadata={'friendly': 'Type', 'readonly': True})
-
     project: ProjectMeta = field(repr=False, metadata={'serialize': False})
-
     summary: str
+
     assignee: Optional[str] = field(default=None)
     created: Optional[datetime.datetime] = field(default=None, metadata={'readonly': True})
     creator: Optional[str] = field(default=None, metadata={'readonly': True})
     epic_name: Optional[str] = field(default=None, metadata={'friendly': 'Epic Short Name'})
     epic_ref: Optional[str] = field(default=None)
-    estimate: Optional[int] = field(default=None)
+    estimate: Optional[decimal.Decimal] = field(default=None)
     description: Optional[str] = field(default=None)
     fix_versions: Optional[set] = field(default=None, metadata={'friendly': 'Fix Version'})
     components: Optional[set] = field(default=None)
