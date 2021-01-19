@@ -55,7 +55,7 @@ def test_jira__write_issues__calls_serialize_for_each_item_in_self(mock_open, mo
     '''
     mock_jira_core['TEST-1'] = Issue.deserialize(EPIC_1)
     mock_jira_core['TEST-71'] = Issue.deserialize(ISSUE_1)
-    mock_jira_core['TEST-72'] = Issue.deserialize(ISSUE_MISSING_EPIC)
+    mock_jira_core['TEST-73'] = Issue.deserialize(ISSUE_MISSING_EPIC)
 
     with mock.patch('jira_offline.jira.Issue.serialize') as mock_issue_serialize:
         mock_jira_core.write_issues()
@@ -64,18 +64,54 @@ def test_jira__write_issues__calls_serialize_for_each_item_in_self(mock_open, mo
 
 @mock.patch('jira_offline.jira.jsonlines')
 @mock.patch('builtins.open')
-def test_jira__write_issues__calls_issue_diff_for_existing_issues_only(mock_open, mock_jsonlines, mock_jira_core):
+def test_jira__write_issues__does_call_issue_diff_for_existing_and_modified_issues(mock_open, mock_jsonlines, mock_jira_core):
     '''
-    Ensure write_issues calls Issue.serialize for each line in self (which implements dict)
+    Ensure write_issues DOES call Issue.diff on modified issues which already exist on Jira
     '''
-    mock_jira_core['TEST-71'] = Issue.deserialize(ISSUE_1)
-    mock_jira_core[ISSUE_NEW['key']] = Issue.deserialize(ISSUE_NEW)
+    issue = mock_jira_core['TEST-72'] = Issue.deserialize(ISSUE_2)
 
-    with mock.patch('jira_offline.jira.Issue.diff'):
+    # patch the Issue's diff method, then set modified=False as the patch changes the modified flag!
+    with mock.patch.object(issue, 'diff', mock.MagicMock()):
+        issue.modified = False
+        issue.summary = 'Test'
+
         mock_jira_core.write_issues()
 
-        assert mock_jira_core['TEST-71'].diff.called
-        assert mock_jira_core[ISSUE_NEW['key']].diff.called
+        assert issue.diff.called is True
+
+
+@mock.patch('jira_offline.jira.jsonlines')
+@mock.patch('builtins.open')
+def test_jira__write_issues__doesnt_call_issue_diff_for_non_modified_issues(mock_open, mock_jsonlines, mock_jira_core):
+    '''
+    Ensure write_issues DOESN'T call Issue.diff for issues which already exist on Jira
+    '''
+    issue = mock_jira_core['TEST-71'] = Issue.deserialize(ISSUE_1)
+
+    # patch the Issue's diff method, then set modified=False as the patch changes the modified flag!
+    with mock.patch.object(issue, 'diff', mock.MagicMock()):
+        issue.modified = False
+
+        mock_jira_core.write_issues()
+
+        assert issue.diff.called is False
+
+
+@mock.patch('jira_offline.jira.jsonlines')
+@mock.patch('builtins.open')
+def test_jira__write_issues__doesnt_call_issue_diff_for_non_existing_issues(mock_open, mock_jsonlines, mock_jira_core):
+    '''
+    Ensure write_issues DOESN'T call Issue.diff for issues which already exist on Jira
+    '''
+    issue = mock_jira_core[ISSUE_NEW['key']] = Issue.deserialize(ISSUE_NEW)
+
+    # patch the Issue's diff method, then set modified=False as the patch changes the modified flag!
+    with mock.patch.object(issue, 'diff', mock.MagicMock()):
+        issue.modified = False
+
+        mock_jira_core.write_issues()
+
+        assert issue.diff.called is False
 
 
 @mock.patch('jira_offline.jira.api_get')

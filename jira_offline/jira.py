@@ -134,8 +134,8 @@ class Jira(collections.abc.MutableMapping):
             for issue in self.values():
                 data = issue.serialize()
 
-                # calculate the diff to the original Issue on Jira for existing Issues
-                if issue.exists:
+                # store the diff for modified issues
+                if issue.modified and issue.exists:
                     data['diff_to_original'] = issue.diff(data)
 
                 issues_json.append(data)

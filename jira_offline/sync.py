@@ -117,7 +117,7 @@ def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose
                 if not force:
                     try:
                         # determine if local changes have been made
-                        if jira[api_issue['key']].diff_to_original:
+                        if jira[api_issue['key']].modified:
                             update_object: IssueUpdate = merge_issues(jira[api_issue['key']], issue)
                             issue = update_object.merged_issue
                     except KeyError:
@@ -264,7 +264,7 @@ def build_update(base_issue: Issue, updated_issue: Optional[Issue]) -> IssueUpda
         return tuple(ret)
 
     # fields to ignore during dictdiffer.diff
-    ignore_fields = set(['diff_to_original'])
+    ignore_fields = set(['diff_to_original', 'modified'])
 
     if updated_issue != Issue.blank():
         # ignore readonly fields when diffing new Issues
