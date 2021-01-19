@@ -255,3 +255,8 @@ class ImportFailed(DynamicBaseAppException):
         if self.lineno:
             msg += f' on line {self.lineno}'
         return msg
+
+
+# Raised by Issue.__set_attr__ for attribute names which must be set via a helper
+class CannotSetIssueAttributeDirectly(Exception):
+    'This attribute cannot be set directly, you must use the set_<attrib>() helper'

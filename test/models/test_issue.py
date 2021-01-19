@@ -1,8 +1,10 @@
 '''
 Tests for methods on the Issue model
 '''
+import pytest
+
 from conftest import not_raises
-from fixtures import ISSUE_1
+from fixtures import ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF
 from jira_offline.models import Issue
 
 
@@ -84,3 +86,37 @@ def test_issue_model__diff_sets_issue_diff_to_original():
     issue.diff()
 
     assert issue.diff_to_original == [('change', 'assignee', ('eggbert', 'danil1'))]
+
+
+def test_issue_model__set_original_doesnt_set_modified_true():
+    '''
+    Ensure Issue.set_original does not set Issue.modified to true
+    '''
+    issue = Issue.deserialize(ISSUE_1)
+
+    issue.set_original(issue.serialize())
+
+    assert issue.modified is False
+
+
+def test_issue_model__set_original_removes_diff_to_original_field():
+    '''
+    Ensure Issue.set_original does not retain the Issue.diff_to_original field created by Issue.diff
+    '''
+    issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
+
+    assert bool(issue.diff_to_original)
+
+    issue.set_original(issue.serialize())
+
+    assert 'diff_to_original' not in issue.original
+
+
+def test_issue_model__setting_the_original_attribute_directly_raises_exception():
+    '''
+    Ensure setting Issue.original raises an exception
+    '''
+    issue = Issue.deserialize(ISSUE_1)
+
+    with pytest.raises(Exception):
+        issue.original(issue.serialize())

@@ -27,9 +27,27 @@ def test_merge_issues__doesnt_call_conflict_resolution_on_NO_conflict(mock_build
     assert mock_manual_conflict_resolution.called is False
 
 
-def test_merge_issues__resolved_issue_has_diff_to_original():
+def test_merge_issues__merged_issue_has_original_property_updated_to_match_upstream_issue():
     '''
-    Ensure that the resolved Issue returned from merge_issues has a diff_to_original attribute
+    Ensure the Issue returned from merge_issues has an original property set to the serialized upstream
+    Issue returned by the Jira server
+    '''
+    local_issue = Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF)
+    updated_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
+
+    update_obj = merge_issues(local_issue, updated_issue)
+
+    serialized_upstream_issue = updated_issue.serialize()
+    del serialized_upstream_issue['diff_to_original']
+    del serialized_upstream_issue['modified']
+
+    # validate Issue.original updated to match `updated_issue`
+    assert update_obj.merged_issue.original == serialized_upstream_issue
+
+
+def test_merge_issues__merged_issue_has_diff_to_original():
+    '''
+    Ensure the Issue returned from merge_issues has a diff_to_original attribute
     '''
     local_issue = Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF)
     updated_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
