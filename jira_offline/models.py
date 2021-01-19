@@ -204,11 +204,13 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
     updated: Optional[datetime.datetime] = field(default=None, metadata={'readonly': True})
 
     # dict which represents serialized Issue last seen on Jira server
-    # this attribute is not written to cache, and is created at runtme from Issue.diff_to_original
-    original: Dict[str, Any] = field(default_factory=dict, metadata={'serialize': False})
+    # this attribute is not written to cache, and is created at runtime from Issue.diff_to_original
+    original: Dict[str, Any] = field(
+        init=False, repr=False, default_factory=dict, metadata={'serialize': False}
+    )
 
     # patch of current Issue to dict last seen on Jira server
-    diff_to_original: Optional[list] = field(default=None)
+    diff_to_original: Optional[list] = field(default_factory=list)
 
     _active: bool = field(init=False, repr=False, default=False, metadata={'serialize': False})
     modified: Optional[bool] = field(default=False)
@@ -218,6 +220,13 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         '''
         Special dataclass dunder method called automatically after Issue.__init__
         '''
+        # apply the diff_to_original patch to the serialized version of the issue, which
+        # recreates the issue dict as last seen on the Jira server
+        original = dictdiffer.patch(self.diff_to_original if self.diff_to_original else [], self.serialize())
+        if 'diff_to_original' in original:
+            del original['diff_to_original']
+        self.__dict__['original'] = original
+
         # Mark this Issue as active, which means that any subsequent modifications to the Issue object
         # attributes will result in the modified flag being set (see __setattr__).
         self.__dict__['_active'] = True
@@ -249,11 +258,9 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         '''
         Static class property returning a blank/empty Issue
         '''
-        blank_issue = Issue(
+        return Issue(
             project_id='', project=ProjectMeta(key=''), issuetype='', summary='', description=''
         )
-        blank_issue.original = blank_issue.serialize()
-        return blank_issue
 
     @property
     def exists(self) -> bool:
@@ -296,7 +303,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         '''
         # deserialize supplied dict into an Issue object
         # use `cast` to cover the mypy typecheck errors the arise from polymorphism
-        issue = cast(
+        return cast(
             Issue,
             super().deserialize(
                 attrs,
@@ -305,17 +312,6 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
                 constructor_kwargs={'project': project},
             )
         )
-
-        if issue.diff_to_original is None:
-            issue.diff_to_original = []
-
-        # if issue exists on Jira server (see `exists` property above)
-        if bool(attrs.get('id')):
-            # apply the diff_to_original patch to the serialized version of the issue, which
-            # recreates the issue dict as last seen on the Jira server
-            issue.original = dictdiffer.patch(issue.diff_to_original, issue.serialize())
-
-        return issue
 
 
     def render(self, conflicts: dict=None, modified_fields: set=None) -> List[Tuple[str, str]]:

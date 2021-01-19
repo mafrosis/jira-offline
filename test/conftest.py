@@ -213,3 +213,12 @@ def run_in_docker(request):
 
     yield wrapped
     tmpdir.cleanup()
+
+
+@contextmanager
+def not_raises(exception):
+    '''Antonym for pytest.raises'''
+    try:
+        yield
+    except exception as e:
+        raise pytest.fail("DID RAISE {0}".format(exception)) from e
