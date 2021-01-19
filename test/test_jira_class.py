@@ -381,10 +381,9 @@ def test_jira__get_project_components__does_not_fail(mock_api_get, mock_jira_cor
     assert project.components == {'Egg', 'Bacon'}
 
 
-@mock.patch('jira_offline.jira.jiraapi_object_to_issue', return_value=Issue.deserialize(ISSUE_1))
 @mock.patch('jira_offline.jira.api_post')
 def test_jira__new_issue__removes_fields_which_cannot_be_posted_for_new_issue(
-        mock_api_post, mock_jiraapi_object_to_issue, mock_jira_core, project
+        mock_api_post, mock_jira_core, project
     ):
     '''
     Some fields cannot be posted to the Jira API. Ensure they are removed before the API call.
