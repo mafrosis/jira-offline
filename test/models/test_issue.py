@@ -54,7 +54,6 @@ def test_issue_model__diff_returns_consistently_for_modified_issue():
 
     # modify the issue
     issue.assignee = 'eggbert'
-    issue.diff_to_original = issue.diff()
 
     # validate the diff
     assert issue.diff() == [('change', 'assignee', ('eggbert', 'danil1'))]
@@ -72,3 +71,16 @@ def test_issue_model__original_is_set_after_constructor():
     '''
     issue = Issue.deserialize(ISSUE_1)
     assert issue.original is not None
+
+
+def test_issue_model__diff_sets_issue_diff_to_original():
+    '''
+    Ensure Issue.diff sets Issue.diff_to_original
+    '''
+    issue = Issue.deserialize(ISSUE_1)
+
+    # modify the issue, and run a diff
+    issue.assignee = 'eggbert'
+    issue.diff()
+
+    assert issue.diff_to_original == [('change', 'assignee', ('eggbert', 'danil1'))]

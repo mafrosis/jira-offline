@@ -197,19 +197,16 @@ def merge_issues(base_issue: Issue, updated_issue: Issue) -> IssueUpdate:
     update_object = build_update(base_issue, updated_issue)
 
     if update_object.conflicts:
-        resolved_issue = manual_conflict_resolution(update_object)
-    else:
-        resolved_issue = update_object.merged_issue
+        # resolve any conflicts
+        update_object.merged_issue = manual_conflict_resolution(update_object)
 
-    if updated_issue:
+    if updated_issue is not None:
         # set the original property to the latest updated version incoming from upstream
-        resolved_issue.original = updated_issue.serialize()
+        update_object.merged_issue.original = updated_issue.serialize()
 
     # refresh merged Issue's diff_to_original field
-    resolved_issue.diff_to_original = update_object.merged_issue.diff()
+    update_object.merged_issue.diff()
 
-    # refresh resolved Issue's diff_to_original field
-    update_object.merged_issue = resolved_issue
     return update_object
 
 

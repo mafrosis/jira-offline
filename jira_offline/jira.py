@@ -132,13 +132,12 @@ class Jira(collections.abc.MutableMapping):
         try:
             issues_json = []
             for issue in self.values():
-                data = issue.serialize()
-
                 # store the diff for modified issues
                 if issue.modified and issue.exists:
-                    data['diff_to_original'] = issue.diff(data)
+                    issue.diff()
 
-                issues_json.append(data)
+                issues_json.append(issue.serialize())
+
         except TypeError:
             # an error here means the DataclassSerializer output is incompatible with JSON
             logger.exception('Cannot write issues cache! Please report this bug.')

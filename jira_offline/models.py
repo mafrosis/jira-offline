@@ -269,7 +269,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         '''
         return bool(self.id)
 
-    def diff(self, data: dict=None) -> Optional[list]:
+    def diff(self) -> list:
         '''
         If this Issue object has the original property set, render the diff between self and
         the original property. This is written to storage to track changes made offline.
@@ -280,12 +280,12 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
             Return from dictdiffer.diff to be stored in Issue.diff_to_original property
         '''
         if not self.original:
-            return None
+            raise Exception
 
-        if not data:
-            data = self.serialize()
-
-        return list(dictdiffer.diff(data, self.original, ignore=set(['diff_to_original', 'modified'])))
+        self.__dict__['diff_to_original'] = list(
+            dictdiffer.diff(self.serialize(), self.original, ignore=set(['diff_to_original', 'modified']))
+        )
+        return self.diff_to_original or []
 
     @classmethod
     def deserialize(cls, attrs: dict, project: Optional[ProjectMeta]=None,  # type: ignore[override] # pylint: disable=arguments-differ
