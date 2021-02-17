@@ -118,7 +118,9 @@ def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose
                     try:
                         # determine if local changes have been made
                         if jira[api_issue['key']].modified:
-                            update_object: IssueUpdate = merge_issues(jira[api_issue['key']], issue)
+                            update_object: IssueUpdate = merge_issues(
+                                jira[api_issue['key']], issue, is_upstream_merge=True
+                            )
                             issue = update_object.merged_issue
                     except KeyError:
                         pass
@@ -183,13 +185,17 @@ class IssueUpdate:
     conflicts: dict = field(default_factory=dict)
 
 
-def merge_issues(base_issue: Issue, updated_issue: Issue) -> IssueUpdate:
+def merge_issues(base_issue: Issue, updated_issue: Issue, is_upstream_merge: bool) -> IssueUpdate:
     '''
     Merge two issues and check for conflicts.
 
+    A merge could be with an updated remote issue from Jira, or with between two issues which only
+    exist locally.
+
     Params:
-        base_issue:     Base Issue to which we are comparing (has an .original property)
-        updated_issue:  Incoming updated Issue (or Issue.blank)
+        base_issue:         Base Issue to which we are comparing
+        updated_issue:      Incoming updated Issue (or Issue.blank)
+        is_upstream_merge:  Flag to indicate if the upstream issue has been updated during a sync
     Returns:
         An IssueUpdate object created by build_update
     '''
@@ -200,7 +206,7 @@ def merge_issues(base_issue: Issue, updated_issue: Issue) -> IssueUpdate:
         # resolve any conflicts
         update_object.merged_issue = manual_conflict_resolution(update_object)
 
-    if updated_issue is not None:
+    if is_upstream_merge and updated_issue is not None:
         # set the original property to the latest version of this Issue incoming from upstream
         # this ensures the correct diff is written to disk
         update_object.merged_issue.set_original(updated_issue.serialize())
@@ -480,7 +486,7 @@ def push_issues(jira: 'Jira', verbose: bool=False):
                 remote_issue = Issue.blank()
 
             # resolve any conflicts with upstream
-            update_object: IssueUpdate = merge_issues(local_issue, remote_issue)
+            update_object: IssueUpdate = merge_issues(local_issue, remote_issue, is_upstream_merge=True)
 
             update_dict: dict = issue_to_jiraapi_update(
                 project, update_object.merged_issue, update_object.modified

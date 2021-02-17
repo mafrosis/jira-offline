@@ -184,7 +184,7 @@ def _import_modified_issue(jira: 'Jira', attrs: dict, lineno: int=None) -> Issue
         raise ImportFailed(f'Bad issue JSON passed for key {attrs["key"]} ({e})', lineno)
 
     # merge the imported data into the existing issue
-    update_obj = merge_issues(existing_issue, imported_issue)
+    update_obj = merge_issues(existing_issue, imported_issue, is_upstream_merge=False)
 
     # Since an import is really an insert of a new issue or an update to an existing issue, we need
     # to reset the original property to that of the unchanged issue, thus giving the correct diff
