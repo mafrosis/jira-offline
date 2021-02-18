@@ -118,10 +118,10 @@ def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose
                     try:
                         # determine if local changes have been made
                         if jira[api_issue['key']].modified:
-                            update_object: IssueUpdate = merge_issues(
+                            update_obj: IssueUpdate = merge_issues(
                                 jira[api_issue['key']], issue, is_upstream_merge=True
                             )
-                            issue = update_object.merged_issue
+                            issue = update_obj.merged_issue
                     except KeyError:
                         pass
 
@@ -200,21 +200,21 @@ def merge_issues(base_issue: Issue, updated_issue: Issue, is_upstream_merge: boo
         An IssueUpdate object created by build_update
     '''
     # construct an object representing changes/conflicts
-    update_object = build_update(base_issue, updated_issue)
+    update_obj = build_update(base_issue, updated_issue)
 
-    if update_object.conflicts:
+    if update_obj.conflicts:
         # resolve any conflicts
-        update_object.merged_issue = manual_conflict_resolution(update_object)
+        update_obj.merged_issue = manual_conflict_resolution(update_obj)
 
     if is_upstream_merge and updated_issue is not None:
         # set the original property to the latest version of this Issue incoming from upstream
         # this ensures the correct diff is written to disk
-        update_object.merged_issue.set_original(updated_issue.serialize())
+        update_obj.merged_issue.set_original(updated_issue.serialize())
 
     # refresh merged Issue's diff_to_original field
-    update_object.merged_issue.diff()
+    update_obj.merged_issue.diff()
 
-    return update_object
+    return update_obj
 
 
 def build_update(base_issue: Issue, updated_issue: Optional[Issue]) -> IssueUpdate:
@@ -342,15 +342,15 @@ class EditorFieldParseFailed(ValueError):
     pass
 
 
-def manual_conflict_resolution(update_object: IssueUpdate) -> Issue:
+def manual_conflict_resolution(update_obj: IssueUpdate) -> Issue:
     '''
     Manually resolve conflicts with $EDITOR
 
     Params:
-        update_object:  Instance of IssueUpdate returned from build_update
+        update_obj:  Instance of IssueUpdate returned from build_update
     '''
     # render issue to string, including conflict blocks
-    issue_data = update_object.merged_issue.render(update_object.conflicts)
+    issue_data = update_obj.merged_issue.render(update_obj.conflicts)
     editor_conflict_text = tabulate(issue_data)
 
     retries = 1
@@ -359,7 +359,7 @@ def manual_conflict_resolution(update_object: IssueUpdate) -> Issue:
             # display interactively in $EDITOR
             editor_result_raw = click.edit(
                 '\n'.join([
-                    '# Conflict(s) on Issue {}'.format(update_object.merged_issue.key), '',
+                    '# Conflict(s) on Issue {}'.format(update_obj.merged_issue.key), '',
                     editor_conflict_text
                 ])
             )
@@ -375,7 +375,7 @@ def manual_conflict_resolution(update_object: IssueUpdate) -> Issue:
                     raise EditorFieldParseFailed
 
             # parse the editor output into a new Issue
-            resolved_issue = parse_editor_result(update_object, editor_result_raw)
+            resolved_issue = parse_editor_result(update_obj, editor_result_raw)
             break
 
         except (EditorFieldParseFailed, DeserializeError):
@@ -386,17 +386,17 @@ def manual_conflict_resolution(update_object: IssueUpdate) -> Issue:
             retries += 1
     else:
         # only reached if retries are exceeded
-        raise ConflictResolutionFailed(update_object.merged_issue.key)
+        raise ConflictResolutionFailed(update_obj.merged_issue.key)
 
     return resolved_issue
 
 
-def parse_editor_result(update_object: IssueUpdate, editor_result_raw: str) -> Issue:
+def parse_editor_result(update_obj: IssueUpdate, editor_result_raw: str) -> Issue:
     '''
     Parse the string returned from the conflict editor
 
     Params:
-        update_object:      Instance of IssueUpdate returned from build_update
+        update_obj:      Instance of IssueUpdate returned from build_update
         editor_result_raw:  Raw text returned by user from `click.edit` during interactive
                             conflict resolution
     Returns:
@@ -422,7 +422,7 @@ def parse_editor_result(update_object: IssueUpdate, editor_result_raw: str) -> I
             # next field found
             current_field = issue_fields_by_friendly[parsed_token]
 
-        if current_field.name not in update_object.conflicts:
+        if current_field.name not in update_obj.conflicts:
             continue
 
         if current_field.name not in editor_result:
@@ -430,7 +430,7 @@ def parse_editor_result(update_object: IssueUpdate, editor_result_raw: str) -> I
 
         editor_result[current_field.name].append(line[len(parsed_token):].strip())
 
-    summary_prefix = f'[{update_object.merged_issue.key}]'
+    summary_prefix = f'[{update_obj.merged_issue.key}]'
 
     def preprocess_field_value(field_name, val):
         if istype(get_field_by_name(Issue, field_name).type, set):
@@ -449,7 +449,7 @@ def parse_editor_result(update_object: IssueUpdate, editor_result_raw: str) -> I
     editor_result = {k: preprocess_field_value(k, v) for k, v in editor_result.items()}
 
     # merge edit results into original Issue
-    edited_issue_dict = update_object.merged_issue.serialize()
+    edited_issue_dict = update_obj.merged_issue.serialize()
     edited_issue_dict.update(editor_result)
 
     return Issue.deserialize(edited_issue_dict)
@@ -486,16 +486,16 @@ def push_issues(jira: 'Jira', verbose: bool=False):
                 remote_issue = Issue.blank()
 
             # resolve any conflicts with upstream
-            update_object: IssueUpdate = merge_issues(local_issue, remote_issue, is_upstream_merge=True)
+            update_obj: IssueUpdate = merge_issues(local_issue, remote_issue, is_upstream_merge=True)
 
             update_dict: dict = issue_to_jiraapi_update(
-                project, update_object.merged_issue, update_object.modified
+                project, update_obj.merged_issue, update_obj.modified
             )
 
-            if update_object.merged_issue.exists:
-                jira.update_issue(project, update_object.merged_issue, update_dict)
+            if update_obj.merged_issue.exists:
+                jira.update_issue(project, update_obj.merged_issue, update_dict)
                 logger.info(
-                    'Updated %s %s', update_object.merged_issue.issuetype, update_object.merged_issue.key
+                    'Updated %s %s', update_obj.merged_issue.issuetype, update_obj.merged_issue.key
                 )
                 count += 1
             else:
