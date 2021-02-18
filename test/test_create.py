@@ -213,14 +213,37 @@ def test_create__import_modified_issue__produces_issue_with_diff(mock_jira):
     '''
     Ensure _import_modified_issue() produces an Issue with a diff
 
-    This test also doesn't mock the function merge_issues(); however, failures here are a problem
-    in _import_modified_issue()
+    This test notably doesn't mock the function merge_issues(); failures in this test will uncover
+    problems in functions down the callstack
     '''
     # add an Issue fixture to the Jira dict
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
     # import some readonly fields for Issue key=issue1
     import_dict = {'key': 'TEST-71', 'assignee': 'sausage'}
+
+    imported_issue = _import_modified_issue(mock_jira, import_dict)
+    assert imported_issue.assignee == 'sausage'
+    assert imported_issue.diff() == [('change', 'assignee', ('sausage', 'danil1'))]
+
+
+def test_create__import_modified_issue__idempotent(mock_jira):
+    '''
+    Ensure an issue can be imported twice without breaking the diff behaviour
+
+    This test notably doesn't mock the function merge_issues(); failures in this test will uncover
+    problems in functions down the callstack
+    '''
+    # add an Issue fixture to the Jira dict
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+
+    # import some readonly fields for Issue key=issue1
+    import_dict = {'key': 'TEST-71', 'assignee': 'sausage'}
+
+    # import same test JSON twice
+    imported_issue = _import_modified_issue(mock_jira, import_dict)
+    assert imported_issue.assignee == 'sausage'
+    assert imported_issue.diff() == [('change', 'assignee', ('sausage', 'danil1'))]
 
     imported_issue = _import_modified_issue(mock_jira, import_dict)
     assert imported_issue.assignee == 'sausage'
