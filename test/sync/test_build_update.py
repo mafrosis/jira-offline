@@ -1,5 +1,5 @@
 from fixtures import (ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF, ISSUE_1_WITH_FIXVERSIONS_DIFF,
-                      ISSUE_1_WITH_PRIORITY_DIFF, ISSUE_1_WITH_UPDATED_DIFF, ISSUE_NEW)
+                      ISSUE_1_WITH_UPDATED_DIFF, ISSUE_NEW)
 from jira_offline.models import Issue
 from jira_offline.sync import Conflict, build_update
 
@@ -237,19 +237,3 @@ def test_build_update__new_issue():
     assert not update_obj.conflicts
     for field in update_obj.modified:
         assert getattr(update_obj.merged_issue, field) == getattr(new_issue, field)
-
-
-def test_build_update__handles_class_property():
-    '''
-    Ensure build_update handles @property fields on Issue class (such as priority)
-    '''
-    # create unmodified base Issue fixture
-    base_issue = Issue.deserialize(ISSUE_1)
-    # updated issue has a different priority attrib
-    updated_issue = Issue.deserialize(ISSUE_1_WITH_PRIORITY_DIFF)
-
-    update_obj = build_update(base_issue, updated_issue)
-
-    assert update_obj.modified == {'priority'}
-    assert not update_obj.conflicts
-    assert update_obj.merged_issue.priority == 'Low'

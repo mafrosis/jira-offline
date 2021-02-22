@@ -42,28 +42,6 @@ ISSUE_1_WITH_UPDATED_DIFF = {
     'modified': True,
 }
 
-ISSUE_1_WITH_PRIORITY_DIFF = {
-    'project_id': '99fd9182cfc4c701a8a662f6293f4136201791b4',
-    'assignee': 'danil1',
-    'created': '2018-09-24T08:44:06.000+10:00',
-    'creator': 'danil1',
-    'description': 'This is a story or issue',
-    'fix_versions': ['0.1'],
-    'issuetype': 'Story',
-    'id': '1231',
-    'key': 'TEST-71',
-    'labels': [],
-    'components': [],
-    'priority': 'Low',
-    'reporter': 'danil1',
-    'status': 'Story Done',
-    'summary': 'This is the story summary',
-    'updated': '2019-08-20T16:41:19.000+10:00',
-    'epic_ref': 'TEST-1',
-    'diff_to_original': [('change', 'priority', ('Low', 'Normal'))],
-    'modified': True,
-}
-
 ISSUE_1_WITH_ASSIGNEE_DIFF = {
     'project_id': '99fd9182cfc4c701a8a662f6293f4136201791b4',
     'assignee': 'hoganp',
