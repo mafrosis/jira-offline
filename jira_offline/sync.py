@@ -255,9 +255,7 @@ def build_update(base_issue: Issue, updated_issue: Optional[Issue]) -> IssueUpda
     updated_issue_dict: dict = updated_issue.serialize()
 
     def make_hashable(lst):
-        '''
-        Recursively convert lists and sets to be hashable tuples
-        '''
+        '''Recursively convert lists and sets to be hashable tuples'''
         # clone `lst` arg to list type
         ret = list(range(len(lst)))
         for i, item in enumerate(lst):
@@ -275,10 +273,10 @@ def build_update(base_issue: Issue, updated_issue: Optional[Issue]) -> IssueUpda
         ignore_fields.update({f.name for f in dataclasses.fields(Issue) if f.metadata.get('readonly')})
 
     # generate two diffs to original Issue
-    diff_original_to_base: set = set(make_hashable(list(dictdiffer.diff(
+    diff_original_to_base = set(make_hashable(list(dictdiffer.diff(
         base_issue.original, base_issue_dict, ignore=ignore_fields
     ))))
-    diff_original_to_updated: set = set(make_hashable(list(dictdiffer.diff(
+    diff_original_to_updated = set(make_hashable(list(dictdiffer.diff(
         base_issue.original, updated_issue_dict, ignore=ignore_fields
     ))))
 
