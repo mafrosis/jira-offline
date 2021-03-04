@@ -29,7 +29,7 @@ def test_build_update__base_unmodified_and_updated_modified():
     '''
     # create unmodified base Issue fixture
     base_issue = Issue.deserialize(ISSUE_1)
-    # create modified issue as updated
+    # supply a modified Issue fixture
     updated_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
 
     update_obj = build_update(base_issue, updated_issue)
@@ -47,7 +47,7 @@ def test_build_update__base_modified_and_updated_unmodified():
     '''
     # create a modified base Issue fixture
     base_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
-    # create unmodified updated Issue fixture
+    # supply an unmodified Issue fixture
     updated_issue = Issue.deserialize(ISSUE_1)
 
     update_obj = build_update(base_issue, updated_issue)
@@ -65,7 +65,7 @@ def test_build_update__base_modified_on_str_type_and_updated_modified_str_type_r
     '''
     # create a modified base Issue fixture
     base_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
-    # pass a conflicting modified Issue object (on assignee str)
+    # supply a conflicting modified Issue fixture
     updated_issue = Issue.deserialize(ISSUE_1)
     updated_issue.assignee = 'murphye'
 
@@ -86,7 +86,7 @@ def test_build_update__base_modified_on_set_type_and_updated_modified_set_type_r
     '''
     # create a modified base Issue fixture
     base_issue = Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF)
-    # pass a conflicting modified Issue object (on fix_versions set)
+    # supply a conflicting modified Issue fixture
     updated_issue = Issue.deserialize(ISSUE_1)
     updated_issue.fix_versions.add('0.3')
 
@@ -108,7 +108,7 @@ def test_build_update__base_nonconflict_changes_returned_in_merged_issue():
     # create a modified base Issue fixture, with an additional modified field
     base_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
     base_issue.summary = 'This is a test'
-    # make a conflicting change on the updated issue
+    # supply a conflicting modified Issue fixture (conflicting on a different field)
     updated_issue = Issue.deserialize(ISSUE_1)
     updated_issue.assignee = 'murphye'
 
@@ -153,7 +153,7 @@ def test_build_update__base_modified_and_updated_modified_on_different_fields():
     '''
     # create modified base Issue fixture
     base_issue = Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF)
-    # create modified issue as updated
+    # supply a modified Issue fixture
     updated_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
 
     update_obj = build_update(base_issue, updated_issue)
@@ -172,7 +172,7 @@ def test_build_update__base_modified_and_updated_modified_on_same_fields_with_sa
     '''
     # create a modified base Issue fixture
     base_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
-    # use the same modified Issue as updated (simulates the same change being made on both sides)
+    # supply a modified Issue fixture, with a matching modification to base
     updated_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
 
     update_obj = build_update(base_issue, updated_issue)
@@ -191,7 +191,7 @@ def test_build_update__base_modified_on_multiple_fields_and_updated_modified_on_
     # create a modified base Issue fixture (modified on two fields)
     base_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
     base_issue.summary = 'This is a test'
-    # make same change on single field on updated Issue
+    # supply a modified Issue fixture, with a matching modification to base
     updated_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
 
     update_obj = build_update(base_issue, updated_issue)
@@ -210,7 +210,7 @@ def test_build_update__base_modified_on_single_field_and_updated_modified_on_mul
     '''
     # create a modified base Issue fixture
     base_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
-    # make same change, plus another different change on updated Issue
+    # supply a modified Issue fixture, with a matching modification to base, plus another change
     updated_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
     updated_issue.summary = 'This is a test'
 
