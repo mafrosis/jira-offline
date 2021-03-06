@@ -7,7 +7,7 @@ from fixtures import EPIC_1, ISSUE_1
 from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce, ImportFailed,
                                      InvalidIssueType)
 from jira_offline.create import (create_issue, find_epic_by_reference, import_issue, _import_new_issue,
-                                 _import_modified_issue)
+                                 _import_modified_issue, patch_issue_from_dict)
 from jira_offline.models import Issue
 
 
@@ -281,3 +281,13 @@ def test_create__import_new_issue__raises_on_key_missing(mock_jira, keys):
     '''
     with pytest.raises(ImportFailed):
         _import_new_issue(mock_jira, {k[0]:1 for k in zip(keys)})
+
+
+def test_create__patch_issue_from_dict__set_string_to_value(mock_jira):
+    '''
+    Ensure an Issue can have attributes set a string
+    '''
+    issue = Issue.deserialize(ISSUE_1)
+    patch_issue_from_dict(mock_jira, issue, {'assignee': 'eggs'})
+
+    assert issue.assignee == 'eggs'

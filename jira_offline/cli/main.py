@@ -10,7 +10,7 @@ import click
 from tabulate import tabulate
 
 from jira_offline.auth import authenticate
-from jira_offline.create import create_issue, find_epic_by_reference, import_issue, set_field_on_issue
+from jira_offline.create import create_issue, import_issue, patch_issue_from_dict
 from jira_offline.exceptions import (BadProjectMetaUri, FailedPullingProjectMeta, ImportFailed,
                                      JiraApiError)
 from jira_offline.jira import jira
@@ -326,13 +326,7 @@ def cli_edit(key: str, as_json: bool=False, **kwargs):
     if kwargs.get('labels'):
         kwargs['labels'] = set(kwargs['labels'].split(','))
 
-    for field_name, value in kwargs.items():
-        set_field_on_issue(jira[key], field_name, value)
-
-    # link issue to epic if --epic-ref was passed
-    if kwargs.get('epic_ref'):
-        matched_epic = find_epic_by_reference(jira, kwargs['epic_ref'])
-        jira[key].epic_ref = matched_epic.key
+    patch_issue_from_dict(jira, jira[key], kwargs)
 
     if as_json:
         # display the edited issue as JSON

@@ -1,18 +1,14 @@
 '''
-Module for functions related to Issue creation and bulk import.
+Module for functions related to Issue creation, editing and bulk import.
 '''
-import datetime
 import logging
-from typing import Optional, Tuple, TYPE_CHECKING
-from tzlocal import get_localzone
+from typing import cast, Optional, Tuple, TYPE_CHECKING
 import uuid
 
-from jira_offline.exceptions import (DeserializeError, EpicNotFound, EpicSearchStrUsedMoreThanOnce,
-                                     ImportFailed, InvalidIssueType, ProjectNotConfigured)
+from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce, ImportFailed,
+                                     InvalidIssueType, ProjectNotConfigured)
 from jira_offline.models import Issue, ProjectMeta
-from jira_offline.sync import merge_issues
-from jira_offline.utils import find_project, get_field_by_name
-from jira_offline.utils.serializer import deserialize_value
+from jira_offline.utils import deserialize_single_issue_field, find_project, get_field_by_name
 
 if TYPE_CHECKING:
     from jira_offline.jira import Jira
@@ -86,19 +82,14 @@ def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: st
             'issuetype': issuetype,
             'summary': summary,
         },
-        project=project
+        project=project,
     )
 
-    # although description is an API mandatory field, we can survive without one
+    # although description is mandatory on the Jira API, the Issue can survive with an empty one
     if 'description' not in kwargs or not kwargs['description']:
         kwargs['description'] = ''
 
-    for field_name, value in kwargs.items():
-        set_field_on_issue(new_issue, field_name, value, project.timezone)
-
-    if new_issue.epic_ref:
-        matched_epic = find_epic_by_reference(jira, new_issue.epic_ref)
-        new_issue.epic_ref = matched_epic.key
+    patch_issue_from_dict(jira, new_issue, kwargs)
 
     # use a temporary Issue.key until Jira server creates the actual key at sync-time
     new_issue.key = str(uuid.uuid4())
@@ -106,33 +97,6 @@ def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: st
     jira.write_issues()
 
     return new_issue
-
-
-def set_field_on_issue(issue: Issue, field_name: str, value: Optional[str],
-                       tz: Optional[datetime.tzinfo]=None):
-    '''
-    Use DataclassSerializer.deserialize_value to convert from string to the corrent type, and then
-    set the single attribute on the target Issue object.
-
-    Params:
-        issue:       Issue object being updated
-        field_name:  Name of the field Issue dataclass
-        value:       String representation of the value to be set
-    '''
-    if value is None:
-        return
-
-    if tz is None:
-        tz = get_localzone()
-
-    try:
-        # convert string value to Issue field type
-        value = deserialize_value(get_field_by_name(Issue, field_name).type, value, tz)
-
-    except DeserializeError as e:
-        raise DeserializeError(f'Failed parsing {field_name} with value {value} ({e})')
-
-    setattr(issue, field_name, value)
 
 
 def import_issue(jira: 'Jira', attrs: dict, lineno: int=None) -> Tuple[Issue, bool]:
@@ -169,33 +133,18 @@ def _import_modified_issue(jira: 'Jira', attrs: dict, lineno: int=None) -> Issue
     '''
     try:
         # fetch existing issue by key, raising KeyError if unknown
-        existing_issue = jira[attrs['key']]
-
-        # deserialize incoming dict into an Issue object, thus validating the fields and value types
-        # (and, in this case, ignoring any missing mandatory keys)
-        imported_issue = Issue.deserialize(attrs, ignore_missing=True)
+        issue = jira[attrs['key']]
 
     except KeyError:
         if attrs.get('key'):
             raise ImportFailed(f'Unknown issue key {attrs["key"]}', lineno)
         raise ImportFailed('Unknown issue key', lineno)
 
-    except DeserializeError as e:
-        raise ImportFailed(f'Bad issue JSON passed for key {attrs["key"]} ({e})', lineno)
-
-    # merge the imported data into the existing issue
-    update_obj = merge_issues(existing_issue, imported_issue, is_upstream_merge=False)
-
-    # Since an import is really an insert of a new issue or an update to an existing issue, we need
-    # to reset the original property to that of the unchanged issue, thus giving the correct diff
-    # after import.
-    # Once an issue has been modified, the original property should not be updated import.
-    if not update_obj.merged_issue.modified:
-        update_obj.merged_issue.set_original(existing_issue.serialize())
+    patch_issue_from_dict(jira, issue, attrs)
 
     # overwrite entry in Jira dict with updated
-    jira[attrs['key']] = update_obj.merged_issue
-    return update_obj.merged_issue
+    jira[attrs['key']] = issue
+    return cast(Issue, issue)
 
 
 def _import_new_issue(jira: 'Jira', attrs: dict, lineno: int=None) -> Issue:
@@ -228,3 +177,32 @@ def _import_new_issue(jira: 'Jira', attrs: dict, lineno: int=None) -> Issue:
 
     except ProjectNotConfigured:
         raise ImportFailed(f'Unknown project ref {attrs["project"]} for new issue', lineno)
+
+
+def patch_issue_from_dict(jira: 'Jira', issue: Issue, attrs: dict):
+    '''
+    Patch attributes on an Issue from the passed dict
+
+    Params:
+        jira:   Dependency-injected jira.Jira object
+        attrs:  Dictionary containing issue fields
+    '''
+    for field_name, value in attrs.items():
+        if value is None:
+            # Skip nulls in patch dict
+            continue
+
+        f = get_field_by_name(Issue, field_name)
+
+        if f.metadata.get('readonly'):
+            # Do not modify readonly fields
+            continue
+
+        value = deserialize_single_issue_field(field_name, value)
+
+        setattr(issue, field_name, value)
+
+    # Link issue to epic if epic_ref is present
+    if attrs.get('epic_ref'):
+        matched_epic = find_epic_by_reference(jira, attrs['epic_ref'])
+        issue.epic_ref = matched_epic.key
