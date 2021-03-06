@@ -5,13 +5,14 @@ import functools
 import logging
 import textwrap
 from typing import Any, Optional, Tuple, TYPE_CHECKING
+from tzlocal import get_localzone
 
 import arrow
 import click
 from tabulate import tabulate
 
-from jira_offline.exceptions import ProjectNotConfigured
-from jira_offline.utils.serializer import get_enum, get_base_type
+from jira_offline.exceptions import DeserializeError, ProjectNotConfigured
+from jira_offline.utils.serializer import deserialize_value, get_enum, get_base_type
 
 if TYPE_CHECKING:
     from jira_offline.models import ProjectMeta  # pylint: disable=cyclic-import
@@ -126,6 +127,33 @@ def render_value(value: Any, type_: Optional[type]=None) -> str:
         return '\n'.join(textwrap.wrap(value, width=100))
     else:
         return str(value)
+
+
+def deserialize_single_issue_field(field_name: str, value: Optional[str],
+                                   tz: Optional[datetime.tzinfo]=None) -> Any:
+    '''
+    Use DataclassSerializer.deserialize_value to convert from string to the correct type.
+
+    Params:
+        field_name:  Name of the field Issue dataclass
+        value:       String representation of the value to be set
+        tz:          Timezone to apply to dates/datetimes in `value`
+    '''
+    if value is None:
+        return
+
+    if tz is None:
+        tz = get_localzone()
+
+    try:
+        # late import to avoid circular dependency
+        from jira_offline.models import Issue  # pylint: disable=import-outside-toplevel
+
+        # look up the type of Issue.field_name and deserialize string value to this type
+        return deserialize_value(get_field_by_name(Issue, field_name).type, value, tz)
+
+    except DeserializeError as e:
+        raise DeserializeError(f'Failed parsing {field_name} with value {value} ({e})')
 
 
 @contextlib.contextmanager
