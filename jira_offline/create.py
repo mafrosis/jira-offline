@@ -8,6 +8,7 @@ import uuid
 from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce, ImportFailed,
                                      InvalidIssueType, ProjectNotConfigured)
 from jira_offline.models import Issue, ProjectMeta
+from jira_offline.utils.serializer import get_base_type
 from jira_offline.utils import deserialize_single_issue_field, find_project, get_field_by_name
 
 if TYPE_CHECKING:
@@ -198,7 +199,11 @@ def patch_issue_from_dict(jira: 'Jira', issue: Issue, attrs: dict):
             # Do not modify readonly fields
             continue
 
-        value = deserialize_single_issue_field(field_name, value)
+        if get_base_type(f.type) is str and value == '':
+            # When setting an Issue attribute to empty string, map it to None
+            value = None
+        else:
+            value = deserialize_single_issue_field(field_name, value)
 
         setattr(issue, field_name, value)
 
