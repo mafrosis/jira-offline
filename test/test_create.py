@@ -59,7 +59,7 @@ def test_create__create_issue__mandatory_fields_are_set_in_new_issue(mock_jira, 
     assert offline_issue.project == project
     assert offline_issue.issuetype == 'Story'
     assert offline_issue.summary == 'This is a summary'
-    assert offline_issue.description == ''
+    assert offline_issue.description is None
     assert len(offline_issue.key) == 36  # UUID
 
 
@@ -291,3 +291,13 @@ def test_create__patch_issue_from_dict__set_string_to_value(mock_jira):
     patch_issue_from_dict(mock_jira, issue, {'assignee': 'eggs'})
 
     assert issue.assignee == 'eggs'
+
+
+def test_create__patch_issue_from_dict__set_string_to_blank(mock_jira):
+    '''
+    Ensure an Issue can have attributes set
+    '''
+    issue = Issue.deserialize(ISSUE_1)
+    patch_issue_from_dict(mock_jira, issue, {'assignee': ''})
+
+    assert issue.assignee is None
