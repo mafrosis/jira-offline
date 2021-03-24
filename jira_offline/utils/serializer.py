@@ -306,11 +306,11 @@ class DataclassSerializer:
                 if ignore_missing is False:
                     # if the missing key's type is non-optional, raise an exception
                     if not typing_inspect.is_optional_type(f.type):
-                        raise DeserializeError(f'Missing input data for mandatory key {f.name}')
+                        raise DeserializeError(f'Missing input data for mandatory key "{f.name}"')
                     continue
 
             except TypeError as e:
-                raise DeserializeError(f'Fatal TypeError for key {f.name} ({e})')
+                raise DeserializeError(f'Fatal TypeError for key "{f.name}" ("{e}")')
 
             try:
                 data[f.name] = deserialize_value(
@@ -320,7 +320,7 @@ class DataclassSerializer:
                 )
 
             except DeserializeError as e:
-                raise DeserializeError(f'{e} in field {f.name}')
+                raise DeserializeError(f'"{e}" on field "{f.name}"')
 
         # feed additional kwargs to the target class constructor
         if constructor_kwargs:
