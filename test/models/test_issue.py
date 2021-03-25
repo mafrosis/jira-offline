@@ -1,10 +1,12 @@
 '''
 Tests for methods on the Issue model
 '''
+import copy
+
 import pytest
 
 from conftest import not_raises
-from fixtures import ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF
+from fixtures import ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF, ISSUE_NEW
 from jira_offline.models import Issue
 
 
@@ -120,3 +122,51 @@ def test_issue_model__setting_the_original_attribute_directly_raises_exception()
 
     with pytest.raises(Exception):
         issue.original(issue.serialize())
+
+
+def test_issue_model__existing_issue_modified_set_true_during_attribute_set(mock_jira):
+    '''
+    Ensure Issue.modified is set to true by an attribute value change, if the Issue exists on Jira
+    '''
+    issue_1 = Issue.deserialize(ISSUE_1)
+    setattr(issue_1, 'summary', 'egg')
+
+    assert issue_1.modified is True
+
+
+def test_issue_model__new_issue_modified_set_false_during_attribute_set(mock_jira):
+    '''
+    Ensure Issue.modified is set to true by an attribute value change, if the Issue exists on Jira
+    '''
+    issue_new = Issue.deserialize(ISSUE_NEW)
+    setattr(issue_new, 'summary', 'egg')
+
+    assert issue_new.modified is False
+
+
+def test_issue_model__original_not_updated_during_attribute_set(mock_jira):
+    '''
+    Ensure Issue.original does not get modified by an attribute value change
+    '''
+    issue_1 = Issue.deserialize(ISSUE_1)
+    serialized_issue = copy.copy(issue_1.serialize())
+
+    assert issue_1.original == serialized_issue
+
+    setattr(issue_1, 'summary', 'egg')
+
+    assert issue_1.original == serialized_issue
+
+
+def test_issue_model__original_not_updated_during_attribute_set_with_roundtrip(mock_jira):
+    '''
+    Ensure Issue.original does not get modified by an attribute value change
+    '''
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    serialized_issue = copy.copy(mock_jira['TEST-71'].serialize())
+
+    assert mock_jira['TEST-71'].original == serialized_issue
+
+    setattr(mock_jira['TEST-71'], 'summary', 'egg')
+
+    assert mock_jira['TEST-71'].original == serialized_issue
