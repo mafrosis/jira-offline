@@ -62,7 +62,8 @@ def test_cli_commands_can_return_json(mock_jira, command, params):
 
     runner = CliRunner()
 
-    with mock.patch('jira_offline.cli.main.jira', mock_jira):
+    with mock.patch('jira_offline.cli.main.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, [command, *params])
 
     assert result.exit_code == 0
@@ -137,7 +138,8 @@ def test_cli_edit__can_change_an_existing_issue(mock_jira):
 
     runner = CliRunner()
 
-    with mock.patch('jira_offline.cli.main.jira', mock_jira):
+    with mock.patch('jira_offline.cli.main.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, ['edit', 'TEST-71', '--summary', 'A new summary'])
 
     assert result.exit_code == 0
@@ -150,13 +152,14 @@ def test_cli_edit__can_change_a_new_issue(mock_jira):
     Ensure success when editing a new issue
     '''
     # add new issue fixture to Jira dict
-    mock_jira['issue_new'] = Issue.deserialize(ISSUE_NEW)
+    mock_jira['7242cc9e-ea52-4e51-bd84-2ced250cabf0'] = Issue.deserialize(ISSUE_NEW)
 
     runner = CliRunner()
 
-    with mock.patch('jira_offline.cli.main.jira', mock_jira):
-        result = runner.invoke(cli, ['edit', 'issue_new', '--summary', 'A new summary'])
+    with mock.patch('jira_offline.cli.main.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
+        result = runner.invoke(cli, ['edit', '7242cc9e-ea52-4e51-bd84-2ced250cabf0', '--summary', 'A new summary'])
 
     assert result.exit_code == 0
-    assert mock_jira['issue_new'].summary == 'A new summary'
+    assert mock_jira['7242cc9e-ea52-4e51-bd84-2ced250cabf0'].summary == 'A new summary'
     assert mock_jira.write_issues.called

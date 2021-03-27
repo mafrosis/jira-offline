@@ -32,19 +32,17 @@ def fix_versions(jira: 'Jira', fix: bool=False, value: str=None) -> pd.DataFrame
                 continue
 
             # if value is in the epic's fix_versions field
-            if value in jira[epic_ref].fix_versions:
+            if value in jira[epic_ref].fix_versions:  # type: ignore[operator]
                 # filter for all issues under this epic, and add value to fix_versions
-                for key in jira.df[jira.df.epic_ref == jira[epic_ref].key].fix_versions.keys():
-                    if not jira[key].fix_versions:
-                        jira[key].fix_versions = set()
-                    jira[key].fix_versions.add(value)
+                jira.df[jira.df.epic_ref == jira[epic_ref].key].fix_versions.apply(
+                    lambda x: {value} if x is None else x.add(value)
+                )
 
-        # write updates to disk & invalidate current DataFrame representation
+        # write updates to disk
         jira.write_issues()
-        jira.invalidate_df()
 
     # return dataframe of issues with empty fixversions field
-    return jira.df[jira.df.fix_versions.apply(lambda x: x is None or len(x) == 0)]
+    return jira.df[jira.df.fix_versions.str.len() == 0]
 
 
 def issues_missing_epic(jira: 'Jira', fix: bool=False, epic_ref: str=None) -> pd.DataFrame:
@@ -57,13 +55,11 @@ def issues_missing_epic(jira: 'Jira', fix: bool=False, epic_ref: str=None) -> pd
         epic_ref:  Epic to set on issues with no epic (only applicable when fix=True)
     '''
     if fix:
-        # iterate issue keys and update issue.epic_ref
-        for key in jira.df[(jira.df.issuetype != 'Epic') & jira.df.epic_ref.isnull()].index:
-            jira[key].epic_ref = epic_ref
+        # update epic_ref where missing
+        jira.df.loc[(jira.df.issuetype != 'Epic') & (jira.df.epic_ref == ''), 'epic_ref'] = epic_ref
 
-        # write updates to disk & invalidate current DataFrame representation
+        # write updates to disk
         jira.write_issues()
-        jira.invalidate_df()
 
     # return dataframe of open issues missing an epic
-    return jira.df[(jira.df.issuetype != 'Epic') & jira.df.epic_ref.isnull()]
+    return jira.df[(jira.df.issuetype != 'Epic') & (jira.df.epic_ref == '')]

@@ -2,17 +2,19 @@
 The Jira class in this module is the primary abstraction around the Jira API.
 '''
 import collections.abc
+import dataclasses
+import json
 import logging
 import os
-from typing import Dict, Optional, Set
+from typing import Dict, List, Optional, Set
 
-import jsonlines
 import pandas as pd
 from peak.util.proxies import LazyProxy
 
 from jira_offline.config import get_cache_filepath, load_config
 from jira_offline.exceptions import (EpicNotFound, EstimateFieldUnavailable, JiraApiError,
-                                     JiraNotConfigured, MissingFieldsForNewIssue, ProjectDoesntExist)
+                                     JiraNotConfigured, MissingFieldsForNewIssue,
+                                     MultipleTimezoneError, ProjectDoesntExist)
 from jira_offline.models import AppConfig, CustomFields, IssueFilter, Issue, IssueType, ProjectMeta
 from jira_offline.utils.api import get as api_get, post as api_post, put as api_put
 from jira_offline.utils.convert import jiraapi_object_to_issue
@@ -22,80 +24,150 @@ from jira_offline.utils.decorators import auth_retry
 logger = logging.getLogger('jira')
 
 
-def create_jira():
-    return Jira()
-
-# create single Jira object instance for this invocation of the app
-# made available to all modules via simply python import: `from jira_offline.jira import jira`
-jira = LazyProxy(create_jira)
+# Create single Jira object instance for this invocation of the app
+# Made available to all modules via simply python import: `from jira_offline.utils import jira`
+jira = LazyProxy(lambda: Jira())  # pylint: disable=unnecessary-lambda
 
 
 class Jira(collections.abc.MutableMapping):
-    _df: Optional[pd.DataFrame] = None
+    _df: pd.DataFrame
 
     filter: IssueFilter
 
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         self.store = dict()
-        self.update(dict(*args, **kwargs))
+
+        # Create the underlying storage for persisting Issues
+        self._df = pd.DataFrame()
 
         # load application config without prompting
         self.config: AppConfig = load_config()
 
-        # initialise an empty filter
-        self.filter = IssueFilter()
+        # Initialise an empty filter
+        self.filter = IssueFilter(self)
 
 
-    def __getitem__(self, key):
-        return self.store[key]
+    def __getitem__(self, key: str) -> Issue:
+        series = self._df.loc[key]
+        return Issue.from_series(
+            series,
+            project=self.config.projects[series['project_id']]
+        )
 
-    def __setitem__(self, key, value):
-        self.store[key] = value
+    def __setitem__(self, key: str, issue: Issue):
+        series = issue.to_series()
+        self._df.loc[key] = series
 
-    def __delitem__(self, key):
-        del self.store[key]
-
+    def __delitem__(self, key: str):
+        self._df.drop(key, inplace=True)
 
     def __iter__(self):
-        return iter(self.store)
+        return (k for k, row in self._df.iterrows())
 
     def __len__(self):
-        return len(self.store)
+        return len(self._df)
+
+    def __contains__(self, key):
+        return key in self._df.index
+
+
+    @property
+    def df(self) -> pd.DataFrame:
+        return self.filter.apply()
+
+
+    def update(self, issues: List[Issue]):  # type: ignore[override] # pylint: disable=arguments-differ
+        '''
+        Merge another DataFrame of Issues to the store. New issues are appended to the underlying
+        DataFrame and existing modified issues are updated in-place.
+
+        This method is called during sync with Jira server.
+
+        Notably this method _does not_ use the logic in Issue.to_series() for performance reasons;
+        it's much faster to build the DataFrame and operate on that, than to process each Issue in a
+        tight loop and then create a DataFrame.
+        '''
+        # Validate all timezones are the same for this DataFrame, as the following tz_convert() call
+        # fails when they differ.
+        # It's not possible for a single Jira to return issues with multiple different timezones.
+        if not all(i.created.tzinfo == issues[0].created.tzinfo for i in issues):  # type: ignore[union-attr]
+            raise MultipleTimezoneError
+        if not all(i.updated.tzinfo == issues[0].updated.tzinfo for i in issues):  # type: ignore[union-attr]
+            raise MultipleTimezoneError
+
+        # Construct a DataFrame from the passed list of Issues
+        # also fill any NaNs with blank
+        df = pd.DataFrame.from_dict(
+            {issue.key:issue.__dict__ for issue in issues},
+            orient='index'
+        ).fillna('')
+
+        # Convert all datetimes to UTC
+        for col in ('created', 'updated'):
+            df[col] = df[col].dt.tz_convert('UTC')
+
+        # PyArrow does not like decimals
+        df['estimate'] = df['estimate'].astype('string')
+
+        # Convert the "project" object column - which contains ProjectMeta instances -
+        # into "project_key" - a string column
+        df.loc[:, 'project_key'] = [p.key if p else None for p in df['project']]
+
+        # Drop columns for fields marked repr=False
+        df.drop(
+            columns=[f.name for f in dataclasses.fields(Issue) if f.repr is False],
+            inplace=True,
+        )
+
+        # Render diff_to_original as a string for storage in the DataFrame
+        df['diff_to_original'] = df['diff_to_original'].apply(json.dumps)
+
+        # Add an empty column to for Issue.original
+        df['original'] = ''
+
+        # Append any new issues
+        self._df = pd.concat([ self._df, df[~df.key.isin(self._df.index)] ])
+
+        # In-place update for modified issues
+        self._df.update(df)
+
+        # Let Pandas pick the best datatypes
+        self._df = self._df.convert_dtypes()
+
+        # write to disk
+        self.write_issues()
 
 
     class KeysView(collections.abc.KeysView):
         '''Override KeysView to enable filtering via __iter__'''
-        def __init__(self, mapping, filter_):
-            self._filter = filter_
-            super().__init__(mapping)
+        def __init__(self, jira_, filter_):
+            self.filter = filter_
+            super().__init__(jira_)
 
         def __iter__(self):
-            for key in self._mapping:
-                if self._filter.compare(self._mapping[key]):
-                    yield key
+            for key in self.filter.apply().index:
+                yield key
 
     class ItemsView(collections.abc.ItemsView):
         '''Override ItemsView to enable filtering via __iter__'''
-        def __init__(self, mapping, filter_):
-            self._filter = filter_
-            super().__init__(mapping)
+        def __init__(self, jira_, filter_):
+            self.filter = filter_
+            super().__init__(jira_)
 
         def __iter__(self):
-            for key in self._mapping:
-                if self._filter.compare(self._mapping[key]):
-                    yield (key, self._mapping[key])
+            for key in self.filter.apply().index:
+                yield (key, self._mapping[key])
 
     class ValuesView(collections.abc.ValuesView):
         '''Override ValuesView to enable filtering via __iter__'''
-        def __init__(self, mapping, filter_):
-            self._filter = filter_
-            super().__init__(mapping)
+        def __init__(self, jira_, filter_):
+            self.filter = filter_
+            super().__init__(jira_)
 
         def __iter__(self):
-            for key in self._mapping:
-                if self._filter.compare(self._mapping[key]):
-                    yield self._mapping[key]
+            for key in self.filter.apply().index:
+                yield self._mapping[key]
 
     def keys(self):
         return Jira.KeysView(self, self.filter)
@@ -109,43 +181,29 @@ class Jira(collections.abc.MutableMapping):
 
     def load_issues(self) -> None:
         '''
-        Load issues from JSON cache file, and store in self (as class implements dict interface)
+        Load issues from parquet cache file, and store in underlying pandas DataFrame
         '''
         cache_filepath = get_cache_filepath()
         if os.path.exists(cache_filepath) and os.stat(cache_filepath).st_size > 0:
-            try:
-                with open(cache_filepath) as f:
-                    for obj in jsonlines.Reader(f.readlines()).iter(type=dict):
-                        self[obj['key']] = Issue.deserialize(
-                            obj, project=self.config.projects[obj['project_id']]
-                        )
+            self._df = pd.read_parquet(cache_filepath).convert_dtypes()
 
-            except (KeyError, TypeError, jsonlines.Error):
-                logger.exception('Cannot read issues cache! Please report this bug.')
-                return
-
+            # add an empty column to for Issue.original
+            self._df['original'] = ''
 
     def write_issues(self):
         '''
-        Dump issues to JSON cache file
+        Dump issues to parquet cache file
         '''
-        try:
-            issues_json = []
-            for issue in self.values():
-                # store the diff for modified issues
-                if issue.modified and issue.exists:
-                    issue.diff()
+        # Don't write out the original field, as diff_to_original will recreate it
+        self._df.drop(columns=['original'], inplace=True)
 
-                issues_json.append(issue.serialize())
+        # convert `set` columns to `list`, as `set` will not serialize via PyArrow when writing
+        # to disk
+        for col in ('components', 'fix_versions', 'labels'):
+            self._df[col] = self._df[col].apply(list)
 
-        except TypeError:
-            # an error here means the DataclassSerializer output is incompatible with JSON
-            logger.exception('Cannot write issues cache! Please report this bug.')
-            return
-
-        with open(get_cache_filepath(), 'w') as f:
-            writer = jsonlines.Writer(f)
-            writer.write_all(issues_json)
+        cache_filepath = get_cache_filepath()
+        self._df.to_parquet(cache_filepath)
 
 
     @auth_retry()
@@ -278,6 +336,11 @@ class Jira(collections.abc.MutableMapping):
             if 'cannot be set. It is not on the appropriate screen, or unknown.' in e.message:
                 raise JiraNotConfigured(project.key, project.jira_server, err)
 
+        if new_issue.key is None:
+            # This code path is not reachable, as the `key` field is mandatory on the Jira API. This
+            # is included to keep the type-checker happy
+            raise Exception
+
         # add to self under the new key
         self[new_issue.key] = new_issue
 
@@ -309,6 +372,12 @@ class Jira(collections.abc.MutableMapping):
 
             # Jira is now updated to match local; synchronize our local reference to the Jira object
             issue.original = issue.serialize()
+
+            if issue.key is None:
+                # this code path is not possible, as Jira always provides the key field
+                # but it keeps the type-checker happy
+                raise Exception
+
             self[issue.key] = issue
             return issue
 
@@ -330,21 +399,3 @@ class Jira(collections.abc.MutableMapping):
         '''
         data = api_get(project, f'issue/{key}')
         return jiraapi_object_to_issue(project, data)
-
-
-    def invalidate_df(self):
-        '''Invalidate internal dataframe, so it's recreated on next access'''
-        self._df = None
-
-    @property
-    def df(self) -> pd.DataFrame:
-        '''Convert self (aka a dict) into a pandas DataFrame, and cache'''
-        if self._df is None:
-            items = {}
-            for key, issue in self.items():
-                items[key] = {
-                    k:v for k,v in issue.__dict__.items()
-                    if k not in ('original', 'diff_to_original')
-                }
-            self._df = pd.DataFrame.from_dict(items, orient='index')
-        return self._df

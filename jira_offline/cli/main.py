@@ -54,6 +54,10 @@ def cli_ls(ctx, as_json: bool=False, project: str=None):
     '''List Issues on the CLI'''
     jira.load_issues()
 
+    if len(jira) == 0:
+        click.echo('No issues in the cache')
+        raise click.Abort
+
     # filter issues on project
     jira.filter.project_key = project
 
@@ -91,7 +95,7 @@ def cli_diff(key: str=None):
 
 @click.command(name='reset')
 @click.argument('key')
-def cli_reset(key: str=None):
+def cli_reset(key: str):
     '''
     Reset an issue back to the last-seen Jira version, dropping any changes made locally
     '''
@@ -311,8 +315,10 @@ def cli_edit(key: str, as_json: bool=False, **kwargs):
         click.echo('Unknown issue key')
         raise click.Abort
 
+    issue = jira[key]
+
     # validate epic parameters
-    if jira[key].issuetype == 'Epic':
+    if issue.issuetype == 'Epic':
         if kwargs.get('epic_ref'):
             click.echo('Parameter --epic-ref is ignored when modifing an Epic')
             del kwargs['epic_ref']
@@ -326,16 +332,17 @@ def cli_edit(key: str, as_json: bool=False, **kwargs):
     if kwargs.get('labels'):
         kwargs['labels'] = set(kwargs['labels'].split(','))
 
-    patch_issue_from_dict(jira, jira[key], kwargs)
+    patch_issue_from_dict(jira, issue, kwargs)
+    issue.commit()
+
+    jira.write_issues()
 
     if as_json:
         # display the edited issue as JSON
-        click.echo(jira[key].as_json())
+        click.echo(issue.as_json())
     else:
         # print diff of edited issue
-        print_diff(jira[key])
-
-    jira.write_issues()
+        print_diff(issue)
 
 
 @click.command(name='import')

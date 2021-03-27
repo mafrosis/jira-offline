@@ -4,11 +4,12 @@ import string
 import tempfile
 from unittest import mock
 
-from requests.auth import HTTPBasicAuth
-import requests
 import docker
+import pandas as pd
 import pytest
 import pytz
+from requests.auth import HTTPBasicAuth
+import requests
 
 from tzlocal import get_localzone
 
@@ -54,15 +55,24 @@ def project(customfield_estimate, customfield_priority, timezone):
         },
     )
 
+@pytest.fixture
+def project2(customfield_estimate, customfield_priority):
+    '''
+    Fixture representing a second configured Jira project. Used in some test cases validating
+    behavior across multiple projects. See also the ISSUE_DIFF_PROJECT fixture.
+    '''
+    return ProjectMeta.factory('http://example.com/EGG')
+
 
 @pytest.fixture
 @mock.patch('jira_offline.jira.load_config')
-def mock_jira_core(mock_load_config, project):
+def mock_jira_core(mock_load_config, project, project2):
     '''
     Return a Jira class instance with connect method and underlying Jira lib mocked
     '''
     jira = Jira()
-    jira.config = AppConfig(projects={project.id: project})
+    jira._df = pd.DataFrame()
+    jira.config = AppConfig(projects={project.id: project, project2.id: project2})
     # ensure each ProjectMeta instance has a reference to the AppConfig instance
     # in normal operation, this is done in `load_config` in config.py, and so applies to all projects
     project.config = jira.config
@@ -74,8 +84,13 @@ def mock_jira_core(mock_load_config, project):
 @pytest.fixture
 def mock_jira(mock_jira_core):
     '''
-    Mock additional methods of Jira class
+    Mock additional methods of Jira class which have side-effects (eg. disk/network access)
     '''
+    mock_jira_core._df = pd.DataFrame(columns=[
+        'project_id', 'issuetype', 'summary', 'assignee', 'created', 'creator', 'epic_name',
+        'epic_ref', 'estimate', 'description', 'fix_versions', 'components', 'id', 'key', 'labels',
+        'priority', 'reporter', 'status', 'updated', 'diff_to_original', 'modified', 'project_key',
+    ])
     mock_jira_core.load_issues = mock.Mock()
     mock_jira_core.write_issues = mock.Mock()
     mock_jira_core.update_issue = mock.Mock()

@@ -24,10 +24,14 @@ def cli_lint(ctx, fix: bool=False, project: str=None):
     ctx.obj.lint = CliParams.LintParams(fix=fix)
 
     # filter issues by project
-    jira.filter.project = project
+    jira.filter.project_key = project
 
     # load issues here for all subcommands in the group
     jira.load_issues()
+
+    if jira.df.empty:
+        click.echo('No issues in the cache')
+        raise click.Abort
 
 
 @cli_lint.command(name='fix-versions')

@@ -47,7 +47,8 @@ def test_main_smoketest(mock_authenticate, mock_push_issues, mock_pull_issues,
 
     runner = CliRunner()
 
-    with mock.patch('jira_offline.cli.main.jira', mock_jira):
+    with mock.patch('jira_offline.cli.main.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, [command, *params])
 
     # CLI should always exit zero

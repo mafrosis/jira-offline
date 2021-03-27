@@ -3,7 +3,8 @@ Tests for push_issues() in the sync module
 '''
 from unittest import mock
 
-from fixtures import ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF, ISSUE_1_WITH_FIXVERSIONS_DIFF, ISSUE_NEW
+from fixtures import (ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF, ISSUE_1_WITH_FIXVERSIONS_DIFF, ISSUE_2,
+                      ISSUE_NEW)
 from jira_offline.models import Issue
 from jira_offline.sync import IssueUpdate, push_issues
 
@@ -77,9 +78,9 @@ def test_push_issues__skips_issues_from_unconfigured_projects(
     '''
     Ensure issues from unconfigured projects are ignored
     '''
-    mock_jira['TEST-71.1'] = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
-    mock_jira['TEST-71.2'] = Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF)
-    mock_jira['TEST-71.2'].project_id = 'notarealprojecthash'
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
+    mock_jira['TEST-72'] = Issue.deserialize(ISSUE_2)
+    mock_jira['TEST-72'].project_id = 'notarealprojecthash'
 
     push_issues(mock_jira)
 

@@ -2,11 +2,13 @@
 Tests for methods on the Issue model
 '''
 import copy
+from unittest import mock
 
 import pytest
 
 from conftest import not_raises
 from fixtures import ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF, ISSUE_NEW
+from helpers import compare_issue_helper
 from jira_offline.models import Issue
 
 
@@ -170,3 +172,47 @@ def test_issue_model__original_not_updated_during_attribute_set_with_roundtrip(m
     setattr(mock_jira['TEST-71'], 'summary', 'egg')
 
     assert mock_jira['TEST-71'].original == serialized_issue
+
+
+def test_issue_model__commit__produces_issue_with_diff(mock_jira):
+    '''
+    Ensure Issue.commit calls diff, and produces and results in a retrievable Issue with a diff
+    '''
+    mock_jira['TEST-71'] = issue = Issue.deserialize(ISSUE_1)
+
+    issue.assignee = 'hoganp'
+
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        issue.commit()
+
+    assert issue.assignee == 'hoganp'
+    assert issue.diff() == [('change', 'assignee', ('hoganp', 'danil1'))]
+
+    assert mock_jira['TEST-71'].assignee == 'hoganp'
+    assert mock_jira['TEST-71'].diff() == [('change', 'assignee', ('hoganp', 'danil1'))]
+
+
+def test_issue_model__commit__persists_edits(mock_jira):
+    '''
+    Ensure an Issue can have attributes set
+    '''
+    mock_jira['TEST-71'] = issue = Issue.deserialize(ISSUE_1)
+
+    issue.assignee = 'hoganp'
+
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        issue.commit()
+
+    assert issue.assignee == 'hoganp'
+    assert mock_jira['TEST-71'].assignee == 'hoganp'
+
+
+def test_issue_model__to_series_from_series_roundtrip(mock_jira, project):
+    '''
+    Ensure that Issue.to_series and Issue.from_series are behaving
+    '''
+    issue_1 = Issue.deserialize(ISSUE_1, project=project)
+
+    roundtrip_issue = Issue.from_series(issue_1.to_series(), project)
+
+    compare_issue_helper(issue_1, roundtrip_issue)

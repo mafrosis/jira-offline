@@ -89,6 +89,12 @@ class EpicNotFound(BaseAppException):
         return self.__doc__.format(self.epic_ref)
 
 
+# Raised when Issue.__setattr__ is called when the Issue object has no reference to the central
+# Jira instance
+class CannotSetFieldOnIssueWithoutJira(BaseAppException):
+    'Issue does not have a reference to Jira'
+
+
 # Raised when the API call to create a new issue is missing a mandatory Issue fields
 class MissingFieldsForNewIssue(BaseAppException):
     'Mandatory fields missing on call to create a new issue'
@@ -260,3 +266,11 @@ class ImportFailed(DynamicBaseAppException):
 # Raised by Issue.__set_attr__ for attribute names which must be set via a helper
 class CannotSetIssueAttributeDirectly(Exception):
     'This attribute cannot be set directly, you must use the set_<attrib>() helper'
+
+
+# Raised by Jira.update when a sync returns Issues with a different timezone to those already present
+class MultipleTimezoneError(Exception):
+    '''A change Jira of timezone is unsupported, please run:
+
+jira pull --reset-hard
+'''

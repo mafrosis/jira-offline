@@ -13,10 +13,14 @@ from jira_offline.utils.cli import print_table
 def cli_stats(ctx, project: str=None):
     '''Generate stats on Jira data'''
     # filter issues by project
-    jira.filter.project = project
+    jira.filter.project_key = project
 
     # load issues here for all subcommands in the group
     jira.load_issues()
+
+    if jira.df.empty:
+        click.echo('No issues in the cache')
+        raise click.Abort
 
     if ctx.invoked_subcommand is None:
         for subcommand in (cli_stats_issuetype, cli_stats_status, cli_stats_fix_versions):
@@ -32,7 +36,7 @@ def cli_stats_issuetype():
 
 @cli_stats.command(name='status')
 def cli_stats_status():
-    '''Stats on ticket status'''
+    '''Stats on issue status'''
     aggregated_status = jira.df.groupby([jira.df.status]).size().to_frame(name='count')
     print_table(aggregated_status)
 

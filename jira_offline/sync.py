@@ -22,7 +22,7 @@ from jira_offline.utils import critical_logger, friendly_title, get_field_by_nam
 from jira_offline.utils.api import get as api_get
 from jira_offline.utils.cli import print_list
 from jira_offline.utils.convert import jiraapi_object_to_issue, issue_to_jiraapi_update
-from jira_offline.utils.serializer import DeserializeError, istype
+from jira_offline.utils.serializer import DeserializeError, get_base_type, istype
 
 if TYPE_CHECKING:
     from jira_offline.jira import Jira
@@ -94,9 +94,10 @@ def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose
 
     jql = f'project = {project.key} AND updated > "{last_updated}"'
 
-    def _run(jql: str, pbar=None) -> int:
+    def _run(jql: str, pbar=None) -> List[Issue]:
         page = 0
         total = 0
+        issues = []
 
         while True:
             startAt = page * 25
@@ -104,13 +105,13 @@ def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose
             params = {'jql': jql, 'startAt': startAt, 'maxResults': 25}
             data = api_get(project, 'search', params=params)
 
-            issues = data.get('issues', [])
-            if len(issues) == 0:
+            api_issues = data.get('issues', [])
+            if len(api_issues) == 0:
                 break
             page += 1
-            total += len(issues)
+            total += len(api_issues)
 
-            for api_issue in issues:
+            for api_issue in api_issues:
                 # convert from Jira object into Issue dataclass
                 issue = jiraapi_object_to_issue(project, api_issue)
 
@@ -125,24 +126,24 @@ def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose
                     except KeyError:
                         pass
 
-                # insert issue into Jira dict
-                jira[api_issue['key']] = issue
+                # build list of new/modified issues
+                issues.append(issue)
 
             if pbar:
                 # update progress
-                pbar.update(len(issues))
+                pbar.update(len(api_issues))
             else:
                 logger.info('Page number %s', page)
                 df = pd.DataFrame.from_dict(
                     {
                         issue['key']: jiraapi_object_to_issue(project, issue).serialize()
-                        for issue in issues
+                        for issue in api_issues
                     },
                     orient='index'
                 )
                 print_list(df)
 
-        return total
+        return issues
 
     try:
         # single quick query to get total number of issues
@@ -152,11 +153,11 @@ def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose
         pbar = None
 
         if verbose:
-            total = _run(jql)
+            issues = _run(jql)
         else:
             # show progress bar
             with tqdm(total=data['total'], unit=' issues') as pbar:
-                total = _run(jql, pbar)
+                issues = _run(jql, pbar)
 
     except JiraApiError as e:
         raise FailedPullingIssues
@@ -165,10 +166,11 @@ def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose
         logger.critical('Failed resolving conflict on %s during pull!', e)
         return
 
-    logger.info('Retrieved %s issues', total)
+    # include new/modified issues into local storage
+    if issues:
+        jira.update(issues)
 
-    # dump issues to JSON cache
-    jira.write_issues()
+    logger.info('Retrieved %s issues', len(issues))
 
     # cache the last_updated value
     project.last_updated = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
@@ -222,16 +224,16 @@ def build_update(base_issue: Issue, updated_issue: Optional[Issue]) -> IssueUpda
     Generate an object representing an Issue update.
 
     Params:
-        base_issue:     Base Issue to which we are comparing (has an .original property)
-        updated_issue:  Incoming updated Issue (or Issue.blank)
+        base_issue:     Issue to be compared to another
+        updated_issue:  Incoming Issue (or Issue.blank) to be compared to the base
     Returns:
         A dict object including the issue, a set of modified fields, and any conflicts
 
     There are three versions of the Issue at update time:
 
-      original:  The original Issue before any local modifications
-      base:      A potentially-modified Issue, which is compared to the updated Issue
-      updated:   Incoming modified Issue
+      base:      Base Issue, to which the updated Issue is compared
+      updated:   Potentially modified Issue to compare to the base Issue
+      original:  The original Issue as last-seen on the Jira server
 
     The updated and base Issues are compared to the original Issue and are merged into the final Issue.
     A conflict occurs when competing changes have been made on both the base and the updated Issue to
@@ -239,12 +241,15 @@ def build_update(base_issue: Issue, updated_issue: Optional[Issue]) -> IssueUpda
 
          Updated --- Merged
          /          /
-      Origin --- Base
+      Original --- Base
 
     https://en.wikipedia.org/wiki/Merge_(version_control)#Three-way_merge
 
     There is an additional case, where the Issue object was created locally offline. In that case,
-    Issue.blank() should be passed as the `updated_issue` parameter.
+    Issue.blank() (or None) should be passed as the `updated_issue` parameter.
+
+    The `dictdiffer` library is used to compare dicts of each Issue. This library generates a tuple
+    showing which fields were added, changed & removed in the compared dicts.
     '''
     if updated_issue is None:
         # for new Issues created offline, the updated_issue must be set to Issue.blank
@@ -316,9 +321,15 @@ def build_update(base_issue: Issue, updated_issue: Optional[Issue]) -> IssueUpda
     # merge in modified fields from the updated Issue
     for field_name, _ in iter_fieldnames_in_diff(diff_original_to_updated):
         if grouped_modified[field_name] == 1:
-            value = getattr(updated_issue, field_name)
-            if bool(value):
-                setattr(merged_issue, get_field_by_name(Issue, field_name).name, value)
+            new_value = getattr(updated_issue, field_name)
+
+            f = get_field_by_name(Issue, field_name)
+
+            if get_base_type(f.type) is str and new_value == '':
+                # When setting an Issue attribute to empty string, map it to None
+                new_value = None
+
+            setattr(merged_issue, f.name, new_value)
 
     # mark conflicted fields
     for field_name in grouped_modified:

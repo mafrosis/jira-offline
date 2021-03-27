@@ -2,7 +2,7 @@
 Module for functions related to Issue creation, editing and bulk import.
 '''
 import logging
-from typing import cast, Optional, Tuple, TYPE_CHECKING
+from typing import Optional, Tuple, TYPE_CHECKING
 import uuid
 
 from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce, ImportFailed,
@@ -86,15 +86,19 @@ def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: st
         project=project,
     )
 
+    # use a temporary Issue.key until Jira server creates the actual key at sync-time
+    new_issue.key = str(uuid.uuid4())
+
+    # set into jira dict
+    jira[new_issue.key] = new_issue
+
     # although description is mandatory on the Jira API, the Issue can survive with an empty one
     if 'description' not in kwargs or not kwargs['description']:
         kwargs['description'] = ''
 
     patch_issue_from_dict(jira, new_issue, kwargs)
 
-    # use a temporary Issue.key until Jira server creates the actual key at sync-time
-    new_issue.key = str(uuid.uuid4())
-    jira[new_issue.key] = new_issue
+    # write changes to disk
     jira.write_issues()
 
     return new_issue
@@ -142,10 +146,9 @@ def _import_modified_issue(jira: 'Jira', attrs: dict, lineno: int=None) -> Issue
         raise ImportFailed('Unknown issue key', lineno)
 
     patch_issue_from_dict(jira, issue, attrs)
+    issue.commit()
 
-    # overwrite entry in Jira dict with updated
-    jira[attrs['key']] = issue
-    return cast(Issue, issue)
+    return issue
 
 
 def _import_new_issue(jira: 'Jira', attrs: dict, lineno: int=None) -> Issue:

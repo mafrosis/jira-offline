@@ -19,14 +19,11 @@ def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pro
         verbose:              Display more information
         include_project_col:  Include the Issue.project field in a column
     '''
-    if df.empty:
-        click.echo('No issues in the cache')
-        raise click.Abort
-
-    pd.set_option('mode.chained_assignment', None)
+    # intentionally make a copy of the DataFrame, so subsequent destructive changes can be made
+    df = df.copy()
 
     if include_project_col:
-        fields = ['project']
+        fields = ['project_key']
     else:
         fields = []
 
@@ -38,13 +35,6 @@ def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pro
         ]
         width = 200
 
-    if 'assignee' not in df:
-        df['assignee'] = ''
-
-    # replace all NaNs in the DataFrame with blank str
-    df.fillna('', inplace=True)
-
-    # pretty dates for non-verbose
     def format_datetime(raw):
         if not raw or pd.isnull(raw):
             return ''
@@ -53,10 +43,12 @@ def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pro
             return f'{dt.format()}'
         else:
             return f'{dt.humanize()}'
-    df.updated = df.updated.apply(format_datetime)
+
+    # pretty dates
+    df['updated'] = df.updated.apply(format_datetime)
 
     # shorten the summary field for printing
-    df.summary = df.summary.str.slice(0, width)
+    df['summary'] = df.summary.str.slice(0, width)
 
     def abbrev_key(key):
         if key is None:
@@ -64,10 +56,10 @@ def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pro
         if len(key) == 36:
             return key[0:8]
         return key
+
     # abbreviate long issue keys (offline-created issues have a UUID as the key)
-    df.key = df.key.apply(abbrev_key)
-    df.set_index('key', inplace=True)
-    df.epic_ref = df.epic_ref.apply(abbrev_key)
+    df['key'] = df.key.apply(abbrev_key)
+    df['epic_ref'] = df.epic_ref.apply(abbrev_key)
 
     if verbose:
         df.fix_versions = df.fix_versions.apply(lambda x: '' if not x else ','.join(x))
@@ -75,7 +67,7 @@ def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pro
     print_table(df[fields])
 
 
-def print_table(df):
+def print_table(df: pd.DataFrame):
     '''Helper to pretty print dataframes'''
     click.echo(tabulate(df, headers='keys', tablefmt='psql'))
 

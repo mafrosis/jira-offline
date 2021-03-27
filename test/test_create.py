@@ -185,7 +185,9 @@ def test_create__import_modified_issue__merges_writable_fields(mock_jira):
         'description': 'bacon',
     }
 
-    imported_issue = _import_modified_issue(mock_jira, import_dict)
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        imported_issue = _import_modified_issue(mock_jira, import_dict)
+
     assert isinstance(imported_issue, Issue)
     assert imported_issue.key == 'TEST-71'
     assert imported_issue.estimate == 99
@@ -202,10 +204,12 @@ def test_create__import_modified_issue__doesnt_merge_readonly_fields(mock_jira):
     # add an Issue fixture to the Jira dict
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
-    # import some readonly fields for Issue key=issue1
-    import_dict = {'key': 'TEST-71', 'project_id': 'sausage'}
+    # import a readonly field against TEST-71
+    import_dict = {'key': 'TEST-71', 'project_id': 'hoganp'}
 
-    imported_issue = _import_modified_issue(mock_jira, import_dict)
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        imported_issue = _import_modified_issue(mock_jira, import_dict)
+
     assert imported_issue.project_id == '99fd9182cfc4c701a8a662f6293f4136201791b4'
 
 
@@ -219,12 +223,13 @@ def test_create__import_modified_issue__produces_issue_with_diff(mock_jira):
     # add an Issue fixture to the Jira dict
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
-    # import some readonly fields for Issue key=issue1
-    import_dict = {'key': 'TEST-71', 'assignee': 'sausage'}
+    import_dict = {'key': 'TEST-71', 'assignee': 'hoganp'}
 
-    imported_issue = _import_modified_issue(mock_jira, import_dict)
-    assert imported_issue.assignee == 'sausage'
-    assert imported_issue.diff() == [('change', 'assignee', ('sausage', 'danil1'))]
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        imported_issue = _import_modified_issue(mock_jira, import_dict)
+
+    assert imported_issue.assignee == 'hoganp'
+    assert imported_issue.diff() == [('change', 'assignee', ('hoganp', 'danil1'))]
 
 
 def test_create__import_modified_issue__idempotent(mock_jira):
@@ -237,17 +242,20 @@ def test_create__import_modified_issue__idempotent(mock_jira):
     # add an Issue fixture to the Jira dict
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
-    # import some readonly fields for Issue key=issue1
-    import_dict = {'key': 'TEST-71', 'assignee': 'sausage'}
+    import_dict = {'key': 'TEST-71', 'assignee': 'hoganp'}
 
     # import same test JSON twice
-    imported_issue = _import_modified_issue(mock_jira, import_dict)
-    assert imported_issue.assignee == 'sausage'
-    assert imported_issue.diff() == [('change', 'assignee', ('sausage', 'danil1'))]
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        imported_issue = _import_modified_issue(mock_jira, import_dict)
 
-    imported_issue = _import_modified_issue(mock_jira, import_dict)
-    assert imported_issue.assignee == 'sausage'
-    assert imported_issue.diff() == [('change', 'assignee', ('sausage', 'danil1'))]
+    assert imported_issue.assignee == 'hoganp'
+    assert imported_issue.diff() == [('change', 'assignee', ('hoganp', 'danil1'))]
+
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        imported_issue = _import_modified_issue(mock_jira, import_dict)
+
+    assert imported_issue.assignee == 'hoganp'
+    assert imported_issue.diff() == [('change', 'assignee', ('hoganp', 'danil1'))]
 
 
 @mock.patch('jira_offline.create.find_project')
@@ -301,3 +309,13 @@ def test_create__patch_issue_from_dict__set_string_to_blank(mock_jira):
     patch_issue_from_dict(mock_jira, issue, {'assignee': ''})
 
     assert issue.assignee is None
+
+
+def test_create__patch_issue_from_dict__set_priority(mock_jira):
+    '''
+    Ensure an Issue.priority can be set
+    '''
+    issue = Issue.deserialize(ISSUE_1)
+    patch_issue_from_dict(mock_jira, issue, {'priority': 'Bacon'})
+
+    assert issue.priority == 'Bacon'

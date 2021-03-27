@@ -1,3 +1,5 @@
+import pytest
+
 from fixtures import (ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF, ISSUE_1_WITH_FIXVERSIONS_DIFF,
                       ISSUE_1_WITH_UPDATED_DIFF, ISSUE_NEW)
 from jira_offline.models import Issue
@@ -237,3 +239,42 @@ def test_build_update__new_issue():
     assert not update_obj.conflicts
     for field in update_obj.modified:
         assert getattr(update_obj.merged_issue, field) == getattr(new_issue, field)
+
+
+@pytest.mark.parametrize('val', [
+    '',
+    None,
+])
+def test_build_update__base_unmodified_and_updated_modified_to_empty_string(val):
+    '''
+    Ensure an unmodified Issue can have a field set to empty string
+    '''
+    # create unmodified base Issue fixture
+    base_issue = Issue.deserialize(ISSUE_1)
+    # supply a modified Issue fixture
+    updated_issue = Issue.deserialize(ISSUE_1)
+    updated_issue.assignee = val
+
+    update_obj = build_update(base_issue, updated_issue)
+
+    assert update_obj.modified == {'assignee'}
+    assert not update_obj.conflicts
+    assert update_obj.merged_issue.assignee is None
+
+
+def test_build_update__base_modified_and_updated_modified_to_empty_string():
+    '''
+    Ensure a modified Issue can have a field set to empty string
+    '''
+    # create modified base Issue fixture
+    base_issue = Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF)
+    # supply a modified Issue fixture
+    updated_issue = Issue.deserialize(ISSUE_1)
+    updated_issue.assignee = ''
+
+    update_obj = build_update(base_issue, updated_issue)
+
+    assert update_obj.modified == {'assignee', 'fix_versions'}
+    assert not update_obj.conflicts
+    assert update_obj.merged_issue.fix_versions == {'0.1', '0.2'}
+    assert update_obj.merged_issue.assignee is None
