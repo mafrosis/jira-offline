@@ -51,7 +51,7 @@ jobs:
         draft: false
         prerelease: ${{ steps.extract.outputs.is_prerelease }}
 
-    - name: Upload Release Asset
+    - name: Upload Release Tarball
       uses: actions/upload-release-asset@v1
       if: steps.extract.outputs.needs_release == 1
       env:
@@ -61,6 +61,17 @@ jobs:
         asset_path: ./dist/jira-offline-${{ steps.extract.outputs.version }}.tar.gz
         asset_name: jira-offline-${{ steps.extract.outputs.version }}.tar.gz
         asset_content_type: application/tar+gzip
+
+    - name: Upload Release Wheel
+      uses: actions/upload-release-asset@v1
+      if: steps.extract.outputs.needs_release == 1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/jira_offline-${{ steps.extract.outputs.version }}-py3-none-any.whl
+        asset_name: jira_offline-${{ steps.extract.outputs.version }}-py3-none-any.whl
+        asset_content_type: application/x-pywheel+zip
 
     - name: Publish to Pypi
       if: steps.extract.outputs.needs_release == 1
