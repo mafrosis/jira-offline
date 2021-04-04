@@ -28,7 +28,7 @@ setup(
             'jira=jira_offline.cli:cli'
         ]
     },
-    classifiers=(
+    classifiers=[
         'Development Status :: 3 - Alpha',
         'Environment :: Console',
         'Intended Audience :: Developers',
@@ -39,5 +39,5 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
-    ),
+    ],
 )

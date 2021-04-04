@@ -16,19 +16,15 @@ Installation
 
 A few options exist:
 
-  1. Install globally with pip (not recommended)
-  2. Install into a virtualenv with pip
-  3. Pull and run the latest docker image
-  4. Clone the source code and use docker compose
+  1. Install via brew on macOS
+  2. Pull and run the latest docker image
+  3. Clone the source code and use docker compose
+  4. Install with pip
 
-### Install globally with pip
+### Use Homebrew (masOS)
 
-    pip install jira-offline
-
-### Install into a virtualenv with pip
-
-    python3 -m venv jira && source jira/bin/activate
-    pip install jira-offline
+    brew tap mafrosis/jira-offline
+    brew install jira-offline
 
 ### Docker image
 
@@ -45,6 +41,13 @@ Unfortunately you need an access token for even public packages hosted on Github
     cd jira-offline
     docker-compose build jira-offline
     docker-compose run --rm jira-offline
+
+### Install into a virtualenv with pip
+
+If you know what you're doing, then simply use a virtualenv. For example:
+
+    python3 -m venv jira && source jira/bin/activate
+    pip install jira-offline
 
 
 Known Limitations
