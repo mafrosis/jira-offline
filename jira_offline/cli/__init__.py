@@ -11,6 +11,7 @@ from typing import Optional
 
 import click
 
+import jira_offline
 from jira_offline.cli.linters import cli_lint
 from jira_offline.cli.main import (cli_clone, cli_diff, cli_edit, cli_ls, cli_new, cli_projects,
                                    cli_pull, cli_push, cli_reset, cli_show, cli_import)
@@ -25,6 +26,7 @@ logger.setLevel(logging.ERROR)
 
 
 @click.group()
+@click.version_option(jira_offline.__version__, prog_name=jira_offline.__title__)
 @click.option('--verbose', '-v', is_flag=True, help='Display INFO level logging')
 @click.option('--debug', '-d', is_flag=True, help='Display DEBUG level logging')
 @click.pass_context
