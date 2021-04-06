@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+import numpy as np
 import pytest
 
 from jira_offline.utils.serializer import DeserializeError, DataclassSerializer
@@ -13,16 +14,6 @@ class Test(DataclassSerializer):
 def test_list_deserialize_from_list():
     """
     Test list deserializes from list (JSON compatible)
-    """
-    obj = Test.deserialize({
-        'l': ['abc', 'def']
-    })
-    assert isinstance(obj.l, list)
-    assert obj.l == ['abc', 'def']
-
-def test_list_deserialize_from_numpy_ndarray():
-    """
-    Test list deserializes from numpy.ndarray
     """
     obj = Test.deserialize({
         'l': ['abc', 'def']
@@ -47,6 +38,15 @@ def test_list_serialize():
         l=['abc', 'def']
     ).serialize()
     assert json['l'] == ['abc', 'def']
+
+def test_list_serialize_from_numpy_ndarray():
+    """
+    Test list serializes from numpy.ndarray
+    """
+    json = Test(
+        l=np.arange(2, 4, dtype=int)
+    ).serialize()
+    assert json['l'] == [2, 3]
 
 def test_list_serialize_roundrip():
     """
