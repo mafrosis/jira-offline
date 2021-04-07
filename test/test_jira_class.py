@@ -177,9 +177,9 @@ def test_jira__mutablemapping__roundtrip_with_mod(mock_jira, project):
 @mock.patch('jira_offline.jira.get_cache_filepath', return_value='filepath')
 @mock.patch('jira_offline.jira.pd', autospec=True)
 @mock.patch('jira_offline.jira.os')
-def test_jira__load_issues__calls_read_parquet_when_cache_file_exists(mock_os, mock_pandas, mock_get_cache_filepath, mock_jira_core):
+def test_jira__load_issues__calls_read_feather_when_cache_file_exists(mock_os, mock_pandas, mock_get_cache_filepath, mock_jira_core):
     '''
-    Ensure pd.read_parquet is called when the cache file exists
+    Ensure pd.read_feather is called when the cache file exists
     '''
     # issues cache is present, and non-zero in size
     mock_os.path.exists.return_value = True
@@ -187,28 +187,28 @@ def test_jira__load_issues__calls_read_parquet_when_cache_file_exists(mock_os, m
 
     mock_jira_core.load_issues()
 
-    mock_pandas.read_parquet.assert_called_once_with('filepath')
+    mock_pandas.read_feather.assert_called_once_with('filepath')
 
 
 @mock.patch('jira_offline.jira.pd', autospec=True)
 @mock.patch('jira_offline.jira.os')
-def test_jira__load_issues__DOES_NOT_call_read_parquet_when_cache_file_missing(mock_os, mock_pandas, mock_jira_core):
+def test_jira__load_issues__DOES_NOT_call_read_feather_when_cache_file_missing(mock_os, mock_pandas, mock_jira_core):
     '''
-    Ensure pd.read_parquet is NOT called when the cache file DOESNT exist
+    Ensure pd.read_feather is NOT called when the cache file DOESNT exist
     '''
     # issues cache is missing
     mock_os.path.exists.return_value = False
 
     mock_jira_core.load_issues()
 
-    assert not mock_pandas.read_parquet.called
+    assert not mock_pandas.read_feather.called
 
 
 @pytest.mark.parametrize('issue_fixture', [ISSUE_1, ISSUE_2, ISSUE_NEW, EPIC_1])
 @mock.patch('jira_offline.jira.os')
 def test_jira__write_issues_load_issues__roundtrip(mock_os, mock_jira_core, project, tmpdir, issue_fixture):
     '''
-    Validate that pd.write_parquet followed by pd.read_parquet does not cause an error.
+    Validate that pd.write_feather followed by pd.read_feather does not cause an error.
     Include only existing issues (ie. those which already exist on Jira)
 
     NOTE: This test writes to disk necessarily
@@ -223,7 +223,7 @@ def test_jira__write_issues_load_issues__roundtrip(mock_os, mock_jira_core, proj
 
     key = issue_fixture['key']
 
-    with mock.patch('jira_offline.jira.get_cache_filepath', return_value=f'{tmpdir}/issues.parquet'):
+    with mock.patch('jira_offline.jira.get_cache_filepath', return_value=f'{tmpdir}/issues.feather'):
         mock_jira_core.write_issues()
 
         compare_issue_helper(issue, mock_jira_core[key])

@@ -59,7 +59,7 @@ def get_config_filepath() -> str:
 
 def get_cache_filepath() -> str:
     '''Return the path to jira-offline issues cache file'''
-    return os.path.join(click.get_app_dir(__title__), 'issue_cache.parquet')
+    return os.path.join(click.get_app_dir(__title__), 'issue_cache.feather')
 
 
 def upgrade_schema(config_json: dict, from_version: int, to_version: int):

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+import numpy as np
 import pytest
 
 from jira_offline.utils.serializer import DeserializeError, DataclassSerializer
@@ -18,7 +19,7 @@ def test_int_deserialize():
     assert isinstance(obj.i, int)
     assert obj.i == 123
 
-def test_int_deserialize_from_str():
+def test_int_deserialize_str():
     """
     Test int deserializes from a string
     """
@@ -38,6 +39,20 @@ def test_int_serialize():
     Test int serializes
     """
     json = Test(i=123).serialize()
+    assert json['i'] == 123
+
+def test_int_serialize_from_numpy_int64():
+    """
+    Test int serializes from numpy.int64
+    """
+    json = Test(i=np.int64(123)).serialize()
+    assert json['i'] == 123
+
+def test_int_serialize_from_str():
+    """
+    Test int serializes from str
+    """
+    json = Test(i='123').serialize()
     assert json['i'] == 123
 
 def test_int_serialize_roundrip():

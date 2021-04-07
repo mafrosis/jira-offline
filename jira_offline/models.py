@@ -454,7 +454,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         for col in ('diff_to_original', 'original'):
             attrs[col] = json.dumps(attrs[col])
 
-        # convert Issue.estimates to string
+        # convert Issue.estimate from Decimal to str for pandas
         if attrs['estimate']:
             attrs['estimate'] = str(attrs['estimate'])
 

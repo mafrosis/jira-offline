@@ -9,7 +9,6 @@ import arrow
 import pytz
 import typing_inspect
 from tzlocal import get_localzone
-import numpy
 
 from jira_offline.exceptions import DeserializeError
 
@@ -126,8 +125,8 @@ def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:  # pylint:
         return pytz.timezone(value)
 
     elif base_type is set:
-        if not isinstance(value, (set, list, numpy.ndarray)):
-            raise DeserializeError('Value passed to set type must be set, list or numpy.ndarray')
+        if not isinstance(value, (set, list)):
+            raise DeserializeError('Value passed to set type must be set or list')
         return set(value)
 
     elif base_type is int:
@@ -158,11 +157,11 @@ def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:  # pylint:
         # a python dict is JSON-compatible, so no additional conversion necessary
 
     elif base_type is list and typing_inspect.is_generic_type(type_):
-        if not isinstance(value, (list, numpy.ndarray)):
+        if not isinstance(value, list):
             # additional error handling is required here as python will iterate a string as though its
             # a list; causing subsequent code to produce incorrect results when a string is fed to
             # the deserializer
-            raise DeserializeError('Value passed for list types must be list or numpy.ndarray')
+            raise DeserializeError('Value passed for list types must be list')
 
         # extract value type for the generic List
         generic_type = type_.__args__[0]
@@ -177,8 +176,8 @@ def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:  # pylint:
 
     elif base_type is list:
         # additional error handling for non-generic list type
-        if not isinstance(value, (list, numpy.ndarray)):
-            raise DeserializeError('Value passed for list types must be list or numpy.ndarray')
+        if not isinstance(value, list):
+            raise DeserializeError('Value passed for list types must be list')
 
         return list(value)
 
@@ -196,7 +195,7 @@ def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:  # pylint:
     return value
 
 
-def serialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-return-statements
+def serialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-return-statements, disable=too-many-branches
     '''
     Utility function to serialize `value` into `type_`. Used by DataclassSerializer.
 
@@ -241,14 +240,22 @@ def serialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-retur
             for item_key, item_value in value.items()
         }
 
-    elif base_type is list and typing_inspect.is_generic_type(type_):
-        # extract value type for the generic List
-        generic_type = type_.__args__[0]
+    elif base_type is list:
+        if typing_inspect.is_generic_type(type_):
+            # extract value type for the generic List
+            generic_type = type_.__args__[0]
 
-        # serialize values individually into a new list
-        return [serialize_value(generic_type, v) for v in value]
+            # recursively serialize to the relevant generic type
+            return [serialize_value(generic_type, v) for v in value]
 
-    elif base_type is numpy.bool_:
+        elif base_type is list:
+            # non-generic lists could contain a variety of different datatypes, so no recursion here
+            return list(value)
+
+    elif base_type is int:
+        return int(value)
+
+    elif base_type is bool:
         return bool(value)
 
     else:

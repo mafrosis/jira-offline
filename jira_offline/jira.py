@@ -185,10 +185,13 @@ class Jira(collections.abc.MutableMapping):
         '''
         cache_filepath = get_cache_filepath()
         if os.path.exists(cache_filepath) and os.stat(cache_filepath).st_size > 0:
-            self._df = pd.read_parquet(cache_filepath).convert_dtypes()
+            self._df = pd.read_feather(
+                cache_filepath
+            ).set_index('key', drop=False).rename_axis(None).convert_dtypes()
 
             # add an empty column to for Issue.original
             self._df['original'] = ''
+
 
     def write_issues(self):
         '''
@@ -203,7 +206,7 @@ class Jira(collections.abc.MutableMapping):
             self._df[col] = self._df[col].apply(list)
 
         cache_filepath = get_cache_filepath()
-        self._df.to_parquet(cache_filepath)
+        self._df.reset_index(drop=True).to_feather(cache_filepath)
 
 
     @auth_retry()
