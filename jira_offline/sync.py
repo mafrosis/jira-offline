@@ -18,11 +18,11 @@ from tqdm import tqdm
 from jira_offline.exceptions import (EpicNotFound, EstimateFieldUnavailable, FailedPullingIssues,
                                      FailedPullingProjectMeta, JiraApiError)
 from jira_offline.models import Issue, ProjectMeta
-from jira_offline.utils import critical_logger, friendly_title, get_field_by_name
+from jira_offline.utils import critical_logger, get_field_by_name
 from jira_offline.utils.api import get as api_get
-from jira_offline.utils.cli import print_list
+from jira_offline.utils.cli import parse_editor_result, print_list
 from jira_offline.utils.convert import jiraapi_object_to_issue, issue_to_jiraapi_update
-from jira_offline.utils.serializer import DeserializeError, get_base_type, istype
+from jira_offline.utils.serializer import DeserializeError, get_base_type
 
 if TYPE_CHECKING:
     from jira_offline.jira import Jira
@@ -382,7 +382,9 @@ def manual_conflict_resolution(update_obj: IssueUpdate) -> Issue:
                     raise EditorFieldParseFailed
 
             # parse the editor output into a new Issue
-            resolved_issue = parse_editor_result(update_obj, editor_result_raw)
+            resolved_issue = parse_editor_result(
+                update_obj.merged_issue, editor_result_raw, update_obj.conflicts
+            )
             break
 
         except (EditorFieldParseFailed, DeserializeError):
@@ -396,70 +398,6 @@ def manual_conflict_resolution(update_obj: IssueUpdate) -> Issue:
         raise ConflictResolutionFailed(update_obj.merged_issue.key)
 
     return resolved_issue
-
-
-def parse_editor_result(update_obj: IssueUpdate, editor_result_raw: str) -> Issue:
-    '''
-    Parse the string returned from the conflict editor
-
-    Params:
-        update_obj:      Instance of IssueUpdate returned from build_update
-        editor_result_raw:  Raw text returned by user from `click.edit` during interactive
-                            conflict resolution
-    Returns:
-        Edited Issue object
-    '''
-    # create dict to lookup a dataclass field by its pretty formatted name
-    issue_fields_by_friendly = {
-        friendly_title(Issue, f.name):f for f in dataclasses.fields(Issue)
-    }
-
-    editor_result: Dict[str, List[str]] = {}
-
-    # Process the raw input into a dict. Only conflicted fields are extracted as entries in the
-    # dict, and the value is a list of lines from the raw input
-    for line in editor_result_raw.splitlines():
-        if not line or line.startswith('#') or line.startswith('-'*10):
-            continue
-
-        # parse a token from the current line
-        parsed_token = ' '.join(line.split(' ')[0:4]).strip()
-
-        if parsed_token in issue_fields_by_friendly:
-            # next field found
-            current_field = issue_fields_by_friendly[parsed_token]
-
-        if current_field.name not in update_obj.conflicts:
-            continue
-
-        if current_field.name not in editor_result:
-            editor_result[current_field.name] = []
-
-        editor_result[current_field.name].append(line[len(parsed_token):].strip())
-
-    summary_prefix = f'[{update_obj.merged_issue.key}]'
-
-    def preprocess_field_value(field_name, val):
-        if istype(get_field_by_name(Issue, field_name).type, set):
-            return [item[1:].strip() for item in val]
-        else:
-            output = ''.join(val)
-
-            if field_name == 'summary':
-                # special case to strip the key prefix from the summary
-                if output.startswith(summary_prefix):
-                    output = output[len(summary_prefix):].strip()
-
-            return output
-
-    # fields need additional preprocessing before being passed to Issue.deserialize()
-    editor_result = {k: preprocess_field_value(k, v) for k, v in editor_result.items()}
-
-    # merge edit results into original Issue
-    edited_issue_dict = update_obj.merged_issue.serialize()
-    edited_issue_dict.update(editor_result)
-
-    return Issue.deserialize(edited_issue_dict)
 
 
 def push_issues(jira: 'Jira', verbose: bool=False):

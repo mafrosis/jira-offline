@@ -1,6 +1,6 @@
 from fixtures import ISSUE_1
 from jira_offline.models import Issue
-from jira_offline.sync import IssueUpdate, parse_editor_result
+from jira_offline.utils.cli import parse_editor_result
 
 
 def test_parse_editor_result__handles_str_type():
@@ -12,8 +12,9 @@ def test_parse_editor_result__handles_str_type():
     )
 
     edited_issue = parse_editor_result(
-        IssueUpdate(merged_issue=Issue.deserialize(ISSUE_1), conflicts={'assignee'}),
+        Issue.deserialize(ISSUE_1),
         editor_result_raw,
+        conflicts={'assignee'},
     )
     assert edited_issue.assignee == 'hoganp'
 
@@ -27,8 +28,9 @@ def test_parse_editor_result__handles_str_type_over_100_chars():
     )
 
     edited_issue = parse_editor_result(
-        IssueUpdate(merged_issue=Issue.deserialize(ISSUE_1), conflicts={'description'}),
+        Issue.deserialize(ISSUE_1),
         editor_result_raw,
+        conflicts={'description'},
     )
     assert edited_issue.description == str('This is a story or issue '*5).strip()
 
@@ -40,8 +42,9 @@ def test_parse_editor_result__parses_summary_str():
     editor_result_raw = '# Conflict(s) on Issue TEST-71\n\n----------------  --------------------------------------\nSummary           [TEST-71] This is the story summary\nType              Story\nEpic Ref          EPIC-60\nStatus            Story Done\nPriority          Normal\nAssignee          danil1\nEstimate\nDescription       This is a story or issue\nFix Version       -  0.1\nLabels\nReporter          danil1\nCreator           danil1\nCreated           a year ago [2018-09-24 08:44:06+10:00]\nUpdated           a year ago [2018-09-24 08:44:06+10:00]\nLast Viewed       a year ago [2018-09-24 08:44:06+10:00]\n----------------  --------------------------------------\n'
 
     edited_issue = parse_editor_result(
-        IssueUpdate(merged_issue=Issue.deserialize(ISSUE_1), conflicts={'summary'}),
+        Issue.deserialize(ISSUE_1),
         editor_result_raw,
+        conflicts={'summary'},
     )
     assert edited_issue.summary == 'This is the story summary'
 
@@ -55,8 +58,9 @@ def test_parse_editor_result__handles_set_type():
     )
 
     edited_issue = parse_editor_result(
-        IssueUpdate(merged_issue=Issue.deserialize(ISSUE_1), conflicts={'fix_versions'}),
+        Issue.deserialize(ISSUE_1),
         editor_result_raw,
+        conflicts={'fix_versions'},
     )
     assert edited_issue.fix_versions == {'0.1', '0.3'}
 
@@ -70,7 +74,8 @@ def test_parse_editor_result__handles_int_type():
     )
 
     edited_issue = parse_editor_result(
-        IssueUpdate(merged_issue=Issue.deserialize(ISSUE_1), conflicts={'estimate'}),
+        Issue.deserialize(ISSUE_1),
         editor_result_raw,
+        conflicts={'estimate'},
     )
     assert edited_issue.estimate == 99
