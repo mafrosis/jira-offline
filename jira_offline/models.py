@@ -39,9 +39,10 @@ class CustomFields(DataclassSerializer):
     epic_ref: str = field(default='')
     epic_name: str = field(default='')
     estimate: Optional[str] = field(default='')
+    acceptance_criteria: Optional[str] = field(default='')
 
     def __bool__(self):
-        if self.epic_ref and self.epic_name and self.estimate:
+        if self.epic_ref and self.epic_name and self.estimate and self.acceptance_criteria:
             return True
         return False
 

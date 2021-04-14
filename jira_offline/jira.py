@@ -257,6 +257,8 @@ class Jira(collections.abc.MutableMapping):
                         custom_fields.epic_ref = str(field_props['schema']['customId'])
                     elif not custom_fields.estimate and field_props['name'] == 'Story Points':
                         custom_fields.estimate = str(field_props['schema']['customId'])
+                    elif not custom_fields.estimate and field_props['name'] == 'Acceptance Criteria':
+                        custom_fields.acceptance_criteria = str(field_props['schema']['customId'])
 
             project.custom_fields = custom_fields
 
