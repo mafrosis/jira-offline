@@ -5,34 +5,15 @@ Unlike other tests, these access the class directly, not via the mock_jira inter
 conftest.py
 '''
 import copy
-from typing import List
 from unittest import mock
 
-import pandas as pd
 import pytest
 
 from fixtures import EPIC_1, ISSUE_1, ISSUE_2, ISSUE_MISSING_EPIC, ISSUE_NEW
-from helpers import compare_issue_helper
+from helpers import compare_issue_helper, setup_jira_dataframe_helper
 from jira_offline.exceptions import (EpicNotFound, EstimateFieldUnavailable, FailedAuthError,
                                      JiraApiError, JiraNotConfigured, ProjectDoesntExist)
 from jira_offline.models import CustomFields, Issue, IssueType, ProjectMeta
-
-
-def setup_jira_dataframe_helper(issues: List[Issue]):
-    'Helper to ensure the Jira DataFrame is setup correctly'
-    df = pd.concat(
-        [issue.to_series() for issue in issues],
-        axis=1,
-        keys=[i.key for i in issues]
-    ).T
-
-    df = df.fillna('').convert_dtypes()
-
-    # convert all datetimes to UTC, where they are non-null (this is all non-new issues)
-    for col in ('created', 'updated'):
-        df[col] = df[col].dt.tz_convert('UTC')
-
-    return df
 
 
 def test_jira__mutablemapping__get_item__(mock_jira_core, project):

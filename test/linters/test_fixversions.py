@@ -11,10 +11,11 @@ def test_lint__fix_versions__finds_empty_fix_versions_field(mock_jira):
     '''
     # add fixtures to Jira dict
     mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
-    # empty fix_versions set
-    mock_jira['TEST-71'].fix_versions.clear()
+    # add fixture without a fix_versions value
+    issue_1 = Issue.deserialize(ISSUE_1)
+    issue_1.fix_versions.clear()
+    mock_jira['TEST-71'] = issue_1
 
     # assert two issues in Jira
     assert len(mock_jira.df) == 2
@@ -31,10 +32,11 @@ def test_lint__fix_versions__fix_updates_an_issues_linked_to_epic(mock_jira):
     '''
     # add fixtures to Jira dict
     mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
-    # empty fix_versions set
-    mock_jira['TEST-71'].fix_versions.clear()
+    # add fixture without a fix_versions value
+    issue_1 = Issue.deserialize(ISSUE_1)
+    issue_1.fix_versions.clear()
+    mock_jira['TEST-71'] = issue_1
 
     df = fix_versions(mock_jira, fix=True, value='0.1')
 
