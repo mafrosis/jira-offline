@@ -458,6 +458,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         if attrs['estimate']:
             attrs['estimate'] = str(attrs['estimate'])
 
+        # Create Series and fill blanks with pandas-compatible defaults
         series = pd.Series(attrs).fillna(value=get_issue_field_defaults_for_pandas())
 
         # convert all datetimes to UTC, where they are non-null (which is all non-new issues)
@@ -481,26 +482,35 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         # Remove the original attribute before the Issue constructor call
         original = attrs.pop('original', None)
 
-        # Use pandas default mapping to map back to dataclass defaults
-        null_defaults = get_issue_field_defaults_for_pandas()
+        # Create a mapping of field names to their pandas default
+        pandas_null_defaults = get_issue_field_defaults_for_pandas()
 
         def convert(key, value):
+            'Convert values from their Pandas types to their python dataclass types'
             f = get_field_by_name(Issue, key)
             typ_ = get_base_type(f.type)
 
-            if value == null_defaults.get(key):
+            # Special case for Issue.diff_to_original, as it's a list stored as a JSON string
+            if key == 'diff_to_original' and value:
+                return json.loads(attrs['diff_to_original'])
+
+            # Process the Pandas array types to python primitives
+            if typ_ is list:
+                value = list(value)
+            elif typ_ is set:
+                value = set(value)
+
+            # If the value is the default type for Pandas, then return the default for the dataclass field
+            if value == pandas_null_defaults.get(key):
                 return f.default
             elif typ_ is datetime.datetime:
-                return value.tz_convert(project.timezone).to_pydatetime()
+                value = value.tz_convert(project.timezone).to_pydatetime()
             elif typ_ is decimal.Decimal:
-                return decimal.Decimal(value)
-            else:
-                return value
+                value = decimal.Decimal(value)
+
+            return value
 
         attrs = {k:convert(k, v) for k,v in attrs.items()}
-
-        if attrs['diff_to_original']:
-            attrs['diff_to_original'] = json.loads(attrs['diff_to_original'])
 
         issue = Issue(**attrs)
 
