@@ -85,10 +85,10 @@ def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose
     if force or project.last_updated is None:
         # first/forced load; cache must be empty
         last_updated = '2010-01-01 00:00'
-        logger.info('Querying %s for all issues', project.project_uri)
+        logger.warning('Querying %s for all issues', project.project_uri)
     else:
         last_updated = project.last_updated
-        logger.info(
+        logger.warning(
             'Querying %s for issues since %s', project.project_uri, project.last_updated
         )
 
@@ -169,8 +169,6 @@ def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose
     # include new/modified issues into local storage
     if issues:
         jira.update(issues)
-
-    logger.info('Retrieved %s issues', len(issues))
 
     # cache the last_updated value
     project.last_updated = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')

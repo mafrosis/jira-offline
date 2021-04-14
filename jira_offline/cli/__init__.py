@@ -32,7 +32,7 @@ logger.setLevel(logging.ERROR)
 @click.pass_context
 def cli(ctx, verbose: bool=False, debug: bool=False):
     # setup the logger
-    formatter = logging.Formatter('%(levelname)s: %(message)s')
+    formatter = logging.Formatter('%(message)s')
 
     # handle --verbose and --debug
     if debug:
