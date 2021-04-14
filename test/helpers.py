@@ -1,3 +1,7 @@
+from typing import List
+
+import pandas as pd
+
 from jira_offline.models import Issue
 
 
@@ -28,3 +32,20 @@ def compare_issue_helper(issue, compare_issue):
     assert issue.status == compare_issue.status
     assert issue.updated == compare_issue.updated
     assert issue.original == compare_issue.original
+
+
+def setup_jira_dataframe_helper(issues: List[Issue]):
+    'Helper to ensure the Jira DataFrame is setup correctly'
+    df = pd.concat(
+        [issue.to_series() for issue in issues],
+        axis=1,
+        keys=[i.key for i in issues]
+    ).T
+
+    df = df.fillna('').convert_dtypes()
+
+    # convert all datetimes to UTC, where they are non-null (this is all non-new issues)
+    for col in ('created', 'updated'):
+        df[col] = df[col].dt.tz_convert('UTC')
+
+    return df
