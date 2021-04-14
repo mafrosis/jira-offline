@@ -126,7 +126,7 @@ def test_issue_model__setting_the_original_attribute_directly_raises_exception()
         issue.original(issue.serialize())
 
 
-def test_issue_model__existing_issue_modified_set_true_during_attribute_set(mock_jira):
+def test_issue_model__existing_issue_modified_set_true_during_attribute_set():
     '''
     Ensure Issue.modified is set to true by an attribute value change, if the Issue exists on Jira
     '''
@@ -136,7 +136,7 @@ def test_issue_model__existing_issue_modified_set_true_during_attribute_set(mock
     assert issue_1.modified is True
 
 
-def test_issue_model__new_issue_modified_set_false_during_attribute_set(mock_jira):
+def test_issue_model__new_issue_modified_set_false_during_attribute_set():
     '''
     Ensure Issue.modified is set to true by an attribute value change, if the Issue exists on Jira
     '''
@@ -146,7 +146,7 @@ def test_issue_model__new_issue_modified_set_false_during_attribute_set(mock_jir
     assert issue_new.modified is False
 
 
-def test_issue_model__original_not_updated_during_attribute_set(mock_jira):
+def test_issue_model__original_not_updated_during_attribute_set():
     '''
     Ensure Issue.original does not get modified by an attribute value change
     '''
@@ -207,7 +207,7 @@ def test_issue_model__commit__persists_edits(mock_jira):
     assert mock_jira['TEST-71'].assignee == 'hoganp'
 
 
-def test_issue_model__to_series_from_series_roundtrip(mock_jira, project):
+def test_issue_model__to_series_from_series_roundtrip(project):
     '''
     Ensure that Issue.to_series and Issue.from_series are behaving
     '''
