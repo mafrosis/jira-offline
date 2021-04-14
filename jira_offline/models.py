@@ -192,6 +192,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
     issuetype: str = field(metadata={'friendly': 'Type', 'readonly': True})
     project: ProjectMeta = field(repr=False, metadata={'serialize': False})
     summary: str
+    key: str = field(metadata={'readonly': True})
 
     assignee: Optional[str] = field(default=None)
     created: Optional[datetime.datetime] = field(default=None, metadata={'readonly': True})
@@ -203,7 +204,6 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
     fix_versions: Optional[set] = field(default_factory=set, metadata={'friendly': 'Fix Version'})
     components: Optional[set] = field(default_factory=set)
     id: Optional[int] = field(default=None, metadata={'readonly': True})
-    key: Optional[str] = field(default=None, metadata={'readonly': True})
     labels: Optional[set] = field(default_factory=set)
     priority: Optional[str] = field(default=None, metadata={'friendly': 'Priority'})
     reporter: Optional[str] = field(default=None)
@@ -299,7 +299,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         Static class property returning a blank/empty Issue
         '''
         return Issue(
-            project_id='', project=ProjectMeta(key=''), issuetype='', summary='', description=''
+            project_id='', project=ProjectMeta(key=''), issuetype='', summary='', key='', description=''
         )
 
     @property

@@ -69,36 +69,33 @@ def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: st
         summary:    Issue.summary
         kwargs:     Issue fields as parameters
     '''
-    # ensure issues are loaded, as write_issues called on success
+    # Ensure issues are loaded, as write_issues called on success
     if not jira:
         jira.load_issues()
 
-    # validate issuetype against the specified project
+    # Validate issuetype against the specified project
     if issuetype not in project.issuetypes:
         raise InvalidIssueType
 
-    new_issue = Issue.deserialize(
-        {
-            'project_id': project.id,
-            'issuetype': issuetype,
-            'summary': summary,
-        },
+    # Create an Issue using a temporary Issue.key until Jira server creates the actual key at sync-time
+    new_issue = Issue(
+        project_id=project.id,
         project=project,
+        issuetype=issuetype,
+        summary=summary,
+        key=str(uuid.uuid4()),
     )
 
-    # use a temporary Issue.key until Jira server creates the actual key at sync-time
-    new_issue.key = str(uuid.uuid4())
-
-    # set into jira dict
+    # Set into jira dict
     jira[new_issue.key] = new_issue
 
-    # although description is mandatory on the Jira API, the Issue can survive with an empty one
+    # Although description is mandatory on the Jira API, the Issue can survive with an empty one
     if 'description' not in kwargs or not kwargs['description']:
         kwargs['description'] = ''
 
     patch_issue_from_dict(jira, new_issue, kwargs)
 
-    # write changes to disk
+    # Write changes to disk
     jira.write_issues()
 
     return new_issue
