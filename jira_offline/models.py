@@ -535,7 +535,7 @@ def get_issue_field_defaults_for_pandas() -> Dict[str, str]:
     '''
     attrs = dict()
     for f in dataclasses.fields(Issue):
-        if not isinstance(f.default, dataclasses._MISSING_TYPE):  # pylint: disable=protected-access
+        if f.default != dataclasses.MISSING:
             typ_ = get_base_type(f.type)
 
             if typ_ is datetime.datetime:

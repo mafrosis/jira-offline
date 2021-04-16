@@ -271,7 +271,9 @@ def _validate_optional_fields_have_a_default(field):
     '''
     Validate optional fields have a dataclasses.field(default) configured
     '''
-    if typing_inspect.is_optional_type(field.type) and  isinstance(field.default, dataclasses._MISSING_TYPE) and  isinstance(field.default_factory, dataclasses._MISSING_TYPE):  # pylint: disable=protected-access
+    if typing_inspect.is_optional_type(field.type) and \
+       field.default == dataclasses.MISSING and \
+       field.default_factory == dataclasses.MISSING:
 
         raise DeserializeError(f'Field {field.name} is Optional with no default configured')
 
