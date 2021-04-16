@@ -25,7 +25,7 @@ logger = logging.getLogger('jira')
 
 
 # Create single Jira object instance for this invocation of the app
-# Made available to all modules via simply python import: `from jira_offline.utils import jira`
+# Made available to all modules via simple python import: `from jira_offline.jira import jira`
 jira = LazyProxy(lambda: Jira())  # pylint: disable=unnecessary-lambda
 
 
