@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 import jira_offline
 
 REQUIRES = [
-    open('requirements.txt').read()
+    line for line in open('requirements.txt').readlines() if 'git+git' not in line
 ]
 
 setup(
