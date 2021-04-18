@@ -63,6 +63,7 @@ def test_cli_commands_can_return_json(mock_jira, command, params):
     runner = CliRunner()
 
     with mock.patch('jira_offline.cli.main.jira', mock_jira), \
+            mock.patch('jira_offline.create.jira', mock_jira), \
             mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, [command, *params])
 

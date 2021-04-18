@@ -1,3 +1,5 @@
+from unittest import mock
+
 import pytest
 
 from fixtures import ISSUE_2, ISSUE_MISSING_EPIC, ISSUE_DIFF_PROJECT
@@ -16,7 +18,8 @@ def test_lint__issues_missing_epic__finds_issues_missing_epic(mock_jira):
     # assert two issues in Jira
     assert len(mock_jira.df) == 2
 
-    df = issues_missing_epic(mock_jira, fix=False)
+    with mock.patch('jira_offline.linters.jira', mock_jira):
+        df = issues_missing_epic(fix=False)
 
     # assert single issue missing an epic
     assert len(df) == 1
@@ -33,7 +36,8 @@ def test_lint__issues_missing_epic__fix_updates_an_issue(mock_jira):
     # assert issue has an empty epic_ref
     assert mock_jira['TEST-73'].epic_ref is None
 
-    df = issues_missing_epic(mock_jira, fix=True, epic_ref='EGG-1234')
+    with mock.patch('jira_offline.linters.jira', mock_jira):
+        df = issues_missing_epic(fix=True, epic_ref='EGG-1234')
 
     # assert no issues missing an epic
     assert len(df) == 0
@@ -59,7 +63,8 @@ def test_lint__issues_missing_epic__respects_the_filters(mock_jira, project_filt
     # set the filter
     mock_jira.filter.project_key = project_filter
 
-    df = issues_missing_epic(mock_jira)
+    with mock.patch('jira_offline.linters.jira', mock_jira):
+        df = issues_missing_epic()
 
     # assert correct number issues missing fix_versions
     assert len(df) == number_issues_missing_fix_versions

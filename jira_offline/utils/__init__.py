@@ -41,7 +41,7 @@ def find_project(jira: 'Jira', project_key: str) -> 'ProjectMeta':
     Extract the project configuration object for the specified project key
 
     Params:
-        jira:        Dependency-injected jira.Jira object
+        jira:         Dependency-injected jira.Jira object
         project_key:  Short Jira project key
     '''
     try:

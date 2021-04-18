@@ -122,7 +122,7 @@ def cli_push(ctx):
         click.echo('No issues in the cache')
         raise click.Abort
 
-    push_issues(jira, verbose=ctx.obj.verbose)
+    push_issues(verbose=ctx.obj.verbose)
 
 
 @click.command(name='projects')
@@ -194,7 +194,7 @@ def cli_clone(ctx, project_uri: str, username: str=None, password: str=None, oau
 
     # and finally pull all the project's issues
     click.echo('Pulling issues..')
-    pull_single_project(jira, project, force=False, verbose=ctx.obj.verbose)
+    pull_single_project(project, force=False, verbose=ctx.obj.verbose)
 
 
 @click.command(name='pull')
@@ -225,7 +225,7 @@ def cli_pull(ctx, projects: str=None, reset_hard: bool=False):
                 abort=True
             )
 
-    pull_issues(jira, projects=projects_set, force=reset_hard, verbose=ctx.obj.verbose)
+    pull_issues(projects=projects_set, force=reset_hard, verbose=ctx.obj.verbose)
 
 
 @click.command(name='new')
@@ -278,7 +278,7 @@ def cli_new(projectkey: str, issuetype: str, summary: str, as_json: bool=False, 
         kwargs['labels'] = set(kwargs['labels'].split(','))
 
     # create an Issue offline, it is sync'd on push
-    new_issue = create_issue(jira, project, issuetype, summary, **kwargs)
+    new_issue = create_issue(project, issuetype, summary, **kwargs)
 
     # display the new issue
     if as_json:
@@ -332,7 +332,7 @@ def cli_edit(key: str, as_json: bool=False, **kwargs):
     if kwargs.get('labels'):
         kwargs['labels'] = set(kwargs['labels'].split(','))
 
-    patch_issue_from_dict(jira, issue, kwargs)
+    patch_issue_from_dict(issue, kwargs)
     issue.commit()
 
     jira.write_issues()
@@ -366,7 +366,7 @@ def cli_import(file: io.TextIOWrapper):
             no_input = False
 
             try:
-                issue, is_new = import_issue(jira, json.loads(line), lineno=i+1)
+                issue, is_new = import_issue(json.loads(line), lineno=i+1)
                 write = True
 
                 if is_new:

@@ -2,23 +2,21 @@
 Module for functions related to Issue creation, editing and bulk import.
 '''
 import logging
-from typing import Optional, Tuple, TYPE_CHECKING
+from typing import Optional, Tuple
 import uuid
 
 from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce, ImportFailed,
                                      InvalidIssueType, ProjectNotConfigured)
+from jira_offline.jira import jira
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.utils.serializer import get_base_type
 from jira_offline.utils import deserialize_single_issue_field, find_project, get_field_by_name
-
-if TYPE_CHECKING:
-    from jira_offline.jira import Jira
 
 
 logger = logging.getLogger('jira')
 
 
-def find_epic_by_reference(jira: 'Jira', epic_ref_string: str) -> Issue:
+def find_epic_by_reference(epic_ref_string: str) -> Issue:
     '''
     Find an epic by search string.
 
@@ -28,7 +26,6 @@ def find_epic_by_reference(jira: 'Jira', epic_ref_string: str) -> Issue:
         3. Issue.epic_name
 
     Params:
-        jira:             Dependency-injected jira.Jira object
         epic_ref_string:  String by which to find an epic
     Returns:
         Issue for matched Epic object
@@ -58,12 +55,11 @@ def find_epic_by_reference(jira: 'Jira', epic_ref_string: str) -> Issue:
     return matched_epic
 
 
-def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: str, **kwargs) -> Issue:
+def create_issue(project: ProjectMeta, issuetype: str, summary: str, **kwargs) -> Issue:
     '''
     Create a new Issue
 
     Params:
-        jira:       Dependency-injected jira.Jira object
         project:    Project properties on which to create the new issue
         issuetype:  Issue.issuetype
         summary:    Issue.summary
@@ -93,7 +89,7 @@ def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: st
     if 'description' not in kwargs or not kwargs['description']:
         kwargs['description'] = ''
 
-    patch_issue_from_dict(jira, new_issue, kwargs)
+    patch_issue_from_dict(new_issue, kwargs)
 
     # Write changes to disk
     jira.write_issues()
@@ -101,13 +97,12 @@ def create_issue(jira: 'Jira', project: ProjectMeta, issuetype: str, summary: st
     return new_issue
 
 
-def import_issue(jira: 'Jira', attrs: dict, lineno: int=None) -> Tuple[Issue, bool]:
+def import_issue(attrs: dict, lineno: int=None) -> Tuple[Issue, bool]:
     '''
     Import a single issue's fields from the passed dict. The issue could be new, or this could be an
     update to an issue which already exists.
 
     Params:
-        jira:    Dependency-injected jira.Jira object
         attrs:   Dictionary containing issue fields
         lineno:  Line number from the import file
     Returns:
@@ -115,13 +110,13 @@ def import_issue(jira: 'Jira', attrs: dict, lineno: int=None) -> Tuple[Issue, bo
     '''
     if 'key' in attrs:
         # assume this object is an update to an existing Issue
-        return _import_modified_issue(jira, attrs, lineno), False
+        return _import_modified_issue(attrs, lineno), False
     else:
         # assume this object is a new issue
-        return _import_new_issue(jira, attrs, lineno), True
+        return _import_new_issue(attrs, lineno), True
 
 
-def _import_modified_issue(jira: 'Jira', attrs: dict, lineno: int=None) -> Issue:
+def _import_modified_issue(attrs: dict, lineno: int=None) -> Issue:
     '''
     Import an UPDATED issue's fields from the passed dict.
 
@@ -130,25 +125,24 @@ def _import_modified_issue(jira: 'Jira', attrs: dict, lineno: int=None) -> Issue
         key:      Jira issue key
 
     Params:
-        jira:   Dependency-injected jira.Jira object
         attrs:  Dictionary containing issue fields
     '''
     try:
         # fetch existing issue by key, raising KeyError if unknown
-        issue = jira[attrs['key']]
+        issue: Issue = jira[attrs['key']]
 
     except KeyError:
         if attrs.get('key'):
             raise ImportFailed(f'Unknown issue key {attrs["key"]}', lineno)
         raise ImportFailed('Unknown issue key', lineno)
 
-    patch_issue_from_dict(jira, issue, attrs)
+    patch_issue_from_dict(issue, attrs)
     issue.commit()
 
     return issue
 
 
-def _import_new_issue(jira: 'Jira', attrs: dict, lineno: int=None) -> Issue:
+def _import_new_issue(attrs: dict, lineno: int=None) -> Issue:
     '''
     Import a NEW issue's fields from the passed dict.
 
@@ -158,7 +152,6 @@ def _import_new_issue(jira: 'Jira', attrs: dict, lineno: int=None) -> Issue:
         summary:    Issue summary string
 
     Params:
-        jira:   Dependency-injected jira.Jira object
         attrs:  Dictionary containing issue fields
     '''
     try:
@@ -174,18 +167,17 @@ def _import_new_issue(jira: 'Jira', attrs: dict, lineno: int=None) -> Issue:
         # retrieve the project object
         project = find_project(jira, attrs.pop('project'))
 
-        return create_issue(jira, project, issuetype, summary, **attrs)
+        return create_issue(project, issuetype, summary, **attrs)
 
     except ProjectNotConfigured:
         raise ImportFailed(f'Unknown project ref {attrs["project"]} for new issue', lineno)
 
 
-def patch_issue_from_dict(jira: 'Jira', issue: Issue, attrs: dict):
+def patch_issue_from_dict(issue: Issue, attrs: dict):
     '''
     Patch attributes on an Issue from the passed dict
 
     Params:
-        jira:   Dependency-injected jira.Jira object
         attrs:  Dictionary containing issue fields
     '''
     for field_name, value in attrs.items():
@@ -209,5 +201,5 @@ def patch_issue_from_dict(jira: 'Jira', issue: Issue, attrs: dict):
 
     # Link issue to epic if epic_ref is present
     if attrs.get('epic_ref'):
-        matched_epic = find_epic_by_reference(jira, attrs['epic_ref'])
+        matched_epic = find_epic_by_reference(attrs['epic_ref'])
         issue.epic_ref = matched_epic.key

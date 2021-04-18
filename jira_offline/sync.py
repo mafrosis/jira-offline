@@ -6,7 +6,7 @@ import dataclasses
 from dataclasses import dataclass, field
 import datetime
 import logging
-from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, Set
 
 import click
 import dictdiffer
@@ -18,15 +18,13 @@ from tqdm import tqdm
 
 from jira_offline.exceptions import (EpicNotFound, EstimateFieldUnavailable, FailedPullingIssues,
                                      FailedPullingProjectMeta, JiraApiError)
+from jira_offline.jira import jira
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.utils import critical_logger, get_field_by_name
 from jira_offline.utils.api import get as api_get
 from jira_offline.utils.cli import parse_editor_result, print_list
 from jira_offline.utils.convert import jiraapi_object_to_issue, issue_to_jiraapi_update
 from jira_offline.utils.serializer import DeserializeError
-
-if TYPE_CHECKING:
-    from jira_offline.jira import Jira
 
 
 logger = logging.getLogger('jira')
@@ -36,12 +34,11 @@ class Conflict(Exception):
     pass
 
 
-def pull_issues(jira: 'Jira', projects: Optional[Set[str]]=None, force: bool=False, verbose: bool=False):
+def pull_issues(projects: Optional[Set[str]]=None, force: bool=False, verbose: bool=False):
     '''
     Pull changed issues from upstream Jira API
 
     Params:
-        jira:      Dependency-injected jira.Jira object
         projects:  Project IDs to pull, if None then pull all configured projects
         force:     Force pull of all issues, not just those changed since project.last_updated
         verbose:   Verbose print all issues as they're pulled from the API (default: show progress bar)
@@ -66,15 +63,14 @@ def pull_issues(jira: 'Jira', projects: Optional[Set[str]]=None, force: bool=Fal
         except JiraApiError as e:
             raise FailedPullingProjectMeta(e)
 
-        pull_single_project(jira, project, force=force, verbose=verbose)
+        pull_single_project(project, force=force, verbose=verbose)
 
 
-def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose: bool):
+def pull_single_project(project: ProjectMeta, force: bool, verbose: bool):
     '''
     Pull changed issues from upstream Jira API
 
     Params:
-        jira:     Dependency-injected jira.Jira object
         project:  Properties of the Jira project to pull
         force:    Force pull of all issues, not just those changed since project.last_updated
         verbose:  Verbose print all issues as they're pulled from the API (default: show progress bar)
@@ -378,12 +374,11 @@ def manual_conflict_resolution(update_obj: IssueUpdate) -> Issue:
     return resolved_issue
 
 
-def push_issues(jira: 'Jira', verbose: bool=False):
+def push_issues(verbose: bool=False):
     '''
     Push new/changed issues back to Jira server
 
     Params:
-        jira:     Dependency-injected jira.Jira object
         verbose:  Verbose print all issues as they're pushed to Jira server (default is progress bar)
     '''
     def _run(issues: list, pbar=None) -> int:

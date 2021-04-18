@@ -1,3 +1,5 @@
+from unittest import mock
+
 import pytest
 
 from fixtures import EPIC_1, ISSUE_1, ISSUE_DIFF_PROJECT
@@ -20,7 +22,8 @@ def test_lint__fix_versions__finds_empty_fix_versions_field(mock_jira):
     # assert two issues in Jira
     assert len(mock_jira.df) == 2
 
-    df = fix_versions(mock_jira, fix=False)
+    with mock.patch('jira_offline.linters.jira', mock_jira):
+        df = fix_versions(fix=False)
 
     # assert single issue with missing fix_versions
     assert len(df) == 1
@@ -38,7 +41,8 @@ def test_lint__fix_versions__fix_updates_an_issues_linked_to_epic(mock_jira):
     issue_1.fix_versions.clear()
     mock_jira['TEST-71'] = issue_1
 
-    df = fix_versions(mock_jira, fix=True, value='0.1')
+    with mock.patch('jira_offline.linters.jira', mock_jira):
+        df = fix_versions(fix=True, value='0.1')
 
     # assert no issues with missing fix_versions
     assert len(df) == 0
@@ -64,7 +68,8 @@ def test_lint__fix_versions__respects_the_filters(mock_jira, project_filter, num
     # set the filter
     mock_jira.filter.project_key = project_filter
 
-    df = fix_versions(mock_jira)
+    with mock.patch('jira_offline.linters.jira', mock_jira):
+        df = fix_versions()
 
     # assert correct number issues missing fix_versions
     assert len(df) == number_issues_missing_fix_versions

@@ -49,11 +49,11 @@ def cli_lint_fix_versions(ctx, value: str=None):
             logger.warning('Passing --value without --fix has no effect')
 
     # query issues missing the fix_versions field
-    df = lint_fix_versions(jira, fix=False)
+    df = lint_fix_versions(fix=False)
     initial_missing_count = len(df)
 
     if ctx.obj.lint.fix:
-        df = lint_fix_versions(jira, fix=ctx.obj.lint.fix, value=value)
+        df = lint_fix_versions(fix=ctx.obj.lint.fix, value=value)
 
         click.echo(f'Updated fix_versions on {initial_missing_count - len(df)} issues')
     else:
@@ -78,11 +78,11 @@ def cli_lint_issues_missing_epic(ctx, epic_ref: str=None):
             logger.warning('Passing --epic-ref without --fix has no effect')
 
     # query issues missing the epic field
-    df = lint_issues_missing_epic(jira, fix=False)
+    df = lint_issues_missing_epic(fix=False)
     initial_missing_count = len(df)
 
     if ctx.obj.lint.fix:
-        df = lint_issues_missing_epic(jira, fix=ctx.obj.lint.fix, epic_ref=epic_ref)
+        df = lint_issues_missing_epic(fix=ctx.obj.lint.fix, epic_ref=epic_ref)
 
         click.echo(f'Set epic to {epic_ref} on {initial_missing_count - len(df)} issues')
     else:

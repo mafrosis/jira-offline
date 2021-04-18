@@ -11,7 +11,7 @@ import hashlib
 import os
 import pathlib
 import shutil
-from typing import Any, cast, Dict, List, Optional, Set, Tuple, TYPE_CHECKING
+from typing import Any, cast, Dict, List, Optional, Set, Tuple
 from urllib.parse import urlparse
 
 import click
@@ -29,9 +29,6 @@ from jira_offline.exceptions import (BadProjectMetaUri, CannotSetIssueAttributeD
                                      UnableToCopyCustomCACert, NoAuthenticationMethod)
 from jira_offline.utils import get_field_by_name, render_field, render_value
 from jira_offline.utils.serializer import DataclassSerializer, get_base_type
-
-if TYPE_CHECKING:
-    from jira_offline.jira import Jira  # pylint: disable=cyclic-import
 
 # pylint: disable=too-many-instance-attributes
 
