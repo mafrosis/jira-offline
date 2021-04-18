@@ -125,8 +125,8 @@ def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:  # pylint:
         return pytz.timezone(value)
 
     elif base_type is set:
-        if not isinstance(value, (set, list)):
-            raise DeserializeError('Value passed to set type must be set or list')
+        if not isinstance(value, (set, list, tuple)):
+            raise DeserializeError('Value passed to set type must be set, list or tuple')
         return set(value)
 
     elif base_type is int:
