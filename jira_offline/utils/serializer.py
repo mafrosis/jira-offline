@@ -74,7 +74,7 @@ def istype(type_: type, typ: type) -> bool:
     return typ is unwrap_optional_type(type_)
 
 
-def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:  # pylint: disable=too-many-branches, too-many-return-statements, too-many-statements
+def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:
     '''
     Utility function to deserialize `value` into `type_`. Used by DataclassSerializer.
 
@@ -195,7 +195,7 @@ def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:  # pylint:
     return value
 
 
-def serialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-return-statements, disable=too-many-branches
+def serialize_value(type_, value: Any) -> Any:
     '''
     Utility function to serialize `value` into `type_`. Used by DataclassSerializer.
 

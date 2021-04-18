@@ -69,7 +69,7 @@ def pull_issues(jira: 'Jira', projects: Optional[Set[str]]=None, force: bool=Fal
         pull_single_project(jira, project, force=force, verbose=verbose)
 
 
-def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose: bool):  # pylint: disable=too-many-statements
+def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose: bool):
     '''
     Pull changed issues from upstream Jira API
 
