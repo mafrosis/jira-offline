@@ -33,6 +33,8 @@ from jira_offline.utils.serializer import DataclassSerializer, get_base_type
 if TYPE_CHECKING:
     from jira_offline.jira import Jira  # pylint: disable=cyclic-import
 
+# pylint: disable=too-many-instance-attributes
+
 
 @dataclass
 class CustomFields(DataclassSerializer):
@@ -70,9 +72,8 @@ class OAuth(DataclassSerializer):
             resource_owner_secret=self.access_token_secret,
         )
 
-
-@dataclass  # pylint: disable=too-many-instance-attributes
-class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-attributes
+@dataclass
+class ProjectMeta(DataclassSerializer):
     key: str
     name: Optional[str] = field(default=None)
     username: Optional[str] = field(default=None)
@@ -186,8 +187,8 @@ class AppConfig(DataclassSerializer):
             f.write('\n')
 
 
-@dataclass  # pylint: disable=too-many-instance-attributes
-class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attributes
+@dataclass
+class Issue(DataclassSerializer):
     project_id: str = field(metadata={'friendly': 'Project ID', 'readonly': True})
     issuetype: str = field(metadata={'friendly': 'Type', 'readonly': True})
     project: ProjectMeta = field(repr=False, metadata={'serialize': False})
