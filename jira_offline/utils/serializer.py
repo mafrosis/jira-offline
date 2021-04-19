@@ -2,7 +2,7 @@ import dataclasses
 import datetime
 import decimal
 import enum
-from typing import Any, Optional
+from typing import Any, Optional, Tuple, Union
 import uuid
 
 import arrow
@@ -67,11 +67,18 @@ def get_enum(type_: type) -> Optional[type]:
     return None
 
 
-def istype(type_: type, typ: type) -> bool:
+def istype(type_: type, typ: Union[type, Tuple[type, ...]]) -> bool:
     '''
     Return True if type_ is typ, else return False. Handles Optional types.
+
+    Params:
+        type_:  Type to check is instance of second parameter
+        typ:    Type, or tuple of types, to compare against
     '''
-    return typ is unwrap_optional_type(type_)
+    try:
+        return any(t is unwrap_optional_type(type_) for t in typ)  # type: ignore[union-attr]
+    except TypeError:
+        return typ is unwrap_optional_type(type_)
 
 
 def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:
