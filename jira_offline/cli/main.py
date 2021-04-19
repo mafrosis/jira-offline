@@ -135,8 +135,8 @@ def cli_projects(ctx):
             click.echo(p)
     else:
         click.echo(tabulate(
-            [(p.key, p.name, p.project_uri) for p in jira.config.projects.values()],
-            headers=['Key', 'Name', 'Project URI'],
+            [(p.key, p.name, p.project_uri, p.last_updated) for p in jira.config.projects.values()],
+            headers=['Key', 'Name', 'Project URI', 'Last Sync'],
             tablefmt='psql'
         ))
 
