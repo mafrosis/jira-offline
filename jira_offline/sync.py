@@ -6,6 +6,7 @@ import dataclasses
 from dataclasses import dataclass, field
 import datetime
 import logging
+import time
 from typing import Any, Dict, List, Optional, Set
 
 import click
@@ -17,7 +18,8 @@ from tabulate import tabulate
 from tqdm import tqdm
 
 from jira_offline.exceptions import (EditorFieldParseFailed, EpicNotFound, EstimateFieldUnavailable,
-                                     FailedPullingIssues, FailedPullingProjectMeta, JiraApiError)
+                                     FailedPullingIssues, FailedPullingProjectMeta, JiraApiError,
+                                     JiraUnavailable)
 from jira_offline.jira import jira
 from jira_offline.create import patch_issue_from_dict
 from jira_offline.models import Issue, ProjectMeta
@@ -37,7 +39,7 @@ class Conflict(Exception):
 
 def pull_issues(projects: Optional[Set[str]]=None, force: bool=False, verbose: bool=False):
     '''
-    Pull changed issues from upstream Jira API
+    Pull changed issues from upstream Jira API, and update project settings/metadata.
 
     Params:
         projects:  Project IDs to pull, if None then pull all configured projects
@@ -57,14 +59,26 @@ def pull_issues(projects: Optional[Set[str]]=None, force: bool=False, verbose: b
         ]
 
     for project in projects_to_pull:
-        try:
-            # Since the ProjectMeta defines options for how issues are created, we need to keep it
-            # up-to-date. Update project meta on every pull.
-            jira.get_project_meta(project)
-        except JiraApiError as e:
-            raise FailedPullingProjectMeta(e)
+        logger.info('Retrieving settings/metadata from %s', project.project_uri)
+        retry = 1
 
-        pull_single_project(project, force=force, verbose=verbose)
+        while retry <= 3:
+            try:
+                # Update project settings/metadata on every pull
+                jira.get_project_meta(project)
+
+            except JiraUnavailable as e:
+                backoff = retry * retry
+                logger.error('Jira %s is unavailable. Retry in %s seconds (%s/3)', project.project_uri, backoff, retry)
+                time.sleep(backoff)
+                continue
+            except JiraApiError as e:
+                raise FailedPullingProjectMeta(e)
+            finally:
+                retry += 1
+
+            pull_single_project(project, force=force, verbose=verbose)
+            break
 
 
 def pull_single_project(project: ProjectMeta, force: bool, verbose: bool):
