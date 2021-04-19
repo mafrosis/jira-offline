@@ -17,6 +17,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.test
+    environment:
+      - INT_HOST
+      - INT_USER
+      - INT_PASS
     volumes:
       - ./jira_offline:/app/jira_offline
       - ./test:/app/test
@@ -34,30 +38,30 @@ services:
       args:
         USER_ID: 1000
         GROUP_ID: 1004
+    environment:
+      - ATL_DB_DRIVER=org.postgresql.Driver
+      - ATL_JDBC_USER=postgres
+      - ATL_JDBC_PASSWORD=postgres
+      - ATL_DB_TYPE=postgres72
+      - ATL_JDBC_URL=jdbc:postgresql://postgres:5432/jira
     ports:
       - 8666:8080
     volumes:
       - ./jira_data:/var/atlassian/application-data/jira
-    environment:
-      ATL_DB_DRIVER: org.postgresql.Driver
-      ATL_JDBC_USER: postgres
-      ATL_JDBC_PASSWORD: postgres
-      ATL_DB_TYPE: postgres72
-      ATL_JDBC_URL: jdbc:postgresql://postgres:5432/jira
     depends_on:
       - postgres
 
   postgres:
     image: postgres:9.6-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=jira
+      - LANG=POSIX.UTF-8
     ports:
       - 40699:5432
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: jira
-      LANG: POSIX.UTF-8
 
 volumes:
   postgres_data: {}
