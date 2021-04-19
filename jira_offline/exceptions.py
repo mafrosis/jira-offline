@@ -274,3 +274,20 @@ class MultipleTimezoneError(Exception):
 
 jira pull --reset-hard
 '''
+
+
+class EditorFieldParseFailed(BaseAppException):
+    'Failed parsing the return from the editor!'
+
+class EditorRepeatFieldFound(EditorFieldParseFailed):
+    'Field "{}" was found twice in the output from the editor!'
+
+    def __init__(self, field_name):
+        self.field_name = field_name
+        super().__init__()
+
+    def __str__(self):
+        return self.__doc__.format(self.field_name)
+
+class EditorNoChanges(EditorFieldParseFailed):
+    'No changes made in the editor!'

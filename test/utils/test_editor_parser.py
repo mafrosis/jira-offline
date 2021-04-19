@@ -1,81 +1,374 @@
-from fixtures import ISSUE_1
+import pytest
+
+from conftest import not_raises
+from fixtures import ISSUE_1, ISSUE_2
+from jira_offline.exceptions import EditorFieldParseFailed, EditorRepeatFieldFound
 from jira_offline.models import Issue
 from jira_offline.utils.cli import parse_editor_result
 
 
-def test_parse_editor_result__handles_str_type():
+def test_parse_editor_result__handles_str_change():
     '''
-    Ensure editor text parser handles string type
+    Ensure editor parser handles a simple changed string
     '''
-    editor_result_raw = '# Conflict(s) on Issue TEST-71\n\n----------------  --------------------------------------\nSummary           [TEST-71] This is the story summary\nType              Story\nEpic Ref          EPIC-60\nStatus            Story Done\nPriority          Normal\nAssignee          {assignee}\nEstimate\nDescription       This is a story or issue\nFix Version       -  0.1\nLabels\nReporter          danil1\nCreator           danil1\nCreated           a year ago [2018-09-24 08:44:06+10:00]\nUpdated           a year ago [2018-09-24 08:44:06+10:00]\nLast Viewed       a year ago [2018-09-24 08:44:06+10:00]\n----------------  --------------------------------------\n'.format(
-        assignee='hoganp',
-    )
+    editor_result_raw = [
+        '----------------  --------------------------------------',
+        'Summary           [TEST-71] This is the story summary',
+        'Type              Story',
+        'Epic Ref',
+        'Status            Story Done',
+        'Priority          Normal',
+        'Assignee          mafro',
+        'Estimate',
+        'Description       This is a story or issue',
+        'Fix Version       -  0.1',
+        'Labels',
+        'Reporter          danil1',
+        'Creator           danil1',
+        'Created           a year ago [2018-09-24 08:44:06+10:00]',
+        'Updated           a year ago [2018-09-24 08:44:06+10:00]',
+        'Last Viewed       a year ago [2018-09-24 08:44:06+10:00]',
+        '----------------  --------------------------------------',
+    ]
 
-    edited_issue = parse_editor_result(
+    patch_dict = parse_editor_result(
         Issue.deserialize(ISSUE_1),
-        editor_result_raw,
-        conflicts={'assignee'},
+        '\n'.join(editor_result_raw),
     )
-    assert edited_issue.assignee == 'hoganp'
+    assert patch_dict['assignee'] == 'mafro'
 
 
-def test_parse_editor_result__handles_str_type_over_100_chars():
+def test_parse_editor_result__handles_str_change_over_100_chars():
     '''
-    Ensure editor text parser handles strings over 100 chars, as they are textwrapped for the editor
+    Ensure editor parser handles strings over 100 chars, as they are textwrapped for the editor
     '''
-    editor_result_raw = '# Conflict(s) on Issue TEST-71\n\n----------------  --------------------------------------\nSummary           [TEST-71] This is the story summary\nType              Story\nEpic Ref          EPIC-60\nStatus            Story Done\nPriority          Normal\nAssignee          danil1\nEstimate\nDescription       {description}\nFix Version       -  0.1\nLabels\nReporter          danil1\nCreator           danil1\nCreated           a year ago [2018-09-24 08:44:06+10:00]\nUpdated           a year ago [2018-09-24 08:44:06+10:00]\nLast Viewed       a year ago [2018-09-24 08:44:06+10:00]\n----------------  --------------------------------------\n'.format(
-        description='This is a story or issue '*5,
-    )
+    editor_result_raw = [
+        '----------------  --------------------------------------',
+        'Summary           [TEST-71] This is the story summary',
+        'Type              Story',
+        'Epic Ref',
+        'Status            Story Done',
+        'Priority          Normal',
+        'Assignee          danil1',
+        'Estimate',
+        'Description       {}'.format('This is a story or issue ' * 5),
+        'Fix Version       -  0.1',
+        'Labels',
+        'Reporter          danil1',
+        'Creator           danil1',
+        'Created           a year ago [2018-09-24 08:44:06+10:00]',
+        'Updated           a year ago [2018-09-24 08:44:06+10:00]',
+        'Last Viewed       a year ago [2018-09-24 08:44:06+10:00]',
+        '----------------  --------------------------------------',
+    ]
 
-    edited_issue = parse_editor_result(
+    patch_dict = parse_editor_result(
         Issue.deserialize(ISSUE_1),
-        editor_result_raw,
-        conflicts={'description'},
+        '\n'.join(editor_result_raw),
     )
-    assert edited_issue.description == str('This is a story or issue '*5).strip()
+    assert patch_dict['description'] == str('This is a story or issue '*5).strip()
 
 
 def test_parse_editor_result__parses_summary_str():
     '''
-    Ensure editor text parser handles unique summary string formatting
+    Ensure editor parser handles unique summary string formatting
     '''
-    editor_result_raw = '# Conflict(s) on Issue TEST-71\n\n----------------  --------------------------------------\nSummary           [TEST-71] This is the story summary\nType              Story\nEpic Ref          EPIC-60\nStatus            Story Done\nPriority          Normal\nAssignee          danil1\nEstimate\nDescription       This is a story or issue\nFix Version       -  0.1\nLabels\nReporter          danil1\nCreator           danil1\nCreated           a year ago [2018-09-24 08:44:06+10:00]\nUpdated           a year ago [2018-09-24 08:44:06+10:00]\nLast Viewed       a year ago [2018-09-24 08:44:06+10:00]\n----------------  --------------------------------------\n'
+    editor_result_raw = [
+        '----------------  --------------------------------------',
+        'Summary           [TEST-71] This is the story summary',
+        'Type              Story',
+        'Epic Ref',
+        'Status            Story Done',
+        'Priority          Normal',
+        'Assignee          danil1',
+        'Estimate',
+        'Description       This is a story or issue',
+        'Fix Version       -  0.1',
+        'Labels',
+        'Reporter          danil1',
+        'Creator           danil1',
+        'Created           a year ago [2018-09-24 08:44:06+10:00]',
+        'Updated           a year ago [2018-09-24 08:44:06+10:00]',
+        'Last Viewed       a year ago [2018-09-24 08:44:06+10:00]',
+        '----------------  --------------------------------------',
+    ]
 
-    edited_issue = parse_editor_result(
+    patch_dict = parse_editor_result(
         Issue.deserialize(ISSUE_1),
-        editor_result_raw,
-        conflicts={'summary'},
+        '\n'.join(editor_result_raw),
     )
-    assert edited_issue.summary == 'This is the story summary'
+    assert patch_dict['summary'] == 'This is the story summary'
 
 
-def test_parse_editor_result__handles_set_type():
+def test_parse_editor_result__handles_add_to_set():
     '''
-    Ensure editor text parser handles set type
+    Ensure editor parser handles adding items to a set
     '''
-    editor_result_raw = '# Conflict(s) on Issue TEST-71\n\n----------------  --------------------------------------\nSummary           [TEST-71] This is the story summary\nType              Story\nEpic Ref          EPIC-60\nStatus            Story Done\nPriority          Normal\nAssignee          danil1\nEstimate\nDescription       This is a story or issue\nFix Version{fix_versions}\nLabels\nReporter          danil1\nCreator           danil1\nCreated           a year ago [2018-09-24 08:44:06+10:00]\nUpdated           a year ago [2018-09-24 08:44:06+10:00]\nLast Viewed       a year ago [2018-09-24 08:44:06+10:00]\n----------------  --------------------------------------\n'.format(
-        fix_versions='       -  0.1\n       -  0.3',
-    )
+    editor_result_raw = [
+        '----------------  --------------------------------------',
+        'Summary           [TEST-71] This is the story summary',
+        'Type              Story',
+        'Epic Ref',
+        'Status            Story Done',
+        'Priority          Normal',
+        'Assignee          danil1',
+        'Estimate',
+        'Description       This is a story or issue',
+        'Fix Version       - 0.1',
+        '                  - 0.3',
+        ' - DAVE',
+        'Labels',
+        'Reporter          danil1',
+        'Creator           danil1',
+        'Created           a year ago [2018-09-24 08:44:06+10:00]',
+        'Updated           a year ago [2018-09-24 08:44:06+10:00]',
+        'Last Viewed       a year ago [2018-09-24 08:44:06+10:00]',
+        '----------------  --------------------------------------',
+    ]
 
-    edited_issue = parse_editor_result(
+    patch_dict = parse_editor_result(
         Issue.deserialize(ISSUE_1),
-        editor_result_raw,
-        conflicts={'fix_versions'},
+        '\n'.join(editor_result_raw),
     )
-    assert edited_issue.fix_versions == {'0.1', '0.3'}
+    assert patch_dict['fix_versions'] == {'0.1', '0.3', 'DAVE'}
 
 
-def test_parse_editor_result__handles_int_type():
+def test_parse_editor_result__handles_remove_from_set():
     '''
-    Ensure editor text parser handles int type
+    Ensure editor parser handles removing items from a set
     '''
-    editor_result_raw = '# Conflict(s) on Issue TEST-71\n\n----------------  --------------------------------------\nSummary           [TEST-71] This is the story summary\nType              Story\nEpic Ref          EPIC-60\nStatus            Story Done\nPriority          Normal\nAssignee          danil1\nEstimate        {estimate}\nDescription       This is a story or issue\nFix Version       -  0.1\nLabels\nReporter          danil1\nCreator           danil1\nCreated           a year ago [2018-09-24 08:44:06+10:00]\nUpdated           a year ago [2018-09-24 08:44:06+10:00]\nLast Viewed       a year ago [2018-09-24 08:44:06+10:00]\n----------------  --------------------------------------\n'.format(
-        estimate='99',
+    editor_result_raw = [
+        '----------------  --------------------------------------',
+        'Summary           [TEST-72] This is the story summary',
+        'Type              Story',
+        'Epic Ref',
+        'Status            Story Done',
+        'Priority          Normal',
+        'Assignee          danil1',
+        'Estimate',
+        'Description       This is a story or issue',
+        'Fix Version',
+        'Labels            - bacon',
+        'Reporter          danil1',
+        'Creator           danil1',
+        'Created           a year ago [2018-09-24 08:44:06+10:00]',
+        'Updated           a year ago [2018-09-24 08:44:06+10:00]',
+        'Last Viewed       a year ago [2018-09-24 08:44:06+10:00]',
+        '----------------  --------------------------------------',
+    ]
+
+    patch_dict = parse_editor_result(
+        Issue.deserialize(ISSUE_2),
+        '\n'.join(editor_result_raw),
     )
+    assert patch_dict['labels'] == {'bacon'}
 
-    edited_issue = parse_editor_result(
+
+def test_parse_editor_result__set_empty_items_ignored():
+    '''
+    Ensure editor parser handles bad input set set types
+    '''
+    editor_result_raw = [
+        '----------------  --------------------------------------',
+        'Summary           [TEST-71] This is the story summary',
+        'Type              Story',
+        'Epic Ref',
+        'Status            Story Done',
+        'Priority          Normal',
+        'Assignee',
+        'Estimate',
+        'Description       This is a story or issue',
+        'Fix Version       -  0.1',
+        '-',
+        'Labels',
+        'Reporter          danil1',
+        'Creator           danil1',
+        'Created           a year ago [2018-09-24 08:44:06+10:00]',
+        'Updated           a year ago [2018-09-24 08:44:06+10:00]',
+        'Last Viewed       a year ago [2018-09-24 08:44:06+10:00]',
+        '----------------  --------------------------------------',
+    ]
+
+    patch_dict = parse_editor_result(
         Issue.deserialize(ISSUE_1),
-        editor_result_raw,
-        conflicts={'estimate'},
+        '\n'.join(editor_result_raw),
     )
-    assert edited_issue.estimate == 99
+    assert patch_dict['fix_versions'] == {'0.1'}
+
+
+@pytest.mark.parametrize('estimate', [99, 1.5])
+def test_parse_editor_result__handles_decimal_type(estimate):
+    '''
+    Ensure editor parser handles decimal type
+    '''
+    editor_result_raw = [
+        '----------------  --------------------------------------',
+        'Summary           [TEST-71] This is the story summary',
+        'Type              Story',
+        'Epic Ref',
+        'Status            Story Done',
+        'Priority          Normal',
+        'Assignee          danil1',
+        f'Estimate          {estimate}',
+        'Description       This is a story or issue',
+        'Fix Version       -  0.1',
+        'Labels',
+        'Reporter          danil1',
+        'Creator           danil1',
+        'Created           a year ago [2018-09-24 08:44:06+10:00]',
+        'Updated           a year ago [2018-09-24 08:44:06+10:00]',
+        'Last Viewed       a year ago [2018-09-24 08:44:06+10:00]',
+        '----------------  --------------------------------------',
+    ]
+
+    patch_dict = parse_editor_result(
+        Issue.deserialize(ISSUE_1),
+        '\n'.join(editor_result_raw),
+    )
+    assert patch_dict['estimate'] == str(estimate)
+
+
+def test_parse_editor_result__raises_if_single_field_returned_twice():
+    '''
+    Ensure editor parser raises if a single field is returned twice from the editor
+    '''
+    editor_result_raw = [
+        '----------------  --------------------------------------',
+        'Summary           [TEST-71] This is the story summary',
+        'Type              Story',
+        'Epic Ref',
+        'Status            Story Done',
+        'Priority          High',
+        'Assignee          mafro',
+        'Assignee          hoganp',
+        'Estimate',
+        'Description       This is a story or issue',
+        'Fix Version       -  0.1',
+        'Labels',
+        'Reporter          danil1',
+        'Creator           danil1',
+        'Created           a year ago [2018-09-24 08:44:06+10:00]',
+        'Updated           a year ago [2018-09-24 08:44:06+10:00]',
+        'Last Viewed       a year ago [2018-09-24 08:44:06+10:00]',
+        '----------------  --------------------------------------',
+    ]
+
+    with pytest.raises(EditorRepeatFieldFound):
+        parse_editor_result(
+            Issue.deserialize(ISSUE_1),
+            '\n'.join(editor_result_raw),
+        )
+
+
+@pytest.mark.parametrize('prefix', [
+    '',
+    ' ',
+    'Summ',
+])
+def test_parse_editor_result__skips_lines_before_a_valid_field(prefix):
+    '''
+    Ensure editor parser skips any lines before a valid field name is found
+    '''
+    editor_result_raw = [
+        prefix,
+        '----------------  --------------------------------------',
+        'Summary           [TEST-71] This is the story summary',
+        'Type              Story',
+        'Epic Ref',
+        'Status            Story Done',
+        'Priority          Normal',
+        'Assignee          mafro',
+        'Estimate',
+        'Description       This is a story or issue',
+        'Fix Version       -  0.1',
+        'Labels',
+        'Reporter          danil1',
+        'Creator           danil1',
+        'Created           a year ago [2018-09-24 08:44:06+10:00]',
+        'Updated           a year ago [2018-09-24 08:44:06+10:00]',
+        'Last Viewed       a year ago [2018-09-24 08:44:06+10:00]',
+        '----------------  --------------------------------------',
+    ]
+
+    patch_dict = parse_editor_result(
+        Issue.deserialize(ISSUE_1),
+        '\n'.join(editor_result_raw),
+    )
+    assert patch_dict['assignee'] == 'mafro'
+
+
+def test_parse_editor_result__conflict__returns_only_changes_named_in_conflicts():
+    '''
+    Ensure editor parser in conflict mode returns only the changes made to conflicting fields
+    '''
+    editor_result_raw = [
+        '# Conflict(s) on Issue TEST-71',
+        ' ',
+        '----------------  --------------------------------------',
+        'Summary           [TEST-71] This is the story summary',
+        'Type              Story',
+        'Epic Ref',
+        'Status            Story Done',
+        'Priority          High',
+        'Assignee          mafro',
+        'Estimate',
+        'Description       This is a story or issue',
+        'Fix Version       -  0.1',
+        'Labels',
+        'Reporter          danil1',
+        'Creator           danil1',
+        'Created           a year ago [2018-09-24 08:44:06+10:00]',
+        'Updated           a year ago [2018-09-24 08:44:06+10:00]',
+        'Last Viewed       a year ago [2018-09-24 08:44:06+10:00]',
+        '----------------  --------------------------------------',
+    ]
+
+    patch_dict = parse_editor_result(
+        Issue.deserialize(ISSUE_1),
+        '\n'.join(editor_result_raw),
+        conflicts={'assignee'},
+    )
+    assert 'priority' not in patch_dict
+    assert list(patch_dict.keys()) == ['assignee']
+    assert patch_dict['assignee'] == 'mafro'
+
+
+@pytest.mark.parametrize('bad_conflict', [
+    '<<<<>>> updated',
+    '<<',
+    '>>',
+    '==',
+    ' ==',
+])
+def test_parse_editor_result__conflict__handles_bad_conflict_strings(bad_conflict):
+    '''
+    Ensure editor parser in conflict mode handles dodgy output from the editor
+    '''
+    editor_result_raw = [
+        '# Conflict(s) on Issue TEST-71',
+        ' ',
+        '----------------  --------------------------------------',
+        'Summary           [TEST-71] This is the story summary',
+        'Type              Story',
+        'Epic Ref',
+        'Status            Story Done',
+        'Priority          High',
+        f'{bad_conflict}',
+        'Estimate',
+        'Description       This is a story or issue',
+        'Fix Version       -  0.1',
+        'Labels',
+        'Reporter          danil1',
+        'Creator           danil1',
+        'Created           a year ago [2018-09-24 08:44:06+10:00]',
+        'Updated           a year ago [2018-09-24 08:44:06+10:00]',
+        'Last Viewed       a year ago [2018-09-24 08:44:06+10:00]',
+        '----------------  --------------------------------------',
+    ]
+
+    with not_raises(EditorFieldParseFailed):
+        parse_editor_result(
+            Issue.deserialize(ISSUE_1),
+            '\n'.join(editor_result_raw),
+            conflicts={'assignee'},
+        )

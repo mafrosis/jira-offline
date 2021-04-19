@@ -1,16 +1,24 @@
 '''
 Print and text rendering utils for the CLI commands
 '''
+import dataclasses
+import decimal
+import logging
+from typing import Any, Dict, List, Optional
+
 import arrow
 import click
-import dataclasses
 import pandas as pd
 from tabulate import tabulate
-from typing import Optional, Dict, List
+import typing_inspect
 
+from jira_offline.exceptions import EditorRepeatFieldFound
 from jira_offline.models import Issue
-from jira_offline.utils import friendly_title, get_field_by_name
+from jira_offline.utils import friendly_title
 from jira_offline.utils.serializer import istype
+
+
+logger = logging.getLogger('jira')
 
 
 def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_project_col: bool=False):
@@ -92,7 +100,7 @@ def print_diff(issue: Issue):
     click.echo(tabulate(issue.render(modified_fields=update_obj.modified)))
 
 
-def parse_editor_result(issue: Issue, editor_result_raw: str, conflicts: Optional[dict]=None) -> Issue:
+def parse_editor_result(issue: Issue, editor_result_raw: str, conflicts: Optional[dict]=None) -> dict:
     '''
     Parse the string returned from the conflict editor
 
@@ -103,6 +111,9 @@ def parse_editor_result(issue: Issue, editor_result_raw: str, conflicts: Optiona
     Returns:
         Edited Issue object
     '''
+    class SkipEditorField:
+        pass
+
     # Create dict to lookup a dataclass field by its pretty formatted name
     issue_fields_by_friendly = {
         friendly_title(Issue, f.name):f for f in dataclasses.fields(Issue)
@@ -110,48 +121,93 @@ def parse_editor_result(issue: Issue, editor_result_raw: str, conflicts: Optiona
 
     editor_result: Dict[str, List[str]] = {}
 
-    # Process the raw input into a dict. Only conflicted fields are extracted as entries in the
-    # dict, and the value is a list of lines from the raw input
+    def preprocess_field(field: dataclasses.Field, input_data: List[str]) -> Any:
+        # Validate empty
+        if input_data in ('', ['']):
+            if not typing_inspect.is_optional_type(field.type):
+                # Field is mandatory, and editor returned blank - skip this field
+                return SkipEditorField()
+            elif field.default_factory != dataclasses.MISSING:  # type: ignore[misc] # https://github.com/python/mypy/issues/6910
+                return field.default_factory()  # type: ignore[misc]
+            else:
+                return field.default
+
+        if istype(field.type, set):
+            return {item[1:].strip() for item in input_data if len(item[1:].strip()) > 0}
+
+        if istype(field.type, list):
+            return [item[1:].strip() for item in input_data if len(item[1:].strip()) > 0]
+
+        if istype(field.type, (int, decimal.Decimal)):
+            # Handle number types
+            field_value = input_data[0]
+        else:
+            # Else assume string and join list of strings to a single one
+            field_value = ' '.join(input_data)
+
+        if field.name == 'summary':
+            summary_prefix = f'[{issue.key}]'
+
+            # special case to strip the key prefix from the summary
+            if field_value.startswith(summary_prefix):
+                return field_value[len(summary_prefix):].strip()
+
+        return field_value
+
+
+    current_field = previous_field = None
+    seen_fields = set()
+
     for line in editor_result_raw.splitlines():
-        if not line or line.startswith('#') or line.startswith('-'*10):
+        # Skip blank lines, comments, header/footer & conflict markers
+        if not line.strip() or line.startswith(('#', '-'*10, '<<', '>>', '==')):
             continue
 
         # Parse a token from the current line
-        parsed_token = ' '.join(line.split(' ')[0:4]).strip()
+        parsed_token = ' '.join(line.split(' ')[0:4]).strip().replace('\u2800', '')
 
         if parsed_token in issue_fields_by_friendly:
-            # Next field found
             current_field = issue_fields_by_friendly[parsed_token]
 
-        # If processing conflicts in the editor, ignore any fields which aren't in conflict
-        if conflicts and current_field.name not in conflicts:
-            continue
+            # Error if a field is found twice in the editor output
+            if current_field in seen_fields:
+                raise EditorRepeatFieldFound(current_field.name)
 
-        if current_field.name not in editor_result:
-            editor_result[current_field.name] = []
+            # Track the fields already seen
+            seen_fields.add(current_field)
 
-        editor_result[current_field.name].append(line[len(parsed_token):].strip())
+            if previous_field:
+                # Next field found, finish processing the previous field
+                logger.debug('Read "%s" for Issue.%s', field_value, previous_field.name)  # type: ignore[unreachable]
 
-    summary_prefix = f'[{issue.key}]'
+                # If processing Issue conflicts in the editor, skip any fields which aren't in conflict
+                if conflicts and previous_field.name not in conflicts:
+                    logger.debug('Skipped %s, as not in conflict', previous_field.name)
 
-    def preprocess_field_value(field_name, val):
-        if istype(get_field_by_name(Issue, field_name).type, set):
-            return [item[1:].strip() for item in val]
+                # Skip all readonly fields
+                elif previous_field.metadata.get('readonly', False):
+                    logger.debug('Skipped %s, as readonly', previous_field.name)
+
+                else:
+                    processed_value = preprocess_field(previous_field, field_value)
+
+                    if not isinstance(processed_value, SkipEditorField):
+                        editor_result[previous_field.name] = processed_value
+
+            # Set local variables for next field
+            previous_field = current_field
+            field_value = []
+
+            # Actual content starts after the token
+            content_start = len(parsed_token) + 1
         else:
-            output = ''.join(val)
+            # No valid token found, the whole line is content
+            content_start = 0
 
-            if field_name == 'summary':
-                # special case to strip the key prefix from the summary
-                if output.startswith(summary_prefix):
-                    output = output[len(summary_prefix):].strip()
+        # Skip any lines before the first field is found
+        if current_field:
+            # Combine each line of content into a list
+            field_value.append(line[content_start:].strip())
 
-            return output
 
-    # Fields need additional preprocessing before being passed to Issue.deserialize()
-    editor_result = {k: preprocess_field_value(k, v) for k, v in editor_result.items()}
-
-    # Merge edit results into original Issue
-    edited_issue_dict = issue.serialize()
-    edited_issue_dict.update(editor_result)
-
-    return Issue.deserialize(edited_issue_dict)
+    return editor_result

@@ -16,9 +16,10 @@ import pandas as pd
 from tabulate import tabulate
 from tqdm import tqdm
 
-from jira_offline.exceptions import (EpicNotFound, EstimateFieldUnavailable, FailedPullingIssues,
-                                     FailedPullingProjectMeta, JiraApiError)
+from jira_offline.exceptions import (EditorFieldParseFailed, EpicNotFound, EstimateFieldUnavailable,
+                                     FailedPullingIssues, FailedPullingProjectMeta, JiraApiError)
 from jira_offline.jira import jira
+from jira_offline.create import patch_issue_from_dict
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.utils import critical_logger, get_field_by_name
 from jira_offline.utils.api import get as api_get
@@ -192,7 +193,7 @@ def merge_issues(base_issue: Issue, updated_issue: Issue, is_upstream_merge: boo
     Params:
         base_issue:         Base Issue to which we are comparing
         updated_issue:      Incoming updated Issue (or Issue.blank)
-        is_upstream_merge:  Flag to indicate if the upstream issue has been updated during a sync
+        is_upstream_merge:  Flag to indicate if this merge is with an issue from upstream Jira server
     Returns:
         An IssueUpdate object created by build_update
     '''
@@ -201,7 +202,7 @@ def merge_issues(base_issue: Issue, updated_issue: Issue, is_upstream_merge: boo
 
     if update_obj.conflicts:
         # resolve any conflicts
-        update_obj.merged_issue = manual_conflict_resolution(update_obj)
+        manual_conflict_resolution(update_obj)
 
     if is_upstream_merge and updated_issue is not None:
         # set the original property to the latest version of this Issue incoming from upstream
@@ -319,25 +320,22 @@ def build_update(base_issue: Issue, updated_issue: Optional[Issue]) -> IssueUpda
 class ConflictResolutionFailed(Exception):
     pass
 
-class EditorFieldParseFailed(ValueError):
-    pass
 
-
-def manual_conflict_resolution(update_obj: IssueUpdate) -> Issue:
+def manual_conflict_resolution(update_obj: IssueUpdate):
     '''
     Manually resolve conflicts with $EDITOR
 
     Params:
         update_obj:  Instance of IssueUpdate returned from build_update
     '''
-    # render issue to string, including conflict blocks
+    # Render issue to string, including conflict blocks
     issue_data = update_obj.merged_issue.render(update_obj.conflicts)
     editor_conflict_text = tabulate(issue_data)
 
     retries = 1
     while retries <= 3:
         try:
-            # display interactively in $EDITOR
+            # Display interactively in $EDITOR
             editor_result_raw = click.edit(
                 '\n'.join([
                     '# Conflict(s) on Issue {}'.format(update_obj.merged_issue.key), '',
@@ -345,7 +343,7 @@ def manual_conflict_resolution(update_obj: IssueUpdate) -> Issue:
                 ])
             )
 
-            # error handling
+            # Error handling
             # - no changes in click.edit returns None
             # - empty string means abort
             # - any <<< >>> are bad news
@@ -355,8 +353,8 @@ def manual_conflict_resolution(update_obj: IssueUpdate) -> Issue:
                 if line.startswith(('<<', '>>', '==')):
                     raise EditorFieldParseFailed
 
-            # parse the editor output into a new Issue
-            resolved_issue = parse_editor_result(
+            # Parse the editor output into a dict
+            patch_dict = parse_editor_result(
                 update_obj.merged_issue, editor_result_raw, update_obj.conflicts
             )
             break
@@ -371,7 +369,8 @@ def manual_conflict_resolution(update_obj: IssueUpdate) -> Issue:
         # only reached if retries are exceeded
         raise ConflictResolutionFailed(update_obj.merged_issue.key)
 
-    return resolved_issue
+    # Patch the issue with fields from the CLI or editor
+    patch_issue_from_dict(update_obj.merged_issue, patch_dict)
 
 
 def push_issues(verbose: bool=False):

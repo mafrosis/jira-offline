@@ -408,8 +408,15 @@ class Issue(DataclassSerializer):
                     return (new_field,)
 
             else:
-                return (render_field(Issue, field_name, getattr(self, field_name), title_prefix='\u2800',
-                                     value_prefix=prefix),)
+                # Render a single blank char prefix to ensure the unmodified fields line up nicely
+                # with the modified ones, which are printed with +/- diff chars.
+                # Char u2800 is used to prevent the tabulate module from stripping the prefix.
+                if modified_fields:
+                    title_prefix = '\u2800'
+                else:
+                    title_prefix = ''
+                return (render_field(Issue, field_name, getattr(self, field_name),
+                                     title_prefix=title_prefix, value_prefix=prefix),)
 
         if self.issuetype == 'Epic':
             epicdetails = fmt('epic_name')
