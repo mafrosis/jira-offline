@@ -11,14 +11,13 @@ from tabulate import tabulate
 
 from jira_offline.auth import authenticate
 from jira_offline.create import create_issue, import_issue, patch_issue_from_dict
-from jira_offline.exceptions import (BadProjectMetaUri, FailedPullingProjectMeta, ImportFailed,
-                                     JiraApiError)
+from jira_offline.exceptions import (BadProjectMetaUri, EditorFieldParseFailed, EditorNoChanges,
+                                     FailedPullingProjectMeta, ImportFailed, JiraApiError)
 from jira_offline.jira import jira
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.sync import pull_issues, pull_single_project, push_issues
 from jira_offline.utils import find_project
-from jira_offline.utils.cli import print_diff, print_list
-
+from jira_offline.utils.cli import parse_editor_result, print_diff, print_list
 
 logger = logging.getLogger('jira')
 
@@ -292,6 +291,7 @@ def cli_new(projectkey: str, issuetype: str, summary: str, as_json: bool=False, 
 @click.command(name='edit')
 @click.argument('key')
 @click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
+@click.option('--editor', is_flag=True, help='Free edit the issue in your shell editor')
 @click.option('--assignee', help='Username of person assigned to complete the Issue')
 @click.option('--description', help='Long description of Issue')
 @click.option('--epic-name', help='Short epic name')
@@ -303,7 +303,7 @@ def cli_new(projectkey: str, issuetype: str, summary: str, as_json: bool=False, 
 @click.option('--reporter', help='Username of Issue reporter')
 @click.option('--summary', help='Summary one-liner for this issue')
 @click.option('--status', help='Set issue status to any valid for the issuetype')
-def cli_edit(key: str, as_json: bool=False, **kwargs):
+def cli_edit(key: str, as_json: bool=False, editor: bool=False, **kwargs):
     '''
     Edit one or more fields on an issue
 
@@ -317,31 +317,55 @@ def cli_edit(key: str, as_json: bool=False, **kwargs):
 
     issue = jira[key]
 
-    # validate epic parameters
-    if issue.issuetype == 'Epic':
-        if kwargs.get('epic_ref'):
-            click.echo('Parameter --epic-ref is ignored when modifing an Epic')
-            del kwargs['epic_ref']
+    if editor:
+        retry = 1
+        while retry <= 3:
+            try:
+                # Display interactively in $EDITOR
+                editor_result_raw = click.edit(tabulate(issue.render()))
+                if not editor_result_raw:
+                    raise EditorNoChanges
+
+                # Parse the editor output into a dict
+                patch_dict = parse_editor_result(issue, editor_result_raw)
+                break
+
+            except (EditorFieldParseFailed, EditorNoChanges) as e:
+                logger.error(e)
+
+                if not click.confirm(f'Try again?  (retry {retry} of 3)'):
+                    return
+            finally:
+                retry += 1
     else:
-        if kwargs.get('epic_name'):
-            click.echo('Parameter --epic-name is ignored for anything other than an Epic')
+        # Validate epic parameters
+        if issue.issuetype == 'Epic':
+            if kwargs.get('epic_ref'):
+                click.echo('Parameter --epic-ref is ignored when modifing an Epic')
+                del kwargs['epic_ref']
+        else:
+            if kwargs.get('epic_name'):
+                click.echo('Parameter --epic-name is ignored for anything other than an Epic')
 
-    # parse fix_versions and labels
-    if kwargs.get('fix_versions'):
-        kwargs['fix_versions'] = set(kwargs['fix_versions'].split(','))
-    if kwargs.get('labels'):
-        kwargs['labels'] = set(kwargs['labels'].split(','))
+        # Parse fix_versions and labels
+        if kwargs.get('fix_versions'):
+            kwargs['fix_versions'] = set(kwargs['fix_versions'].split(','))
+        if kwargs.get('labels'):
+            kwargs['labels'] = set(kwargs['labels'].split(','))
 
-    patch_issue_from_dict(issue, kwargs)
+        patch_dict = kwargs
+
+    # Patch the issue with fields from the CLI or editor
+    patch_issue_from_dict(issue, patch_dict)
     issue.commit()
 
     jira.write_issues()
 
     if as_json:
-        # display the edited issue as JSON
+        # Display the edited issue as JSON
         click.echo(issue.as_json())
     else:
-        # print diff of edited issue
+        # Print diff of edited issue
         print_diff(issue)
 
 
