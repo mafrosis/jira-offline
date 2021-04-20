@@ -229,10 +229,13 @@ def test_pull_single_project__merge_issues_called_when_local_issue_is_modified(
     '''
     Ensure that merge_issues is called when the Issue already exists
     '''
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
+    mock_jira['TEST-71'] = issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
 
     # mock search_issues to return single object
     mock_api_get.side_effect = [ {'total': 1}, {'issues': [ISSUE_1]}, {'issues': []} ]
+
+    # mock conversion function to return single Issue
+    mock_jiraapi_object_to_issue.side_effect = [issue]
 
     # mock merge_issues function to return modified_issue
     mock_merge_issues.return_value = IssueUpdate(merged_issue=Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF))

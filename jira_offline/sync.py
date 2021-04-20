@@ -124,22 +124,8 @@ def pull_single_project(project: ProjectMeta, force: bool, verbose: bool):
             total += len(api_issues)
 
             for api_issue in api_issues:
-                # convert from Jira object into Issue dataclass
-                issue = jiraapi_object_to_issue(project, api_issue)
-
-                if not force:
-                    try:
-                        # determine if local changes have been made
-                        if jira[api_issue['key']].modified:
-                            update_obj: IssueUpdate = merge_issues(
-                                jira[api_issue['key']], issue, is_upstream_merge=True
-                            )
-                            issue = update_obj.merged_issue
-                    except KeyError:
-                        pass
-
-                # build list of new/modified issues
-                issues.append(issue)
+                # Build a list of Issue objects
+                issues.append(jiraapi_object_to_issue(project, api_issue))
 
             if pbar:
                 # update progress
@@ -174,9 +160,24 @@ def pull_single_project(project: ProjectMeta, force: bool, verbose: bool):
     except JiraApiError as e:
         raise FailedPullingIssues
 
-    except ConflictResolutionFailed as e:
-        logger.critical('Failed resolving conflict on %s during pull!', e)
-        return
+    if not force:
+        try:
+            # Merge locally modified issues with changes made upstream on Jira
+            for i, upstream_issue in enumerate(issues):
+                if upstream_issue.key not in jira:
+                    # Skip new issues
+                    continue
+
+                local_issue = jira[upstream_issue.key]
+
+                # Check if the issue has been modified offline
+                if local_issue.modified:
+                    update_obj = merge_issues(local_issue, upstream_issue, is_upstream_merge=True)
+                    issues[i] = update_obj.merged_issue
+
+        except ConflictResolutionFailed as e:
+            logger.critical('Failed resolving conflict on %s during pull!', e)
+            return
 
     # include new/modified issues into local storage
     if issues:
