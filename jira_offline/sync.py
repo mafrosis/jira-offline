@@ -37,7 +37,8 @@ class Conflict(Exception):
     pass
 
 
-def pull_issues(projects: Optional[Set[str]]=None, force: bool=False, verbose: bool=False):
+def pull_issues(projects: Optional[Set[str]]=None, force: bool=False, verbose: bool=False,
+                no_retry: bool=False):
     '''
     Pull changed issues from upstream Jira API, and update project settings/metadata.
 
@@ -45,6 +46,7 @@ def pull_issues(projects: Optional[Set[str]]=None, force: bool=False, verbose: b
         projects:  Project IDs to pull, if None then pull all configured projects
         force:     Force pull of all issues, not just those changed since project.last_updated
         verbose:   Verbose print all issues as they're pulled from the API (default: show progress bar)
+        no_retry:  Do not retry a Jira server which is unavailable
     '''
     projects_to_pull: List[ProjectMeta]
 
@@ -58,11 +60,17 @@ def pull_issues(projects: Optional[Set[str]]=None, force: bool=False, verbose: b
             if project.key in projects
         ]
 
+    # Three or zero retries for an unresponsive Jira server
+    if no_retry:
+        retries = 1
+    else:
+        retries = 3
+
     for project in projects_to_pull:
         logger.info('Retrieving settings/metadata from %s', project.project_uri)
         retry = 1
 
-        while retry <= 3:
+        while retry <= retries:
             try:
                 # Update project settings/metadata on every pull
                 jira.get_project_meta(project)
