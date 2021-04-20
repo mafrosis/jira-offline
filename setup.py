@@ -4,10 +4,6 @@ from setuptools import setup, find_packages
 
 import jira_offline
 
-REQUIRES = [
-    line for line in open('requirements.txt').readlines() if 'git+git' not in line
-]
-
 setup(
     name='jira-offline',
     version=jira_offline.__version__,
@@ -21,7 +17,7 @@ setup(
     package_data={'': ['LICENSE']},
     package_dir={'': '.'},
     include_package_data=True,
-    install_requires=REQUIRES,
+    install_requires=open('requirements.txt').readlines(),
     license='MIT License',
     entry_points={
         'console_scripts': [
