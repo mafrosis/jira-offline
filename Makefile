@@ -36,8 +36,12 @@ typecheck:
 	docker-compose run --rm test --mypy jira_offline/
 
 
+.PHONY: clean
+clean:
+	rm -rf build dist
+
 .PHONY: package
-package:
+package: clean
 	python3 -m pip install --upgrade setuptools wheel
 	rm -rf jira_offline.egg-info dist
 	python3 setup.py sdist bdist_wheel
