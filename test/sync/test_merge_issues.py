@@ -113,9 +113,9 @@ def test_merge_issues__is_upstream_merge_equals_false__merged_issue_original_DOE
 
 @mock.patch('jira_offline.sync.manual_conflict_resolution')
 @mock.patch('jira_offline.sync.build_update')
-def test_merge_issues__returns_result_of_manual_conflict_resolution(mock_build_update, mock_manual_conflict_resolution):
+def test_merge_issues__calls_manual_conflict_resolution(mock_build_update, mock_manual_conflict_resolution):
     '''
-    Ensure that result of manual_conflict_resolution is returned
+    Ensure that manual_conflict_resolution is invoked when there are conflicts
     '''
     local_issue = Issue.deserialize(ISSUE_1)
     updated_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
@@ -128,17 +128,11 @@ def test_merge_issues__returns_result_of_manual_conflict_resolution(mock_build_u
     )
     mock_build_update.return_value = update_obj
 
-    # mock manual_conflict_resolution to return updated issue
-    mock_manual_conflict_resolution.return_value = updated_issue
-
     update_obj = merge_issues(local_issue, updated_issue, is_upstream_merge=True)
 
     # ensure build_update AND manual_conflict_resolution are called
     mock_build_update.assert_called_once_with(local_issue, updated_issue)
     mock_manual_conflict_resolution.assert_called_with(update_obj)
-
-    # return value should match return from manual_conflict_resolution
-    assert update_obj.merged_issue == updated_issue
 
 
 @mock.patch('jira_offline.sync.click')
@@ -212,26 +206,3 @@ def test_manual_conflict_resolution__handles_three_error_strings_in_editor_retur
 
     assert mock_click.edit.call_count == 3
     assert not mock_parse_editor_result.called
-
-
-@mock.patch('jira_offline.sync.click')
-@mock.patch('jira_offline.sync.parse_editor_result')
-def test_manual_conflict_resolution__contrived_success_case(mock_parse_editor_result, mock_click):
-    '''
-    If click.edit() returns a non-error, manual_conflict_resolution() should return the same Issue
-    returned from parse_editor_result()
-    '''
-    incoming_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
-
-    update_obj = IssueUpdate(
-        merged_issue=incoming_issue,
-        modified={'assignee'},
-        conflicts={'assignee': {'original': 'danil1', 'updated': 'murphye', 'base': 'hoganp'}}
-    )
-
-    # mock the return from parse_editor_result()
-    mock_parse_editor_result.return_value = incoming_issue
-
-    resolved_issue = manual_conflict_resolution(update_obj)
-
-    assert resolved_issue == incoming_issue

@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+import os
 import random
 import string
 import tempfile
@@ -137,7 +138,7 @@ def jira_project(request, run_in_docker):
         auth=HTTPBasicAuth(username, password),
         json={
             'key': project_key,
-            'lead': 'blackm',
+            'lead': os.environ.get('INT_USER'),
             'name': project_key,
             'projectTypeKey': 'software',
             'projectTemplateKey': 'com.pyxis.greenhopper.jira:gh-scrum-template',

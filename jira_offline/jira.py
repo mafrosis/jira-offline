@@ -10,6 +10,7 @@ from typing import Dict, List, Optional, Set
 
 import pandas as pd
 from peak.util.proxies import LazyProxy
+import pytz
 
 from jira_offline.config import get_cache_filepath, load_config
 from jira_offline.exceptions import (EpicNotFound, EstimateFieldUnavailable, JiraApiError,
@@ -25,7 +26,7 @@ logger = logging.getLogger('jira')
 
 
 # Create single Jira object instance for this invocation of the app
-# Made available to all modules via simply python import: `from jira_offline.utils import jira`
+# Made available to all modules via simple python import: `from jira_offline.jira import jira`
 jira = LazyProxy(lambda: Jira())  # pylint: disable=unnecessary-lambda
 
 
@@ -257,6 +258,8 @@ class Jira(collections.abc.MutableMapping):
                         custom_fields.epic_ref = str(field_props['schema']['customId'])
                     elif not custom_fields.estimate and field_props['name'] == 'Story Points':
                         custom_fields.estimate = str(field_props['schema']['customId'])
+                    elif not custom_fields.estimate and field_props['name'] == 'Acceptance Criteria':
+                        custom_fields.acceptance_criteria = str(field_props['schema']['customId'])
 
             project.custom_fields = custom_fields
 
@@ -266,8 +269,24 @@ class Jira(collections.abc.MutableMapping):
             # pull project components
             self._get_project_components(project)
 
+            # Pull user's configured timezone from their profile and store on the ProjectMeta
+            tz = self._get_user_timezone(project)
+            if tz is not None:
+                project.timezone = pytz.timezone(tz)
+
         except (IndexError, KeyError) as e:
-            raise JiraApiError(f'Missing or bad project meta returned for {project.key} with error "{e.__class__.__name__}({e})"')
+            raise JiraApiError((
+                f'Missing or bad project meta returned for {project.key} with error '
+                f'"{e.__class__.__name__}({e})"'
+            ))
+
+
+    def _get_user_timezone(self, project: ProjectMeta) -> Optional[str]:  # pylint: disable=no-self-use
+        '''
+        Retrieve user-specific timezone setting
+        '''
+        data = api_get(project, 'myself')
+        return data.get('timeZone')
 
 
     def _get_project_issue_statuses(self, project: ProjectMeta):  # pylint: disable=no-self-use

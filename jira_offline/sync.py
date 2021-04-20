@@ -2,30 +2,32 @@
 Functions related to pull & push of Issues to/from the Jira API. Also includes conflict analysis and
 resolution functions.
 '''
-import copy
 import dataclasses
 from dataclasses import dataclass, field
 import datetime
 import logging
-from typing import Any, Dict, Generator, List, Optional, Set, Tuple, TYPE_CHECKING
+import time
+from typing import Any, Dict, List, Optional, Set
 
 import click
 import dictdiffer
+from dictdiffer.merge import Merger
+from dictdiffer.resolve import UnresolvedConflictsException
 import pandas as pd
 from tabulate import tabulate
 from tqdm import tqdm
 
-from jira_offline.exceptions import (EpicNotFound, EstimateFieldUnavailable, FailedPullingIssues,
-                                     FailedPullingProjectMeta, JiraApiError)
+from jira_offline.exceptions import (EditorFieldParseFailed, EpicNotFound, EstimateFieldUnavailable,
+                                     FailedPullingIssues, FailedPullingProjectMeta, JiraApiError,
+                                     JiraUnavailable)
+from jira_offline.jira import jira
+from jira_offline.create import patch_issue_from_dict
 from jira_offline.models import Issue, ProjectMeta
-from jira_offline.utils import critical_logger, friendly_title, get_field_by_name
+from jira_offline.utils import critical_logger, get_field_by_name
 from jira_offline.utils.api import get as api_get
-from jira_offline.utils.cli import print_list
+from jira_offline.utils.cli import parse_editor_result, print_list
 from jira_offline.utils.convert import jiraapi_object_to_issue, issue_to_jiraapi_update
-from jira_offline.utils.serializer import DeserializeError, get_base_type, istype
-
-if TYPE_CHECKING:
-    from jira_offline.jira import Jira
+from jira_offline.utils.serializer import DeserializeError
 
 
 logger = logging.getLogger('jira')
@@ -35,15 +37,16 @@ class Conflict(Exception):
     pass
 
 
-def pull_issues(jira: 'Jira', projects: Optional[Set[str]]=None, force: bool=False, verbose: bool=False):
+def pull_issues(projects: Optional[Set[str]]=None, force: bool=False, verbose: bool=False,
+                no_retry: bool=False):
     '''
-    Pull changed issues from upstream Jira API
+    Pull changed issues from upstream Jira API, and update project settings/metadata.
 
     Params:
-        jira:      Dependency-injected jira.Jira object
         projects:  Project IDs to pull, if None then pull all configured projects
         force:     Force pull of all issues, not just those changed since project.last_updated
         verbose:   Verbose print all issues as they're pulled from the API (default: show progress bar)
+        no_retry:  Do not retry a Jira server which is unavailable
     '''
     projects_to_pull: List[ProjectMeta]
 
@@ -57,23 +60,40 @@ def pull_issues(jira: 'Jira', projects: Optional[Set[str]]=None, force: bool=Fal
             if project.key in projects
         ]
 
+    # Three or zero retries for an unresponsive Jira server
+    if no_retry:
+        retries = 1
+    else:
+        retries = 3
+
     for project in projects_to_pull:
-        try:
-            # Since the ProjectMeta defines options for how issues are created, we need to keep it
-            # up-to-date. Update project meta on every pull.
-            jira.get_project_meta(project)
-        except JiraApiError as e:
-            raise FailedPullingProjectMeta(e)
+        logger.info('Retrieving settings/metadata from %s', project.project_uri)
+        retry = 1
 
-        pull_single_project(jira, project, force=force, verbose=verbose)
+        while retry <= retries:
+            try:
+                # Update project settings/metadata on every pull
+                jira.get_project_meta(project)
+
+            except JiraUnavailable as e:
+                backoff = retry * retry
+                logger.error('Jira %s is unavailable. Retry in %s seconds (%s/3)', project.project_uri, backoff, retry)
+                time.sleep(backoff)
+                continue
+            except JiraApiError as e:
+                raise FailedPullingProjectMeta(e)
+            finally:
+                retry += 1
+
+            pull_single_project(project, force=force, verbose=verbose)
+            break
 
 
-def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose: bool):  # pylint: disable=too-many-statements
+def pull_single_project(project: ProjectMeta, force: bool, verbose: bool):
     '''
     Pull changed issues from upstream Jira API
 
     Params:
-        jira:     Dependency-injected jira.Jira object
         project:  Properties of the Jira project to pull
         force:    Force pull of all issues, not just those changed since project.last_updated
         verbose:  Verbose print all issues as they're pulled from the API (default: show progress bar)
@@ -85,10 +105,10 @@ def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose
     if force or project.last_updated is None:
         # first/forced load; cache must be empty
         last_updated = '2010-01-01 00:00'
-        logger.info('Querying %s for all issues', project.project_uri)
+        logger.warning('Querying %s for all issues', project.project_uri)
     else:
         last_updated = project.last_updated
-        logger.info(
+        logger.warning(
             'Querying %s for issues since %s', project.project_uri, project.last_updated
         )
 
@@ -112,22 +132,8 @@ def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose
             total += len(api_issues)
 
             for api_issue in api_issues:
-                # convert from Jira object into Issue dataclass
-                issue = jiraapi_object_to_issue(project, api_issue)
-
-                if not force:
-                    try:
-                        # determine if local changes have been made
-                        if jira[api_issue['key']].modified:
-                            update_obj: IssueUpdate = merge_issues(
-                                jira[api_issue['key']], issue, is_upstream_merge=True
-                            )
-                            issue = update_obj.merged_issue
-                    except KeyError:
-                        pass
-
-                # build list of new/modified issues
-                issues.append(issue)
+                # Build a list of Issue objects
+                issues.append(jiraapi_object_to_issue(project, api_issue))
 
             if pbar:
                 # update progress
@@ -162,15 +168,28 @@ def pull_single_project(jira: 'Jira', project: ProjectMeta, force: bool, verbose
     except JiraApiError as e:
         raise FailedPullingIssues
 
-    except ConflictResolutionFailed as e:
-        logger.critical('Failed resolving conflict on %s during pull!', e)
-        return
+    if not force:
+        try:
+            # Merge locally modified issues with changes made upstream on Jira
+            for i, upstream_issue in enumerate(issues):
+                if upstream_issue.key not in jira:
+                    # Skip new issues
+                    continue
+
+                local_issue = jira[upstream_issue.key]
+
+                # Check if the issue has been modified offline
+                if local_issue.modified:
+                    update_obj = merge_issues(local_issue, upstream_issue, is_upstream_merge=True)
+                    issues[i] = update_obj.merged_issue
+
+        except ConflictResolutionFailed as e:
+            logger.critical('Failed resolving conflict on %s during pull!', e)
+            return
 
     # include new/modified issues into local storage
     if issues:
         jira.update(issues)
-
-    logger.info('Retrieved %s issues', len(issues))
 
     # cache the last_updated value
     project.last_updated = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
@@ -197,7 +216,7 @@ def merge_issues(base_issue: Issue, updated_issue: Issue, is_upstream_merge: boo
     Params:
         base_issue:         Base Issue to which we are comparing
         updated_issue:      Incoming updated Issue (or Issue.blank)
-        is_upstream_merge:  Flag to indicate if the upstream issue has been updated during a sync
+        is_upstream_merge:  Flag to indicate if this merge is with an issue from upstream Jira server
     Returns:
         An IssueUpdate object created by build_update
     '''
@@ -206,7 +225,7 @@ def merge_issues(base_issue: Issue, updated_issue: Issue, is_upstream_merge: boo
 
     if update_obj.conflicts:
         # resolve any conflicts
-        update_obj.merged_issue = manual_conflict_resolution(update_obj)
+        manual_conflict_resolution(update_obj)
 
     if is_upstream_merge and updated_issue is not None:
         # set the original property to the latest version of this Issue incoming from upstream
@@ -259,17 +278,6 @@ def build_update(base_issue: Issue, updated_issue: Optional[Issue]) -> IssueUpda
     base_issue_dict: dict = base_issue.serialize()
     updated_issue_dict: dict = updated_issue.serialize()
 
-    def make_hashable(lst):
-        '''Recursively convert lists and sets to be hashable tuples'''
-        # clone `lst` arg to list type
-        ret = list(range(len(lst)))
-        for i, item in enumerate(lst):
-            if isinstance(item, (list, set, tuple)):
-                ret[i] = make_hashable(item)
-            else:
-                ret[i] = item
-        return tuple(ret)
-
     # fields to ignore during dictdiffer.diff
     ignore_fields = set(['diff_to_original', 'modified'])
 
@@ -277,69 +285,57 @@ def build_update(base_issue: Issue, updated_issue: Optional[Issue]) -> IssueUpda
         # ignore readonly fields when diffing new Issues
         ignore_fields.update({f.name for f in dataclasses.fields(Issue) if f.metadata.get('readonly')})
 
-    # generate two diffs to original Issue
-    diff_original_to_base = set(make_hashable(list(dictdiffer.diff(
-        base_issue.original, base_issue_dict, ignore=ignore_fields
-    ))))
-    diff_original_to_updated = set(make_hashable(list(dictdiffer.diff(
-        base_issue.original, updated_issue_dict, ignore=ignore_fields
-    ))))
+    m = Merger(base_issue.original, base_issue_dict, updated_issue_dict, actions={}, ignore=ignore_fields)
 
-    # create mapping of modified field_name to a count
-    grouped_modified: Dict[str, int] = {}
+    try:
+        m.run()
+    except UnresolvedConflictsException:
+        # Instruct the Merger to resolve every conflict by selecting the first patch.
+        # The actual conflict resolution will be done in sync.manual_conflict_resolution.
+        m.resolver.manual_resolve_conflicts(['f' for x in range(len(m.conflicts))])
+        m.unify_patches()
 
-    def iter_fieldnames_in_diff(diff: set) -> Generator[Tuple[str, str], None, None]:
-        '''Iterate the field names in the passed diff, generated by dictdiffer'''
-        for mode, field_name, value in diff:
+    # Patch the original Issue data with merged changes from both sides
+    merged_dict = dictdiffer.patch(m.unified_patches, base_issue.original)
+
+    # Create an Issue object from the merged data
+    merged_issue = Issue.deserialize(merged_dict, project=base_issue.project)
+
+    def modified_fields(diffs):
+        '''Yield each field name in the Merger patches'''
+        for mode, field_name, value in diffs:
             if mode in ('add', 'remove') and field_name == '':
-                for fn, val in value:
-                    yield fn, val
+                for fn, _ in value:
+                    yield fn
+            elif mode == 'change':
+                if isinstance(field_name, str):
+                    yield field_name
+                else:
+                    yield field_name[0]
             else:
-                yield field_name, value
+                yield field_name
 
-    # union base and updated changes to make complete set of modified fields
-    for field_name, value in iter_fieldnames_in_diff(diff_original_to_updated | diff_original_to_base):
-        if not value:
-            continue
-        if field_name not in grouped_modified:
-            grouped_modified[field_name] = 0
-        grouped_modified[field_name] += 1
+    def conflicting_fields():
+        for c in m.unresolved_conflicts:
+            yield c.first_patch[1]
 
-    # modifications with a count above 1 were made on both left and right
-    conflict_fields: dict = {
+    conflict_fields = {
         field_name: {
             'original': base_issue.original[field_name],
             'updated': updated_issue_dict[field_name],
             'base': base_issue_dict[field_name],
         }
-        for field_name, count in grouped_modified.items() if count > 1
+        for field_name in set(conflicting_fields())
     }
 
-    # make a copy of the base Issue
-    merged_issue = copy.deepcopy(base_issue)
+    # Mark conflicted fields
+    for field_name in conflict_fields:
+        setattr(merged_issue, get_field_by_name(Issue, field_name).name, Conflict())
 
-    # merge in modified fields from the updated Issue
-    for field_name, _ in iter_fieldnames_in_diff(diff_original_to_updated):
-        if grouped_modified[field_name] == 1:
-            new_value = getattr(updated_issue, field_name)
-
-            f = get_field_by_name(Issue, field_name)
-
-            if get_base_type(f.type) is str and new_value == '':
-                # When setting an Issue attribute to empty string, map it to None
-                new_value = None
-
-            setattr(merged_issue, f.name, new_value)
-
-    # mark conflicted fields
-    for field_name in grouped_modified:
-        if grouped_modified[field_name] > 1:
-            setattr(merged_issue, get_field_by_name(Issue, field_name).name, Conflict())
-
-    # return object modelling this update
+    # Return an object representing the diff
     return IssueUpdate(
         merged_issue=merged_issue,
-        modified=set(grouped_modified.keys()),
+        modified=set(modified_fields(m.unified_patches)),
         conflicts=conflict_fields,
     )
 
@@ -347,25 +343,22 @@ def build_update(base_issue: Issue, updated_issue: Optional[Issue]) -> IssueUpda
 class ConflictResolutionFailed(Exception):
     pass
 
-class EditorFieldParseFailed(ValueError):
-    pass
 
-
-def manual_conflict_resolution(update_obj: IssueUpdate) -> Issue:
+def manual_conflict_resolution(update_obj: IssueUpdate):
     '''
     Manually resolve conflicts with $EDITOR
 
     Params:
         update_obj:  Instance of IssueUpdate returned from build_update
     '''
-    # render issue to string, including conflict blocks
+    # Render issue to string, including conflict blocks
     issue_data = update_obj.merged_issue.render(update_obj.conflicts)
     editor_conflict_text = tabulate(issue_data)
 
-    retries = 1
-    while retries <= 3:
+    retry = 1
+    while retry <= 3:
         try:
-            # display interactively in $EDITOR
+            # Display interactively in $EDITOR
             editor_result_raw = click.edit(
                 '\n'.join([
                     '# Conflict(s) on Issue {}'.format(update_obj.merged_issue.key), '',
@@ -373,7 +366,7 @@ def manual_conflict_resolution(update_obj: IssueUpdate) -> Issue:
                 ])
             )
 
-            # error handling
+            # Error handling
             # - no changes in click.edit returns None
             # - empty string means abort
             # - any <<< >>> are bad news
@@ -383,93 +376,32 @@ def manual_conflict_resolution(update_obj: IssueUpdate) -> Issue:
                 if line.startswith(('<<', '>>', '==')):
                     raise EditorFieldParseFailed
 
-            # parse the editor output into a new Issue
-            resolved_issue = parse_editor_result(update_obj, editor_result_raw)
+            # Parse the editor output into a dict
+            patch_dict = parse_editor_result(
+                update_obj.merged_issue, editor_result_raw, update_obj.conflicts
+            )
             break
 
-        except (EditorFieldParseFailed, DeserializeError):
-            logger.error(
-                'Failed parsing the return from manual conflict resolution! Retry %s/3', retries
-            )
+        except (EditorFieldParseFailed, DeserializeError) as e:
+            logger.error(e)
+
+            if not click.confirm(f'Try again?  (retry {retry} of 3)'):
+                raise ConflictResolutionFailed(update_obj.merged_issue.key)
         finally:
-            retries += 1
+            retry += 1
     else:
         # only reached if retries are exceeded
         raise ConflictResolutionFailed(update_obj.merged_issue.key)
 
-    return resolved_issue
+    # Patch the issue with fields from the CLI or editor
+    patch_issue_from_dict(update_obj.merged_issue, patch_dict)
 
 
-def parse_editor_result(update_obj: IssueUpdate, editor_result_raw: str) -> Issue:
-    '''
-    Parse the string returned from the conflict editor
-
-    Params:
-        update_obj:      Instance of IssueUpdate returned from build_update
-        editor_result_raw:  Raw text returned by user from `click.edit` during interactive
-                            conflict resolution
-    Returns:
-        Edited Issue object
-    '''
-    # create dict to lookup a dataclass field by its pretty formatted name
-    issue_fields_by_friendly = {
-        friendly_title(Issue, f.name):f for f in dataclasses.fields(Issue)
-    }
-
-    editor_result: Dict[str, List[str]] = {}
-
-    # Process the raw input into a dict. Only conflicted fields are extracted as entries in the
-    # dict, and the value is a list of lines from the raw input
-    for line in editor_result_raw.splitlines():
-        if not line or line.startswith('#') or line.startswith('-'*10):
-            continue
-
-        # parse a token from the current line
-        parsed_token = ' '.join(line.split(' ')[0:4]).strip()
-
-        if parsed_token in issue_fields_by_friendly:
-            # next field found
-            current_field = issue_fields_by_friendly[parsed_token]
-
-        if current_field.name not in update_obj.conflicts:
-            continue
-
-        if current_field.name not in editor_result:
-            editor_result[current_field.name] = []
-
-        editor_result[current_field.name].append(line[len(parsed_token):].strip())
-
-    summary_prefix = f'[{update_obj.merged_issue.key}]'
-
-    def preprocess_field_value(field_name, val):
-        if istype(get_field_by_name(Issue, field_name).type, set):
-            return [item[1:].strip() for item in val]
-        else:
-            output = ''.join(val)
-
-            if field_name == 'summary':
-                # special case to strip the key prefix from the summary
-                if output.startswith(summary_prefix):
-                    output = output[len(summary_prefix):].strip()
-
-            return output
-
-    # fields need additional preprocessing before being passed to Issue.deserialize()
-    editor_result = {k: preprocess_field_value(k, v) for k, v in editor_result.items()}
-
-    # merge edit results into original Issue
-    edited_issue_dict = update_obj.merged_issue.serialize()
-    edited_issue_dict.update(editor_result)
-
-    return Issue.deserialize(edited_issue_dict)
-
-
-def push_issues(jira: 'Jira', verbose: bool=False):
+def push_issues(verbose: bool=False):
     '''
     Push new/changed issues back to Jira server
 
     Params:
-        jira:     Dependency-injected jira.Jira object
         verbose:  Verbose print all issues as they're pushed to Jira server (default is progress bar)
     '''
     def _run(issues: list, pbar=None) -> int:

@@ -2,7 +2,7 @@ import dataclasses
 import datetime
 import decimal
 import enum
-from typing import Any, Optional
+from typing import Any, Optional, Tuple, Union
 import uuid
 
 import arrow
@@ -67,14 +67,21 @@ def get_enum(type_: type) -> Optional[type]:
     return None
 
 
-def istype(type_: type, typ: type) -> bool:
+def istype(type_: type, typ: Union[type, Tuple[type, ...]]) -> bool:
     '''
     Return True if type_ is typ, else return False. Handles Optional types.
+
+    Params:
+        type_:  Type to check is instance of second parameter
+        typ:    Type, or tuple of types, to compare against
     '''
-    return typ is unwrap_optional_type(type_)
+    try:
+        return any(t is unwrap_optional_type(type_) for t in typ)  # type: ignore[union-attr]
+    except TypeError:
+        return typ is unwrap_optional_type(type_)
 
 
-def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:  # pylint: disable=too-many-branches, too-many-return-statements, too-many-statements
+def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:
     '''
     Utility function to deserialize `value` into `type_`. Used by DataclassSerializer.
 
@@ -125,8 +132,8 @@ def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:  # pylint:
         return pytz.timezone(value)
 
     elif base_type is set:
-        if not isinstance(value, (set, list)):
-            raise DeserializeError('Value passed to set type must be set or list')
+        if not isinstance(value, (set, list, tuple)):
+            raise DeserializeError('Value passed to set type must be set, list or tuple')
         return set(value)
 
     elif base_type is int:
@@ -195,7 +202,7 @@ def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:  # pylint:
     return value
 
 
-def serialize_value(type_, value: Any) -> Any:  # pylint: disable=too-many-return-statements, disable=too-many-branches
+def serialize_value(type_, value: Any) -> Any:
     '''
     Utility function to serialize `value` into `type_`. Used by DataclassSerializer.
 
@@ -271,7 +278,9 @@ def _validate_optional_fields_have_a_default(field):
     '''
     Validate optional fields have a dataclasses.field(default) configured
     '''
-    if typing_inspect.is_optional_type(field.type) and  isinstance(field.default, dataclasses._MISSING_TYPE) and  isinstance(field.default_factory, dataclasses._MISSING_TYPE):  # pylint: disable=protected-access
+    if typing_inspect.is_optional_type(field.type) and \
+       field.default == dataclasses.MISSING and \
+       field.default_factory == dataclasses.MISSING:
 
         raise DeserializeError(f'Field {field.name} is Optional with no default configured')
 

@@ -1,3 +1,9 @@
+# Variables for integration testing
+INT_HOST?=locahost
+INT_USER?=jirauser
+INT_PASS?=logmein
+
+
 .PHONY: all
 all: lint typecheck test
 	@true
@@ -14,9 +20,9 @@ test:
 integration:
 	docker-compose run --rm test \
 		-m 'integration' \
-		--hostname=locke:8666 \
-		--username=blackm \
-		--password=eggseggs \
+		--hostname=$(INT_HOST) \
+		--username=$(INT_USER) \
+		--password=$(INT_PASS) \
 		--cwd=$$(pwd) \
 		test/integration
 

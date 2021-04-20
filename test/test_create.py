@@ -15,7 +15,8 @@ def test_create__create_issue__loads_issues_when_cache_empty(mock_jira, project)
     '''
     Ensure create_issue() calls load_issues() when the cache is empty
     '''
-    create_issue(mock_jira, project, 'Story', 'This is a summary')
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        create_issue(project, 'Story', 'This is a summary')
 
     assert mock_jira.load_issues.called
 
@@ -27,7 +28,8 @@ def test_create__create_issue__does_not_load_issues_when_cache_full(mock_jira, p
     # add an Issue fixture to the Jira dict
     mock_jira['TEST-72'] = Issue.deserialize(ISSUE_1)
 
-    create_issue(mock_jira, project, 'Story', 'This is a summary')
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        create_issue(project, 'Story', 'This is a summary')
 
     assert not mock_jira.load_issues.called
 
@@ -36,15 +38,17 @@ def test_create__create_issue__raises_on_invalid_issuetype(mock_jira, project):
     '''
     Ensure create_issue() raises an exception on an invalid issuetype
     '''
-    with pytest.raises(InvalidIssueType):
-        create_issue(mock_jira, project, 'FakeType', 'This is a summary')
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        with pytest.raises(InvalidIssueType):
+            create_issue(project, 'FakeType', 'This is a summary')
 
 
 def test_create__create_issue__adds_issue_to_self_and_calls_write_issues(mock_jira, project):
     '''
     Ensure create_issue() adds the new Issue to self, and writes the issue cache
     '''
-    offline_issue = create_issue(mock_jira, project, 'Story', 'This is a summary')
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        offline_issue = create_issue(project, 'Story', 'This is a summary')
 
     assert mock_jira[offline_issue.key]
     assert mock_jira.write_issues.called
@@ -54,7 +58,8 @@ def test_create__create_issue__mandatory_fields_are_set_in_new_issue(mock_jira, 
     '''
     Ensure create_issue() sets the mandatory fields passed as args (not kwargs)
     '''
-    offline_issue = create_issue(mock_jira, project, 'Story', 'This is a summary')
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        offline_issue = create_issue(project, 'Story', 'This is a summary')
 
     assert offline_issue.project == project
     assert offline_issue.issuetype == 'Story'
@@ -71,8 +76,9 @@ def test_create__create_issue__raises_exception_when_passed_an_unknown_epic_ref(
     # add an Epic fixture to the Jira dict
     mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
 
-    with pytest.raises(EpicNotFound):
-        create_issue(mock_jira, project, 'Story', 'This is summary', epic_ref='Nothing')
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        with pytest.raises(EpicNotFound):
+            create_issue(project, 'Story', 'This is summary', epic_ref='Nothing')
 
 
 @pytest.mark.parametrize('epic_ref_value', [
@@ -87,7 +93,8 @@ def test_create__create_issue__issue_is_mapped_to_existing_epic_summary(mock_jir
     # add an Epic fixture to the Jira dict
     mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
 
-    new_issue = create_issue(mock_jira, project, 'Story', 'This is summary', epic_ref=epic_ref_value)
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        new_issue = create_issue(project, 'Story', 'This is summary', epic_ref=epic_ref_value)
 
     # assert new Issue to linked to the epic
     assert new_issue.epic_ref == mock_jira['TEST-1'].key
@@ -100,7 +107,9 @@ def test_create__find_epic_by_reference__match_by_key(mock_jira):
     # add an Epic fixture to the Jira dict
     mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
 
-    epic = find_epic_by_reference(mock_jira, 'TEST-1')
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        epic = find_epic_by_reference('TEST-1')
+
     assert epic == mock_jira['TEST-1']
 
 
@@ -111,7 +120,9 @@ def test_create__find_epic_by_reference__match_by_summary(mock_jira):
     # add an Epic fixture to the Jira dict
     mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
 
-    epic = find_epic_by_reference(mock_jira, 'This is an epic')
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        epic = find_epic_by_reference('This is an epic')
+
     assert epic == mock_jira['TEST-1']
 
 
@@ -122,7 +133,9 @@ def test_create__find_epic_by_reference__match_by_epic_name(mock_jira):
     # add an Epic fixture to the Jira dict
     mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
 
-    epic = find_epic_by_reference(mock_jira, '0.1: Epic about a thing')
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        epic = find_epic_by_reference('0.1: Epic about a thing')
+
     assert epic == mock_jira['TEST-1']
 
 
@@ -130,8 +143,9 @@ def test_create__find_epic_by_reference__raise_on_failed_to_match(mock_jira):
     '''
     Ensure exception raised when epic not found
     '''
-    with pytest.raises(EpicNotFound):
-        find_epic_by_reference(mock_jira, 'fake epic reference')
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        with pytest.raises(EpicNotFound):
+            find_epic_by_reference('fake epic reference')
 
 
 def test_create__find_epic_by_reference__raise_on_duplicate_ref_string(mock_jira):
@@ -144,8 +158,9 @@ def test_create__find_epic_by_reference__raise_on_duplicate_ref_string(mock_jira
     epic2.key = 'EPIC-2'
     mock_jira['EPIC-2'] = epic2
 
-    with pytest.raises(EpicSearchStrUsedMoreThanOnce):
-        find_epic_by_reference(mock_jira, 'This is an epic')
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        with pytest.raises(EpicSearchStrUsedMoreThanOnce):
+            find_epic_by_reference('This is an epic')
 
 
 @mock.patch('jira_offline.create._import_new_issue')
@@ -153,7 +168,9 @@ def test_create__import_issue__calls_import_new_when_obj_missing_key(mock_import
     '''
     Ensure import_issue calls _import_new_issue
     '''
-    _, is_new = import_issue(mock_jira, {})
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        _, is_new = import_issue({})
+
     assert mock_import_new.called
     assert is_new is True
 
@@ -163,7 +180,9 @@ def test_create__import_issue__calls_import_updated_when_obj_has_key(mock_import
     '''
     Ensure import_issue calls _import_updated
     '''
-    _, is_new = import_issue(mock_jira, {'key': 'EGG'})
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        _, is_new = import_issue({'key': 'EGG'})
+
     assert mock_import_modified.called
     assert is_new is False
 
@@ -185,8 +204,9 @@ def test_create__import_modified_issue__merges_writable_fields(mock_jira):
         'description': 'bacon',
     }
 
-    with mock.patch('jira_offline.jira.jira', mock_jira):
-        imported_issue = _import_modified_issue(mock_jira, import_dict)
+    with mock.patch('jira_offline.jira.jira', mock_jira), \
+            mock.patch('jira_offline.create.jira', mock_jira):
+        imported_issue = _import_modified_issue(import_dict)
 
     assert isinstance(imported_issue, Issue)
     assert imported_issue.key == 'TEST-71'
@@ -207,8 +227,9 @@ def test_create__import_modified_issue__doesnt_merge_readonly_fields(mock_jira):
     # import a readonly field against TEST-71
     import_dict = {'key': 'TEST-71', 'project_id': 'hoganp'}
 
-    with mock.patch('jira_offline.jira.jira', mock_jira):
-        imported_issue = _import_modified_issue(mock_jira, import_dict)
+    with mock.patch('jira_offline.jira.jira', mock_jira), \
+            mock.patch('jira_offline.create.jira', mock_jira):
+        imported_issue = _import_modified_issue(import_dict)
 
     assert imported_issue.project_id == '99fd9182cfc4c701a8a662f6293f4136201791b4'
 
@@ -225,8 +246,9 @@ def test_create__import_modified_issue__produces_issue_with_diff(mock_jira):
 
     import_dict = {'key': 'TEST-71', 'assignee': 'hoganp'}
 
-    with mock.patch('jira_offline.jira.jira', mock_jira):
-        imported_issue = _import_modified_issue(mock_jira, import_dict)
+    with mock.patch('jira_offline.jira.jira', mock_jira), \
+            mock.patch('jira_offline.create.jira', mock_jira):
+        imported_issue = _import_modified_issue(import_dict)
 
     assert imported_issue.assignee == 'hoganp'
     assert imported_issue.diff() == [('change', 'assignee', ('hoganp', 'danil1'))]
@@ -245,14 +267,16 @@ def test_create__import_modified_issue__idempotent(mock_jira):
     import_dict = {'key': 'TEST-71', 'assignee': 'hoganp'}
 
     # import same test JSON twice
-    with mock.patch('jira_offline.jira.jira', mock_jira):
-        imported_issue = _import_modified_issue(mock_jira, import_dict)
+    with mock.patch('jira_offline.jira.jira', mock_jira), \
+            mock.patch('jira_offline.create.jira', mock_jira):
+        imported_issue = _import_modified_issue(import_dict)
 
     assert imported_issue.assignee == 'hoganp'
     assert imported_issue.diff() == [('change', 'assignee', ('hoganp', 'danil1'))]
 
-    with mock.patch('jira_offline.jira.jira', mock_jira):
-        imported_issue = _import_modified_issue(mock_jira, import_dict)
+    with mock.patch('jira_offline.jira.jira', mock_jira), \
+            mock.patch('jira_offline.create.jira', mock_jira):
+        imported_issue = _import_modified_issue(import_dict)
 
     assert imported_issue.assignee == 'hoganp'
     assert imported_issue.diff() == [('change', 'assignee', ('hoganp', 'danil1'))]
@@ -274,8 +298,10 @@ def test_create__import_new_issue__calls_create_issue(mock_create_issue, mock_fi
         'description': 'bacon',
     }
 
-    _import_new_issue(mock_jira, import_dict)
-    mock_create_issue.assert_called_with(mock_jira, project, 'Epic', 'Egg', estimate=99, description='bacon')
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        _import_new_issue(import_dict)
+
+    mock_create_issue.assert_called_with(project, 'Epic', 'Egg', estimate=99, description='bacon')
 
 
 @pytest.mark.parametrize('keys', [
@@ -287,8 +313,9 @@ def test_create__import_new_issue__raises_on_key_missing(mock_jira, keys):
     '''
     Ensure _import_new_issue() raises when mandatory keys are missing
     '''
-    with pytest.raises(ImportFailed):
-        _import_new_issue(mock_jira, {k[0]:1 for k in zip(keys)})
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        with pytest.raises(ImportFailed):
+            _import_new_issue({k[0]:1 for k in zip(keys)})
 
 
 def test_create__patch_issue_from_dict__set_string_to_value(mock_jira):
@@ -296,7 +323,9 @@ def test_create__patch_issue_from_dict__set_string_to_value(mock_jira):
     Ensure an Issue can have attributes set a string
     '''
     issue = Issue.deserialize(ISSUE_1)
-    patch_issue_from_dict(mock_jira, issue, {'assignee': 'eggs'})
+
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        patch_issue_from_dict(issue, {'assignee': 'eggs'})
 
     assert issue.assignee == 'eggs'
 
@@ -306,7 +335,9 @@ def test_create__patch_issue_from_dict__set_string_to_blank(mock_jira):
     Ensure an Issue can have attributes set
     '''
     issue = Issue.deserialize(ISSUE_1)
-    patch_issue_from_dict(mock_jira, issue, {'assignee': ''})
+
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        patch_issue_from_dict(issue, {'assignee': ''})
 
     assert issue.assignee is None
 
@@ -316,6 +347,8 @@ def test_create__patch_issue_from_dict__set_priority(mock_jira):
     Ensure an Issue.priority can be set
     '''
     issue = Issue.deserialize(ISSUE_1)
-    patch_issue_from_dict(mock_jira, issue, {'priority': 'Bacon'})
+
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        patch_issue_from_dict(issue, {'priority': 'Bacon'})
 
     assert issue.priority == 'Bacon'

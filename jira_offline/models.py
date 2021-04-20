@@ -11,7 +11,7 @@ import hashlib
 import os
 import pathlib
 import shutil
-from typing import Any, cast, Dict, List, Optional, Set, Tuple, TYPE_CHECKING
+from typing import Any, cast, Dict, List, Optional, Set, Tuple
 from urllib.parse import urlparse
 
 import click
@@ -30,8 +30,7 @@ from jira_offline.exceptions import (BadProjectMetaUri, CannotSetIssueAttributeD
 from jira_offline.utils import get_field_by_name, render_field, render_value
 from jira_offline.utils.serializer import DataclassSerializer, get_base_type
 
-if TYPE_CHECKING:
-    from jira_offline.jira import Jira  # pylint: disable=cyclic-import
+# pylint: disable=too-many-instance-attributes
 
 
 @dataclass
@@ -39,9 +38,10 @@ class CustomFields(DataclassSerializer):
     epic_ref: str = field(default='')
     epic_name: str = field(default='')
     estimate: Optional[str] = field(default='')
+    acceptance_criteria: Optional[str] = field(default='')
 
     def __bool__(self):
-        if self.epic_ref and self.epic_name and self.estimate:
+        if self.epic_ref and self.epic_name and self.estimate and self.acceptance_criteria:
             return True
         return False
 
@@ -69,9 +69,8 @@ class OAuth(DataclassSerializer):
             resource_owner_secret=self.access_token_secret,
         )
 
-
-@dataclass  # pylint: disable=too-many-instance-attributes
-class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-attributes
+@dataclass
+class ProjectMeta(DataclassSerializer):
     key: str
     name: Optional[str] = field(default=None)
     username: Optional[str] = field(default=None)
@@ -185,12 +184,13 @@ class AppConfig(DataclassSerializer):
             f.write('\n')
 
 
-@dataclass  # pylint: disable=too-many-instance-attributes
-class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attributes
+@dataclass
+class Issue(DataclassSerializer):
     project_id: str = field(metadata={'friendly': 'Project ID', 'readonly': True})
     issuetype: str = field(metadata={'friendly': 'Type', 'readonly': True})
     project: ProjectMeta = field(repr=False, metadata={'serialize': False})
     summary: str
+    key: str = field(metadata={'readonly': True})
 
     assignee: Optional[str] = field(default=None)
     created: Optional[datetime.datetime] = field(default=None, metadata={'readonly': True})
@@ -202,7 +202,6 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
     fix_versions: Optional[set] = field(default_factory=set, metadata={'friendly': 'Fix Version'})
     components: Optional[set] = field(default_factory=set)
     id: Optional[int] = field(default=None, metadata={'readonly': True})
-    key: Optional[str] = field(default=None, metadata={'readonly': True})
     labels: Optional[set] = field(default_factory=set)
     priority: Optional[str] = field(default=None, metadata={'friendly': 'Priority'})
     reporter: Optional[str] = field(default=None)
@@ -298,7 +297,7 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
         Static class property returning a blank/empty Issue
         '''
         return Issue(
-            project_id='', project=ProjectMeta(key=''), issuetype='', summary='', description=''
+            project_id='', project=ProjectMeta(key=''), issuetype='', summary='', key='', description=''
         )
 
     @property
@@ -409,8 +408,15 @@ class Issue(DataclassSerializer):  # pylint: disable=too-many-instance-attribute
                     return (new_field,)
 
             else:
-                return (render_field(Issue, field_name, getattr(self, field_name), title_prefix='\u2800',
-                                     value_prefix=prefix),)
+                # Render a single blank char prefix to ensure the unmodified fields line up nicely
+                # with the modified ones, which are printed with +/- diff chars.
+                # Char u2800 is used to prevent the tabulate module from stripping the prefix.
+                if modified_fields:
+                    title_prefix = '\u2800'
+                else:
+                    title_prefix = ''
+                return (render_field(Issue, field_name, getattr(self, field_name),
+                                     title_prefix=title_prefix, value_prefix=prefix),)
 
         if self.issuetype == 'Epic':
             epicdetails = fmt('epic_name')
@@ -534,7 +540,7 @@ def get_issue_field_defaults_for_pandas() -> Dict[str, str]:
     '''
     attrs = dict()
     for f in dataclasses.fields(Issue):
-        if not isinstance(f.default, dataclasses._MISSING_TYPE):  # pylint: disable=protected-access
+        if f.default != dataclasses.MISSING:
             typ_ = get_base_type(f.type)
 
             if typ_ is datetime.datetime:

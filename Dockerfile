@@ -6,6 +6,9 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y vim
 ENV EDITOR=vim
 
+# Required whilst using forked dictdiffer in pip install
+RUN apt-get install -y git
+
 ADD requirements.txt /app/
 RUN pip install -r requirements.txt
 

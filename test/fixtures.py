@@ -100,7 +100,7 @@ ISSUE_2 = {
     'issuetype': 'Story',
     'id': '1235',
     'key': 'TEST-72',
-    'labels': [],
+    'labels': ['egg', 'bacon'],
     'components': [],
     'priority': 'Normal',
     'reporter': 'danil1',
