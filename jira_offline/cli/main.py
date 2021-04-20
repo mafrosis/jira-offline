@@ -198,9 +198,9 @@ def cli_clone(ctx, project_uri: str, username: str=None, password: str=None, oau
 
 @click.command(name='pull')
 @click.option('--projects', help='Jira project keys')
-@click.option('--reset-hard', is_flag=True, help='Force reload of all issues. This will destroy any local changes!')
+@click.option('--reset', is_flag=True, help='Force reload of all issues. This will destroy any local changes!')
 @click.pass_context
-def cli_pull(ctx, projects: str=None, reset_hard: bool=False):
+def cli_pull(ctx, projects: str=None, reset: bool=False):
     '''Fetch and cache all Jira issues'''
 
     projects_set: Optional[Set[str]] = None
@@ -212,7 +212,7 @@ def cli_pull(ctx, projects: str=None, reset_hard: bool=False):
         for key in projects_set:
             find_project(jira, key)
 
-    if reset_hard:
+    if reset:
         if projects:
             reset_warning = '\n'.join(projects_set)  # type: ignore[arg-type]
         else:
@@ -224,7 +224,7 @@ def cli_pull(ctx, projects: str=None, reset_hard: bool=False):
                 abort=True
             )
 
-    pull_issues(projects=projects_set, force=reset_hard, verbose=ctx.obj.verbose)
+    pull_issues(projects=projects_set, force=reset, verbose=ctx.obj.verbose)
 
 
 @click.command(name='new')

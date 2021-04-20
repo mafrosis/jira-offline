@@ -75,16 +75,16 @@ def test_cli_commands_can_return_json(mock_jira, command, params):
 
 
 @mock.patch('jira_offline.cli.main.pull_issues')
-def test_cli_pull__reset_hard_flag_calls_confirm_abort(mock_pull_issues, mock_jira):
+def test_cli_pull__reset_flag_calls_confirm_abort(mock_pull_issues, mock_jira):
     '''
-    Ensure pull --reset-hard calls click.confirm() with abort=True flag
+    Ensure pull --reset calls click.confirm() with abort=True flag
     '''
     click.confirm = mock_click_confirm = mock.Mock(side_effect=click.exceptions.Abort)
 
     runner = CliRunner()
 
     with mock.patch('jira_offline.cli.main.jira', mock_jira):
-        runner.invoke(cli, ['pull', '--reset-hard'])
+        runner.invoke(cli, ['pull', '--reset'])
 
     assert mock_click_confirm.called
     assert mock_click_confirm.call_args_list[0][1] == {'abort': True}
