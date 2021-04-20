@@ -355,8 +355,8 @@ def manual_conflict_resolution(update_obj: IssueUpdate):
     issue_data = update_obj.merged_issue.render(update_obj.conflicts)
     editor_conflict_text = tabulate(issue_data)
 
-    retries = 1
-    while retries <= 3:
+    retry = 1
+    while retry <= 3:
         try:
             # Display interactively in $EDITOR
             editor_result_raw = click.edit(
@@ -382,12 +382,13 @@ def manual_conflict_resolution(update_obj: IssueUpdate):
             )
             break
 
-        except (EditorFieldParseFailed, DeserializeError):
-            logger.error(
-                'Failed parsing the return from manual conflict resolution! Retry %s/3', retries
-            )
+        except (EditorFieldParseFailed, DeserializeError) as e:
+            logger.error(e)
+
+            if not click.confirm(f'Try again?  (retry {retry} of 3)'):
+                raise ConflictResolutionFailed(update_obj.merged_issue.key)
         finally:
-            retries += 1
+            retry += 1
     else:
         # only reached if retries are exceeded
         raise ConflictResolutionFailed(update_obj.merged_issue.key)
