@@ -218,6 +218,45 @@ def test_jira__write_issues_load_issues__roundtrip(mock_os, mock_jira_core, proj
 
 
 @mock.patch('jira_offline.jira.api_get')
+def test_jira__get_project_meta__overrides_default_timezone_when_set(mock_api_get, mock_jira_core, project):
+    '''
+    Ensure get_project_meta() method overrides ProjectMeta.timezone default when returned from a
+    user's profile.
+
+    The default is the end-user's local system timezone, set in ProjectMeta.factory()
+    '''
+    # mock out call to _get_project_issue_statuses and _get_project_components
+    mock_jira_core._get_project_issue_statuses = mock.Mock()
+    mock_jira_core._get_project_components = mock.Mock()
+    mock_jira_core._get_user_timezone = mock.Mock(return_value='America/New_York')
+
+    # mock return from Jira createmeta API call
+    mock_api_get.return_value = {
+        'projects': [{
+            'id': '56120',
+            'key': 'EGG',
+            'name': 'Project EGG',
+            'issuetypes': [{
+                'id': '5',
+                'name': 'Story',
+                'fields': {
+                    'priority': {
+                        'name': 'priority',
+                        'allowedValues': [{'name': 'Egg'}, {'name': 'Bacon'}],
+                    },
+                },
+            }]
+        }]
+    }
+
+    assert project.timezone.zone == project.timezone.zone
+
+    mock_jira_core.get_project_meta(project)
+
+    assert project.timezone.zone == 'America/New_York'
+
+
+@mock.patch('jira_offline.jira.api_get')
 def test_jira__get_project_meta__extracts_priorities(mock_api_get, mock_jira_core, project):
     '''
     Ensure get_project_meta() method extracts project priorities from a project
