@@ -18,29 +18,30 @@ from jira_offline.jira import Jira
 from jira_offline.models import AppConfig, CustomFields, IssueType, ProjectMeta
 
 
-@pytest.fixture(params=['customfield_10100', ''])
-def customfield_estimate(request):
-    '''Parameterized fixture to feed the project fixture below'''
+@pytest.fixture(params=[
+    get_localzone(),
+    pytz.timezone('Europe/London'),
+])
+def timezone(request):
+    '''
+    Parameterized fixture testing Jiras different timezones
+    '''
     return request.param
 
 
 @pytest.fixture(params=[
-    ['High', 'Low'],
-    [],
+    CustomFields(),
+    CustomFields(epic_ref='10100', epic_name='10200', estimate='10300', acceptance_criteria='10400'),
 ])
-def customfield_priority(request):
-    '''Parameterized fixture to feed the project fixture below'''
-    return set(request.param)
-
-
-@pytest.fixture(params=[get_localzone(), pytz.timezone('Europe/London')])
-def timezone(request):
-    '''Parameterized fixture to feed the project fixture below'''
+def customfields(request):
+    '''
+    Parameterized fixture testing Jiras with customfields and those without.
+    '''
     return request.param
 
 
 @pytest.fixture
-def project(customfield_estimate, customfield_priority, timezone):
+def project(timezone, customfields):
     '''
     Fixture representing a configured Jira project
     '''
@@ -48,8 +49,8 @@ def project(customfield_estimate, customfield_priority, timezone):
         key='TEST',
         username='test',
         password='dummy',
-        custom_fields=CustomFields(epic_ref='1', epic_name='2', estimate=customfield_estimate),
-        priorities=customfield_priority,
+        custom_fields=customfields,
+        priorities=['High', 'Low'],
         timezone=timezone,
         issuetypes={
             'Story': IssueType(name='Story', statuses=['Backlog', 'Done']),
@@ -57,7 +58,7 @@ def project(customfield_estimate, customfield_priority, timezone):
     )
 
 @pytest.fixture
-def project2(customfield_estimate, customfield_priority):
+def project2():
     '''
     Fixture representing a second configured Jira project. Used in some test cases validating
     behavior across multiple projects. See also the ISSUE_DIFF_PROJECT fixture.

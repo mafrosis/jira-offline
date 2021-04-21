@@ -35,8 +35,8 @@ from jira_offline.utils.serializer import DataclassSerializer, get_base_type
 
 @dataclass
 class CustomFields(DataclassSerializer):
-    epic_ref: str = field(default='')
-    epic_name: str = field(default='')
+    epic_ref: Optional[str] = field(default='')
+    epic_name: Optional[str] = field(default='')
     estimate: Optional[str] = field(default='')
     acceptance_criteria: Optional[str] = field(default='')
 
@@ -69,6 +69,7 @@ class OAuth(DataclassSerializer):
             resource_owner_secret=self.access_token_secret,
         )
 
+
 @dataclass
 class ProjectMeta(DataclassSerializer):
     key: str
@@ -77,7 +78,7 @@ class ProjectMeta(DataclassSerializer):
     password: Optional[str] = field(default=None)
     protocol: Optional[str] = field(default='https')
     hostname: Optional[str] = field(default='jira.atlassian.com')
-    last_updated: Optional[str] = field(default=None)
+    last_updated: Optional[str] = field(default=None, metadata={'friendly': 'Last Sync'})
     issuetypes: Dict[str, IssueType] = field(default_factory=dict)
     custom_fields: CustomFields = field(default_factory=CustomFields)
     priorities: Set[str] = field(default_factory=set)
@@ -158,7 +159,8 @@ class ProjectMeta(DataclassSerializer):
             ('Project URI', self.project_uri),
             ('Auth', auth),
             ('Issue Types', render_value(list(self.issuetypes.keys()))),
-            ('Components', render_value(self.components)),
+            fmt('components'),
+            fmt('timezone'),
             fmt('last_updated'),
         ]
         return attrs
