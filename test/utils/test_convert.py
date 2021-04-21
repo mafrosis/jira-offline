@@ -52,7 +52,7 @@ def test_issue_to_jiraapi_update__all_fields_are_returned_for_new_issue(mock_jir
     )
 
     assert issue_dict == {
-        'customfield_1': 'TEST-1',
+        f'customfield_{project.custom_fields.epic_ref}': 'TEST-1',
         'description': 'This is a story or issue',
         'fix_versions': ['0.1'],
         'issuetype': {'name': 'Story'},
