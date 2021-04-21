@@ -159,7 +159,8 @@ class ProjectMeta(DataclassSerializer):
             ('Project URI', self.project_uri),
             ('Auth', auth),
             ('Issue Types', render_value(list(self.issuetypes.keys()))),
-            ('Components', render_value(self.components)),
+            fmt('components'),
+            fmt('timezone'),
             fmt('last_updated'),
         ]
         return attrs
