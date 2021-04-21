@@ -78,7 +78,7 @@ class ProjectMeta(DataclassSerializer):
     password: Optional[str] = field(default=None)
     protocol: Optional[str] = field(default='https')
     hostname: Optional[str] = field(default='jira.atlassian.com')
-    last_updated: Optional[str] = field(default=None)
+    last_updated: Optional[str] = field(default=None, metadata={'friendly': 'Last Sync'})
     issuetypes: Dict[str, IssueType] = field(default_factory=dict)
     custom_fields: CustomFields = field(default_factory=CustomFields)
     priorities: Set[str] = field(default_factory=set)
