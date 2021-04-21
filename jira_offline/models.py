@@ -35,8 +35,8 @@ from jira_offline.utils.serializer import DataclassSerializer, get_base_type
 
 @dataclass
 class CustomFields(DataclassSerializer):
-    epic_ref: str = field(default='')
-    epic_name: str = field(default='')
+    epic_ref: Optional[str] = field(default='')
+    epic_name: Optional[str] = field(default='')
     estimate: Optional[str] = field(default='')
     acceptance_criteria: Optional[str] = field(default='')
 
@@ -68,6 +68,7 @@ class OAuth(DataclassSerializer):
             resource_owner_key=self.access_token,
             resource_owner_secret=self.access_token_secret,
         )
+
 
 @dataclass
 class ProjectMeta(DataclassSerializer):
