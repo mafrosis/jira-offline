@@ -55,7 +55,7 @@ publish-pypi:
 	docker run --rm -v $$(pwd)/dist:/dist:ro \
 		-e TWINE_USERNAME -e TWINE_PASSWORD \
 		mafrosis/twine \
-		upload /dist/*
+		upload --verbose /dist/*
 
 .PHONY: publish-docker
 publish-docker:
