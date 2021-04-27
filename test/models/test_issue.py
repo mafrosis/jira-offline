@@ -151,7 +151,7 @@ def test_issue_model__original_not_updated_during_attribute_set():
     Ensure Issue.original does not get modified by an attribute value change
     '''
     issue_1 = Issue.deserialize(ISSUE_1)
-    serialized_issue = copy.copy(issue_1.serialize())
+    serialized_issue = copy.deepcopy(issue_1.serialize())
 
     assert issue_1.original == serialized_issue
 
@@ -165,7 +165,7 @@ def test_issue_model__original_not_updated_during_attribute_set_with_roundtrip(m
     Ensure Issue.original does not get modified by an attribute value change
     '''
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
-    serialized_issue = copy.copy(mock_jira['TEST-71'].serialize())
+    serialized_issue = copy.deepcopy(mock_jira['TEST-71'].serialize())
 
     assert mock_jira['TEST-71'].original == serialized_issue
 

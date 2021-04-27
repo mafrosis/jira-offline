@@ -295,7 +295,7 @@ def test_build_update__base_unmodified_and_updated_modified_to_append_to_set(val
     order on the resulting set (https://stackoverflow.com/a/51949325/425050)
     '''
     # make a copy of ISSUE_1 fixture so it can modified without affecting other tests
-    LOCAL_ISSUE_1 = copy.copy(ISSUE_1)
+    LOCAL_ISSUE_1 = copy.deepcopy(ISSUE_1)
 
     # set the starting Issue.fix_version value
     LOCAL_ISSUE_1['fix_versions'] = {1}
@@ -324,7 +324,7 @@ def test_build_update__base_modified_and_updated_modified_to_append_to_set(value
     order on the resulting set (https://stackoverflow.com/a/51949325/425050)
     '''
     # make a copy of ISSUE_1 fixture so it can modified without affecting other tests
-    LOCAL_ISSUE_1 = copy.copy(ISSUE_1)
+    LOCAL_ISSUE_1 = copy.deepcopy(ISSUE_1)
 
     # set the starting Issue.fix_version value
     LOCAL_ISSUE_1['fix_versions'] = {1}

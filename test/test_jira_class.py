@@ -747,9 +747,9 @@ def test_jira__update__merge_existing_issues_into_existing_dataframe(mock_jira, 
     mock_jira._df = setup_jira_dataframe_helper([issue_1, issue_2])
 
     # change some fields for the update
-    ISSUE_1_MODIFIED = copy.copy(ISSUE_1)
+    ISSUE_1_MODIFIED = copy.deepcopy(ISSUE_1)
     ISSUE_1_MODIFIED['summary'] = 'Updated summary 1'
-    ISSUE_2_MODIFIED = copy.copy(ISSUE_2)
+    ISSUE_2_MODIFIED = copy.deepcopy(ISSUE_2)
     ISSUE_2_MODIFIED['summary'] = 'Updated summary 2'
 
     # output from sync.pull_single_project

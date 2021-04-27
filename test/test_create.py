@@ -154,7 +154,7 @@ def test_create__find_epic_by_reference__raise_on_duplicate_ref_string(mock_jira
     '''
     # add two Epic fixtures to the Jira dict
     mock_jira['EPIC-1'] = Issue.deserialize(EPIC_1)
-    epic2 = copy.copy(Issue.deserialize(EPIC_1))
+    epic2 = copy.deepcopy(Issue.deserialize(EPIC_1))
     epic2.key = 'EPIC-2'
     mock_jira['EPIC-2'] = epic2
 
