@@ -20,11 +20,11 @@ from jira_offline.models import AppConfig, CustomFields, IssueType, ProjectMeta
 
 @pytest.fixture(params=[
     get_localzone(),
-    pytz.timezone('Europe/London'),
+    pytz.timezone('America/New_York'),  # UTC-5
 ])
 def timezone(request):
     '''
-    Parameterized fixture testing Jiras different timezones
+    Parameterized fixture to test Jiras with different timezones
     '''
     return request.param
 
@@ -35,7 +35,7 @@ def timezone(request):
 ])
 def customfields(request):
     '''
-    Parameterized fixture testing Jiras with customfields and those without.
+    Parameterized fixture to test Jiras with customfields and those without
     '''
     return request.param
 
