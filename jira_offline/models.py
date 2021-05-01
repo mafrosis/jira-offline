@@ -18,9 +18,9 @@ import click
 import dictdiffer
 from oauthlib.oauth1 import SIGNATURE_RSA
 import pandas as pd
+import pytz
 from requests.auth import HTTPBasicAuth
 from requests_oauthlib import OAuth1
-import pytz
 from tabulate import tabulate
 from tzlocal import get_localzone
 
@@ -552,32 +552,3 @@ def get_issue_field_defaults_for_pandas() -> Dict[str, str]:
             else:
                 attrs[f.name] = typ_()
     return attrs
-
-
-@dataclass
-class IssueFilter:
-    '''
-    Encapsulates any filters passed in via CLI
-
-    When the application is invoked on the CLI, filters are set via user-supplied arguments. An
-    instance of this class is created on the central Jira object, and any filters are configured.
-
-    The `items`, `keys` or `values` methods on the Jira class will return issues respecting these
-    filters.
-    '''
-    project_key: Optional[str] = field(default=None)
-
-    def __init__(self, jira_):
-        self.jira = jira_
-
-    def apply(self) -> pd.DataFrame:
-        '''Compare passed Issue object against the class attributes'''
-        filters = {}
-
-        if self.project_key:
-            filters['project_key'] = self.project_key
-
-        if not filters:
-            return self.jira._df  # pylint: disable=protected-access
-
-        return self.jira._df.query(' & '.join([f'{k}=="{v}"' for k,v in filters.items()]))  # pylint: disable=protected-access

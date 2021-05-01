@@ -26,7 +26,8 @@ def test_lint_smoketest(mock_jira, subcommand):
     runner = CliRunner()
 
     with mock.patch('jira_offline.cli.linters.jira', mock_jira), \
-            mock.patch('jira_offline.linters.jira', mock_jira):
+            mock.patch('jira_offline.linters.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, ['lint', subcommand])
 
     # CLI should always exit zero
@@ -58,7 +59,8 @@ def test_cli_lint__fix_versions__echo(mock_lint_fix_versions, mock_jira):
 
     runner = CliRunner()
 
-    with mock.patch('jira_offline.cli.linters.jira', mock_jira):
+    with mock.patch('jira_offline.cli.linters.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, ['lint', 'fix-versions'])
 
     assert result.exit_code == 0
@@ -76,7 +78,8 @@ def test_cli_lint__fix_versions__fix_requires_words(mock_lint_fix_versions, mock
 
     runner = CliRunner()
 
-    with mock.patch('jira_offline.cli.linters.jira', mock_jira):
+    with mock.patch('jira_offline.cli.linters.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, ['lint', '--fix', 'fix-versions'])
 
     assert result.exit_code != 0
@@ -93,7 +96,8 @@ def test_cli_lint__fix_versions__fix_passes_words_to_lint_func(mock_lint_fix_ver
 
     runner = CliRunner()
 
-    with mock.patch('jira_offline.cli.linters.jira', mock_jira):
+    with mock.patch('jira_offline.cli.linters.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, ['lint', '--fix', 'fix-versions', '--value', '0.1'])
 
     assert result.exit_code == 0
@@ -110,7 +114,8 @@ def test_cli_lint__issues_missing_epic__echo(mock_lint_issues_missing_epic, mock
 
     runner = CliRunner()
 
-    with mock.patch('jira_offline.cli.linters.jira', mock_jira):
+    with mock.patch('jira_offline.cli.linters.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, ['lint', 'issues-missing-epic'])
 
     assert result.exit_code == 0
@@ -128,7 +133,8 @@ def test_cli_lint__issues_missing_epic__fix_requires_epic_ref(mock_lint_issues_m
 
     runner = CliRunner()
 
-    with mock.patch('jira_offline.cli.linters.jira', mock_jira):
+    with mock.patch('jira_offline.cli.linters.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, ['lint', '--fix', 'issues-missing-epic'])
 
     assert result.exit_code != 0
@@ -145,7 +151,8 @@ def test_cli_lint__issues_missing_epic__fix_passes_epic_ref_to_lint_func(mock_li
 
     runner = CliRunner()
 
-    with mock.patch('jira_offline.cli.linters.jira', mock_jira):
+    with mock.patch('jira_offline.cli.linters.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, ['lint', '--fix', 'issues-missing-epic', '--epic-ref', 'TEST'])
 
     assert result.exit_code == 0

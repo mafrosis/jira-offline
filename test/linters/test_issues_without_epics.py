@@ -16,9 +16,11 @@ def test_lint__issues_missing_epic__finds_issues_missing_epic(mock_jira):
     mock_jira['TEST-73'] = Issue.deserialize(ISSUE_MISSING_EPIC)
 
     # assert two issues in Jira
-    assert len(mock_jira.df) == 2
+    assert len(mock_jira._df) == 2
 
-    with mock.patch('jira_offline.linters.jira', mock_jira):
+    with mock.patch('jira_offline.linters.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
+
         df = issues_missing_epic(fix=False)
 
     # assert single issue missing an epic
@@ -36,7 +38,8 @@ def test_lint__issues_missing_epic__fix_updates_an_issue(mock_jira):
     # assert issue has an empty epic_ref
     assert mock_jira['TEST-73'].epic_ref is None
 
-    with mock.patch('jira_offline.linters.jira', mock_jira):
+    with mock.patch('jira_offline.linters.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         df = issues_missing_epic(fix=True, epic_ref='EGG-1234')
 
     # assert no issues missing an epic
@@ -51,19 +54,22 @@ def test_lint__issues_missing_epic__fix_updates_an_issue(mock_jira):
     (None, 2),
     ('TEST', 0),
 ])
-def test_lint__issues_missing_epic__respects_the_filters(mock_jira, project_filter, number_issues_missing_fix_versions):
+def test_lint__issues_missing_epic__respect_the_filter(mock_jira, project_filter, number_issues_missing_fix_versions):
     '''
-    Ensure lint issues_missing_epic respects any filters set in IssueFilter
+    Ensure lint issues_missing_epic respects a filter set in jira.filter
     '''
     # add fixtures to Jira dict
     mock_jira['TEST-72'] = Issue.deserialize(ISSUE_2)
     mock_jira['TEST-73'] = Issue.deserialize(ISSUE_MISSING_EPIC)
     mock_jira['EGG-99'] = Issue.deserialize(ISSUE_DIFF_PROJECT)
 
-    # set the filter
-    mock_jira.filter.project_key = project_filter
+    if project_filter is not None:
+        # set the filter
+        mock_jira.filter.set(f'project = {project_filter}')
 
-    with mock.patch('jira_offline.linters.jira', mock_jira):
+    with mock.patch('jira_offline.linters.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
+
         df = issues_missing_epic()
 
     # assert correct number issues missing fix_versions

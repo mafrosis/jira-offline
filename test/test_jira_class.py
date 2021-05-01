@@ -639,55 +639,58 @@ def test_jira__fetch_issue__returns_output_from_jiraapi_object_to_issue(
 
 def test_jira__keys__respect_the_filter(mock_jira_core):
     '''
-    Ensure that jira.keys() respects a configured jira.filter parameter
+    Ensure that jira.keys() respects a filter set in jira.filter
     '''
     # Setup the the Jira dataframe
     issue_1 = Issue.deserialize(ISSUE_1, project=ProjectMeta('FIRST'))
     issue_2 = Issue.deserialize(ISSUE_2, project=ProjectMeta('SECOND'))
     mock_jira_core._df = setup_jira_dataframe_helper([issue_1, issue_2])
 
-    assert list(mock_jira_core.keys()) == ['TEST-71', 'TEST-72']
+    with mock.patch('jira_offline.jira.jira', mock_jira_core):
+        assert list(mock_jira_core.keys()) == ['TEST-71', 'TEST-72']
 
-    mock_jira_core.filter.project_key = 'SECOND'
+        mock_jira_core.filter.set('project = SECOND')
 
-    assert list(mock_jira_core.keys()) == ['TEST-72']
+        assert list(mock_jira_core.keys()) == ['TEST-72']
 
 
 def test_jira__values__respect_the_filter(mock_jira_core):
     '''
-    Ensure that jira.values() respects a configured jira.filter parameter
+    Ensure that jira.values() respects a filter set in jira.filter
     '''
     # Setup the the Jira dataframe
     issue_1 = Issue.deserialize(ISSUE_1, project=ProjectMeta('FIRST'))
     issue_2 = Issue.deserialize(ISSUE_2, project=ProjectMeta('SECOND'))
     mock_jira_core._df = setup_jira_dataframe_helper([issue_1, issue_2])
 
-    assert list(mock_jira_core.values()) == [mock_jira_core['TEST-71'], mock_jira_core['TEST-72']]
+    with mock.patch('jira_offline.jira.jira', mock_jira_core):
+        assert list(mock_jira_core.values()) == [mock_jira_core['TEST-71'], mock_jira_core['TEST-72']]
 
-    mock_jira_core.filter.project_key = 'SECOND'
+        mock_jira_core.filter.set('project = SECOND')
 
-    assert list(mock_jira_core.values()) == [mock_jira_core['TEST-72']]
+        assert list(mock_jira_core.values()) == [mock_jira_core['TEST-72']]
 
 
 def test_jira__items__respect_the_filter(mock_jira_core):
     '''
-    Ensure that jira.items() respects a configured jira.filter parameter
+    Ensure that jira.items() respects a filter set in jira.filter
     '''
     # Setup the the Jira dataframe
     issue_1 = Issue.deserialize(ISSUE_1, project=ProjectMeta('FIRST'))
     issue_2 = Issue.deserialize(ISSUE_2, project=ProjectMeta('SECOND'))
     mock_jira_core._df = setup_jira_dataframe_helper([issue_1, issue_2])
 
-    assert list(mock_jira_core.items()) == [
-        ('TEST-71', mock_jira_core['TEST-71']),
-        ('TEST-72', mock_jira_core['TEST-72']),
-    ]
+    with mock.patch('jira_offline.jira.jira', mock_jira_core):
+        assert list(mock_jira_core.items()) == [
+            ('TEST-71', mock_jira_core['TEST-71']),
+            ('TEST-72', mock_jira_core['TEST-72']),
+        ]
 
-    mock_jira_core.filter.project_key = 'SECOND'
+        mock_jira_core.filter.set('project = SECOND')
 
-    assert list(mock_jira_core.items()) == [
-        ('TEST-72', mock_jira_core['TEST-72']),
-    ]
+        assert list(mock_jira_core.items()) == [
+            ('TEST-72', mock_jira_core['TEST-72']),
+        ]
 
 
 def test_jira__update__merge_new_issues_into_empty_dataframe(mock_jira, project):

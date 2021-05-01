@@ -203,7 +203,7 @@ def run_in_docker(request):
             'pytest: error the following arguments are required: --username, --hostname, --password, --cwd'
         )
 
-    tmpdir = tempfile.TemporaryDirectory()
+    tmpdir = tempfile.TemporaryDirectory()  # pylint: disable=consider-using-with
     print(f'Test working directory {tmpdir.name}')
 
     client = docker.from_env()

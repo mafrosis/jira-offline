@@ -47,9 +47,10 @@ def cli_show(key: str, as_json: bool=False):
 
 @click.command(name='ls')
 @click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
-@click.option('--project', help='Filter for a specific project')
+@click.option('--filter', 'sql_filter', help='SQL-like filter for issues')
+@click.option('--tz', help='Set specific timezone for date filters (default: local system timezone)')
 @click.pass_context
-def cli_ls(ctx, as_json: bool=False, project: str=None):
+def cli_ls(ctx, as_json: bool=False, sql_filter: str=None, tz: str=None):
     '''List Issues on the CLI'''
     jira.load_issues()
 
@@ -57,8 +58,11 @@ def cli_ls(ctx, as_json: bool=False, project: str=None):
         click.echo('No issues in the cache')
         raise click.Abort
 
-    # filter issues on project
-    jira.filter.project_key = project
+    if tz:
+        jira.filter.tz = tz
+
+    if sql_filter:
+        jira.filter.set(sql_filter)
 
     if as_json:
         for issue in jira.values():
@@ -148,7 +152,7 @@ def cli_projects(ctx):
 @click.option('--oauth-app', default='jira-offline', help='Jira Application Link consumer name')
 @click.option('--oauth-private-key', help='oAuth private key', type=click.Path(exists=True))
 @click.option('--ca-cert', help='Custom CA cert for the Jira server', type=click.Path(exists=True))
-@click.option('--tz', help='Set the timezone for this Jira project (default: current)')
+@click.option('--tz', help='Set the timezone for this Jira project (default: local system timezone)')
 @click.pass_context
 def cli_clone(ctx, project_uri: str, username: str=None, password: str=None, oauth_app: str=None,
               oauth_private_key: str=None, ca_cert: str=None, tz: str=None):
