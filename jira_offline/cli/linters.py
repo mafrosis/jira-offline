@@ -5,7 +5,7 @@ import logging
 
 import click
 
-from jira_offline.cli.params import CliParams
+from jira_offline.cli.params import CliParams, global_options
 from jira_offline.jira import jira
 from jira_offline.linters import fix_versions as lint_fix_versions
 from jira_offline.linters import issues_missing_epic as lint_issues_missing_epic
@@ -19,7 +19,8 @@ logger = logging.getLogger('jira')
 @click.option('--fix', is_flag=True, help='Attempt to fix the errors automatically')
 @click.option('--project', help='Filter for a specific project')
 @click.pass_context
-def cli_lint(ctx, fix: bool=False, project: str=None):
+@global_options
+def cli_lint(ctx: click.core.Context, fix: bool=False, project: str=None):
     'Report on common mistakes in Jira issues'
     ctx.obj.lint = CliParams.LintParams(fix=fix)
 
@@ -37,7 +38,8 @@ def cli_lint(ctx, fix: bool=False, project: str=None):
 @cli_lint.command(name='fix-versions')
 @click.option('--value', help='Value set in fix_versions. Used with --fix.')
 @click.pass_context
-def cli_lint_fix_versions(ctx, value: str=None):
+@global_options
+def cli_lint_fix_versions(ctx: click.core.Context, value: str=None):
     '''
     Lint on missing fix_versions field
     '''
@@ -66,7 +68,8 @@ def cli_lint_fix_versions(ctx, value: str=None):
 @cli_lint.command(name='issues-missing-epic')
 @click.option('--epic-ref', help='Epic to set on issues with no epic. Used with --fix.')
 @click.pass_context
-def cli_lint_issues_missing_epic(ctx, epic_ref: str=None):
+@global_options
+def cli_lint_issues_missing_epic(ctx: click.core.Context, epic_ref: str=None):
     '''
     Lint issues without an epic set
     '''

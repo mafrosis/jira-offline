@@ -15,41 +15,25 @@ import jira_offline
 from jira_offline.cli.linters import cli_lint
 from jira_offline.cli.main import (cli_clone, cli_diff, cli_edit, cli_ls, cli_new, cli_projects,
                                    cli_pull, cli_push, cli_reset, cli_show, cli_import)
-from jira_offline.cli.params import CliParams
+from jira_offline.cli.params import global_options
 from jira_offline.cli.stats import cli_stats
 
 
 logger = logging.getLogger('jira')
 sh = logging.StreamHandler()
+sh.setFormatter(logging.Formatter('%(message)s'))
 logger.addHandler(sh)
-logger.setLevel(logging.ERROR)
+logger.setLevel(logging.WARNING)
 
 
 @click.group()
 @click.version_option(jira_offline.__version__, prog_name=jira_offline.__title__)
-@click.option('--verbose', '-v', is_flag=True, help='Display INFO level logging')
-@click.option('--debug', '-d', is_flag=True, help='Display DEBUG level logging')
 @click.pass_context
-def cli(ctx, verbose: bool=False, debug: bool=False):
-    # setup the logger
-    formatter = logging.Formatter('%(message)s')
-
-    # handle --verbose and --debug
-    if debug:
-        verbose = True
-        logger.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(levelname)s: %(module)s:%(lineno)s - %(message)s')
-
-    elif verbose:
-        logger.setLevel(logging.INFO)
-    else:
-        logger.setLevel(logging.WARNING)
-
-    sh.setFormatter(formatter)
-
-    # instantiate the Jira object for the application and wrap it into CLI params which are passed
-    # down through click to the CLI function called
-    ctx.obj = CliParams(verbose=verbose, debug=debug)
+@global_options
+def cli(_):
+    '''
+    The interesting work is actually done in the `global_options` decorator.
+    '''
 
 
 cli.add_command(cli_clone)
