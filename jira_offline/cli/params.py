@@ -13,6 +13,8 @@ from typing import Optional
 
 import click
 
+from jira_offline.jira import jira
+
 
 logger = logging.getLogger('jira')
 
@@ -70,6 +72,28 @@ def global_options(func):
 
         # Remove the click.options vars from kwargs, so they are not passed to the wrapped command
         for param in ('verbose', 'debug'):
+            del kwargs[param]
+
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+def filter_option(func):
+    '''Define the common filter CLI option, which is applied to many subcommands'''
+    @click.option('--filter', help='SQL-like filter for issues')
+    @click.option('--tz', help='Set specific timezone for date filters (default: local system timezone)')
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        # Set the parameters directly onto the jira.filter object
+        if kwargs.get('filter'):
+            jira.filter.set(kwargs.get('filter'))
+
+        if kwargs.get('tz'):
+            jira.filter.tz = kwargs.get('tz')
+
+        # Remove the click.options vars from kwargs, so they are not passed to the wrapped command
+        for param in ('filter', 'tz'):
             del kwargs[param]
 
         return func(*args, **kwargs)

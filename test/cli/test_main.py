@@ -32,7 +32,7 @@ def test_cli_commands_can_return_json(mock_jira, command, params):
     '''
     Ensure show command can return output as JSON
     '''
-    # add fixture to Jira dict
+    # add a single lonely fixture to the Jira store
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
     runner = CliRunner()

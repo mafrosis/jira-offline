@@ -10,7 +10,7 @@ import click
 from tabulate import tabulate
 
 from jira_offline.auth import authenticate
-from jira_offline.cli.params import global_options
+from jira_offline.cli.params import filter_option, global_options
 from jira_offline.create import create_issue, import_issue, patch_issue_from_dict
 from jira_offline.exceptions import (BadProjectMetaUri, EditorFieldParseFailed, EditorNoChanges,
                                      FailedPullingProjectMeta, ImportFailed, JiraApiError)
@@ -50,23 +50,16 @@ def cli_show(_, key: str, as_json: bool=False):
 
 @click.command(name='ls')
 @click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
-@click.option('--filter', 'sql_filter', help='SQL-like filter for issues')
-@click.option('--tz', help='Set specific timezone for date filters (default: local system timezone)')
 @click.pass_context
 @global_options
-def cli_ls(ctx: click.core.Context, as_json: bool=False, sql_filter: str=None, tz: str=None):
+@filter_option
+def cli_ls(ctx: click.core.Context, as_json: bool=False):
     '''List Issues on the CLI'''
     jira.load_issues()
 
     if len(jira) == 0:
         click.echo('No issues in the cache')
         raise click.Abort
-
-    if tz:
-        jira.filter.tz = tz
-
-    if sql_filter:
-        jira.filter.set(sql_filter)
 
     if as_json:
         for issue in jira.values():
