@@ -21,7 +21,7 @@ A few options exist:
   3. Clone the source code and use docker compose
   4. Install with pip
 
-### Use Homebrew (masOS)
+### Use Homebrew (macOS)
 
     brew tap mafrosis/jira-offline
     brew install jira-offline
