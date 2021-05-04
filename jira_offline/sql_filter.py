@@ -15,7 +15,7 @@ import pandas as pd
 from tzlocal import get_localzone
 
 from jira_offline.exceptions import (FilterMozParseFailed, FilterUnknownOperatorException,
-                                     FilterQueryParseFailed)
+                                     FilterQueryEscapingError, FilterQueryParseFailed)
 from jira_offline.models import Issue
 from jira_offline.utils import get_field_by_name
 from jira_offline.utils.serializer import istype
@@ -53,6 +53,9 @@ class IssueFilter:
         '''
         try:
             self._where = mozparse(f'select count(1) from tbl where {sql_filter}')['where']
+
+            if self._where and self._where.get('literal'):
+                raise FilterQueryEscapingError
 
         except mo_parsing.exceptions.ParseException as e:
             raise FilterMozParseFailed from e

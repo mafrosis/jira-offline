@@ -4,8 +4,18 @@ from unittest import mock
 import pytest
 
 from fixtures import ISSUE_1
+from jira_offline.exceptions import FilterQueryEscapingError
 from jira_offline.models import Issue
 from jira_offline.sql_filter import IssueFilter
+
+
+def test_parse__bad_query__double_escaping():
+    '''
+    Ensure that a double escaped query string is escaped correctly
+    '''
+    filt = IssueFilter()
+    with pytest.raises(FilterQueryEscapingError):
+        filt.set("'summary == An eggcellent summarisation'")
 
 
 @pytest.mark.parametrize('where', [

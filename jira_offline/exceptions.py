@@ -299,6 +299,9 @@ class FilterMozParseFailed(BaseAppException):
 class FilterQueryParseFailed(BaseAppException):
     'Failed processing filter string'
 
+class FilterQueryEscapingError(FilterQueryParseFailed):
+    'Ensure your whole filter string is not double-escaped'
+
 class FilterUnknownOperatorException(BaseAppException):
     'Unknown operator "{}" passed in SQL filter. Please report as an issue.'
 
