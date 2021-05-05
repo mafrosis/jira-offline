@@ -3,7 +3,7 @@ Module containing the stats command group, and all its subcommands
 '''
 import click
 
-from jira_offline.cli.params import global_options
+from jira_offline.cli.params import filter_option, global_options
 from jira_offline.jira import jira
 from jira_offline.utils.cli import print_table
 
@@ -12,6 +12,7 @@ from jira_offline.utils.cli import print_table
 @click.option('--project', help='Filter for a specific project')
 @click.pass_context
 @global_options
+@filter_option
 def cli_stats(ctx: click.core.Context, project: str=None):
     '''Generate stats on Jira data'''
     # filter issues by project
@@ -32,6 +33,7 @@ def cli_stats(ctx: click.core.Context, project: str=None):
 @cli_stats.command(name='issuetype')
 @click.pass_context
 @global_options
+@filter_option
 def cli_stats_issuetype(_):
     '''Stats on issue type'''
     aggregated_issuetype = jira.df.groupby([jira.df.issuetype]).size().to_frame(name='count')
@@ -41,6 +43,7 @@ def cli_stats_issuetype(_):
 @cli_stats.command(name='status')
 @click.pass_context
 @global_options
+@filter_option
 def cli_stats_status(_):
     '''Stats on issue status'''
     aggregated_status = jira.df.groupby([jira.df.status]).size().to_frame(name='count')
@@ -50,6 +53,7 @@ def cli_stats_status(_):
 @cli_stats.command(name='fix-versions')
 @click.pass_context
 @global_options
+@filter_option
 def cli_stats_fix_versions(_):
     '''Stats on issue fix-versions'''
     jira.df.fix_versions = jira.df.fix_versions.apply(lambda x: ','.join(x) if x else '')
