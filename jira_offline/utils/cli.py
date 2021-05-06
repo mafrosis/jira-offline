@@ -33,8 +33,9 @@ def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pro
         include_project_col:  Include the Issue.project field in a column
         print_total:          Print the total count of records as text
     '''
-    # intentionally make a copy of the DataFrame, so subsequent destructive changes can be made
-    df = df.copy()
+    # Sort the output DataFrame by index. Also has side-effect of making a copy of the DataFrame, so
+    # subsequent destructive changes can be made
+    df = df.sort_index()
 
     if include_project_col:
         fields = ['project_key']
