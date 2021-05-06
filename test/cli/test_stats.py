@@ -30,7 +30,8 @@ def test_stats_smoketest(mock_jira_proxy, mock_jira, subcommand):
 
     runner = CliRunner()
 
-    with mock.patch('jira_offline.cli.stats.jira', mock_jira):
+    with mock.patch('jira_offline.cli.stats.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, ['stats', subcommand])
 
     # CLI should always exit zero
@@ -44,7 +45,8 @@ def test_stats_smoketest_empty(mock_jira, subcommand):
     '''
     runner = CliRunner()
 
-    with mock.patch('jira_offline.cli.stats.jira', mock_jira):
+    with mock.patch('jira_offline.cli.stats.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, ['stats', subcommand])
 
     # CLI should always exit 1
@@ -66,7 +68,8 @@ def test_cli_stats__no_errors_when_no_subcommand_passed(mock_print_table, mock_j
 
     runner = CliRunner()
 
-    with mock.patch('jira_offline.cli.stats.jira', mock_jira):
+    with mock.patch('jira_offline.cli.stats.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, ['stats'])
 
     assert result.exit_code == 0

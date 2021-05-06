@@ -7,7 +7,7 @@ functions.
 import logging
 import traceback
 
-from click import ClickException
+import click
 
 
 logger = logging.getLogger('jira')
@@ -35,7 +35,7 @@ class JiraApiError(Exception):
             return self.message
 
 
-class BaseAppException(ClickException):
+class BaseAppException(click.ClickException):
     '''
     Base exception inherited by all general usage execeptions.
     Inherits click.ClickException, so that when raised, these are conveniently handled by the click
@@ -291,3 +291,23 @@ class EditorRepeatFieldFound(EditorFieldParseFailed):
 
 class EditorNoChanges(EditorFieldParseFailed):
     'No changes made in the editor!'
+
+
+class FilterMozParseFailed(BaseAppException):
+    'Invalid SQL WHERE clause passed as filter string'
+
+class FilterQueryParseFailed(BaseAppException):
+    'Failed processing filter string'
+
+class FilterQueryEscapingError(FilterQueryParseFailed):
+    'Ensure your whole filter string is not double-escaped'
+
+class FilterUnknownOperatorException(BaseAppException):
+    'Unknown operator "{}" passed in SQL filter. Please report as an issue.'
+
+    def __init__(self, operator_):
+        self.operator = operator_
+        super().__init__('')
+
+    def __str__(self):
+        return self.__doc__.format(self.operator)

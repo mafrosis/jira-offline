@@ -21,7 +21,8 @@ from jira_offline.utils.serializer import istype
 logger = logging.getLogger('jira')
 
 
-def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_project_col: bool=False):
+def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_project_col: bool=False,
+               print_total: bool=False):
     '''
     Helper to print abbreviated list of issues
 
@@ -30,9 +31,11 @@ def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pro
         width:                Crop width for the summary string
         verbose:              Display more information
         include_project_col:  Include the Issue.project field in a column
+        print_total:          Print the total count of records as text
     '''
-    # intentionally make a copy of the DataFrame, so subsequent destructive changes can be made
-    df = df.copy()
+    # Sort the output DataFrame by index. Also has side-effect of making a copy of the DataFrame, so
+    # subsequent destructive changes can be made
+    df = df.sort_index()
 
     if include_project_col:
         fields = ['project_key']
@@ -74,9 +77,12 @@ def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pro
     df['epic_ref'] = df.epic_ref.apply(abbrev_key)
 
     if verbose:
-        df.fix_versions = df.fix_versions.apply(lambda x: '' if not x else ','.join(x))
+        df.fix_versions = df.fix_versions.apply(lambda x: '' if x is None else ','.join(x))
 
     print_table(df[fields])
+
+    if print_total:
+        print(f'Total issues {len(df)}')
 
 
 def print_table(df: pd.DataFrame):

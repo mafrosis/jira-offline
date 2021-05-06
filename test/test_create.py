@@ -93,7 +93,7 @@ def test_create__create_issue__issue_is_mapped_to_existing_epic_summary(mock_jir
     # add an Epic fixture to the Jira dict
     mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
 
-    with mock.patch('jira_offline.create.jira', mock_jira):
+    with mock.patch('jira_offline.create.jira', mock_jira), mock.patch('jira_offline.jira.jira', mock_jira):
         new_issue = create_issue(project, 'Story', 'This is summary', epic_ref=epic_ref_value)
 
     # assert new Issue to linked to the epic
@@ -120,7 +120,7 @@ def test_create__find_epic_by_reference__match_by_summary(mock_jira):
     # add an Epic fixture to the Jira dict
     mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
 
-    with mock.patch('jira_offline.create.jira', mock_jira):
+    with mock.patch('jira_offline.create.jira', mock_jira), mock.patch('jira_offline.jira.jira', mock_jira):
         epic = find_epic_by_reference('This is an epic')
 
     assert epic == mock_jira['TEST-1']
@@ -133,7 +133,7 @@ def test_create__find_epic_by_reference__match_by_epic_name(mock_jira):
     # add an Epic fixture to the Jira dict
     mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
 
-    with mock.patch('jira_offline.create.jira', mock_jira):
+    with mock.patch('jira_offline.create.jira', mock_jira), mock.patch('jira_offline.jira.jira', mock_jira):
         epic = find_epic_by_reference('0.1: Epic about a thing')
 
     assert epic == mock_jira['TEST-1']
@@ -143,7 +143,7 @@ def test_create__find_epic_by_reference__raise_on_failed_to_match(mock_jira):
     '''
     Ensure exception raised when epic not found
     '''
-    with mock.patch('jira_offline.create.jira', mock_jira):
+    with mock.patch('jira_offline.create.jira', mock_jira), mock.patch('jira_offline.jira.jira', mock_jira):
         with pytest.raises(EpicNotFound):
             find_epic_by_reference('fake epic reference')
 
@@ -154,11 +154,11 @@ def test_create__find_epic_by_reference__raise_on_duplicate_ref_string(mock_jira
     '''
     # add two Epic fixtures to the Jira dict
     mock_jira['EPIC-1'] = Issue.deserialize(EPIC_1)
-    epic2 = copy.copy(Issue.deserialize(EPIC_1))
+    epic2 = copy.deepcopy(Issue.deserialize(EPIC_1))
     epic2.key = 'EPIC-2'
     mock_jira['EPIC-2'] = epic2
 
-    with mock.patch('jira_offline.create.jira', mock_jira):
+    with mock.patch('jira_offline.create.jira', mock_jira), mock.patch('jira_offline.jira.jira', mock_jira):
         with pytest.raises(EpicSearchStrUsedMoreThanOnce):
             find_epic_by_reference('This is an epic')
 

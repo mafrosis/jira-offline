@@ -1,7 +1,7 @@
 ISSUE_1 = {
     'project_id': '99fd9182cfc4c701a8a662f6293f4136201791b4',
     'assignee': 'danil1',
-    'created': '2018-09-24T08:44:06.000+10:00',
+    'created': '2018-09-24T08:44:06',
     'creator': 'danil1',
     'description': 'This is a story or issue',
     'fix_versions': ['0.1'],
@@ -14,7 +14,7 @@ ISSUE_1 = {
     'reporter': 'danil1',
     'status': 'Story Done',
     'summary': 'This is the story summary',
-    'updated': '2019-08-20T16:41:19.000+10:00',
+    'updated': '2019-08-20T16:41:19',
     'epic_ref': 'TEST-1',
     'estimate': '1',
     'diff_to_original': [],
@@ -24,7 +24,7 @@ ISSUE_1 = {
 ISSUE_1_WITH_UPDATED_DIFF = {
     'project_id': '99fd9182cfc4c701a8a662f6293f4136201791b4',
     'assignee': 'danil1',
-    'created': '2018-09-24T08:44:06.000+10:00',
+    'created': '2018-09-24T08:44:06',
     'creator': 'danil1',
     'description': 'This is a story or issue',
     'fix_versions': ['0.1'],
@@ -37,17 +37,17 @@ ISSUE_1_WITH_UPDATED_DIFF = {
     'reporter': 'danil1',
     'status': 'Story Done',
     'summary': 'This is the story summary',
-    'updated': '2000-08-21T00:00:00.000+10:00',
+    'updated': '2000-08-21T00:00:00',
     'epic_ref': 'TEST-1',
     'estimate': '1',
-    'diff_to_original': [('change', 'updated', ('2000-08-20T00:00:00.000+10:00', '2019-08-20T16:41:19+10:00'))],
+    'diff_to_original': [('change', 'updated', ('2000-08-20T00:00:00', '2019-08-20T16:41:19'))],
     'modified': True,
 }
 
 ISSUE_1_WITH_ASSIGNEE_DIFF = {
     'project_id': '99fd9182cfc4c701a8a662f6293f4136201791b4',
     'assignee': 'hoganp',
-    'created': '2018-09-24T08:44:06.000+10:00',
+    'created': '2018-09-24T08:44:06',
     'creator': 'danil1',
     'description': 'This is a story or issue',
     'fix_versions': ['0.1'],
@@ -60,7 +60,7 @@ ISSUE_1_WITH_ASSIGNEE_DIFF = {
     'reporter': 'danil1',
     'status': 'Story Done',
     'summary': 'This is the story summary',
-    'updated': '2019-08-23T16:41:19.000+10:00',
+    'updated': '2019-08-23T16:41:19',
     'epic_ref': 'TEST-1',
     'estimate': '1',
     'diff_to_original': [('change', 'assignee', ('hoganp', 'danil1'))],
@@ -70,7 +70,7 @@ ISSUE_1_WITH_ASSIGNEE_DIFF = {
 ISSUE_1_WITH_FIXVERSIONS_DIFF = {
     'project_id': '99fd9182cfc4c701a8a662f6293f4136201791b4',
     'assignee': 'danil1',
-    'created': '2018-09-24T08:44:06.000+10:00',
+    'created': '2018-09-24T08:44:06',
     'creator': 'danil1',
     'description': 'This is a story or issue',
     'fix_versions': ['0.1', '0.2'],
@@ -83,7 +83,7 @@ ISSUE_1_WITH_FIXVERSIONS_DIFF = {
     'reporter': 'danil1',
     'status': 'Story Done',
     'summary': 'This is the story summary',
-    'updated': '2019-08-24T16:41:19.000+10:00',
+    'updated': '2019-08-24T16:41:19',
     'epic_ref': 'TEST-1',
     'estimate': '1',
     'diff_to_original': [('remove', 'fix_versions', [(1, '0.2')])],
@@ -93,7 +93,7 @@ ISSUE_1_WITH_FIXVERSIONS_DIFF = {
 ISSUE_2 = {
     'project_id': '99fd9182cfc4c701a8a662f6293f4136201791b4',
     'assignee': 'danil1',
-    'created': '2018-09-24T08:44:06.000+10:00',
+    'created': '2018-09-24T08:44:06',
     'creator': 'danil1',
     'description': 'This is a story or issue',
     'fix_versions': [],
@@ -106,7 +106,7 @@ ISSUE_2 = {
     'reporter': 'danil1',
     'status': 'Backlog',
     'summary': 'This is the story summary',
-    'updated': '2019-08-25T16:41:19.000+10:00',
+    'updated': '2019-08-25T16:41:19',
     'epic_ref': 'TEST-1',
     'diff_to_original': [],
     'modified': False,
@@ -114,7 +114,7 @@ ISSUE_2 = {
 
 ISSUE_MISSING_EPIC = {
     'project_id': '99fd9182cfc4c701a8a662f6293f4136201791b4',
-    'created': '2018-09-24T08:44:06.000+10:00',
+    'created': '2018-09-24T08:44:06',
     'creator': 'danil1',
     'description': 'This is a story or issue',
     'fix_versions': [],
@@ -127,7 +127,7 @@ ISSUE_MISSING_EPIC = {
     'reporter': 'danil1',
     'status': 'Backlog',
     'summary': 'This is the story summary',
-    'updated': '2019-08-20T16:41:19.000+10:00',
+    'updated': '2019-08-20T16:41:19',
     'estimate': '1.5',
     'diff_to_original': [],
     'modified': False,
@@ -146,7 +146,7 @@ ISSUE_NEW = {
 
 EPIC_1 = {
     'project_id': '99fd9182cfc4c701a8a662f6293f4136201791b4',
-    'created': '2018-09-24T08:44:06.000+10:00',
+    'created': '2018-09-24T08:44:06',
     'creator': 'danil1',
     'fix_versions': ['0.1'],
     'issuetype': 'Epic',
@@ -155,7 +155,7 @@ EPIC_1 = {
     'reporter': 'danil1',
     'status': 'Epic with Squad',
     'summary': 'This is an epic',
-    'updated': '2019-08-27T16:41:19.000+10:00',
+    'updated': '2019-08-27T16:41:19',
     'epic_name': '0.1: Epic about a thing',
     'diff_to_original': [],
     'modified': False,
@@ -164,7 +164,7 @@ EPIC_1 = {
 ISSUE_DIFF_PROJECT = {
     'project_id': 'ae7da7e6f3199b1f10e0c4ecfa54ce52158da4db',
     'assignee': 'bea1',
-    'created': '2018-09-24T08:44:06.000+10:00',
+    'created': '2018-09-24T08:44:06',
     'creator': 'bea1',
     'description': 'This is a story or issue',
     'fix_versions': [],
@@ -177,6 +177,6 @@ ISSUE_DIFF_PROJECT = {
     'reporter': 'danil1',
     'status': 'Backlog',
     'summary': 'This is the story summary',
-    'updated': '2019-08-28T16:41:19.000+10:00',
+    'updated': '2019-08-28T16:41:19',
     'diff_to_original': []
 }

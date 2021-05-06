@@ -16,7 +16,8 @@ from jira_offline.config import get_cache_filepath, load_config
 from jira_offline.exceptions import (EpicNotFound, EstimateFieldUnavailable, JiraApiError,
                                      JiraNotConfigured, MissingFieldsForNewIssue,
                                      MultipleTimezoneError, ProjectDoesntExist)
-from jira_offline.models import AppConfig, CustomFields, IssueFilter, Issue, IssueType, ProjectMeta
+from jira_offline.models import AppConfig, CustomFields, Issue, IssueType, ProjectMeta
+from jira_offline.sql_filter import IssueFilter
 from jira_offline.utils.api import get as api_get, post as api_post, put as api_put
 from jira_offline.utils.convert import jiraapi_object_to_issue
 from jira_offline.utils.decorators import auth_retry
@@ -42,11 +43,11 @@ class Jira(collections.abc.MutableMapping):
         # Create the underlying storage for persisting Issues
         self._df = pd.DataFrame()
 
-        # load application config without prompting
+        # Load application config without prompting
         self.config: AppConfig = load_config()
 
         # Initialise an empty filter
-        self.filter = IssueFilter(self)
+        self.filter = IssueFilter()
 
 
     def __getitem__(self, key: str) -> Issue:

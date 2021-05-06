@@ -10,6 +10,7 @@ import click
 from tabulate import tabulate
 
 from jira_offline.auth import authenticate
+from jira_offline.cli.params import filter_option, global_options
 from jira_offline.create import create_issue, import_issue, patch_issue_from_dict
 from jira_offline.exceptions import (BadProjectMetaUri, EditorFieldParseFailed, EditorNoChanges,
                                      FailedPullingProjectMeta, ImportFailed, JiraApiError)
@@ -23,9 +24,11 @@ logger = logging.getLogger('jira')
 
 
 @click.command(name='show')
-@click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
 @click.argument('key')
-def cli_show(key: str, as_json: bool=False):
+@click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
+@click.pass_context
+@global_options
+def cli_show(_, key: str, as_json: bool=False):
     '''
     Pretty print an Issue on the CLI
 
@@ -47,9 +50,10 @@ def cli_show(key: str, as_json: bool=False):
 
 @click.command(name='ls')
 @click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
-@click.option('--project', help='Filter for a specific project')
 @click.pass_context
-def cli_ls(ctx, as_json: bool=False, project: str=None):
+@global_options
+@filter_option
+def cli_ls(ctx: click.core.Context, as_json: bool=False):
     '''List Issues on the CLI'''
     jira.load_issues()
 
@@ -57,19 +61,23 @@ def cli_ls(ctx, as_json: bool=False, project: str=None):
         click.echo('No issues in the cache')
         raise click.Abort
 
-    # filter issues on project
-    jira.filter.project_key = project
-
     if as_json:
         for issue in jira.values():
             click.echo(json.dumps(issue.serialize()))
     else:
-        print_list(jira.df, verbose=ctx.obj.verbose, include_project_col=len(jira.config.projects) > 1)
+        print_list(
+            jira.df,
+            verbose=ctx.obj.verbose,
+            include_project_col=len(jira.config.projects) > 1,
+            print_total=True,
+        )
 
 
 @click.command(name='diff')
 @click.argument('key', required=False)
-def cli_diff(key: str=None):
+@click.pass_context
+@global_options
+def cli_diff(_, key: str=None):
     '''
     Show the diff between changes made locally and the remote issues on Jira
     '''
@@ -94,7 +102,9 @@ def cli_diff(key: str=None):
 
 @click.command(name='reset')
 @click.argument('key')
-def cli_reset(key: str):
+@click.pass_context
+@global_options
+def cli_reset(_, key: str):
     '''
     Reset an issue back to the last-seen Jira version, dropping any changes made locally
     '''
@@ -113,7 +123,8 @@ def cli_reset(key: str):
 
 @click.command(name='push')
 @click.pass_context
-def cli_push(ctx):
+@global_options
+def cli_push(ctx: click.core.Context):
     '''Synchronise changes back to Jira server'''
     jira.load_issues()
 
@@ -126,7 +137,8 @@ def cli_push(ctx):
 
 @click.command(name='projects')
 @click.pass_context
-def cli_projects(ctx):
+@global_options
+def cli_projects(ctx: click.core.Context):
     '''
     View currently cloned projects
     '''
@@ -148,9 +160,10 @@ def cli_projects(ctx):
 @click.option('--oauth-app', default='jira-offline', help='Jira Application Link consumer name')
 @click.option('--oauth-private-key', help='oAuth private key', type=click.Path(exists=True))
 @click.option('--ca-cert', help='Custom CA cert for the Jira server', type=click.Path(exists=True))
-@click.option('--tz', help='Set the timezone for this Jira project (default: current)')
+@click.option('--tz', help='Set the timezone for this Jira project (default: local system timezone)')
 @click.pass_context
-def cli_clone(ctx, project_uri: str, username: str=None, password: str=None, oauth_app: str=None,
+@global_options
+def cli_clone(ctx: click.core.Context, project_uri: str, username: str=None, password: str=None, oauth_app: str=None,
               oauth_private_key: str=None, ca_cert: str=None, tz: str=None):
     '''
     Clone a Jira project to offline
@@ -201,7 +214,8 @@ def cli_clone(ctx, project_uri: str, username: str=None, password: str=None, oau
 @click.option('--reset', is_flag=True, help='Force reload of all issues. This will destroy any local changes!')
 @click.option('--no-retry', is_flag=True, help='Do not retry a Jira server which is unavailable')
 @click.pass_context
-def cli_pull(ctx, projects: str=None, reset: bool=False, no_retry: bool=False):
+@global_options
+def cli_pull(ctx: click.core.Context, projects: str=None, reset: bool=False, no_retry: bool=False):
     '''Fetch and cache all Jira issues'''
 
     projects_set: Optional[Set[str]] = None
@@ -242,7 +256,9 @@ def cli_pull(ctx, projects: str=None, reset: bool=False, no_retry: bool=False):
 @click.option('--labels', help='Issue labels as comma-separated')
 @click.option('--priority', help='Set the priority of the issue')
 @click.option('--reporter', help='Username of Issue reporter (defaults to creator)')
-def cli_new(projectkey: str, issuetype: str, summary: str, as_json: bool=False, **kwargs):
+@click.pass_context
+@global_options
+def cli_new(_, projectkey: str, issuetype: str, summary: str, as_json: bool=False, **kwargs):
     '''
     Create a new issue on a project
 
@@ -304,7 +320,9 @@ def cli_new(projectkey: str, issuetype: str, summary: str, as_json: bool=False, 
 @click.option('--reporter', help='Username of Issue reporter')
 @click.option('--summary', help='Summary one-liner for this issue')
 @click.option('--status', help='Set issue status to any valid for the issuetype')
-def cli_edit(key: str, as_json: bool=False, editor: bool=False, **kwargs):
+@click.pass_context
+@global_options
+def cli_edit(_, key: str, as_json: bool=False, editor: bool=False, **kwargs):
     '''
     Edit one or more fields on an issue
 
@@ -372,7 +390,9 @@ def cli_edit(key: str, as_json: bool=False, editor: bool=False, **kwargs):
 
 @click.command(name='import')
 @click.argument('file', type=click.File('r'))
-def cli_import(file: io.TextIOWrapper):
+@click.pass_context
+@global_options
+def cli_import(_, file: io.TextIOWrapper):
     '''
     Import issues from stdin, or from a filepath
 
