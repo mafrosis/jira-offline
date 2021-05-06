@@ -4,7 +4,7 @@ Functions for parsing SQL where-clause syntax, and filtering the Pandas DataFram
 from dataclasses import dataclass, field
 import datetime
 import operator
-from typing import Optional
+from typing import Optional, Union
 import warnings
 
 import arrow
@@ -93,6 +93,42 @@ class IssueFilter:
             else:
                 return obj
 
+        def midnight(dt: datetime.datetime) -> datetime.datetime:
+            return dt + datetime.timedelta(hours=23, minutes=59, seconds=59)
+
+        def handle_date_without_time(operator_: str, dt: datetime.datetime) -> Union[str, pd.Series]:
+            '''
+            Handle the special case where a date is passed as a filter without the time component.
+            Eg. created == '01-04-2021' or updated > '06-05-2021'
+            '''
+            if operator_ == 'eq':
+                # field greater than 00:00:00 AND less than or equal to 23:59:59 on value date
+                return operator.and_(
+                    operator.ge(df[column], dt),
+                    operator.le(df[column], midnight(dt)),
+                )
+            elif operator_ == 'lt':
+                # field less than 00:00:00 on value date
+                return dt
+            elif operator_ == 'gt':
+                # field greater than 23:59:59 on value date
+                return midnight(dt)
+            elif operator_ == 'gte':
+                # field greater than or equal to 00:00:00 on value date
+                return dt
+            elif operator_ == 'lte':
+                # field less than or equal to 23:59:59 on value date
+                return midnight(dt)
+            elif operator_ == 'neq':
+                # field less than 00:00:00 on value date, OR greater than 23:59:59 on value date
+                return operator.or_(
+                    operator.lt(df[column], dt),
+                    operator.gt(df[column], midnight(dt)),
+                )
+            else:
+                raise FilterUnknownOperatorException(operator_)
+
+
         for operator_, conditions in filter_.items():
             if operator_ == 'and':
                 return operator.and_(*[self._build_mask(df, cnd) for cnd in conditions])
@@ -115,7 +151,14 @@ class IssueFilter:
                     # Timezone adjust for query datetimes
                     # Dates are stored in UTC in the Jira DataFrame, but will be passed as the user's local
                     # timezone on the CLI. Alternatively users can pass a specific timezone via --tz.
-                    value = arrow.get(value).replace(tzinfo=self.tz).datetime
+                    dt = arrow.get(value).replace(tzinfo=self.tz).datetime
+
+                    if (dt.hour, dt.minute, dt.second) == (0, 0, 0):
+                        value = handle_date_without_time(operator_, dt)
+                        if isinstance(value, pd.Series):
+                            return value
+                    else:
+                        value = dt
 
 
             if operator_ == 'eq':

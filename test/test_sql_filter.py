@@ -450,3 +450,83 @@ def test_parse__compound_in_daterange(mock_tz, mock_jira, project, where, count)
         df = filt.apply()
 
     assert len(df) == count
+
+
+@pytest.mark.parametrize('operator_,fixture,count', [
+    ('==', '2018-09-23T12:00:00', 0),
+    ('==', '2018-09-23T23:59:59', 0),
+    ('==', '2018-09-24T00:00:00', 1),
+    ('==', '2018-09-24T00:00:01', 1),
+    ('==', '2018-09-24T12:00:00', 1),
+    ('==', '2018-09-24T23:59:59', 1),
+    ('==', '2018-09-25T00:00:00', 0),
+    ('==', '2018-09-25T12:00:00', 0),
+
+    ('<', '2018-09-23T12:00:00', 1),
+    ('<', '2018-09-23T23:59:59', 1),
+    ('<', '2018-09-24T00:00:00', 0),
+    ('<', '2018-09-24T00:00:01', 0),
+    ('<', '2018-09-24T12:00:00', 0),
+    ('<', '2018-09-24T23:59:59', 0),
+    ('<', '2018-09-25T00:00:00', 0),
+    ('<', '2018-09-25T12:00:00', 0),
+
+    ('<=', '2018-09-23T12:00:00', 1),
+    ('<=', '2018-09-23T23:59:59', 1),
+    ('<=', '2018-09-24T00:00:00', 1),
+    ('<=', '2018-09-24T00:00:01', 1),
+    ('<=', '2018-09-24T12:00:00', 1),
+    ('<=', '2018-09-24T23:59:59', 1),
+    ('<=', '2018-09-25T00:00:00', 0),
+    ('<=', '2018-09-25T12:00:00', 0),
+
+    ('>', '2018-09-23T12:00:00', 0),
+    ('>', '2018-09-23T23:59:59', 0),
+    ('>', '2018-09-24T00:00:00', 0),
+    ('>', '2018-09-24T00:00:01', 0),
+    ('>', '2018-09-24T12:00:00', 0),
+    ('>', '2018-09-24T23:59:59', 0),
+    ('>', '2018-09-25T00:00:00', 1),
+    ('>', '2018-09-25T12:00:00', 1),
+
+    ('>=', '2018-09-23T12:00:00', 0),
+    ('>=', '2018-09-23T23:59:59', 0),
+    ('>=', '2018-09-24T00:00:00', 1),
+    ('>=', '2018-09-24T00:00:01', 1),
+    ('>=', '2018-09-24T12:00:00', 1),
+    ('>=', '2018-09-24T23:59:59', 1),
+    ('>=', '2018-09-25T00:00:00', 1),
+    ('>=', '2018-09-25T12:00:00', 1),
+
+    ('!=', '2018-09-23T12:00:00', 1),
+    ('!=', '2018-09-23T23:59:59', 1),
+    ('!=', '2018-09-24T00:00:00', 0),
+    ('!=', '2018-09-24T00:00:01', 0),
+    ('!=', '2018-09-24T12:00:00', 0),
+    ('!=', '2018-09-24T23:59:59', 0),
+    ('!=', '2018-09-25T00:00:00', 1),
+    ('!=', '2018-09-25T12:00:00', 1),
+])
+@mock.patch('jira_offline.sql_filter.IssueFilter.tz', new_callable=mock.PropertyMock)
+def test_parse__primitive_date_special_case(mock_tz, mock_jira, project, operator_, fixture, count):
+    '''
+    Test special-case datetime field ==,>,>=,<,<= to specific day date
+    '''
+    # Setup a test fixture to target in the filter query
+    ISSUE_A = copy.deepcopy(ISSUE_1)
+    ISSUE_A['created'] = fixture
+    ISSUE_A['key'] = 'FILT-1'
+
+    # Add single test fixture to the local Jira storage
+    mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A, project)
+
+    filt = IssueFilter()
+    filt.set(f"created {operator_} '2018-09-24'")
+
+    # Set the timezone of the date in the passed query (default is local system time)
+    mock_tz.return_value = project.timezone
+
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        df = filt.apply()
+
+    assert len(df) == count
