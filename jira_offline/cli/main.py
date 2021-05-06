@@ -65,7 +65,12 @@ def cli_ls(ctx: click.core.Context, as_json: bool=False):
         for issue in jira.values():
             click.echo(json.dumps(issue.serialize()))
     else:
-        print_list(jira.df, verbose=ctx.obj.verbose, include_project_col=len(jira.config.projects) > 1)
+        print_list(
+            jira.df,
+            verbose=ctx.obj.verbose,
+            include_project_col=len(jira.config.projects) > 1,
+            print_total=True,
+        )
 
 
 @click.command(name='diff')
