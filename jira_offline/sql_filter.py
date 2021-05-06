@@ -33,6 +33,7 @@ class IssueFilter:
     '''
     _where: Optional[dict] = field(default=None, init=False)
     _tz: Optional[datetime.tzinfo] = field(default=None, init=False)
+    _pandas_mask: Optional[pd.Series] = field(default=None, init=False)
 
 
     @property
@@ -54,6 +55,9 @@ class IssueFilter:
         try:
             self._where = mozparse(f'select count(1) from tbl where {sql_filter}')['where']
 
+            # Reset the cached Pandas mask
+            self._pandas_mask = None
+
             if self._where and self._where.get('literal'):
                 raise FilterQueryEscapingError
 
@@ -70,12 +74,13 @@ class IssueFilter:
         if self._where is None:
             return jira._df  # pylint: disable=protected-access
 
-        try:
-            pandas_mask = self._build_mask(jira._df, self._where)  # pylint: disable=protected-access
-        except (KeyError, IndexError, ValueError, TypeError) as e:
-            raise FilterQueryParseFailed from e
+        if self._pandas_mask is None:
+            try:
+                self._pandas_mask = self._build_mask(jira._df, self._where)  # pylint: disable=protected-access
+            except (KeyError, IndexError, ValueError, TypeError) as e:
+                raise FilterQueryParseFailed from e
 
-        return jira._df[pandas_mask]  # pylint: disable=protected-access
+        return jira._df[self._pandas_mask]  # pylint: disable=protected-access
 
 
     def _build_mask(self, df: pd.DataFrame, filter_: dict) -> pd.Series:

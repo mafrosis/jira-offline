@@ -530,3 +530,22 @@ def test_parse__primitive_date_special_case(mock_tz, mock_jira, project, operato
         df = filt.apply()
 
     assert len(df) == count
+
+
+def test_parse__build_mask_caching(mock_jira):
+    '''
+    Ensure that _build_mask is not called repeatedly, as it can be expensive
+    '''
+    # Add single test fixture to the local Jira storage
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+
+    filt = IssueFilter()
+    filt.set("summary == 'This is a story or issue'")
+
+    with mock.patch.object(IssueFilter, '_build_mask', wraps=filt._build_mask) as mock_build_mask:
+        with mock.patch('jira_offline.jira.jira', mock_jira):
+            filt.apply()
+            filt.apply()
+            filt.apply()
+
+    assert mock_build_mask.call_count == 1
