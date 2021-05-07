@@ -44,6 +44,10 @@ class IssueFilter:
     def tz(self, tz: str):
         self._tz = gettz(tz)
 
+    @property
+    def is_set(self) -> bool:
+        return bool(self._where)
+
 
     def set(self, sql_filter: str):
         '''
