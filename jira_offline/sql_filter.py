@@ -198,7 +198,13 @@ class IssueFilter:
 
                 # Combine multiple in-list masks with a logical OR
                 if len(in_masks) > 1:
-                    return operator.or_(*in_masks)
+                    mask = in_masks.pop()
+                    while True:
+                        try:
+                            mask = operator.or_(mask, in_masks.pop())
+                        except IndexError:
+                            break
+                    return mask
                 else:
                     return in_masks[0]
 

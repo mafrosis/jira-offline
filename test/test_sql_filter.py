@@ -335,6 +335,7 @@ def test_parse__primitive_gt_datetime(mock_tz, mock_jira, project, operator, cou
     ('BACON', 1),
     ('EGG, BACON', 1),
     ('0.1', 2),
+    ('EGG, BACON, 0.1', 2),
     ('MISSING', 0),
 ])
 def test_parse__primitive_in_list(mock_jira, search_terms, count):
