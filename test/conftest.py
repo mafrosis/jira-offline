@@ -73,7 +73,6 @@ def mock_jira_core(mock_load_config, project, project2):
     Return a Jira class instance with connect method and underlying Jira lib mocked
     '''
     jira = Jira()
-    jira._df = pd.DataFrame()
     jira.config = AppConfig(projects={project.id: project, project2.id: project2})
     # ensure each ProjectMeta instance has a reference to the AppConfig instance
     # in normal operation, this is done in `load_config` in config.py, and so applies to all projects
