@@ -182,7 +182,7 @@ class IssueFilter:
             elif operator_ == 'like':
                 return df[column].str.contains(value)
 
-            elif operator_ == 'in':
+            elif operator_ in ('in', 'nin'):
                 if not isinstance(value, list):
                     value = [value]
 
@@ -194,14 +194,21 @@ class IssueFilter:
                 #   https://stackoverflow.com/a/46721064/425050
                 with warnings.catch_warnings():
                     warnings.simplefilter(action='ignore', category=FutureWarning)
-                    in_masks = [df[column].apply(lambda x, y=item: str(y) in x) for item in value]
+
+                    # IN or NOT IN
+                    if operator_ == 'in':
+                        in_masks = [df[column].apply(lambda x, y=item: str(y) in x) for item in value]
+                        logical_operator = operator.or_
+                    else:
+                        in_masks = [df[column].apply(lambda x, y=item: str(y) not in x) for item in value]
+                        logical_operator = operator.and_
 
                 # Combine multiple in-list masks with a logical OR
                 if len(in_masks) > 1:
                     mask = in_masks.pop()
                     while True:
                         try:
-                            mask = operator.or_(mask, in_masks.pop())
+                            mask = logical_operator(mask, in_masks.pop())
                         except IndexError:
                             break
                     return mask

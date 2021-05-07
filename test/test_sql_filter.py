@@ -174,17 +174,24 @@ def test_parse__primitive_datetime(mock_tz, mock_jira, project, operator, fixtur
     assert df.iloc[0]['key'] == 'FILT-1'
 
 
-@pytest.mark.parametrize('search_terms,count', [
-    ('EGG', 1),
-    ('BACON', 1),
-    ('EGG, BACON', 1),
-    ('0.1', 2),
-    ('EGG, BACON, 0.1', 2),
-    ('MISSING', 0),
+@pytest.mark.parametrize('operator,search_terms,count', [
+    ('in', 'EGG', 1),
+    ('in', 'BACON', 1),
+    ('in', 'EGG, BACON', 1),
+    ('in', '0.1', 2),
+    ('in', 'EGG, BACON, 0.1', 2),
+    ('in', 'MISSING', 0),
+
+    ('not in', 'EGG', 1),
+    ('not in', 'BACON', 1),
+    ('not in', 'EGG, BACON', 1),
+    ('not in', '0.1', 0),
+    ('not in', 'EGG, BACON, 0.1', 0),
+    ('not in', 'MISSING', 2),
 ])
-def test_parse__primitive_in_list(mock_jira, search_terms, count):
+def test_parse__primitive_list__set(mock_jira, operator, search_terms, count):
     '''
-    Test field IN list filter
+    Test set field IN/NOT IN a list of values
     '''
     # Setup test fixtures to target in the filter query
     ISSUE_1['fix_versions'] = ['0.1']
@@ -199,7 +206,7 @@ def test_parse__primitive_in_list(mock_jira, search_terms, count):
     assert len(mock_jira) == 2
 
     filt = IssueFilter()
-    filt.set(f"fix_versions in ({search_terms})")
+    filt.set(f"fix_versions {operator} ({search_terms})")
 
     with mock.patch('jira_offline.jira.jira', mock_jira):
         df = filt.apply()
