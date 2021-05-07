@@ -75,6 +75,7 @@ def cli_ls(ctx: click.core.Context, as_json: bool=False):
             verbose=ctx.obj.verbose,
             include_project_col=len(jira.config.projects) > 1,
             print_total=True,
+            print_filter=jira.filter.filter,
         )
 
 

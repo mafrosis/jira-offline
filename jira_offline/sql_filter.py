@@ -31,6 +31,7 @@ class IssueFilter:
     Accessing the data via `jira.df`, `jira.items`, `jira.keys` or `jira.values` on the Jira class
     will return issues filtered by the `apply` method in this class.
     '''
+    filter: Optional[str] = field(default=None, init=False)
     _where: Optional[dict] = field(default=None, init=False)
     _tz: Optional[datetime.tzinfo] = field(default=None, init=False)
     _pandas_mask: Optional[pd.Series] = field(default=None, init=False)
@@ -56,6 +57,8 @@ class IssueFilter:
         Params:
             sql_filter:  Raw SQL-like filter string passed from CLI
         '''
+        self.filter = sql_filter
+
         try:
             self._where = mozparse(f'select count(1) from tbl where {sql_filter}')['where']
 
