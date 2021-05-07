@@ -18,15 +18,20 @@ def test_parse__bad_query__double_escaping():
         filt.set("'summary == An eggcellent summarisation'")
 
 
-@pytest.mark.parametrize('where', [
-    "summary == 'eggcellent'",
-    "summary == eggcellent",
+@pytest.mark.parametrize('operator,search_term,count', [
+    ('==', "'eggcellent'", 1),
+    ('==', 'eggcellent', 1),
+    ('!=', 'eggcellent', 1),
+    ('!=', 'missing', 2),
+    ('==', "'This is the story summary'", 1),
 ])
-def test_parse__primitive_eq_str(mock_jira, where):
+def test_parse__primitive_str(mock_jira, operator, search_term, count):
     '''
-    Test string field EQUALS value filter
+    Test string field ==,!= value filter
     '''
-    # Setup a test fixture to target in the filter query
+    # Setup test fixtures to target in the filter query
+    ISSUE_1['summary'] = 'This is the story summary'
+
     ISSUE_A = copy.deepcopy(ISSUE_1)
     ISSUE_A['summary'] = 'eggcellent'
     ISSUE_A['key'] = 'FILT-1'
@@ -38,63 +43,12 @@ def test_parse__primitive_eq_str(mock_jira, where):
     assert len(mock_jira) == 2
 
     filt = IssueFilter()
-    filt.set(where)
+    filt.set(f"summary {operator} {search_term}")
 
     with mock.patch('jira_offline.jira.jira', mock_jira):
         df = filt.apply()
 
-    assert len(df) == 1
-    assert df.iloc[0]['key'] == 'FILT-1'
-
-
-def test_parse__primitive_eq_str_multiword(mock_jira):
-    '''
-    Test field EQUALS 'multiple strings' filter
-    '''
-    # Setup a test fixture to target in the filter query
-    ISSUE_A = copy.deepcopy(ISSUE_1)
-    ISSUE_A['summary'] = 'An eggcellent summarisation'
-    ISSUE_A['key'] = 'FILT-1'
-
-    # Add test fixture and a spare to the local Jira storage
-    mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A)
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
-
-    assert len(mock_jira) == 2
-
-    filt = IssueFilter()
-    filt.set("summary == 'An eggcellent summarisation'")
-
-    with mock.patch('jira_offline.jira.jira', mock_jira):
-        df = filt.apply()
-
-    assert len(df) == 1
-    assert df.iloc[0]['key'] == 'FILT-1'
-
-
-def test_parse__primitive_neq_str(mock_jira):
-    '''
-    Test string field NOT EQUALS value filter
-    '''
-    # Setup a test fixture to target in the filter query
-    ISSUE_A = copy.deepcopy(ISSUE_1)
-    ISSUE_A['summary'] = 'eggcellent'
-    ISSUE_A['key'] = 'FILT-1'
-
-    # Add test fixture and a spare to the local Jira storage
-    mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A)
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
-
-    assert len(mock_jira) == 2
-
-    filt = IssueFilter()
-    filt.set("summary != eggcellent")
-
-    with mock.patch('jira_offline.jira.jira', mock_jira):
-        df = filt.apply()
-
-    assert len(df) == 1
-    assert df.iloc[0]['key'] == 'TEST-71'
+    assert len(df) == count
 
 
 def test_parse__primitive_project_eq_str(mock_jira, project, project2):
@@ -152,71 +106,21 @@ def test_parse__primitive_like_str(mock_jira, where):
     assert df.iloc[0]['key'] == 'FILT-1'
 
 
-@pytest.mark.parametrize('value', [
-    1111,
-    "'1111'",
+@pytest.mark.parametrize('fixture,operator,count', [
+    (1111, '==', 1),
+    (1111, '!=', 1),
+    (1230, '<', 1),
+    (1230, '<=', 2),
+    (1232, '>', 1),
+    (1232, '>=', 2),
 ])
-def test_parse__primitive_eq_int(mock_jira, value):
+def test_parse__primitive_int(mock_jira, fixture, operator, count):
     '''
-    Test integer field EQUALS value filter
-    '''
-    # Setup a test fixture to target in the filter query
-    ISSUE_A = copy.deepcopy(ISSUE_1)
-    ISSUE_A['id'] = 1111
-    ISSUE_A['key'] = 'FILT-1'
-
-    # Add test fixture and a spare to the local Jira storage
-    mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A)
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
-
-    assert len(mock_jira) == 2
-
-    filt = IssueFilter()
-    filt.set(f'id == {value}')
-
-    with mock.patch('jira_offline.jira.jira', mock_jira):
-        df = filt.apply()
-
-    assert len(df) == 1
-    assert df.iloc[0]['key'] == 'FILT-1'
-
-
-def test_parse__primitive_neq_int(mock_jira):
-    '''
-    Test integer field NOT EQUALS value filter
+    Test field ==,!=,<,<=,>,>= integer filter
     '''
     # Setup a test fixture to target in the filter query
     ISSUE_A = copy.deepcopy(ISSUE_1)
-    ISSUE_A['id'] = 1111
-    ISSUE_A['key'] = 'FILT-1'
-
-    # Add test fixture and a spare to the local Jira storage
-    mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A)
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
-
-    assert len(mock_jira) == 2
-
-    filt = IssueFilter()
-    filt.set("id != 1111")
-
-    with mock.patch('jira_offline.jira.jira', mock_jira):
-        df = filt.apply()
-
-    assert len(df) == 1
-    assert df.iloc[0]['key'] == 'TEST-71'
-
-
-@pytest.mark.parametrize('operator,count', [
-    ('<', 1),
-    ('<=', 2),
-])
-def test_parse__primitive_lt_int(mock_jira, operator, count):
-    '''
-    Test integer field LESS THAN value filter
-    '''
-    # Setup a test fixture to target in the filter query
-    ISSUE_A = copy.deepcopy(ISSUE_1)
-    ISSUE_A['id'] = '1230'
+    ISSUE_A['id'] = fixture
     ISSUE_A['key'] = 'FILT-1'
 
     # Add test fixture and a spare to the local Jira storage
@@ -232,83 +136,22 @@ def test_parse__primitive_lt_int(mock_jira, operator, count):
         df = filt.apply()
 
     assert len(df) == count
-    assert df.iloc[0]['key'] == 'FILT-1'
 
 
-@pytest.mark.parametrize('operator,count', [
-    ('>', 1),
-    ('>=', 2),
-])
-def test_parse__primitive_gt_int(mock_jira, operator, count):
-    '''
-    Test field GREATER THAN integer filter
-    '''
-    # Setup a test fixture to target in the filter query
-    ISSUE_A = copy.deepcopy(ISSUE_1)
-    ISSUE_A['id'] = '1232'
-    ISSUE_A['key'] = 'FILT-1'
-
-    # Add test fixture and a spare to the local Jira storage
-    mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A)
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
-
-    assert len(mock_jira) == 2
-
-    filt = IssueFilter()
-    filt.set(f"id {operator} 1231")
-
-    with mock.patch('jira_offline.jira.jira', mock_jira):
-        df = filt.apply()
-
-    assert len(df) == count
-    assert df.iloc[0]['key'] == 'FILT-1'
-
-
-@pytest.mark.parametrize('operator,count', [
-    ('<', 1),
-    ('<=', 2),
+@pytest.mark.parametrize('operator,fixture,count', [
+    ('<', '2018-09-24T08:44:05', 1),
+    ('<=', '2018-09-24T08:44:05', 2),
+    ('>', '2018-09-24T08:44:07', 1),
+    ('>=', '2018-09-24T08:44:07', 2),
 ])
 @mock.patch('jira_offline.sql_filter.IssueFilter.tz', new_callable=mock.PropertyMock)
-def test_parse__primitive_lt_datetime(mock_tz, mock_jira, project, operator, count):
+def test_parse__primitive_datetime(mock_tz, mock_jira, project, operator, fixture, count):
     '''
-    Test field LESS THAN datetime filter
-    '''
-    # Setup a test fixture to target in the filter query
-    ISSUE_A = copy.deepcopy(ISSUE_1)
-    ISSUE_A['created'] = '2018-09-24T08:44:05'
-    ISSUE_A['key'] = 'FILT-1'
-
-    # Add test fixtures, passing project to ensure dates are deserialized with timezone set
-    mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A, project)
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
-
-    assert len(mock_jira) == 2
-
-    filt = IssueFilter()
-    filt.set(f"created {operator} '2018-09-24T08:44:06'")
-
-    # Set the timezone of the date in the passed query (default is local system time)
-    mock_tz.return_value = project.timezone
-
-    with mock.patch('jira_offline.jira.jira', mock_jira):
-        df = filt.apply()
-
-    assert len(df) == count
-    assert df.iloc[0]['key'] == 'FILT-1'
-
-
-@pytest.mark.parametrize('operator,count', [
-    ('>', 1),
-    ('>=', 2),
-])
-@mock.patch('jira_offline.sql_filter.IssueFilter.tz', new_callable=mock.PropertyMock)
-def test_parse__primitive_gt_datetime(mock_tz, mock_jira, project, operator, count):
-    '''
-    Test field GREATER THAN datetime filter
+    Test field <,<=,>,>= datetime filter
     '''
     # Setup a test fixture to target in the filter query
     ISSUE_A = copy.deepcopy(ISSUE_1)
-    ISSUE_A['created'] = '2018-09-24T08:44:07'
+    ISSUE_A['created'] = fixture
     ISSUE_A['key'] = 'FILT-1'
 
     # Add test fixtures, passing project to ensure dates are deserialized with timezone set
@@ -453,7 +296,7 @@ def test_parse__compound_in_daterange(mock_tz, mock_jira, project, where, count)
     assert len(df) == count
 
 
-@pytest.mark.parametrize('operator_,fixture,count', [
+@pytest.mark.parametrize('operator,fixture,count', [
     ('==', '2018-09-23T12:00:00', 0),
     ('==', '2018-09-23T23:59:59', 0),
     ('==', '2018-09-24T00:00:00', 1),
@@ -509,7 +352,7 @@ def test_parse__compound_in_daterange(mock_tz, mock_jira, project, where, count)
     ('!=', '2018-09-25T12:00:00', 1),
 ])
 @mock.patch('jira_offline.sql_filter.IssueFilter.tz', new_callable=mock.PropertyMock)
-def test_parse__primitive_date_special_case(mock_tz, mock_jira, project, operator_, fixture, count):
+def test_parse__primitive_date_special_case(mock_tz, mock_jira, project, operator, fixture, count):
     '''
     Test special-case datetime field ==,>,>=,<,<= to specific day date
     '''
@@ -522,7 +365,7 @@ def test_parse__primitive_date_special_case(mock_tz, mock_jira, project, operato
     mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A, project)
 
     filt = IssueFilter()
-    filt.set(f"created {operator_} '2018-09-24'")
+    filt.set(f"created {operator} '2018-09-24'")
 
     # Set the timezone of the date in the passed query (default is local system time)
     mock_tz.return_value = project.timezone
