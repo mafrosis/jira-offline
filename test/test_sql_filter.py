@@ -56,12 +56,10 @@ def test_parse__primitive_project_eq_str(mock_jira, project, project2):
     Test special-case project field EQUALS string filter
     The underlying field name is "project_key"
     '''
-    # Setup a test fixture to target in the filter query
+    # Setup test fixtures to target in the filter query
     ISSUE_A = copy.deepcopy(ISSUE_1)
-    ISSUE_A['project'] = project2.key
     ISSUE_A['key'] = 'FILT-1'
 
-    # Add test fixture and a spare to the local Jira storage
     mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A, project=project2)
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project=project)
 
@@ -85,12 +83,13 @@ def test_parse__primitive_like_str(mock_jira, where):
     '''
     Test string field LIKE value filter
     '''
-    # Setup a test fixture to target in the filter query
+    # Setup test fixtures to target in the filter query
+    ISSUE_1['summary'] = 'This is the story summary'
+
     ISSUE_A = copy.deepcopy(ISSUE_1)
     ISSUE_A['summary'] = 'An eggcellent summarisation'
     ISSUE_A['key'] = 'FILT-1'
 
-    # Add test fixture and a spare to the local Jira storage
     mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A)
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
@@ -118,12 +117,13 @@ def test_parse__primitive_int(mock_jira, fixture, operator, count):
     '''
     Test field ==,!=,<,<=,>,>= integer filter
     '''
-    # Setup a test fixture to target in the filter query
+    # Setup test fixtures to target in the filter query
+    ISSUE_1['created'] = 1231
+
     ISSUE_A = copy.deepcopy(ISSUE_1)
     ISSUE_A['id'] = fixture
     ISSUE_A['key'] = 'FILT-1'
 
-    # Add test fixture and a spare to the local Jira storage
     mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A)
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
@@ -149,12 +149,13 @@ def test_parse__primitive_datetime(mock_tz, mock_jira, project, operator, fixtur
     '''
     Test field <,<=,>,>= datetime filter
     '''
-    # Setup a test fixture to target in the filter query
+    # Setup test fixtures to target in the filter query
+    ISSUE_1['created'] = '2018-09-24T08:44:06'
+
     ISSUE_A = copy.deepcopy(ISSUE_1)
     ISSUE_A['created'] = fixture
     ISSUE_A['key'] = 'FILT-1'
 
-    # Add test fixtures, passing project to ensure dates are deserialized with timezone set
     mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A, project)
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
@@ -185,12 +186,13 @@ def test_parse__primitive_in_list(mock_jira, search_terms, count):
     '''
     Test field IN list filter
     '''
-    # Setup a test fixture to target in the filter query
+    # Setup test fixtures to target in the filter query
+    ISSUE_1['fix_versions'] = ['0.1']
+
     ISSUE_A = copy.deepcopy(ISSUE_1)
     ISSUE_A['fix_versions'] = {'EGG', 'BACON', '0.1'}
     ISSUE_A['key'] = 'FILT-1'
 
-    # Add test fixture and a spare to the local Jira storage
     mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A)
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
@@ -213,13 +215,15 @@ def test_parse__compound_and_eq_str(mock_jira, where, count):
     '''
     Test field EQUALS string AND otherfield EQUALS otherstring filter
     '''
-    # Setup a test fixture to target in the filter query
+    # Setup test fixtures to target in the filter query
+    ISSUE_1['summary'] = 'This is the story summary'
+    ISSUE_1['creator'] = 'danil1'
+
     ISSUE_A = copy.deepcopy(ISSUE_1)
     ISSUE_A['summary'] = 'eggcellent'
     ISSUE_A['creator'] = 'dave'
     ISSUE_A['key'] = 'FILT-1'
 
-    # Add test fixture and a spare to the local Jira storage
     mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A)
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
@@ -242,13 +246,15 @@ def test_parse__compound_or_eq_str(mock_jira, where, count):
     '''
     Test field EQUALS string OR otherfield EQUALS otherstring filter
     '''
-    # Setup a test fixture to target in the filter query
+    # Setup test fixtures to target in the filter query
+    ISSUE_1['summary'] = 'This is the story summary'
+    ISSUE_1['creator'] = 'danil1'
+
     ISSUE_A = copy.deepcopy(ISSUE_1)
     ISSUE_A['summary'] = 'eggcellent'
     ISSUE_A['creator'] = 'notarealcreator'
     ISSUE_A['key'] = 'FILT-1'
 
-    # Add test fixture and a spare to the local Jira storage
     mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A)
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
@@ -273,12 +279,13 @@ def test_parse__compound_in_daterange(mock_tz, mock_jira, project, where, count)
     '''
     Test field BETWEEN two datetimes
     '''
-    # Setup a test fixture to target in the filter query
+    # Setup test fixtures to target in the filter query
+    ISSUE_1['creator'] = 'danil1'
+
     ISSUE_A = copy.deepcopy(ISSUE_1)
     ISSUE_A['created'] = '2018-09-24T08:44:07'
     ISSUE_A['key'] = 'FILT-1'
 
-    # Add test fixtures, passing project to ensure dates are deserialized with timezone set
     mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A, project)
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
@@ -356,12 +363,13 @@ def test_parse__primitive_date_special_case(mock_tz, mock_jira, project, operato
     '''
     Test special-case datetime field ==,>,>=,<,<= to specific day date
     '''
-    # Setup a test fixture to target in the filter query
+    # Setup test fixtures to target in the filter query
+    ISSUE_1['creator'] = 'danil1'
+
     ISSUE_A = copy.deepcopy(ISSUE_1)
     ISSUE_A['created'] = fixture
     ISSUE_A['key'] = 'FILT-1'
 
-    # Add single test fixture to the local Jira storage
     mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A, project)
 
     filt = IssueFilter()
