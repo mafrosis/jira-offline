@@ -214,6 +214,42 @@ def test_parse__primitive_list__set(mock_jira, operator, search_terms, count):
     assert len(df) == count
 
 
+@pytest.mark.parametrize('operator,search_terms,count', [
+    ('in', '"Story Done", Egg', 2),
+    ('in', 'Egg', 1),
+    ('in', '"Story Done"', 1),
+    ('in', 'Missing', 0),
+
+    ('not in', '"Story Done", Egg', 0),
+    ('not in', 'Egg', 1),
+    ('not in', '"Story Done"', 1),
+    ('not in', 'Missing', 2),
+])
+def test_parse__primitive_list__string(mock_jira, operator, search_terms, count):
+    '''
+    Test string field IN/NOT IN a list of values
+    '''
+    # Setup test fixtures to target in the filter query
+    ISSUE_1['status'] = 'Story Done'
+
+    ISSUE_A = copy.deepcopy(ISSUE_1)
+    ISSUE_A['status'] = 'Egg'
+    ISSUE_A['key'] = 'FILT-1'
+
+    mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+
+    assert len(mock_jira) == 2
+
+    filt = IssueFilter()
+    filt.set(f"status {operator} ({search_terms})")
+
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        df = filt.apply()
+
+    assert len(df) == count
+
+
 @pytest.mark.parametrize('where,count', [
     ('summary == eggcellent and creator == dave', 1),
     ('summary == notarealsummary and creator == dave', 0),
