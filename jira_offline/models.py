@@ -81,7 +81,7 @@ class ProjectMeta(DataclassSerializer):
     last_updated: Optional[str] = field(default=None, metadata={'friendly': 'Last Sync'})
     issuetypes: Dict[str, IssueType] = field(default_factory=dict)
     custom_fields: CustomFields = field(default_factory=CustomFields)
-    priorities: Set[str] = field(default_factory=set)
+    priorities: Optional[Set[str]] = field(default_factory=set)  # type: ignore[assignment]
     components: Optional[Set[str]] = field(default_factory=set)  # type: ignore[assignment]
     oauth: Optional[OAuth] = field(default=None)
     ca_cert: Optional[str] = field(default=None)
