@@ -61,6 +61,11 @@ def cli_ls(ctx: click.core.Context, as_json: bool=False):
         click.echo('No issues in the cache')
         raise click.Abort
 
+    # Set a default filter
+    if not jira.filter.is_set:
+        filter_ = 'status not in ("Story Done", Done, Closed)'
+        jira.filter.set(filter_)
+
     if as_json:
         for issue in jira.values():
             click.echo(json.dumps(issue.serialize()))
@@ -70,6 +75,7 @@ def cli_ls(ctx: click.core.Context, as_json: bool=False):
             verbose=ctx.obj.verbose,
             include_project_col=len(jira.config.projects) > 1,
             print_total=True,
+            print_filter=jira.filter.filter,
         )
 
 

@@ -31,6 +31,7 @@ class IssueFilter:
     Accessing the data via `jira.df`, `jira.items`, `jira.keys` or `jira.values` on the Jira class
     will return issues filtered by the `apply` method in this class.
     '''
+    filter: Optional[str] = field(default=None, init=False)
     _where: Optional[dict] = field(default=None, init=False)
     _tz: Optional[datetime.tzinfo] = field(default=None, init=False)
     _pandas_mask: Optional[pd.Series] = field(default=None, init=False)
@@ -44,6 +45,10 @@ class IssueFilter:
     def tz(self, tz: str):
         self._tz = gettz(tz)
 
+    @property
+    def is_set(self) -> bool:
+        return bool(self._where)
+
 
     def set(self, sql_filter: str):
         '''
@@ -52,6 +57,8 @@ class IssueFilter:
         Params:
             sql_filter:  Raw SQL-like filter string passed from CLI
         '''
+        self.filter = sql_filter
+
         try:
             self._where = mozparse(f'select count(1) from tbl where {sql_filter}')['where']
 
@@ -182,7 +189,7 @@ class IssueFilter:
             elif operator_ == 'like':
                 return df[column].str.contains(value)
 
-            elif operator_ == 'in':
+            elif operator_ in ('in', 'nin'):
                 if not isinstance(value, list):
                     value = [value]
 
@@ -194,11 +201,24 @@ class IssueFilter:
                 #   https://stackoverflow.com/a/46721064/425050
                 with warnings.catch_warnings():
                     warnings.simplefilter(action='ignore', category=FutureWarning)
-                    in_masks = [df[column].apply(lambda x, y=item: str(y) in x) for item in value]
+
+                    # IN or NOT IN
+                    if operator_ == 'in':
+                        in_masks = [df[column].apply(lambda x, y=item: str(y) in x) for item in value]
+                        logical_operator = operator.or_
+                    else:
+                        in_masks = [df[column].apply(lambda x, y=item: str(y) not in x) for item in value]
+                        logical_operator = operator.and_
 
                 # Combine multiple in-list masks with a logical OR
                 if len(in_masks) > 1:
-                    return operator.or_(*in_masks)
+                    mask = in_masks.pop()
+                    while True:
+                        try:
+                            mask = logical_operator(mask, in_masks.pop())
+                        except IndexError:
+                            break
+                    return mask
                 else:
                     return in_masks[0]
 

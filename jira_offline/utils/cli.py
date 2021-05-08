@@ -22,7 +22,7 @@ logger = logging.getLogger('jira')
 
 
 def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_project_col: bool=False,
-               print_total: bool=False):
+               print_total: bool=False, print_filter: str=None):
     '''
     Helper to print abbreviated list of issues
 
@@ -81,8 +81,16 @@ def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pro
 
     print_table(df[fields])
 
-    if print_total:
-        print(f'Total issues {len(df)}')
+    if print_filter:
+        print_filter = f'Filter: {print_filter}'
+
+        if print_total:
+            click.echo(f'Total issues {len(df)} ({print_filter.lower()})')
+        else:
+            click.echo(print_filter)
+
+    elif print_total:
+        click.echo(f'Total issues {len(df)}')
 
 
 def print_table(df: pd.DataFrame):
