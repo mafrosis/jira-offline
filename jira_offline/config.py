@@ -1,3 +1,4 @@
+import configparser
 import json
 import logging
 import os
@@ -49,7 +50,41 @@ def load_config():
     if not config:
         config = AppConfig()
 
+    # Load settings from the user config file
+    _load_user_config(config)
+
     return config
+
+
+def _load_user_config(config: AppConfig):
+    '''
+    Load user configuration from local INI file.
+
+    Override fields on AppConfig with any fields set in user configuration.
+    '''
+    def parse_set(value: str) -> set:
+        'Helper to parse comma-separated list into a set type'
+        return {f.strip() for f in value.split(',')}
+
+    if os.path.exists(config.user_config_filepath):
+        cfg = configparser.ConfigParser()
+        cfg.read(config.user_config_filepath)
+
+        for section in cfg.sections():
+            if section == 'display':
+                if cfg['display'].get('ls'):
+                    config.display.ls_fields = parse_set(cfg['display']['ls'])
+                if cfg['display'].get('ls-verbose'):
+                    config.display.ls_fields_verbose = parse_set(cfg['display']['ls-verbose'])
+
+
+def get_default_user_config_filepath() -> str:
+    '''Return the path to jira-offline USER config file'''
+    return os.path.join(
+        os.environ.get('XDG_CONFIG_HOME', os.path.join(os.path.expanduser('~'), '.config')),
+        'jira-offline',
+        'jira-offline.ini'
+    )
 
 
 def get_app_config_filepath() -> str:
