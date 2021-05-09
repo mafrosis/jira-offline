@@ -176,12 +176,12 @@ class AppConfig(DataclassSerializer):
     projects: Dict[str, ProjectMeta] = field(default_factory=dict)
 
     def write_to_disk(self):
-        # ensure config path exists
+        # Ensure config path exists
         pathlib.Path(click.get_app_dir(__title__)).mkdir(parents=True, exist_ok=True)
 
-        # late import to avoid circular dependency
-        from jira_offline.config import get_config_filepath  # pylint: disable=import-outside-toplevel, cyclic-import
-        with open(get_config_filepath(), 'w') as f:
+        # Late import to avoid circular dependency
+        from jira_offline.config import get_app_config_filepath  # pylint: disable=import-outside-toplevel, cyclic-import
+        with open(get_app_config_filepath(), 'w') as f:
             json.dump(self.serialize(), f)
             f.write('\n')
 

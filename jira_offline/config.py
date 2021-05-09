@@ -15,9 +15,9 @@ logger = logging.getLogger('jira')
 
 def load_config():
     '''
-    Load app configuration from local JSON file
+    Load app configuration from local JSON file.
     '''
-    config_filepath = get_config_filepath()
+    config_filepath = get_app_config_filepath()
 
     config: Optional[AppConfig] = None
 
@@ -30,7 +30,7 @@ def load_config():
         except json.decoder.JSONDecodeError:
             raise UnreadableConfig('Bad JSON in config file!', path=config_filepath)
 
-        # upgrade configuration file if version has changed
+        # Upgrade configuration file if version has changed
         if config_json['schema_version'] != AppConfig().schema_version:
             upgrade_schema(config_json, config_json['schema_version'], AppConfig().schema_version)
 
@@ -39,10 +39,10 @@ def load_config():
         except DeserializeError as e:
             raise UnreadableConfig(e, path=config_filepath)
 
-        # ensure schema is set to latest
+        # Ensure schema is set to latest
         config.schema_version = AppConfig().schema_version
 
-        # ensure each ProjectMeta instance has a reference to the AppConfig instance
+        # Ensure each ProjectMeta instance has a reference to the AppConfig instance
         for p in config.projects.values():
             p.config = config
 
@@ -52,8 +52,8 @@ def load_config():
     return config
 
 
-def get_config_filepath() -> str:
-    '''Return the path to jira-offline config file'''
+def get_app_config_filepath() -> str:
+    '''Return the path to jira-offline app config file'''
     return os.path.join(click.get_app_dir(__title__), 'app.json')
 
 
