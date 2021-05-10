@@ -139,3 +139,30 @@ def test_cli_edit__can_change_a_new_issue(mock_jira):
     assert result.exit_code == 0
     assert mock_jira['7242cc9e-ea52-4e51-bd84-2ced250cabf0'].summary == 'A new summary'
     assert mock_jira.write_issues.called
+
+
+@mock.patch('jira_offline.cli.main.write_default_user_config')
+def test_cli_config__config_path_used_when_config_param_supplied(mock_write_default_user_config):
+    '''
+    Ensure path supplied in --config is passed into `write_default_user_config`
+    '''
+    result = CliRunner().invoke(cli, ['config', '--config', '/tmp/egg.ini'])
+
+    assert result.exit_code == 0
+    mock_write_default_user_config.assert_called_with('/tmp/egg.ini')
+
+
+@mock.patch('jira_offline.cli.main.write_default_user_config')
+@mock.patch('jira_offline.cli.main.get_default_user_config_filepath')
+def test_cli_config__default_config_path_used_when_config_param_not_supplied(
+        mock_get_default_user_config_filepath, mock_write_default_user_config
+    ):
+    '''
+    Ensure default config path is used when --config is not supplied
+    '''
+    mock_get_default_user_config_filepath.return_value = '/tmp/bacon.ini'
+
+    result = CliRunner().invoke(cli, ['config'])
+
+    assert result.exit_code == 0
+    mock_write_default_user_config.assert_called_with('/tmp/bacon.ini')

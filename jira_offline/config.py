@@ -2,12 +2,14 @@ import configparser
 import json
 import logging
 import os
+import pathlib
 from typing import Optional
 
 import click
 
 from jira_offline import __title__
-from jira_offline.exceptions import DeserializeError, FailedConfigUpgrade, UnreadableConfig
+from jira_offline.exceptions import (DeserializeError, FailedConfigUpgrade, UnreadableConfig,
+                                     UserConfigAlreadyExists)
 from jira_offline.models import AppConfig
 
 
@@ -76,6 +78,29 @@ def _load_user_config(config: AppConfig):
                     config.display.ls_fields = parse_set(cfg['display']['ls'])
                 if cfg['display'].get('ls-verbose'):
                     config.display.ls_fields_verbose = parse_set(cfg['display']['ls-verbose'])
+
+
+def write_default_user_config(config_filepath: str):
+    '''
+    Output a default config file to `config_filepath`
+    '''
+    if os.path.exists(config_filepath):
+        raise UserConfigAlreadyExists(config_filepath)
+
+    cfg = configparser.ConfigParser()
+
+    # Write out the AppConfig default field values
+    default_config = AppConfig()
+
+    cfg.add_section('display')
+    cfg['display']['ls'] = ','.join(default_config.display.ls_fields)
+    cfg['display']['ls-verbose'] = ','.join(default_config.display.ls_fields_verbose)
+
+    # Ensure config path exists
+    pathlib.Path(config_filepath).parent.mkdir(parents=True, exist_ok=True)
+
+    with open(config_filepath, 'w') as f:
+        cfg.write(f)
 
 
 def get_default_user_config_filepath() -> str:

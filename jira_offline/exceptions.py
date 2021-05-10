@@ -311,3 +311,13 @@ class FilterUnknownOperatorException(BaseAppException):
 
     def __str__(self):
         return self.__doc__.format(self.operator)
+
+class UserConfigAlreadyExists(BaseAppException):
+    'Config file already exists at {}!'
+
+    def __init__(self, operator_):
+        self.operator = operator_
+        super().__init__('')
+
+    def __str__(self):
+        return self.__doc__.format(self.operator)
