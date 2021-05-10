@@ -78,6 +78,8 @@ def _load_user_config(config: AppConfig):
                     config.display.ls_fields = parse_set(cfg['display']['ls'])
                 if cfg['display'].get('ls-verbose'):
                     config.display.ls_fields_verbose = parse_set(cfg['display']['ls-verbose'])
+                if cfg['display'].get('ls-default-filter'):
+                    config.display.ls_default_filter = cfg['display']['ls-default-filter']
 
 
 def write_default_user_config(config_filepath: str):
@@ -95,6 +97,7 @@ def write_default_user_config(config_filepath: str):
     cfg.add_section('display')
     cfg['display']['ls'] = ','.join(default_config.display.ls_fields)
     cfg['display']['ls-verbose'] = ','.join(default_config.display.ls_fields_verbose)
+    cfg['display']['ls-default-filter'] = default_config.display.ls_default_filter
 
     # Ensure config path exists
     pathlib.Path(config_filepath).parent.mkdir(parents=True, exist_ok=True)
