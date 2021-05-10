@@ -55,6 +55,7 @@ def global_options(func):
     '''
     Define a set of global CLI options which are applied to all subcommands
     '''
+    @click.option('--config', '-c', type=click.Path(exists=True), help='Read configuration from FILE')
     @click.option('--verbose', '-v', is_flag=True, help='Display INFO level logging')
     @click.option('--debug', '-d', is_flag=True, help='Display DEBUG level logging')
     @functools.wraps(func)
@@ -70,8 +71,11 @@ def global_options(func):
         if kwargs.get('debug') is True:
             ctx.obj.debug = True
 
+        if kwargs.get('config'):
+            jira.config.user_config_filepath = kwargs.get('config')
+
         # Remove the click.options vars from kwargs, so they are not passed to the wrapped command
-        for param in ('verbose', 'debug'):
+        for param in ('verbose', 'debug', 'config'):
             del kwargs[param]
 
         return func(*args, **kwargs)
