@@ -11,7 +11,7 @@ import hashlib
 import os
 import pathlib
 import shutil
-from typing import Any, cast, Dict, List, Optional, Set, Tuple
+from typing import Any, cast, Dict, Generator, List, Optional, Set, Tuple
 from urllib.parse import urlparse
 
 import click
@@ -446,23 +446,21 @@ class Issue(DataclassSerializer):
         else:
             epicdetails = fmt('epic_ref')
 
-        return [
+        def iter_optionals() -> Generator[str, None, None]:
+            for f in ('priority', 'assignee', 'estimate', 'description', 'fix_versions', 'labels',
+                      'components', 'reporter', 'creator', 'created', 'updated'):
+                if getattr(self, f):
+                    for fv in fmt(f):
+                        yield fv
+
+        fields = [
             *fmt('summary', prefix=f'[{self.key}] '),
             *fmt('issuetype'),
             *epicdetails,
             *fmt('status'),
-            *fmt('priority'),
-            *fmt('assignee'),
-            *fmt('estimate'),
-            *fmt('description'),
-            *fmt('fix_versions'),
-            *fmt('labels'),
-            *fmt('components'),
-            *fmt('reporter'),
-            *fmt('creator'),
-            *fmt('created'),
-            *fmt('updated'),
-        ]
+        ] + list(iter_optionals())
+
+        return fields
 
 
     def as_json(self) -> str:
