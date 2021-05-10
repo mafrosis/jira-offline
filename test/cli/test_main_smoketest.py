@@ -18,6 +18,7 @@ from jira_offline.jira import Issue
 # 1: tuple of "basic" parameters to pass
 # 2: expected return code when Jira dict is empty (used in test_cli_smoketest_empty)
 CLI_COMMAND_MAPPING = [
+    ('config', tuple(), 0),
     ('projects', tuple(), 0),
     ('ls', tuple(), 1),
     ('show', ('TEST-71',), 1),
@@ -37,7 +38,8 @@ CLI_COMMAND_MAPPING = [
 @mock.patch('jira_offline.cli.main.pull_issues')
 @mock.patch('jira_offline.cli.main.push_issues')
 @mock.patch('jira_offline.cli.main.authenticate')
-def test_main_smoketest(mock_authenticate, mock_push_issues, mock_pull_issues,
+@mock.patch('jira_offline.cli.main.write_default_user_config')
+def test_main_smoketest(mock_write_config, mock_authenticate, mock_push_issues, mock_pull_issues,
                         mock_pull_single_project, mock_create_issue, mock_jira, command, params, _):
     '''
     Test when the jira-offline issue cache has a single issue
@@ -61,7 +63,8 @@ def test_main_smoketest(mock_authenticate, mock_push_issues, mock_pull_issues,
 @mock.patch('jira_offline.cli.main.pull_issues')
 @mock.patch('jira_offline.cli.main.push_issues')
 @mock.patch('jira_offline.cli.main.authenticate')
-def test_main_smoketest_empty(mock_authenticate, mock_push_issues, mock_pull_issues,
+@mock.patch('jira_offline.cli.main.write_default_user_config')
+def test_main_smoketest_empty(mock_write_config, mock_authenticate, mock_push_issues, mock_pull_issues,
                               mock_pull_single_project, mock_create_issue,  mock_jira, command,
                               params, exit_code):
     '''

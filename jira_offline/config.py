@@ -1,12 +1,15 @@
+import configparser
 import json
 import logging
 import os
+import pathlib
 from typing import Optional
 
 import click
 
 from jira_offline import __title__
-from jira_offline.exceptions import DeserializeError, FailedConfigUpgrade, UnreadableConfig
+from jira_offline.exceptions import (DeserializeError, FailedConfigUpgrade, UnreadableConfig,
+                                     UserConfigAlreadyExists)
 from jira_offline.models import AppConfig
 
 
@@ -15,9 +18,9 @@ logger = logging.getLogger('jira')
 
 def load_config():
     '''
-    Load app configuration from local JSON file
+    Load app configuration from local JSON file.
     '''
-    config_filepath = get_config_filepath()
+    config_filepath = get_app_config_filepath()
 
     config: Optional[AppConfig] = None
 
@@ -30,7 +33,7 @@ def load_config():
         except json.decoder.JSONDecodeError:
             raise UnreadableConfig('Bad JSON in config file!', path=config_filepath)
 
-        # upgrade configuration file if version has changed
+        # Upgrade configuration file if version has changed
         if config_json['schema_version'] != AppConfig().schema_version:
             upgrade_schema(config_json, config_json['schema_version'], AppConfig().schema_version)
 
@@ -39,21 +42,81 @@ def load_config():
         except DeserializeError as e:
             raise UnreadableConfig(e, path=config_filepath)
 
-        # ensure schema is set to latest
+        # Ensure schema is set to latest
         config.schema_version = AppConfig().schema_version
 
-        # ensure each ProjectMeta instance has a reference to the AppConfig instance
+        # Ensure each ProjectMeta instance has a reference to the AppConfig instance
         for p in config.projects.values():
             p.config = config
 
     if not config:
         config = AppConfig()
 
+    # Load settings from the user config file
+    _load_user_config(config)
+
     return config
 
 
-def get_config_filepath() -> str:
-    '''Return the path to jira-offline config file'''
+def _load_user_config(config: AppConfig):
+    '''
+    Load user configuration from local INI file.
+
+    Override fields on AppConfig with any fields set in user configuration.
+    '''
+    def parse_set(value: str) -> set:
+        'Helper to parse comma-separated list into a set type'
+        return {f.strip() for f in value.split(',')}
+
+    if os.path.exists(config.user_config_filepath):
+        cfg = configparser.ConfigParser()
+        cfg.read(config.user_config_filepath)
+
+        for section in cfg.sections():
+            if section == 'display':
+                if cfg['display'].get('ls'):
+                    config.display.ls_fields = parse_set(cfg['display']['ls'])
+                if cfg['display'].get('ls-verbose'):
+                    config.display.ls_fields_verbose = parse_set(cfg['display']['ls-verbose'])
+                if cfg['display'].get('ls-default-filter'):
+                    config.display.ls_default_filter = cfg['display']['ls-default-filter']
+
+
+def write_default_user_config(config_filepath: str):
+    '''
+    Output a default config file to `config_filepath`
+    '''
+    if os.path.exists(config_filepath):
+        raise UserConfigAlreadyExists(config_filepath)
+
+    cfg = configparser.ConfigParser()
+
+    # Write out the AppConfig default field values
+    default_config = AppConfig()
+
+    cfg.add_section('display')
+    cfg['display']['ls'] = ','.join(default_config.display.ls_fields)
+    cfg['display']['ls-verbose'] = ','.join(default_config.display.ls_fields_verbose)
+    cfg['display']['ls-default-filter'] = default_config.display.ls_default_filter
+
+    # Ensure config path exists
+    pathlib.Path(config_filepath).parent.mkdir(parents=True, exist_ok=True)
+
+    with open(config_filepath, 'w') as f:
+        cfg.write(f)
+
+
+def get_default_user_config_filepath() -> str:
+    '''Return the path to jira-offline USER config file'''
+    return os.path.join(
+        os.environ.get('XDG_CONFIG_HOME', os.path.join(os.path.expanduser('~'), '.config')),
+        'jira-offline',
+        'jira-offline.ini'
+    )
+
+
+def get_app_config_filepath() -> str:
+    '''Return the path to jira-offline app config file'''
     return os.path.join(click.get_app_dir(__title__), 'app.json')
 
 

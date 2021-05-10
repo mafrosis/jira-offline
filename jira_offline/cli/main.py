@@ -11,6 +11,7 @@ from tabulate import tabulate
 
 from jira_offline.auth import authenticate
 from jira_offline.cli.params import filter_option, global_options
+from jira_offline.config import get_default_user_config_filepath, write_default_user_config
 from jira_offline.create import create_issue, import_issue, patch_issue_from_dict
 from jira_offline.exceptions import (BadProjectMetaUri, EditorFieldParseFailed, EditorNoChanges,
                                      FailedPullingProjectMeta, ImportFailed, JiraApiError)
@@ -61,10 +62,9 @@ def cli_ls(ctx: click.core.Context, as_json: bool=False):
         click.echo('No issues in the cache')
         raise click.Abort
 
-    # Set a default filter
     if not jira.filter.is_set:
-        filter_ = 'status not in ("Story Done", Done, Closed)'
-        jira.filter.set(filter_)
+        # Default filter from user configuration
+        jira.filter.set(jira.config.display.ls_default_filter)
 
     if as_json:
         for issue in jira.values():
@@ -157,6 +157,21 @@ def cli_projects(ctx: click.core.Context):
             headers=['Key', 'Name', 'Project URI', 'Last Sync'],
             tablefmt='psql'
         ))
+
+
+@click.command(name='config')
+@click.option('--config', '-c', type=click.Path(), help='Read configuration from FILE')
+def cli_config(config: Optional[str]=None):
+    '''
+    Output a default config file into ~/.config/jira-offline/jira-offline.ini
+
+    Set a custom path with the --config option
+    '''
+    if config is None:
+        config = get_default_user_config_filepath()
+
+    write_default_user_config(config)
+    click.echo(f'User config written to {config}')
 
 
 @click.command(name='clone')

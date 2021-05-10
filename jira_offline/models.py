@@ -173,15 +173,36 @@ class ProjectMeta(DataclassSerializer):
 @dataclass
 class AppConfig(DataclassSerializer):
     schema_version: int = field(default=2)
+    user_config_filepath: str = field(default='')
     projects: Dict[str, ProjectMeta] = field(default_factory=dict)
 
+    @dataclass
+    class Display:
+        ls_fields: Set[str]
+        ls_fields_verbose: Set[str]
+        ls_default_filter: str
+
+    display: Display = field(init=False, metadata={'serialize': False})
+
+
+    def __post_init__(self):
+        # Late import to avoid circular dependency
+        from jira_offline.config import get_default_user_config_filepath  # pylint: disable=import-outside-toplevel, cyclic-import
+        self.user_config_filepath = get_default_user_config_filepath()
+
+        self.display = AppConfig.Display(
+            ls_fields = {'issuetype', 'epic_ref', 'summary', 'status', 'assignee', 'updated'},
+            ls_fields_verbose = {'issuetype', 'epic_ref', 'epic_name', 'summary', 'status', 'assignee', 'fix_versions', 'updated'},
+            ls_default_filter = 'status not in ("Done", "Story Done", "Epic Done", "Closed")'
+        )
+
     def write_to_disk(self):
-        # ensure config path exists
+        # Ensure config path exists
         pathlib.Path(click.get_app_dir(__title__)).mkdir(parents=True, exist_ok=True)
 
-        # late import to avoid circular dependency
-        from jira_offline.config import get_config_filepath  # pylint: disable=import-outside-toplevel, cyclic-import
-        with open(get_config_filepath(), 'w') as f:
+        # Late import to avoid circular dependency
+        from jira_offline.config import get_app_config_filepath  # pylint: disable=import-outside-toplevel, cyclic-import
+        with open(get_app_config_filepath(), 'w') as f:
             json.dump(self.serialize(), f)
             f.write('\n')
 

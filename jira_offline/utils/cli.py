@@ -22,7 +22,7 @@ logger = logging.getLogger('jira')
 
 
 def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_project_col: bool=False,
-               print_total: bool=False, print_filter: str=None):
+               print_total: bool=False, print_filter: str=None) -> pd.DataFrame:
     '''
     Helper to print abbreviated list of issues
 
@@ -42,12 +42,13 @@ def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pro
     else:
         fields = []
 
+    # late import to avoid cyclic import
+    from jira_offline.jira import jira  # pylint: disable=import-outside-toplevel, cyclic-import
+
     if not verbose:
-        fields += ['issuetype', 'epic_ref', 'summary', 'assignee', 'updated']
+        fields += jira.config.display.ls_fields
     else:
-        fields += [
-            'issuetype', 'epic_ref', 'epic_name', 'summary', 'assignee', 'fix_versions', 'updated'
-        ]
+        fields += jira.config.display.ls_fields_verbose
         width = 200
 
     def format_datetime(raw):
@@ -91,6 +92,9 @@ def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pro
 
     elif print_total:
         click.echo(f'Total issues {len(df)}')
+
+    # Make this function testable by returning the DataFrame
+    return df[fields]
 
 
 def print_table(df: pd.DataFrame):
