@@ -109,9 +109,6 @@ class Jira(collections.abc.MutableMapping):
         for col in ('created', 'updated'):
             df[col] = df[col].dt.tz_convert('UTC')
 
-        # PyArrow does not like decimals
-        df['estimate'] = df['estimate'].astype('string')
-
         # Convert the "project" object column - which contains ProjectMeta instances -
         # into "project_key" - a string column
         df.loc[:, 'project_key'] = [p.key if p else None for p in df['project']]
@@ -206,6 +203,9 @@ class Jira(collections.abc.MutableMapping):
         # to disk
         for col in ('components', 'fix_versions', 'labels'):
             self._df[col] = self._df[col].apply(list)
+
+        # PyArrow does not like decimals
+        self._df['estimate'] = self._df['estimate'].astype('string')
 
         cache_filepath = get_cache_filepath()
         self._df.reset_index(drop=True).to_feather(cache_filepath)
