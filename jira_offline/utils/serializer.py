@@ -37,10 +37,10 @@ def get_base_type(type_):
     '''
     Attempt to get the base or "origin type" for a type. Handle Optional and generic types.
 
-    For example,
-        typing.Dict base type is dict
-        typing.Optional[str] base type is str
-        dict base type is simply dict
+    For example:
+        typing.Dict          -> dict
+        typing.Optional[str] -> str
+        dict                 -> dict
 
     This is based on `typing_inspect.get_origin(typ)`
     '''
@@ -75,10 +75,12 @@ def istype(type_: type, typ: Union[type, Tuple[type, ...]]) -> bool:
         type_:  Type to check is instance of second parameter
         typ:    Type, or tuple of types, to compare against
     '''
+    base_type = get_base_type(type_)
+
     try:
-        return any(t is unwrap_optional_type(type_) for t in typ)  # type: ignore[union-attr]
+        return any(t is base_type for t in typ)  # type: ignore[union-attr]
     except TypeError:
-        return typ is unwrap_optional_type(type_)
+        return typ is base_type
 
 
 def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:
