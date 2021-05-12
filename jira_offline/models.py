@@ -28,7 +28,7 @@ from jira_offline import __title__
 from jira_offline.exceptions import (BadProjectMetaUri, CannotSetIssueAttributeDirectly,
                                      UnableToCopyCustomCACert, NoAuthenticationMethod)
 from jira_offline.utils import get_field_by_name, render_field, render_value
-from jira_offline.utils.serializer import DataclassSerializer, get_base_type
+from jira_offline.utils.serializer import DataclassSerializer, get_base_type, istype
 
 # pylint: disable=too-many-instance-attributes
 
@@ -564,9 +564,9 @@ def get_issue_field_defaults_for_pandas() -> Dict[str, str]:
         if f.default != dataclasses.MISSING:
             typ_ = get_base_type(f.type)
 
-            if typ_ is datetime.datetime:
+            if istype(typ_, datetime.datetime):
                 attrs[f.name] = pd.to_datetime(0).tz_localize('utc')
-            elif typ_ is decimal.Decimal:
+            elif istype(typ_, decimal.Decimal):
                 attrs[f.name] = ''
             else:
                 attrs[f.name] = typ_()
