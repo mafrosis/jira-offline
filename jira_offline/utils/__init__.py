@@ -1,18 +1,20 @@
 import contextlib
 import dataclasses
 import datetime
+import decimal
 import functools
 import logging
 import textwrap
-from typing import Any, Optional, Tuple, TYPE_CHECKING
+from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING
 from tzlocal import get_localzone
 
 import arrow
 import click
+import pandas as pd
 from tabulate import tabulate
 
 from jira_offline.exceptions import DeserializeError, ProjectNotConfigured
-from jira_offline.utils.serializer import deserialize_value, get_enum, get_base_type
+from jira_offline.utils.serializer import deserialize_value, get_enum, get_base_type, istype
 
 if TYPE_CHECKING:
     from jira_offline.models import ProjectMeta  # pylint: disable=cyclic-import
@@ -34,6 +36,25 @@ def get_field_by_name(cls: type, field_name: str) -> dataclasses.Field:
         if f.metadata.get('property') == field_name or f.name == field_name:
             return f
     raise Exception
+
+
+@functools.lru_cache()
+def get_dataclass_defaults_for_pandas(cls: type) -> Dict[str, str]:
+    '''
+    Return a mapping of Issue.field_name->default, where the default is compatible with pandas
+    '''
+    attrs = dict()
+    for f in dataclasses.fields(cls):
+        if f.default != dataclasses.MISSING:
+            typ_ = get_base_type(f.type)
+
+            if istype(typ_, datetime.datetime):
+                attrs[f.name] = pd.to_datetime(0).tz_localize('utc')
+            elif istype(typ_, (list, decimal.Decimal)):
+                attrs[f.name] = ''
+            else:
+                attrs[f.name] = typ_()
+    return attrs
 
 
 def find_project(jira: 'Jira', project_key: str) -> 'ProjectMeta':

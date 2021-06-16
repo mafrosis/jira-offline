@@ -1,7 +1,6 @@
 '''
 Application data structures. Mostly dataclasses inheriting from utils.DataclassSerializer.
 '''
-import dataclasses
 from dataclasses import dataclass, field
 import datetime
 import decimal
@@ -27,8 +26,9 @@ from tzlocal import get_localzone
 from jira_offline import __title__
 from jira_offline.exceptions import (BadProjectMetaUri, CannotSetIssueAttributeDirectly,
                                      UnableToCopyCustomCACert, NoAuthenticationMethod)
-from jira_offline.utils import get_field_by_name, render_field, render_value
-from jira_offline.utils.serializer import DataclassSerializer, get_base_type, istype
+from jira_offline.utils import (get_dataclass_defaults_for_pandas, get_field_by_name, render_field,
+                                render_value)
+from jira_offline.utils.serializer import DataclassSerializer, get_base_type
 
 # pylint: disable=too-many-instance-attributes
 
@@ -486,7 +486,7 @@ class Issue(DataclassSerializer):
             attrs['estimate'] = str(attrs['estimate'])
 
         # Create Series and fill blanks with pandas-compatible defaults
-        series = pd.Series(attrs).fillna(value=get_issue_field_defaults_for_pandas())
+        series = pd.Series(attrs).fillna(value=get_dataclass_defaults_for_pandas(Issue))
 
         # convert all datetimes to UTC, where they are non-null (which is all non-new issues)
         for col in ('created', 'updated'):
@@ -510,7 +510,7 @@ class Issue(DataclassSerializer):
         original = attrs.pop('original', None)
 
         # Create a mapping of field names to their pandas default
-        pandas_null_defaults = get_issue_field_defaults_for_pandas()
+        pandas_null_defaults = get_dataclass_defaults_for_pandas(Issue)
 
         def convert(key, value):
             'Convert values from their Pandas types to their python dataclass types'
@@ -552,22 +552,3 @@ class Issue(DataclassSerializer):
         Render issue to friendly string
         '''
         return tabulate(self.render())
-
-
-@functools.lru_cache()
-def get_issue_field_defaults_for_pandas() -> Dict[str, str]:
-    '''
-    Return a mapping of Issue.field_name->default, where the default is compatible with pandas
-    '''
-    attrs = dict()
-    for f in dataclasses.fields(Issue):
-        if f.default != dataclasses.MISSING:
-            typ_ = get_base_type(f.type)
-
-            if istype(typ_, datetime.datetime):
-                attrs[f.name] = pd.to_datetime(0).tz_localize('utc')
-            elif istype(typ_, decimal.Decimal):
-                attrs[f.name] = ''
-            else:
-                attrs[f.name] = typ_()
-    return attrs
