@@ -2,6 +2,7 @@ import dataclasses
 import datetime
 import decimal
 import enum
+import functools
 from typing import Any, Optional, Tuple, Union
 import uuid
 
@@ -13,6 +14,7 @@ from tzlocal import get_localzone
 from jira_offline.exceptions import DeserializeError
 
 
+@functools.lru_cache()
 def unwrap_optional_type(type_):
     '''
     Unwrap typing.Optional around a type.
@@ -33,6 +35,7 @@ def unwrap_optional_type(type_):
     return type_
 
 
+@functools.lru_cache()
 def get_base_type(type_):
     '''
     Attempt to get the base or "origin type" for a type. Handle Optional and generic types.
@@ -57,6 +60,7 @@ def get_base_type(type_):
         return type_.__origin__  # Python 3.7+
 
 
+@functools.lru_cache()
 def get_enum(type_: type) -> Optional[type]:
     '''
     Return enum if type_ is a subclass of enum.Enum. Handle typing.Optional.
@@ -67,6 +71,7 @@ def get_enum(type_: type) -> Optional[type]:
     return None
 
 
+@functools.lru_cache()
 def istype(type_: type, typ: Union[type, Tuple[type, ...]]) -> bool:
     '''
     Return True if type_ is typ, else return False. Handles Optional types.
