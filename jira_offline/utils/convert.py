@@ -27,7 +27,6 @@ def jiraapi_object_to_issue(project: 'ProjectMeta', issue: dict) -> 'Issue':
     jiraapi_object = {
         'components': [x['name'] for x in issue['fields']['components']],
         'created': issue['fields']['created'],
-        'creator': issue['fields']['creator']['displayName'],
         'description': issue['fields']['description'],
         'fix_versions': {x['name'] for x in issue['fields']['fixVersions']},
         'id': issue['id'],
@@ -36,13 +35,15 @@ def jiraapi_object_to_issue(project: 'ProjectMeta', issue: dict) -> 'Issue':
         'labels': issue['fields']['labels'],
         'priority': issue['fields']['priority']['name'] if issue['fields']['priority'] else '',
         'project_id': project.id,
-        'reporter': issue['fields']['reporter']['displayName'],
         'status': issue['fields']['status']['name'],
         'summary': issue['fields']['summary'],
         'updated': issue['fields']['updated'],
     }
-    if issue['fields'].get('assignee'):
-        jiraapi_object['assignee'] = issue['fields']['assignee']['displayName']
+
+    # In an extreme edge case, Jira returned both creator and reporter as null
+    for field_name in ('assignee', 'creator', 'reporter'):
+        if issue['fields'].get(field_name):
+            jiraapi_object[field_name] = issue['fields'][field_name]['displayName']
 
     # Iterate customfields configured for the current project, and extract from the API response
     if project.customfields:
