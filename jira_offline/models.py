@@ -177,6 +177,12 @@ class AppConfig(DataclassSerializer):
     projects: Dict[str, ProjectMeta] = field(default_factory=dict)
 
     @dataclass
+    class Sync:
+        page_size: int = field(default=25)
+
+    sync: Sync = field(init=False, metadata={'serialize': False})
+
+    @dataclass
     class Display:
         ls_fields: Set[str]
         ls_fields_verbose: Set[str]
@@ -195,6 +201,7 @@ class AppConfig(DataclassSerializer):
             ls_fields_verbose = {'issuetype', 'epic_ref', 'epic_name', 'summary', 'status', 'assignee', 'fix_versions', 'updated'},
             ls_default_filter = 'status not in ("Done", "Story Done", "Epic Done", "Closed")'
         )
+        self.sync = AppConfig.Sync()
 
     def write_to_disk(self):
         # Ensure config path exists
