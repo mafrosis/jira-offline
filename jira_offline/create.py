@@ -2,7 +2,7 @@
 Module for functions related to Issue creation, editing and bulk import.
 '''
 import logging
-from typing import Optional, Tuple
+from typing import cast, Hashable, Optional, Tuple
 import uuid
 
 from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce, ImportFailed,
@@ -191,7 +191,10 @@ def patch_issue_from_dict(issue: Issue, attrs: dict):
             # Do not modify readonly fields
             continue
 
-        if get_base_type(f.type) is str and value == '':
+        # cast for mypy as get_base_type uses @functools.lru_cache
+        typ = cast(Hashable, f.type)
+
+        if get_base_type(typ) is str and value == '':
             # When setting an Issue attribute to empty string, map it to None
             value = None
         else:

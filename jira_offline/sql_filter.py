@@ -4,7 +4,7 @@ Functions for parsing SQL where-clause syntax, and filtering the Pandas DataFram
 from dataclasses import dataclass, field
 import datetime
 import operator
-from typing import Optional, Union
+from typing import cast, Hashable, Optional, Union
 import warnings
 
 import arrow
@@ -155,11 +155,14 @@ class IssueFilter:
                 f = get_field_by_name(Issue, conditions[0])
                 column = f.name
 
-                if istype(f.type, int):
+                # cast for mypy as istype uses @functools.lru_cache
+                typ = cast(Hashable, f.type)
+
+                if istype(typ, int):
                     # Coerce supplied strings to int if more appropriate
                     value = int(value)
 
-                elif istype(f.type, (datetime.datetime, datetime.date)):
+                elif istype(typ, (datetime.datetime, datetime.date)):
                     # Timezone adjust for query datetimes
                     # Dates are stored in UTC in the Jira DataFrame, but will be passed as the user's local
                     # timezone on the CLI. Alternatively users can pass a specific timezone via --tz.
