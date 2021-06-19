@@ -227,7 +227,9 @@ def cli_clone(ctx: click.core.Context, project_uri: str, username: str=None, pas
 
     # and finally pull all the project's issues
     click.echo('Pulling issues..')
-    pull_single_project(project, force=False, verbose=ctx.obj.verbose)
+    pull_single_project(
+        project, force=False, verbose=ctx.obj.verbose, page_size=jira.config.sync.page_size
+    )
 
 
 @click.command(name='pull')

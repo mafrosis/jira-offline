@@ -8,3 +8,10 @@ pytest-mypy
 pytest-sugar
 pytest-xdist
 pyfakefs
+types-click
+types-dataclasses; python_version<='3.6'
+types-python-dateutil
+types-pytz
+types-requests
+types-tabulate
+types-tzlocal

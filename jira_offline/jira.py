@@ -197,18 +197,18 @@ class Jira(collections.abc.MutableMapping):
         Dump issues to parquet cache file
         '''
         # Don't write out the original field, as diff_to_original will recreate it
-        self._df.drop(columns=['original'], inplace=True)
+        df = self._df.drop(columns=['original'])
 
         # convert `set` columns to `list`, as `set` will not serialize via PyArrow when writing
         # to disk
         for col in ('components', 'fix_versions', 'labels'):
-            self._df[col] = self._df[col].apply(list)
+            df[col] = df[col].apply(list)
 
         # PyArrow does not like decimals
-        self._df['estimate'] = self._df['estimate'].astype('string')
+        df['estimate'] = df['estimate'].astype('string')
 
         cache_filepath = get_cache_filepath()
-        self._df.reset_index(drop=True).to_feather(cache_filepath)
+        df.reset_index(drop=True).to_feather(cache_filepath)
 
 
     @auth_retry()

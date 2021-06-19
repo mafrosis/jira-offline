@@ -4,6 +4,7 @@ import logging
 import os
 import pathlib
 from typing import Optional
+import warnings
 
 import click
 
@@ -74,12 +75,18 @@ def _load_user_config(config: AppConfig):
 
         for section in cfg.sections():
             if section == 'display':
-                if cfg['display'].get('ls'):
-                    config.display.ls_fields = parse_set(cfg['display']['ls'])
-                if cfg['display'].get('ls-verbose'):
-                    config.display.ls_fields_verbose = parse_set(cfg['display']['ls-verbose'])
-                if cfg['display'].get('ls-default-filter'):
-                    config.display.ls_default_filter = cfg['display']['ls-default-filter']
+                if cfg[section].get('ls'):
+                    config.display.ls_fields = parse_set(cfg[section]['ls'])
+                if cfg[section].get('ls-verbose'):
+                    config.display.ls_fields_verbose = parse_set(cfg[section]['ls-verbose'])
+                if cfg[section].get('ls-default-filter'):
+                    config.display.ls_default_filter = cfg[section]['ls-default-filter']
+            if section == 'sync':
+                if cfg[section].get('page-size'):
+                    try:
+                        config.sync.page_size = int(cfg[section]['page-size'])
+                    except ValueError:
+                        warnings.warn('Bad value in config for sync.page-size')
 
 
 def write_default_user_config(config_filepath: str):
@@ -98,6 +105,8 @@ def write_default_user_config(config_filepath: str):
     cfg['display']['ls'] = ','.join(default_config.display.ls_fields)
     cfg['display']['ls-verbose'] = ','.join(default_config.display.ls_fields_verbose)
     cfg['display']['ls-default-filter'] = default_config.display.ls_default_filter
+    cfg.add_section('sync')
+    cfg['sync']['page-size'] = str(default_config.sync.page_size)
 
     # Ensure config path exists
     pathlib.Path(config_filepath).parent.mkdir(parents=True, exist_ok=True)

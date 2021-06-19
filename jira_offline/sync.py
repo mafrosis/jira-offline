@@ -85,18 +85,19 @@ def pull_issues(projects: Optional[Set[str]]=None, force: bool=False, verbose: b
             finally:
                 retry += 1
 
-            pull_single_project(project, force=force, verbose=verbose)
+            pull_single_project(project, force=force, verbose=verbose, page_size=jira.config.sync.page_size)
             break
 
 
-def pull_single_project(project: ProjectMeta, force: bool, verbose: bool):
+def pull_single_project(project: ProjectMeta, force: bool, verbose: bool, page_size: int):
     '''
     Pull changed issues from upstream Jira API
 
     Params:
-        project:  Properties of the Jira project to pull
-        force:    Force pull of all issues, not just those changed since project.last_updated
-        verbose:  Verbose print all issues as they're pulled from the API (default: show progress bar)
+        project:    Properties of the Jira project to pull
+        force:      Force pull of all issues, not just those changed since project.last_updated
+        verbose:    Verbose print all issues as they're pulled from the API (default: show progress bar)
+        page_size:  Number of issues requested in each API call to Jira
     '''
     # if the issue cache is not yet loaded, load before pull
     if not bool(jira):
@@ -120,9 +121,9 @@ def pull_single_project(project: ProjectMeta, force: bool, verbose: bool):
         issues = []
 
         while True:
-            startAt = page * 25
+            startAt = page * page_size
 
-            params = {'jql': jql, 'startAt': startAt, 'maxResults': 25}
+            params = {'jql': jql, 'startAt': startAt, 'maxResults': page_size}
             data = api_get(project, 'search', params=params)
 
             api_issues = data.get('issues', [])

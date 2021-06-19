@@ -2,6 +2,7 @@ import dataclasses
 import datetime
 import decimal
 import enum
+import functools
 from typing import Any, Optional, Tuple, Union
 import uuid
 
@@ -13,6 +14,7 @@ from tzlocal import get_localzone
 from jira_offline.exceptions import DeserializeError
 
 
+@functools.lru_cache()
 def unwrap_optional_type(type_):
     '''
     Unwrap typing.Optional around a type.
@@ -33,14 +35,15 @@ def unwrap_optional_type(type_):
     return type_
 
 
+@functools.lru_cache()
 def get_base_type(type_):
     '''
     Attempt to get the base or "origin type" for a type. Handle Optional and generic types.
 
-    For example,
-        typing.Dict base type is dict
-        typing.Optional[str] base type is str
-        dict base type is simply dict
+    For example:
+        typing.Dict          -> dict
+        typing.Optional[str] -> str
+        dict                 -> dict
 
     This is based on `typing_inspect.get_origin(typ)`
     '''
@@ -57,6 +60,7 @@ def get_base_type(type_):
         return type_.__origin__  # Python 3.7+
 
 
+@functools.lru_cache()
 def get_enum(type_: type) -> Optional[type]:
     '''
     Return enum if type_ is a subclass of enum.Enum. Handle typing.Optional.
@@ -67,6 +71,7 @@ def get_enum(type_: type) -> Optional[type]:
     return None
 
 
+@functools.lru_cache()
 def istype(type_: type, typ: Union[type, Tuple[type, ...]]) -> bool:
     '''
     Return True if type_ is typ, else return False. Handles Optional types.
@@ -75,10 +80,12 @@ def istype(type_: type, typ: Union[type, Tuple[type, ...]]) -> bool:
         type_:  Type to check is instance of second parameter
         typ:    Type, or tuple of types, to compare against
     '''
+    base_type = get_base_type(type_)
+
     try:
-        return any(t is unwrap_optional_type(type_) for t in typ)  # type: ignore[union-attr]
+        return any(t is base_type for t in typ)  # type: ignore[union-attr]
     except TypeError:
-        return typ is unwrap_optional_type(type_)
+        return typ is base_type
 
 
 def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:

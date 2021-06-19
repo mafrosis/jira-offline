@@ -34,9 +34,9 @@ def test_pull_issues__calls_pull_single_project_for_each_project(mock_pull_singl
         pull_issues(force=True, verbose=False)
 
     assert mock_pull_single_project.call_args_list[0][0] ==  (project,)
-    assert mock_pull_single_project.call_args_list[0][1] ==  {'force': True, 'verbose': False}
+    assert mock_pull_single_project.call_args_list[0][1] ==  {'force': True, 'verbose': False, 'page_size': 25}
     assert mock_pull_single_project.call_args_list[1][0] ==  (project2,)
-    assert mock_pull_single_project.call_args_list[1][1] ==  {'force': True, 'verbose': False}
+    assert mock_pull_single_project.call_args_list[1][1] ==  {'force': True, 'verbose': False, 'page_size': 25}
 
 
 @mock.patch('jira_offline.sync.pull_single_project')
@@ -59,7 +59,7 @@ def test_pull_issues__pulls_only_specified_projects(mock_pull_single_project, mo
     with mock.patch('jira_offline.sync.jira', mock_jira):
         pull_issues(projects={'TEST'}, force=True, verbose=False)
 
-    mock_pull_single_project.assert_called_once_with(project, force=True, verbose=False)
+    mock_pull_single_project.assert_called_once_with(project, force=True, verbose=False, page_size=25)
 
 
 @mock.patch('jira_offline.sync.jiraapi_object_to_issue')
@@ -73,7 +73,7 @@ def test_pull_single_project__calls_load_issues_when_self_empty(mock_tqdm, mock_
     mock_api_get.side_effect = [ {'total': 0}, {'issues': []} ]
 
     with mock.patch('jira_offline.sync.jira', mock_jira):
-        pull_single_project(project, force=False, verbose=False)
+        pull_single_project(project, force=False, verbose=False, page_size=25)
 
     assert mock_jira.load_issues.called
 
@@ -95,7 +95,7 @@ def test_pull_single_project__last_updated_set_causes_filter_query_from_last_upd
     mock_jira.config.projects['99fd9182cfc4c701a8a662f6293f4136201791b4'].last_updated = '2019-01-01 00:00'
 
     with mock.patch('jira_offline.sync.jira', mock_jira):
-        pull_single_project(project, force=False, verbose=False)
+        pull_single_project(project, force=False, verbose=False, page_size=25)
 
     assert mock_api_get.call_args_list[1][1]['params']['jql'] == 'project = TEST AND updated > "2019-01-01 00:00"'
 
@@ -114,7 +114,7 @@ def test_pull_single_project__last_updated_missing_causes_filter_from_waaay_back
     mock_jiraapi_object_to_issue.side_effect = [Issue.deserialize(ISSUE_1)]
 
     with mock.patch('jira_offline.sync.jira', mock_jira):
-        pull_single_project(project, force=False, verbose=False)
+        pull_single_project(project, force=False, verbose=False, page_size=25)
 
     assert mock_api_get.call_args_list[1][1]['params']['jql'] == 'project = TEST AND updated > "2010-01-01 00:00"'
 
@@ -136,7 +136,7 @@ def test_pull_single_project__last_updated_set_AND_force_set_causes_filter_from_
     mock_jira.config.projects['99fd9182cfc4c701a8a662f6293f4136201791b4'].last_updated = '2019-01-01 00:00'
 
     with mock.patch('jira_offline.sync.jira', mock_jira):
-        pull_single_project(project, force=True, verbose=False)
+        pull_single_project(project, force=True, verbose=False, page_size=25)
 
     assert mock_api_get.call_args_list[1][1]['params']['jql'] == 'project = TEST AND updated > "2010-01-01 00:00"'
 
@@ -151,7 +151,7 @@ def test_pull_single_project__error_handled_when_get_raises_jira_exception(mock_
 
     with mock.patch('jira_offline.sync.jira', mock_jira):
         with pytest.raises(FailedPullingIssues):
-            pull_single_project(project, force=False, verbose=False)
+            pull_single_project(project, force=False, verbose=False, page_size=25)
 
 
 @mock.patch('jira_offline.sync.jiraapi_object_to_issue')
@@ -170,7 +170,7 @@ def test_pull_single_project__write_issues_and_config_called(
     mock_jiraapi_object_to_issue.side_effect = [Issue.deserialize(ISSUE_1)]
 
     with mock.patch('jira_offline.sync.jira', mock_jira):
-        pull_single_project(project, force=False, verbose=False)
+        pull_single_project(project, force=False, verbose=False, page_size=25)
 
     assert mock_jira.config.write_to_disk.called
 
@@ -191,7 +191,7 @@ def test_pull_single_project__adds_issues_to_self(mock_tqdm, mock_api_get, mock_
     assert len(mock_jira.keys()) == 0
 
     with mock.patch('jira_offline.sync.jira', mock_jira):
-        pull_single_project(project, force=False, verbose=False)
+        pull_single_project(project, force=False, verbose=False, page_size=25)
 
     assert len(mock_jira.keys()) == 2
 
@@ -213,7 +213,7 @@ def test_pull_single_project__merge_issues_NOT_called_when_updated_issue_NOT_mod
     mock_jiraapi_object_to_issue.side_effect = [Issue.deserialize(ISSUE_1)]
 
     with mock.patch('jira_offline.sync.jira', mock_jira):
-        pull_single_project(project, force=False, verbose=False)
+        pull_single_project(project, force=False, verbose=False, page_size=25)
 
     # no conflict is found
     assert mock_merge_issues.called is False
@@ -241,7 +241,7 @@ def test_pull_single_project__merge_issues_called_when_local_issue_is_modified(
     mock_merge_issues.return_value = IssueUpdate(merged_issue=Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF))
 
     with mock.patch('jira_offline.sync.jira', mock_jira):
-        pull_single_project(project, force=False, verbose=False)
+        pull_single_project(project, force=False, verbose=False, page_size=25)
 
     assert mock_merge_issues.called is True
 
@@ -265,6 +265,6 @@ def test_pull_single_project__merge_issues_NOT_called_when_local_issue_is_modifi
     mock_jiraapi_object_to_issue.side_effect = [Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF)]
 
     with mock.patch('jira_offline.sync.jira', mock_jira):
-        pull_single_project(project, force=True, verbose=False)
+        pull_single_project(project, force=True, verbose=False, page_size=25)
 
     assert mock_merge_issues.called is False

@@ -4,7 +4,7 @@ Print and text rendering utils for the CLI commands
 import dataclasses
 import decimal
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, cast, Dict, Hashable, List, Optional
 
 import arrow
 import click
@@ -150,13 +150,16 @@ def parse_editor_result(issue: Issue, editor_result_raw: str, conflicts: Optiona
             else:
                 return field.default
 
-        if istype(field.type, set):
+        # cast for mypy as istype uses @functools.lru_cache
+        typ = cast(Hashable, field.type)
+
+        if istype(typ, set):
             return {item[1:].strip() for item in input_data if len(item[1:].strip()) > 0}
 
-        if istype(field.type, list):
+        if istype(typ, list):
             return [item[1:].strip() for item in input_data if len(item[1:].strip()) > 0]
 
-        if istype(field.type, (int, decimal.Decimal)):
+        if istype(typ, (int, decimal.Decimal)):
             # Handle number types
             field_value = input_data[0]
         else:

@@ -1,7 +1,8 @@
 import os
 from unittest import mock
 
-from jira_offline.config import get_default_user_config_filepath, load_config, upgrade_schema
+from jira_offline.config import (get_default_user_config_filepath, load_config, upgrade_schema,
+                                 write_default_user_config)
 from jira_offline.models import AppConfig
 
 
@@ -110,3 +111,10 @@ def test_upgrade_schema__calls_correct_upgrade_func(mock_upgrade_func):
     upgrade_schema(config_json, 1, 2)
 
     assert mock_upgrade_func.called
+
+
+def test_write_default_user_config(tmpdir):
+    '''
+    Ensure the default config is written to disk without error
+    '''
+    write_default_user_config(os.path.join(tmpdir, 'jira-offline.ini'))
