@@ -1,4 +1,5 @@
 import configparser
+import copy
 import json
 import logging
 import os
@@ -167,9 +168,14 @@ def config_upgrade_1_to_2(config_json: dict):
 
 def config_upgrade_2_to_3(config_json: dict):
     '''
-    In version 3, CustomFields.estimate was renamed to CustomFields.story_points
+    In version 3,
+    - CustomFields.estimate was renamed to CustomFields.story_points
+    - ProjectMeta.custom_fields was renamed to ProjectMeta.customfields
     '''
     for project_dict in config_json['projects'].values():
         if 'estimate' in project_dict['custom_fields']:
             project_dict['custom_fields']['story_points'] = project_dict['custom_fields']['estimate']
             del project_dict['custom_fields']['estimate']
+
+        project_dict['customfields'] = copy.deepcopy(project_dict['custom_fields'])
+        del project_dict['custom_fields']

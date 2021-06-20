@@ -374,9 +374,9 @@ def test_jira__get_project_meta__handles_removal_of_issuetype(mock_api_get, mock
 
 
 @mock.patch('jira_offline.jira.api_get')
-def test_jira__get_project_meta__extracts_custom_fields(mock_api_get, mock_jira_core, project):
+def test_jira__get_project_meta__extracts_customfields(mock_api_get, mock_jira_core, project):
     '''
-    Ensure get_project_meta() method parses the custom_fields for a project
+    Ensure get_project_meta() method parses the customfields for a project
     '''
     # mock out call to _get_project_issue_statuses and _get_project_components
     mock_jira_core._get_project_issue_statuses = mock.Mock()
@@ -416,7 +416,7 @@ def test_jira__get_project_meta__extracts_custom_fields(mock_api_get, mock_jira_
     mock_jira_core.get_project_meta(project)
 
     assert mock_api_get.called
-    assert project.custom_fields == CustomFields(epic_name='10104', story_points='10106')
+    assert project.customfields == CustomFields(epic_name='10104', story_points='10106')
 
 
 @mock.patch('jira_offline.jira.api_get')
@@ -453,7 +453,7 @@ def test_jira__get_project_meta__handles_no_priority_for_issuetype(mock_api_get,
     mock_jira_core.get_project_meta(project)
 
     assert mock_api_get.called
-    assert project.custom_fields == CustomFields(story_points='10106')
+    assert project.customfields == CustomFields(story_points='10106')
 
 
 @mock.patch('jira_offline.utils.decorators.get_user_creds')

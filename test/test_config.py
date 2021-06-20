@@ -162,7 +162,7 @@ class ProjectMeta_v3(DataclassSerializer):  # pylint: disable=too-many-instance-
     hostname: Optional[str]
     last_updated: Optional[str]
     issuetypes: Dict[str, IssueType_v3]
-    custom_fields: CustomFields_v3
+    customfields: CustomFields_v3
     priorities: Optional[Set[str]]
     components: Optional[Set[str]]
     oauth: Optional[OAuth_v3]

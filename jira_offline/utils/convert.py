@@ -25,8 +25,8 @@ def jiraapi_object_to_issue(project: 'ProjectMeta', issue: dict) -> Issue:
         'components': [x['name'] for x in issue['fields']['components']],
         'created': issue['fields']['created'],
         'creator': issue['fields']['creator']['displayName'],
-        'epic_name': issue['fields'].get(f'customfield_{project.custom_fields.epic_name}', None),
-        'epic_ref': issue['fields'].get(f'customfield_{project.custom_fields.epic_ref}', None),
+        'epic_name': issue['fields'].get(f'customfield_{project.customfields.epic_name}', None),
+        'epic_ref': issue['fields'].get(f'customfield_{project.customfields.epic_ref}', None),
         'description': issue['fields']['description'],
         'fix_versions': {x['name'] for x in issue['fields']['fixVersions']},
         'id': issue['id'],
@@ -38,7 +38,7 @@ def jiraapi_object_to_issue(project: 'ProjectMeta', issue: dict) -> Issue:
         'status': issue['fields']['status']['name'],
         'summary': issue['fields']['summary'],
         'updated': issue['fields']['updated'],
-        'story_points': issue['fields'].get(f'customfield_{project.custom_fields.story_points}', None),
+        'story_points': issue['fields'].get(f'customfield_{project.customfields.story_points}', None),
     }
     if issue['fields'].get('assignee'):
         jiraapi_object['assignee'] = issue['fields']['assignee']['displayName']
@@ -65,10 +65,10 @@ def issue_to_jiraapi_update(project: 'ProjectMeta', issue: Issue, modified: set)
     # posted to the Jira API
     field_keys: dict = {k: k for k in issue_values.keys()}
 
-    # add new keys for the custom_fields
-    field_keys['epic_ref'] = f'customfield_{project.custom_fields.epic_ref}'
-    field_keys['epic_name'] = f'customfield_{project.custom_fields.epic_name}'
-    field_keys['story_points'] = f'customfield_{project.custom_fields.story_points}'
+    # add new keys for the customfields
+    field_keys['epic_ref'] = f'customfield_{project.customfields.epic_ref}'
+    field_keys['epic_name'] = f'customfield_{project.customfields.epic_name}'
+    field_keys['story_points'] = f'customfield_{project.customfields.story_points}'
 
     for field_name in ('assignee', 'issuetype', 'reporter'):
         if field_name in issue_values:

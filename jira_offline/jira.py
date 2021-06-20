@@ -244,25 +244,25 @@ class Jira(collections.abc.MutableMapping):
             project.issuetypes = issuetypes_
             project.priorities = priorities_
 
-            custom_fields = CustomFields()
+            customfields = CustomFields()
 
             # extract custom fields from the API
             for issuetype in data['projects'][0]['issuetypes']:
-                if custom_fields:
+                if customfields:
                     # exit loop when all custom field mappings have been extracted
                     break
 
                 for field_props in issuetype['fields'].values():
-                    if not custom_fields.epic_name and field_props['name'] == 'Epic Name':
-                        custom_fields.epic_name = str(field_props['schema']['customId'])
-                    elif not custom_fields.epic_ref and field_props['name'] == 'Epic Link':
-                        custom_fields.epic_ref = str(field_props['schema']['customId'])
-                    elif not custom_fields.story_points and field_props['name'] == 'Story Points':
-                        custom_fields.story_points = str(field_props['schema']['customId'])
-                    elif not custom_fields.story_points and field_props['name'] == 'Acceptance Criteria':
-                        custom_fields.acceptance_criteria = str(field_props['schema']['customId'])
+                    if not customfields.epic_name and field_props['name'] == 'Epic Name':
+                        customfields.epic_name = str(field_props['schema']['customId'])
+                    elif not customfields.epic_ref and field_props['name'] == 'Epic Link':
+                        customfields.epic_ref = str(field_props['schema']['customId'])
+                    elif not customfields.story_points and field_props['name'] == 'Story Points':
+                        customfields.story_points = str(field_props['schema']['customId'])
+                    elif not customfields.story_points and field_props['name'] == 'Acceptance Criteria':
+                        customfields.acceptance_criteria = str(field_props['schema']['customId'])
 
-            project.custom_fields = custom_fields
+            project.customfields = customfields
 
             # Pull project statuses for issue types
             self._get_project_issue_statuses(project)

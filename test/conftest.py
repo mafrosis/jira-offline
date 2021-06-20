@@ -49,7 +49,7 @@ def project(timezone, customfields):
         key='TEST',
         username='test',
         password='dummy',
-        custom_fields=customfields,
+        customfields=customfields,
         priorities=['High', 'Low'],
         timezone=timezone,
         issuetypes={

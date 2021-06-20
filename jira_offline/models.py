@@ -80,7 +80,7 @@ class ProjectMeta(DataclassSerializer):
     hostname: Optional[str] = field(default='jira.atlassian.com')
     last_updated: Optional[str] = field(default=None, metadata={'friendly': 'Last Sync'})
     issuetypes: Dict[str, IssueType] = field(default_factory=dict)
-    custom_fields: CustomFields = field(default_factory=CustomFields)
+    customfields: CustomFields = field(default_factory=CustomFields)
     priorities: Optional[Set[str]] = field(default_factory=set)  # type: ignore[assignment]
     components: Optional[Set[str]] = field(default_factory=set)  # type: ignore[assignment]
     oauth: Optional[OAuth] = field(default=None)
