@@ -180,3 +180,26 @@ ISSUE_DIFF_PROJECT = {
     'updated': '2019-08-28T16:41:19',
     'diff_to_original': []
 }
+
+# A fixture representing the struct returned by the Jira API
+JIRAAPI_OBJECT = {
+    'fields': {
+        'assignee': {'displayName': ISSUE_1['assignee']},
+        'components': [],
+        'created': ISSUE_1['created'],
+        'creator': {'displayName': ISSUE_1['creator']},
+        'description': ISSUE_1['description'],
+        'fixVersions': [],
+        'issuetype': {'name': ISSUE_1['issuetype']},
+        'labels': [],
+        'priority': {'name': ISSUE_1['priority']},
+        'project_id': 'TEST',
+        'reporter': {'displayName': ISSUE_1['reporter']},
+        'status': {'name': ISSUE_1['status']},
+        'summary': ISSUE_1['summary'],
+        'updated': ISSUE_1['updated'],
+        'customfield_10100': ISSUE_1['epic_ref'],
+    },
+    'id': ISSUE_1['id'],
+    'key': ISSUE_1['key'],
+}

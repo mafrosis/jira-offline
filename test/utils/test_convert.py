@@ -1,11 +1,47 @@
 '''
 Tests for the issue_to_jiraapi_update function in utils.convert module
 '''
+import copy
+import decimal
+
 import pytest
 
-from fixtures import ISSUE_1
-from jira_offline.models import Issue
-from jira_offline.utils.convert import issue_to_jiraapi_update
+from fixtures import ISSUE_1, JIRAAPI_OBJECT
+from jira_offline.models import CustomFields, Issue, ProjectMeta
+from jira_offline.utils.convert import issue_to_jiraapi_update, jiraapi_object_to_issue
+
+
+def test_jiraapi_object_to_issue__handles_customfields(mock_jira):
+    '''
+    Ensure jiraapi_object_to_issue extracts customfield value into correct Issue attribute
+    '''
+    customfields = CustomFields(
+        epic_ref='customfield_10100',
+        epic_name='customfield_10200',
+    )
+    project = ProjectMeta(key='TEST', customfields=customfields)
+
+    issue = jiraapi_object_to_issue(project, JIRAAPI_OBJECT)
+    assert issue.epic_ref == 'TEST-1'
+
+
+def test_jiraapi_object_to_issue__handles_customfields_2(mock_jira):
+    '''
+    Ensure jiraapi_object_to_issue extracts customfield value into correct Issue attribute
+    '''
+    customfields = CustomFields(
+        epic_ref='customfield_10100',
+        epic_name='customfield_10200',
+        story_points='customfield_10400',
+    )
+    project = ProjectMeta(key='TEST', customfields=customfields)
+
+    jiraobj = copy.copy(JIRAAPI_OBJECT)
+    jiraobj['fields']['customfield_10400'] = '1.234'
+
+    issue = jiraapi_object_to_issue(project, JIRAAPI_OBJECT)
+    assert issue.epic_ref == 'TEST-1'
+    assert issue.story_points == decimal.Decimal('1.234')
 
 
 @pytest.mark.parametrize('modified', [
@@ -52,7 +88,7 @@ def test_issue_to_jiraapi_update__all_fields_are_returned_for_new_issue(mock_jir
     )
 
     assert issue_dict == {
-        f'customfield_{project.customfields.epic_ref}': 'TEST-1',
+        project.customfields.epic_ref: 'TEST-1',
         'description': 'This is a story or issue',
         'fix_versions': ['0.1'],
         'issuetype': {'name': 'Story'},

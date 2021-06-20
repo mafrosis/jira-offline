@@ -21,12 +21,9 @@ def jiraapi_object_to_issue(project: 'ProjectMeta', issue: dict) -> Issue:
         An Issue dataclass instance
     '''
     jiraapi_object = {
-        'project_id': project.id,
         'components': [x['name'] for x in issue['fields']['components']],
         'created': issue['fields']['created'],
         'creator': issue['fields']['creator']['displayName'],
-        'epic_name': issue['fields'].get(f'customfield_{project.customfields.epic_name}', None),
-        'epic_ref': issue['fields'].get(f'customfield_{project.customfields.epic_ref}', None),
         'description': issue['fields']['description'],
         'fix_versions': {x['name'] for x in issue['fields']['fixVersions']},
         'id': issue['id'],
@@ -34,14 +31,19 @@ def jiraapi_object_to_issue(project: 'ProjectMeta', issue: dict) -> Issue:
         'key': issue['key'],
         'labels': issue['fields']['labels'],
         'priority': issue['fields']['priority']['name'] if issue['fields']['priority'] else '',
+        'project_id': project.id,
         'reporter': issue['fields']['reporter']['displayName'],
         'status': issue['fields']['status']['name'],
         'summary': issue['fields']['summary'],
         'updated': issue['fields']['updated'],
-        'story_points': issue['fields'].get(f'customfield_{project.customfields.story_points}', None),
     }
     if issue['fields'].get('assignee'):
         jiraapi_object['assignee'] = issue['fields']['assignee']['displayName']
+
+    # Iterate customfields configured for the current project, and extract from the API response
+    if project.customfields:
+        for customfield_name, customfield_ref in project.customfields.items():
+            jiraapi_object[customfield_name] = issue['fields'].get(customfield_ref, None)
 
     return Issue.deserialize(jiraapi_object, project=project)
 
@@ -58,23 +60,23 @@ def issue_to_jiraapi_update(project: 'ProjectMeta', issue: Issue, modified: set)
     Return:
         A JSON-compatible Python dict
     '''
-    # serialize all Issue data to be JSON-compatible
+    # Serialize all Issue data to be JSON-compatible
     issue_values: dict = issue.serialize()
 
-    # create a mapping of Issue class properties, as some fields require a different format when
+    # Create a mapping of Issue class properties, as some fields require a different format when
     # posted to the Jira API
     field_keys: dict = {k: k for k in issue_values.keys()}
 
-    # add new keys for the customfields
-    field_keys['epic_ref'] = f'customfield_{project.customfields.epic_ref}'
-    field_keys['epic_name'] = f'customfield_{project.customfields.epic_name}'
-    field_keys['story_points'] = f'customfield_{project.customfields.story_points}'
+    # Include the customfields
+    if project.customfields:
+        for customfield_name, customfield_ref in project.customfields.items():
+            field_keys[customfield_name] = customfield_ref
 
     for field_name in ('assignee', 'issuetype', 'reporter'):
         if field_name in issue_values:
             issue_values[field_name] = {'name': issue_values[field_name]}
 
-    # include only modified fields
+    # Include only modified fields
     return {
         field_keys[field_name]: issue_values[field_name]
         for field_name in modified

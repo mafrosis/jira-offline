@@ -1,7 +1,7 @@
 '''
 Application data structures. Mostly dataclasses inheriting from utils.DataclassSerializer.
 '''
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 import datetime
 import decimal
 import functools
@@ -10,7 +10,7 @@ import hashlib
 import os
 import pathlib
 import shutil
-from typing import Any, cast, Dict, Generator, List, Optional, Set, Tuple
+from typing import Any, cast, Dict, Generator, Iterator, List, Optional, Set, Tuple
 from urllib.parse import urlparse
 
 import click
@@ -35,15 +35,24 @@ from jira_offline.utils.serializer import DataclassSerializer, get_base_type
 
 @dataclass
 class CustomFields(DataclassSerializer):
+    '''
+    CustomFields are dynamic fields defined per-project on Jira. This class tracks the mapping of the
+    field name, such as `epic_ref`, back to the underlying Jira customfield name, such as
+    `customfield_10100`.
+
+    Each customfield name defined in this class will match 1-1 with an identically named attribute on
+    the Issue class.
+    '''
+    # Default set of customfields from Jira
     epic_ref: Optional[str] = field(default='')
     epic_name: Optional[str] = field(default='')
-    story_points: Optional[str] = field(default='')
-    acceptance_criteria: Optional[str] = field(default='')
 
-    def __bool__(self):
-        if self.epic_ref and self.epic_name and self.story_points and self.acceptance_criteria:
-            return True
-        return False
+    # Additional customfields defined in this application
+    story_points: Optional[str] = field(default='')
+
+    def items(self) -> Iterator:
+        'Iterate the customfields set for the associated project'
+        return iter([(k,v) for k,v in asdict(self).items() if v])
 
 
 @dataclass
@@ -80,7 +89,7 @@ class ProjectMeta(DataclassSerializer):
     hostname: Optional[str] = field(default='jira.atlassian.com')
     last_updated: Optional[str] = field(default=None, metadata={'friendly': 'Last Sync'})
     issuetypes: Dict[str, IssueType] = field(default_factory=dict)
-    customfields: CustomFields = field(default_factory=CustomFields)
+    customfields: Optional[CustomFields] = field(default=None)
     priorities: Optional[Set[str]] = field(default_factory=set)  # type: ignore[assignment]
     components: Optional[Set[str]] = field(default_factory=set)  # type: ignore[assignment]
     oauth: Optional[OAuth] = field(default=None)
@@ -190,6 +199,8 @@ class AppConfig(DataclassSerializer):
 
     display: Display = field(init=False, metadata={'serialize': False})
 
+    customfields: Dict[str, dict] = field(init=False, metadata={'serialize': False})
+
 
     def __post_init__(self):
         # Late import to avoid circular dependency
@@ -202,6 +213,8 @@ class AppConfig(DataclassSerializer):
             ls_default_filter = 'status not in ("Done", "Story Done", "Epic Done", "Closed")'
         )
         self.sync = AppConfig.Sync()
+        self.customfields = dict()
+
 
     def write_to_disk(self):
         # Ensure config path exists
@@ -222,12 +235,10 @@ class Issue(DataclassSerializer):
     summary: str
     key: str = field(metadata={'readonly': True})
 
+    # Core fields
     assignee: Optional[str] = field(default=None)
     created: Optional[datetime.datetime] = field(default=None, metadata={'readonly': True})
     creator: Optional[str] = field(default=None, metadata={'readonly': True})
-    epic_name: Optional[str] = field(default=None, metadata={'friendly': 'Epic Short Name'})
-    epic_ref: Optional[str] = field(default=None)
-    story_points: Optional[decimal.Decimal] = field(default=None)
     description: Optional[str] = field(default=None)
     fix_versions: Optional[set] = field(default_factory=set, metadata={'friendly': 'Fix Version'})
     components: Optional[set] = field(default_factory=set)
@@ -238,7 +249,16 @@ class Issue(DataclassSerializer):
     status: Optional[str] = field(default=None, metadata={'friendly': 'Status', 'readonly': True})
     updated: Optional[datetime.datetime] = field(default=None, metadata={'readonly': True})
 
-    # dict which represents serialized Issue last seen on Jira server
+    # Customfields
+    # Fields defined here match the CustomFields class, but must be redefined as dataclasses don't
+    # work well with multiple inheritance
+    epic_ref: Optional[str] = field(default=None)
+    epic_name: Optional[str] = field(default=None, metadata={'friendly': 'Epic Short Name'})
+
+    # Story points special-case Customfield using decimal type
+    story_points: Optional[decimal.Decimal] = field(default=None)
+
+    # The `original` dict which represents serialized Issue last seen on Jira server
     # this attribute is not written to cache, and is created at runtime from Issue.diff_to_original
     original: Dict[str, Any] = field(
         init=False, repr=False, default_factory=dict, metadata={'serialize': False}
@@ -498,14 +518,14 @@ class Issue(DataclassSerializer):
         for col in ('diff_to_original', 'original'):
             attrs[col] = json.dumps(attrs[col])
 
-        # convert Issue.story_points from Decimal to str for pandas
+        # Convert Issue.story_points from Decimal to str for pandas
         if attrs['story_points']:
             attrs['story_points'] = str(attrs['story_points'])
 
         # Create Series and fill blanks with pandas-compatible defaults
         series = pd.Series(attrs).fillna(value=get_dataclass_defaults_for_pandas(Issue))
 
-        # convert all datetimes to UTC, where they are non-null (which is all non-new issues)
+        # Convert all datetimes to UTC, where they are non-null (which is all non-new issues)
         for col in ('created', 'updated'):
             series[col] = pd.Timestamp(series[col]).tz_convert('UTC')
 

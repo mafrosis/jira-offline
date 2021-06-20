@@ -244,25 +244,8 @@ class Jira(collections.abc.MutableMapping):
             project.issuetypes = issuetypes_
             project.priorities = priorities_
 
-            customfields = CustomFields()
-
-            # extract custom fields from the API
-            for issuetype in data['projects'][0]['issuetypes']:
-                if customfields:
-                    # exit loop when all custom field mappings have been extracted
-                    break
-
-                for field_props in issuetype['fields'].values():
-                    if not customfields.epic_name and field_props['name'] == 'Epic Name':
-                        customfields.epic_name = str(field_props['schema']['customId'])
-                    elif not customfields.epic_ref and field_props['name'] == 'Epic Link':
-                        customfields.epic_ref = str(field_props['schema']['customId'])
-                    elif not customfields.story_points and field_props['name'] == 'Story Points':
-                        customfields.story_points = str(field_props['schema']['customId'])
-                    elif not customfields.story_points and field_props['name'] == 'Acceptance Criteria':
-                        customfields.acceptance_criteria = str(field_props['schema']['customId'])
-
-            project.customfields = customfields
+            # Map all customfields for this project
+            self._load_customfields(project, data['projects'][0]['issuetypes'])
 
             # Pull project statuses for issue types
             self._get_project_issue_statuses(project)
@@ -282,9 +265,76 @@ class Jira(collections.abc.MutableMapping):
             ))
 
 
+    def _load_customfields(self, project: ProjectMeta, issuetypes_data: dict):
+        '''
+        Load the customfields for this project from the Jira API.
+
+        User-specified customfields are added to jira-offline.ini and can be accessed via
+        `jira.config.customfields`. Projects can have 0-N configured customfields, this method
+        does the mapping between the two.
+
+        Params:
+            project:          Jira project to query
+            issuetypes_data:  Data from Jira API describing issuetypes on this project
+        '''
+        project_customfields = {}
+
+        # Extract custom fields from the API response for each issuetype on this project
+        for issuetype in issuetypes_data:
+            for name, field_props in issuetype['fields'].items():
+                if name.startswith('customfield_'):
+                    project_customfields[name] = field_props
+
+        logger.debug('Customfields for project %s are %s', project.key, project_customfields)
+
+        customfield_epic_name = customfield_epic_ref = ''
+
+        # Epic Name, Epic Link & Sprint are "locked" custom fields, and so should always exist
+        for name, field_props in project_customfields.items():
+            if field_props['name'] == 'Epic Name':
+                customfield_epic_name = str(field_props['fieldId'])
+            elif field_props['name'] == 'Epic Link':
+                customfield_epic_ref = str(field_props['fieldId'])
+
+        # Initialise project's customfields
+        project.customfields = CustomFields(
+            epic_name=customfield_epic_name,
+            epic_ref=customfield_epic_ref,
+        )
+
+        def apply_customfield_config(name, value):
+            '''
+            Apply user-defined customfield configuration to this Jira project, if mapped in the Jira
+            project metadata.
+
+            Customfields must be mapped on the Jira server to this project _and_ be set in the
+            user's configuration.
+            '''
+            # Check to ensure the user-defined customfield is in use on this project
+            if value in project_customfields.keys():
+                # Replace field name dashes with underscores
+                name = name.replace('-', '_')
+
+                if hasattr(project.customfields, name):
+                    setattr(project.customfields, name, value)
+                else:
+                    project.customfields.extended[name] = value
+
+        # Iterate customfields defined in user config
+        for jira_host, customfield_mapping in self.config.customfields.items():
+            # Only apply config set for this Jira host. Matching is either all Jiras with
+            # asterisk, or by Jira server with hostname match
+            if jira_host in ('*', project.hostname):
+                for name, value in customfield_mapping.items():
+                    apply_customfield_config(name, value)
+
+
     def _get_user_timezone(self, project: ProjectMeta) -> Optional[str]:  # pylint: disable=no-self-use
         '''
         Retrieve user-specific timezone setting
+
+        Params:
+            project:  The project mapped to the Jira to query for timezone info
         '''
         data = api_get(project, 'myself')
         return data.get('timeZone')

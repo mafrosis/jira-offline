@@ -11,7 +11,8 @@ import click
 from jira_offline import __title__
 from jira_offline.exceptions import (DeserializeError, FailedConfigUpgrade, UnreadableConfig,
                                      UserConfigAlreadyExists)
-from jira_offline.models import AppConfig
+from jira_offline.models import AppConfig, Issue
+from jira_offline.utils import get_field_by_name
 
 
 logger = logging.getLogger('jira')
@@ -74,6 +75,15 @@ def _load_user_config(config: AppConfig):
         'Helper to parse comma-separated list into a set type'
         return {f.strip() for f in value.split(',')}
 
+    def validate_customfield(value: str) -> bool:
+        if not value.startswith('customfield_'):
+            return False
+        try:
+            int(value.split('_')[1])
+        except (ValueError, IndexError):
+            return False
+        return True
+
 
     def handle_display_section(items):
         for key, value in items:
@@ -92,6 +102,40 @@ def _load_user_config(config: AppConfig):
                 except ValueError:
                     logger.warning('Config option sync.page-size must be supplied as an integer. Ignoring.')
 
+    def handle_customfield_section(jira_host: str, items):
+        for key, value in items:
+            if not validate_customfield(value):
+                logger.warning('Invalid customfield "%s" supplied. Ignoring.', value)
+                continue
+
+            # Handle special-case story points customfield, which is defined on the Issue model as a
+            # decimal type
+            if key in ('story-points', 'story_points'):
+                if not jira_host in config.customfields:
+                    config.customfields[jira_host] = {}
+
+                config.customfields[jira_host]['story_points'] = value
+                continue
+
+            # Replace field name dashes with underscores
+            key = key.replace('-', '_')
+
+            try:
+                # Validate customfields against Issue class attributes; they cannot clash as SQL
+                # filtering via --filter would not be possible
+                get_field_by_name(Issue, key)
+
+                # Customfield name is reserved keyword, warn and skip
+                logger.warning('Reserved keyword "%s" cannot be used as a customfield. Ignoring.', key)
+                continue
+
+            except ValueError:
+                # Customfield name is good, add to configuration
+                if not jira_host in config.customfields:
+                    config.customfields[jira_host] = {}
+
+                config.customfields[jira_host][key] = value
+
 
     if os.path.exists(config.user_config_filepath):  # pylint: disable=too-many-nested-blocks
         cfg = configparser.ConfigParser(inline_comment_prefixes='#')
@@ -102,8 +146,25 @@ def _load_user_config(config: AppConfig):
         for section in cfg.sections():
             if section == 'display':
                 handle_display_section(cfg.items(section))
+
             elif section == 'sync':
                 handle_sync_section(cfg.items(section))
+
+            elif section == 'customfields':
+                # Handle the generic all-Jiras customfields section
+                handle_customfield_section('*', cfg.items(section))
+
+            elif section.startswith('customfields'):
+                # Handle the Jira-specific customfields section
+
+                try:
+                    jira_host = section.split(' ')[1]
+                except (IndexError, ValueError):
+                    # Invalid section title; skip
+                    logger.warning('Customfields section header "%s" is invalid. Ignoring.', section)
+                    continue
+
+                handle_customfield_section(jira_host, cfg.items(section))
 
 
 def write_default_user_config(config_filepath: str):
@@ -122,8 +183,12 @@ def write_default_user_config(config_filepath: str):
     cfg.set('display', '# ls', ','.join(default_config.display.ls_fields))
     cfg.set('display', '# ls-verbose', ','.join(default_config.display.ls_fields_verbose))
     cfg.set('display', '# ls-default-filter', default_config.display.ls_default_filter)
+
     cfg.add_section('sync')
     cfg.set('sync', '# page-size', str(default_config.sync.page_size))
+
+    cfg.add_section('customfields')
+    cfg.set('customfields', '# story-points', '')
 
     # Ensure config path exists
     pathlib.Path(config_filepath).parent.mkdir(parents=True, exist_ok=True)
@@ -188,5 +253,6 @@ def config_upgrade_2_to_3(config_json: dict):
             project_dict['custom_fields']['story_points'] = project_dict['custom_fields']['estimate']
             del project_dict['custom_fields']['estimate']
 
-        project_dict['customfields'] = copy.deepcopy(project_dict['custom_fields'])
-        del project_dict['custom_fields']
+        if 'custom_fields' in project_dict:
+            project_dict['customfields'] = copy.deepcopy(project_dict['custom_fields'])
+            del project_dict['custom_fields']
