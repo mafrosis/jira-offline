@@ -205,7 +205,7 @@ class Jira(collections.abc.MutableMapping):
             df[col] = df[col].apply(list)
 
         # PyArrow does not like decimals
-        df['estimate'] = df['estimate'].astype('string')
+        df['story_points'] = df['story_points'].astype('string')
 
         cache_filepath = get_cache_filepath()
         df.reset_index(drop=True).to_feather(cache_filepath)
@@ -225,22 +225,22 @@ class Jira(collections.abc.MutableMapping):
             if not data.get('projects'):
                 raise ProjectDoesntExist(project.key)
 
-            # project friendly name
+            # Project friendly name
             project.name = data['projects'][0]['name']
 
             issuetypes_: Dict[str, IssueType] = dict()
             priorities_: Set[str] = set()
 
-            # extract set of issuetypes, and their priority values returned from the createmeta API
+            # Extract set of issuetypes, and their priority values returned from the createmeta API
             for x in data['projects'][0]['issuetypes']:
                 issuetypes_[x['name']] = IssueType(name=x['name'])
 
-                # priority is a project-level setting, which can be extracted from any issue with the
+                # Priority is a project-level setting, which can be extracted from any issue with the
                 # "priority" field
                 if not priorities_ and x['fields'].get('priority'):
                     priorities_ = {y['name'] for y in x['fields']['priority']['allowedValues']}
 
-            # update project issuetypes & priorities to latest defined on Jira
+            # Update project issuetypes & priorities to latest defined on Jira
             project.issuetypes = issuetypes_
             project.priorities = priorities_
 
@@ -257,17 +257,17 @@ class Jira(collections.abc.MutableMapping):
                         custom_fields.epic_name = str(field_props['schema']['customId'])
                     elif not custom_fields.epic_ref and field_props['name'] == 'Epic Link':
                         custom_fields.epic_ref = str(field_props['schema']['customId'])
-                    elif not custom_fields.estimate and field_props['name'] == 'Story Points':
-                        custom_fields.estimate = str(field_props['schema']['customId'])
-                    elif not custom_fields.estimate and field_props['name'] == 'Acceptance Criteria':
+                    elif not custom_fields.story_points and field_props['name'] == 'Story Points':
+                        custom_fields.story_points = str(field_props['schema']['customId'])
+                    elif not custom_fields.story_points and field_props['name'] == 'Acceptance Criteria':
                         custom_fields.acceptance_criteria = str(field_props['schema']['customId'])
 
             project.custom_fields = custom_fields
 
-            # pull project statuses for issue types
+            # Pull project statuses for issue types
             self._get_project_issue_statuses(project)
 
-            # pull project components
+            # Pull project components
             self._get_project_components(project)
 
             # Pull user's configured timezone from their profile and store on the ProjectMeta

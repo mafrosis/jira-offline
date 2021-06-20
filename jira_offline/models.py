@@ -37,11 +37,11 @@ from jira_offline.utils.serializer import DataclassSerializer, get_base_type
 class CustomFields(DataclassSerializer):
     epic_ref: Optional[str] = field(default='')
     epic_name: Optional[str] = field(default='')
-    estimate: Optional[str] = field(default='')
+    story_points: Optional[str] = field(default='')
     acceptance_criteria: Optional[str] = field(default='')
 
     def __bool__(self):
-        if self.epic_ref and self.epic_name and self.estimate and self.acceptance_criteria:
+        if self.epic_ref and self.epic_name and self.story_points and self.acceptance_criteria:
             return True
         return False
 
@@ -172,7 +172,7 @@ class ProjectMeta(DataclassSerializer):
 
 @dataclass
 class AppConfig(DataclassSerializer):
-    schema_version: int = field(default=2)
+    schema_version: int = field(default=3)
     user_config_filepath: str = field(default='')
     projects: Dict[str, ProjectMeta] = field(default_factory=dict)
 
@@ -227,7 +227,7 @@ class Issue(DataclassSerializer):
     creator: Optional[str] = field(default=None, metadata={'readonly': True})
     epic_name: Optional[str] = field(default=None, metadata={'friendly': 'Epic Short Name'})
     epic_ref: Optional[str] = field(default=None)
-    estimate: Optional[decimal.Decimal] = field(default=None)
+    story_points: Optional[decimal.Decimal] = field(default=None)
     description: Optional[str] = field(default=None)
     fix_versions: Optional[set] = field(default_factory=set, metadata={'friendly': 'Fix Version'})
     components: Optional[set] = field(default_factory=set)
@@ -454,7 +454,7 @@ class Issue(DataclassSerializer):
             epicdetails = fmt('epic_ref')
 
         def iter_optionals() -> Generator[str, None, None]:
-            for f in ('priority', 'assignee', 'estimate', 'description', 'fix_versions', 'labels',
+            for f in ('priority', 'assignee', 'story_points', 'description', 'fix_versions', 'labels',
                       'components', 'reporter', 'creator', 'created', 'updated'):
                 if getattr(self, f):
                     for fv in fmt(f):
@@ -488,9 +488,9 @@ class Issue(DataclassSerializer):
         for col in ('diff_to_original', 'original'):
             attrs[col] = json.dumps(attrs[col])
 
-        # convert Issue.estimate from Decimal to str for pandas
-        if attrs['estimate']:
-            attrs['estimate'] = str(attrs['estimate'])
+        # convert Issue.story_points from Decimal to str for pandas
+        if attrs['story_points']:
+            attrs['story_points'] = str(attrs['story_points'])
 
         # Create Series and fill blanks with pandas-compatible defaults
         series = pd.Series(attrs).fillna(value=get_dataclass_defaults_for_pandas(Issue))

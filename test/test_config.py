@@ -134,26 +134,26 @@ def test_write_default_user_config(tmpdir):
 # incremented on release.
 #
 @dataclass
-class CustomFields_v2(DataclassSerializer):
+class CustomFields_v3(DataclassSerializer):
     epic_ref: Optional[str]
     epic_name: Optional[str]
-    estimate: Optional[str]
+    story_points: Optional[str]
     acceptance_criteria: Optional[str]
 
 @dataclass
-class IssueType_v2(DataclassSerializer):
+class IssueType_v3(DataclassSerializer):
     name: str
     statuses: Set[str]
 
 @dataclass
-class OAuth_v2(DataclassSerializer):
+class OAuth_v3(DataclassSerializer):
     access_token: Optional[str]
     access_token_secret: Optional[str]
     consumer_key: Optional[str]
     key_cert: Optional[str]
 
 @dataclass  # pylint: disable=too-many-instance-attributes
-class ProjectMeta_v2(DataclassSerializer):  # pylint: disable=too-many-instance-attributes
+class ProjectMeta_v3(DataclassSerializer):  # pylint: disable=too-many-instance-attributes
     key: str
     name: Optional[str]
     username: Optional[str]
@@ -161,20 +161,20 @@ class ProjectMeta_v2(DataclassSerializer):  # pylint: disable=too-many-instance-
     protocol: Optional[str]
     hostname: Optional[str]
     last_updated: Optional[str]
-    issuetypes: Dict[str, IssueType_v2]
-    custom_fields: CustomFields_v2
+    issuetypes: Dict[str, IssueType_v3]
+    custom_fields: CustomFields_v3
     priorities: Optional[Set[str]]
     components: Optional[Set[str]]
-    oauth: Optional[OAuth_v2]
+    oauth: Optional[OAuth_v3]
     ca_cert: Optional[str]
     timezone: datetime.tzinfo
     config: Optional['AppConfig']
 
 @dataclass
-class AppConfig_v2(DataclassSerializer):
+class AppConfig_v3(DataclassSerializer):
     schema_version: int
     user_config_filepath: str
-    projects: Dict[str, ProjectMeta_v2]
+    projects: Dict[str, ProjectMeta_v3]
 
     sync: AppConfig.Sync
 
@@ -185,7 +185,7 @@ class AppConfig_v2(DataclassSerializer):
 
 def test_appconfig_model__validate_schema_version():
     '''
-    Validate that the current AppConfig model has not changed from the v2 schema defined above.
+    Validate that the current AppConfig model has not changed from the v3 schema defined above.
 
     If this test fails, do the following:
 
@@ -193,5 +193,5 @@ def test_appconfig_model__validate_schema_version():
       2. Write an upgrade function for app config in config.py
       3. Update the above data model to match the new schema
     '''
-    assert AppConfig.schema['properties'] == AppConfig_v2.schema['properties'], \
-            'Current AppConfig schema does not match schema_version = 2'
+    assert AppConfig.schema['properties'] == AppConfig_v3.schema['properties'], \
+            'Current AppConfig schema does not match schema_version = 3'

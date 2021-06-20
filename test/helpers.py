@@ -19,8 +19,8 @@ def compare_issue_helper(issue, compare_issue):
             issue.epic_name == compare_issue.epic_name
     assert issue.epic_ref is None and compare_issue.epic_ref == '' or \
             issue.epic_ref == compare_issue.epic_ref
-    assert issue.estimate is None and compare_issue.estimate == '' or \
-            issue.estimate == compare_issue.estimate
+    assert issue.story_points is None and compare_issue.story_points == '' or \
+            issue.story_points == compare_issue.story_points
     assert issue.description == compare_issue.description
     assert issue.fix_versions == set(compare_issue.fix_versions)
     assert issue.components == set(compare_issue.components)

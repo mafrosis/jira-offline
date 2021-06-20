@@ -416,7 +416,7 @@ def test_jira__get_project_meta__extracts_custom_fields(mock_api_get, mock_jira_
     mock_jira_core.get_project_meta(project)
 
     assert mock_api_get.called
-    assert project.custom_fields == CustomFields(epic_name='10104', estimate='10106')
+    assert project.custom_fields == CustomFields(epic_name='10104', story_points='10106')
 
 
 @mock.patch('jira_offline.jira.api_get')
@@ -453,7 +453,7 @@ def test_jira__get_project_meta__handles_no_priority_for_issuetype(mock_api_get,
     mock_jira_core.get_project_meta(project)
 
     assert mock_api_get.called
-    assert project.custom_fields == CustomFields(estimate='10106')
+    assert project.custom_fields == CustomFields(story_points='10106')
 
 
 @mock.patch('jira_offline.utils.decorators.get_user_creds')

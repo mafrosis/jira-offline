@@ -19,7 +19,7 @@ def test_parse_editor_result__handles_str_change():
         'Status            Story Done',
         'Priority          Normal',
         'Assignee          mafro',
-        'Estimate',
+        'Story Points',
         'Description       This is a story or issue',
         'Fix Version       -  0.1',
         'Labels',
@@ -50,7 +50,7 @@ def test_parse_editor_result__handles_str_change_over_100_chars():
         'Status            Story Done',
         'Priority          Normal',
         'Assignee          danil1',
-        'Estimate',
+        'Story Points',
         'Description       {}'.format('This is a story or issue ' * 5),
         'Fix Version       -  0.1',
         'Labels',
@@ -81,7 +81,7 @@ def test_parse_editor_result__parses_summary_str():
         'Status            Story Done',
         'Priority          Normal',
         'Assignee          danil1',
-        'Estimate',
+        'Story Points',
         'Description       This is a story or issue',
         'Fix Version       -  0.1',
         'Labels',
@@ -112,7 +112,7 @@ def test_parse_editor_result__handles_add_to_set():
         'Status            Story Done',
         'Priority          Normal',
         'Assignee          danil1',
-        'Estimate',
+        'Story Points',
         'Description       This is a story or issue',
         'Fix Version       - 0.1',
         '                  - 0.3',
@@ -145,7 +145,7 @@ def test_parse_editor_result__handles_remove_from_set():
         'Status            Story Done',
         'Priority          Normal',
         'Assignee          danil1',
-        'Estimate',
+        'Story Points',
         'Description       This is a story or issue',
         'Fix Version',
         'Labels            - bacon',
@@ -176,7 +176,7 @@ def test_parse_editor_result__set_empty_items_ignored():
         'Status            Story Done',
         'Priority          Normal',
         'Assignee',
-        'Estimate',
+        'Story Points',
         'Description       This is a story or issue',
         'Fix Version       -  0.1',
         '-',
@@ -196,8 +196,8 @@ def test_parse_editor_result__set_empty_items_ignored():
     assert patch_dict['fix_versions'] == {'0.1'}
 
 
-@pytest.mark.parametrize('estimate', [99, 1.5])
-def test_parse_editor_result__handles_decimal_type(estimate):
+@pytest.mark.parametrize('story_points', [99, 1.5])
+def test_parse_editor_result__handles_decimal_type(story_points):
     '''
     Ensure editor parser handles decimal type
     '''
@@ -209,7 +209,7 @@ def test_parse_editor_result__handles_decimal_type(estimate):
         'Status            Story Done',
         'Priority          Normal',
         'Assignee          danil1',
-        f'Estimate          {estimate}',
+        f'Story Points      {story_points}',
         'Description       This is a story or issue',
         'Fix Version       -  0.1',
         'Labels',
@@ -225,7 +225,7 @@ def test_parse_editor_result__handles_decimal_type(estimate):
         Issue.deserialize(ISSUE_1),
         '\n'.join(editor_result_raw),
     )
-    assert patch_dict['estimate'] == str(estimate)
+    assert patch_dict['story_points'] == str(story_points)
 
 
 def test_parse_editor_result__raises_if_single_field_returned_twice():
@@ -241,7 +241,7 @@ def test_parse_editor_result__raises_if_single_field_returned_twice():
         'Priority          High',
         'Assignee          mafro',
         'Assignee          hoganp',
-        'Estimate',
+        'Story Points',
         'Description       This is a story or issue',
         'Fix Version       -  0.1',
         'Labels',
@@ -278,7 +278,7 @@ def test_parse_editor_result__skips_lines_before_a_valid_field(prefix):
         'Status            Story Done',
         'Priority          Normal',
         'Assignee          mafro',
-        'Estimate',
+        'Story Points',
         'Description       This is a story or issue',
         'Fix Version       -  0.1',
         'Labels',
@@ -311,7 +311,7 @@ def test_parse_editor_result__conflict__returns_only_changes_named_in_conflicts(
         'Status            Story Done',
         'Priority          High',
         'Assignee          mafro',
-        'Estimate',
+        'Story Points',
         'Description       This is a story or issue',
         'Fix Version       -  0.1',
         'Labels',
@@ -354,7 +354,7 @@ def test_parse_editor_result__conflict__handles_bad_conflict_strings(bad_conflic
         'Status            Story Done',
         'Priority          High',
         f'{bad_conflict}',
-        'Estimate',
+        'Story Points',
         'Description       This is a story or issue',
         'Fix Version       -  0.1',
         'Labels',
