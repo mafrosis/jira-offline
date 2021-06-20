@@ -75,7 +75,7 @@ def _load_user_config(config: AppConfig):
         return {f.strip() for f in value.split(',')}
 
     if os.path.exists(config.user_config_filepath):
-        cfg = configparser.ConfigParser()
+        cfg = configparser.ConfigParser(inline_comment_prefixes='#')
         cfg.read(config.user_config_filepath)
 
         for section in cfg.sections():
@@ -101,17 +101,17 @@ def write_default_user_config(config_filepath: str):
     if os.path.exists(config_filepath):
         raise UserConfigAlreadyExists(config_filepath)
 
-    cfg = configparser.ConfigParser()
+    cfg = configparser.ConfigParser(inline_comment_prefixes='#')
 
     # Write out the AppConfig default field values
     default_config = AppConfig()
 
     cfg.add_section('display')
-    cfg['display']['ls'] = ','.join(default_config.display.ls_fields)
-    cfg['display']['ls-verbose'] = ','.join(default_config.display.ls_fields_verbose)
-    cfg['display']['ls-default-filter'] = default_config.display.ls_default_filter
+    cfg.set('display', '# ls', ','.join(default_config.display.ls_fields))
+    cfg.set('display', '# ls-verbose', ','.join(default_config.display.ls_fields_verbose))
+    cfg.set('display', '# ls-default-filter', default_config.display.ls_default_filter)
     cfg.add_section('sync')
-    cfg['sync']['page-size'] = str(default_config.sync.page_size)
+    cfg.set('sync', '# page-size', str(default_config.sync.page_size))
 
     # Ensure config path exists
     pathlib.Path(config_filepath).parent.mkdir(parents=True, exist_ok=True)
