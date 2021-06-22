@@ -91,6 +91,25 @@ def test_create__create_issue__kwargs_are_set_in_new_issue(mock_jira, project):
     assert mock_jira[offline_issue.key].epic_ref == 'TEST-1'
 
 
+def test_create__create_issue__kwargs_are_set_in_new_issue_extended(mock_jira, project):
+    '''
+    Ensure create_issue() sets the extra fields passed as kwargs (not args)
+    '''
+    # Setup an extended customfield on this project
+    project.customfields.extended = {'arbitrary_key': 'customfield_10111'}
+
+    # Add an Epic fixture to the Jira dict
+    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
+
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        offline_issue = create_issue(project, 'Story', 'This is a summary', arbitrary_key='arbitrary_value')
+
+    assert offline_issue.extended['arbitrary_key'] == 'arbitrary_value'
+
+    # Validate a roundtrip via the DataFrame
+    assert mock_jira[offline_issue.key].extended['arbitrary_key'] == 'arbitrary_value'
+
+
 def test_create__create_issue__raises_exception_when_passed_an_unknown_epic_ref(mock_jira, project):
     '''
     Ensure create_issue() raises exception when an epic_ref is passed which does not match an
@@ -110,8 +129,8 @@ def test_create__create_issue__raises_exception_when_passed_an_unknown_epic_ref(
 ])
 def test_create__create_issue__issue_is_mapped_to_existing_epic_summary(mock_jira, project, epic_ref_value):
     '''
-    Ensure create_issue() maps new Issue to the matching epic,
-    when supplied epic_ref matches the epic's summary OR epic_name
+    Ensure create_issue() maps new Issue to the matching epic, when supplied epic_ref matches the
+    epic's summary OR epic_name
     '''
     # add an Epic fixture to the Jira dict
     mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
@@ -375,3 +394,28 @@ def test_create__patch_issue_from_dict__set_priority(mock_jira):
         patch_issue_from_dict(issue, {'priority': 'Bacon'})
 
     assert issue.priority == 'Bacon'
+
+
+def test_create__patch_issue_from_dict__set_extended_customfield(mock_jira):
+    '''
+    Ensure user-defined customfield "arbitrary-user-defined-field" can be set
+    '''
+    issue = Issue.deserialize(ISSUE_1)
+
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        patch_issue_from_dict(issue, {'arbitrary-user-defined-field': 'eggs'})
+
+    assert issue.extended['arbitrary-user-defined-field'] == 'eggs'
+
+
+def test_create__patch_issue_from_dict__set_extended_customfield_extended(mock_jira):
+    '''
+    Ensure user-defined customfield "extended.arbitrary-user-defined-field" can be set, using the
+    extended prefix
+    '''
+    issue = Issue.deserialize(ISSUE_1)
+
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        patch_issue_from_dict(issue, {'extended.arbitrary-user-defined-field': 'eggs'})
+
+    assert issue.extended['arbitrary-user-defined-field'] == 'eggs'

@@ -85,6 +85,7 @@ def mock_jira(mock_jira_core):
         'project_id', 'issuetype', 'summary', 'assignee', 'created', 'creator', 'epic_name',
         'epic_ref', 'story_points', 'description', 'fix_versions', 'components', 'id', 'key', 'labels',
         'priority', 'reporter', 'status', 'updated', 'diff_to_original', 'modified', 'project_key',
+        'extended',
     ])
     mock_jira_core.load_issues = mock.Mock()
     mock_jira_core.write_issues = mock.Mock()

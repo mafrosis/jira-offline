@@ -248,6 +248,7 @@ def config_upgrade_2_to_3(config_json: dict):
     - CustomFields.estimate was renamed to CustomFields.story_points
     - ProjectMeta.custom_fields was renamed to ProjectMeta.customfields
     - Mandatory "sprint" customfield was added
+    - Extended dict of user-defined customfields was added
     '''
     for project_dict in config_json['projects'].values():
         if 'estimate' in project_dict['custom_fields']:
@@ -260,3 +261,6 @@ def config_upgrade_2_to_3(config_json: dict):
 
         if not 'sprint' in project_dict['customfields']:
             project_dict['customfields']['sprint'] = 'tbc'
+
+        if not 'extended' in project_dict['customfields']:
+            project_dict['customfields']['extended'] = dict()

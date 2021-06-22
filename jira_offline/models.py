@@ -52,9 +52,18 @@ class CustomFields(DataclassSerializer):
     # Additional special-case customfields defined in this application
     story_points: Optional[str] = field(default='')
 
+    # Extended set of user-defined customfields
+    extended: Optional[Dict[str, str]] = field(default_factory=dict)  # type: ignore[assignment]
+
+
     def items(self) -> Iterator:
-        'Iterate the customfields set for the associated project'
-        return iter([(k,v) for k,v in asdict(self).items() if v])
+        'Iterate the customfields set for the associated project, plus k:v pairs in self.extended'
+        attrs = {k:v for k,v in asdict(self).items() if v}
+        if self.extended:
+            del attrs['extended']
+            for k,v in self.extended.items():
+                attrs[f'extended.{k}'] = v
+        return iter(attrs.items())
 
 
 @dataclass
@@ -260,6 +269,9 @@ class Issue(DataclassSerializer):
 
     # Story points special-case Customfield using decimal type
     story_points: Optional[decimal.Decimal] = field(default=None)
+
+    # Extended Customfields dict to capture arbitrary user-defined Customfields as strings
+    extended: Optional[Dict[str, str]] = field(default_factory=dict)  # type: ignore[assignment]
 
     # The `original` dict which represents serialized Issue last seen on Jira server
     # this attribute is not written to cache, and is created at runtime from Issue.diff_to_original

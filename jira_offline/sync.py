@@ -22,7 +22,7 @@ from jira_offline.exceptions import (EditorFieldParseFailed, EpicNotFound, Faile
 from jira_offline.jira import jira
 from jira_offline.create import patch_issue_from_dict
 from jira_offline.models import Issue, ProjectMeta
-from jira_offline.utils import critical_logger, get_field_by_name
+from jira_offline.utils import critical_logger
 from jira_offline.utils.api import get as api_get
 from jira_offline.utils.cli import parse_editor_result, print_list
 from jira_offline.utils.convert import jiraapi_object_to_issue, issue_to_jiraapi_update
@@ -319,18 +319,28 @@ def build_update(base_issue: Issue, updated_issue: Optional[Issue]) -> IssueUpda
         for c in m.unresolved_conflicts:
             yield c.first_patch[1]
 
+    def handle_extended_dot_naming(data, field_name):
+        'Handle Issue customfield extended field lookups'
+        if field_name.startswith('extended.'):
+            return data['extended'][field_name[9:]]
+        else:
+            return data[field_name]
+
     conflict_fields = {
         field_name: {
-            'original': base_issue.original[field_name],
-            'updated': updated_issue_dict[field_name],
-            'base': base_issue_dict[field_name],
+            'original': handle_extended_dot_naming(base_issue.original, field_name),
+            'updated': handle_extended_dot_naming(updated_issue_dict, field_name),
+            'base': handle_extended_dot_naming(base_issue_dict, field_name),
         }
         for field_name in set(conflicting_fields())
     }
 
     # Mark conflicted fields
     for field_name in conflict_fields:
-        setattr(merged_issue, get_field_by_name(Issue, field_name).name, Conflict())
+        if field_name.startswith('extended.'):
+            merged_issue.extended[field_name[9:]] = Conflict()  # type: ignore[assignment,index]
+        else:
+            setattr(merged_issue, field_name, Conflict())
 
     # Return an object representing the diff
     return IssueUpdate(

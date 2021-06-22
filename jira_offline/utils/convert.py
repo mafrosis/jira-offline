@@ -48,13 +48,18 @@ def jiraapi_object_to_issue(project: 'ProjectMeta', issue: dict) -> 'Issue':
     # Iterate customfields configured for the current project, and extract from the API response
     if project.customfields:
         for customfield_name, customfield_ref in project.customfields.items():
-            # Late import to avoid circular dependency
-            from jira_offline.models import CustomFields  # pylint: disable=import-outside-toplevel, cyclic-import
+            if customfield_name.startswith('extended.'):
+                if 'extended' not in jiraapi_object:
+                    jiraapi_object['extended'] = {}
+                jiraapi_object['extended'][customfield_name[9:]] = issue['fields'].get(customfield_ref, None)
+            else:
+                # Late import to avoid circular dependency
+                from jira_offline.models import CustomFields  # pylint: disable=import-outside-toplevel, cyclic-import
 
-            preprocess_func = get_field_by_name(CustomFields, customfield_name).metadata.get(
-                'parse_func', preprocess_noop
-            )
-            jiraapi_object[customfield_name] = preprocess_func(issue['fields'].get(customfield_ref, None))
+                preprocess_func = get_field_by_name(CustomFields, customfield_name).metadata.get(
+                    'parse_func', preprocess_noop
+                )
+                jiraapi_object[customfield_name] = preprocess_func(issue['fields'].get(customfield_ref, None))
 
     # Late import to avoid circular dependency
     from jira_offline.models import Issue  # pylint: disable=import-outside-toplevel, cyclic-import
@@ -83,7 +88,12 @@ def issue_to_jiraapi_update(project: 'ProjectMeta', issue: 'Issue', modified: se
     # Include the customfields
     if project.customfields:
         for customfield_name, customfield_ref in project.customfields.items():
+            # Include mapping from the customfield name, to the customfield identifier on Jira
             field_keys[customfield_name] = customfield_ref
+
+            # Add a mapping of the extended customfield name to the actual value
+            if customfield_name.startswith('extended.'):
+                issue_values[customfield_name] = issue_values['extended'][customfield_name[9:]]
 
     for field_name in ('assignee', 'issuetype', 'reporter'):
         if field_name in issue_values:

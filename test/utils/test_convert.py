@@ -46,6 +46,70 @@ def test_jiraapi_object_to_issue__handles_customfields_2(mock_jira):
     assert issue.story_points == decimal.Decimal('1.234')
 
 
+def test_jiraapi_object_to_issue__handles_customfields_extended(mock_jira):
+    '''
+    Ensure jiraapi_object_to_issue extracts extended customfield value into correct Issue attribute
+    '''
+    customfields = CustomFields(
+        epic_ref='customfield_10100',
+        epic_name='customfield_10200',
+        sprint='customfield_10300',
+        extended={
+            'arbitrary_key': 'customfield_10111',
+        }
+    )
+    project = ProjectMeta(key='TEST', customfields=customfields)
+
+    jiraobj = copy.copy(JIRAAPI_OBJECT)
+    jiraobj['fields']['customfield_10111'] = 'arbitrary_value'
+
+    issue = jiraapi_object_to_issue(project, JIRAAPI_OBJECT)
+    assert issue.epic_ref == 'TEST-1'
+    assert issue.extended['arbitrary_key'] == 'arbitrary_value'
+
+
+def test_issue_to_jiraapi_update__handles_customfields(mock_jira):
+    '''
+    Ensure issue_to_jiraapi_update converts Issue customfield attributes into the Jira API update format
+    '''
+    customfields = CustomFields(
+        epic_ref='customfield_10100',
+        epic_name='customfield_10200',
+        sprint='customfield_10300',
+        story_points='customfield_10400',
+    )
+    project = ProjectMeta(key='TEST', customfields=customfields)
+
+    issue_fixture = Issue.deserialize(ISSUE_1)
+    issue_fixture.story_points = decimal.Decimal('1.234')
+
+    update_dict = issue_to_jiraapi_update(project, issue_fixture, {'story_points'})
+    assert 'customfield_10400' in update_dict
+    assert update_dict['customfield_10400'] == '1.234'
+
+
+def test_issue_to_jiraapi_update__handles_customfields_extended(mock_jira):
+    '''
+    Ensure issue_to_jiraapi_update converts Issue customfield extended attributes into the Jira API update format
+    '''
+    customfields = CustomFields(
+        epic_ref='customfield_10100',
+        epic_name='customfield_10200',
+        sprint='customfield_10300',
+        extended={
+            'arbitrary_key': 'customfield_10111',
+        }
+    )
+    project = ProjectMeta(key='TEST', customfields=customfields)
+
+    issue_fixture = Issue.deserialize(ISSUE_1)
+    issue_fixture.extended['arbitrary_key'] = 'arbitrary_value'
+
+    update_dict = issue_to_jiraapi_update(project, issue_fixture, {'extended.arbitrary_key'})
+    assert 'customfield_10111' in update_dict
+    assert update_dict['customfield_10111'] == 'arbitrary_value'
+
+
 @pytest.mark.parametrize('modified', [
     {'assignee'},
     {'fix_versions', 'summary'},

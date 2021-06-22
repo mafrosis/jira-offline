@@ -307,6 +307,7 @@ class CustomFields_v3(DataclassSerializer):
     epic_name: Optional[str]
     sprint: Optional[str]
     story_points: Optional[str]
+    extended: Optional[Dict[str, str]]
 
 @dataclass
 class IssueType_v3(DataclassSerializer):
