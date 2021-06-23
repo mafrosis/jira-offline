@@ -32,8 +32,9 @@ logger.setLevel(logging.WARNING)
 @global_options
 def cli(_):
     '''
-    The interesting work is actually done in the `global_options` decorator.
+    Git-like CLI for using Jira offline
     '''
+    # The interesting work is actually done in the `global_options` decorator.
 
 
 cli.add_command(cli_clone)
