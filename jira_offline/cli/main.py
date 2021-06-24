@@ -24,7 +24,7 @@ from jira_offline.utils.cli import parse_editor_result, print_diff, print_list
 logger = logging.getLogger('jira')
 
 
-@click.command(name='show')
+@click.command(name='show', no_args_is_help=True)
 @click.argument('key')
 @click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
 @click.pass_context
@@ -106,7 +106,7 @@ def cli_diff(_, key: str=None):
                 print_diff(issue)
 
 
-@click.command(name='reset')
+@click.command(name='reset', no_args_is_help=True)
 @click.argument('key')
 @click.pass_context
 @global_options
@@ -160,7 +160,7 @@ def cli_projects(ctx: click.core.Context):
 
 
 @click.command(name='config')
-@click.option('--config', '-c', type=click.Path(), help='Read configuration from FILE')
+@click.option('--config', '-c', type=click.Path(), help='Write default configuration to PATH')
 def cli_config(config: Optional[str]=None):
     '''
     Output a default config file into ~/.config/jira-offline/jira-offline.ini
@@ -174,7 +174,7 @@ def cli_config(config: Optional[str]=None):
     click.echo(f'User config written to {config}')
 
 
-@click.command(name='clone')
+@click.command(name='clone', no_args_is_help=True)
 @click.argument('project_uri')
 @click.option('--username', help='Basic auth username to authenicate with')
 @click.option('--password', help='Basic auth password (use with caution!)')
@@ -189,7 +189,7 @@ def cli_clone(ctx: click.core.Context, project_uri: str, username: str=None, pas
     '''
     Clone a Jira project to offline
 
-    PROJECT_URI - Jira project URI to setup and clone, for example: https://jira.atlassian.com:8080/PROJ
+    PROJECT_URI - Jira project URI to setup and pull issues from, for example: https://jira.atlassian.com:8080/PROJ
     '''
     if username and oauth_private_key:
         click.echo('You cannot supply both username and oauth params together')
@@ -265,20 +265,20 @@ def cli_pull(ctx: click.core.Context, projects: str=None, reset: bool=False, no_
     pull_issues(projects=projects_set, force=reset, verbose=ctx.obj.verbose, no_retry=no_retry)
 
 
-@click.command(name='new')
+@click.command(name='new', no_args_is_help=True)
 @click.argument('projectkey')
 @click.argument('issuetype')
 @click.argument('summary')
 @click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
-@click.option('--assignee', help='Username of person assigned to complete the Issue')
+@click.option('--assignee', help='Username of person assigned to the issue')
 @click.option('--description', help='Long description of Issue')
 @click.option('--epic-name', help='Short epic name')
 @click.option('--epic-ref', help='Epic key to which this Issue belongs')
 @click.option('--story-points', help='Issue estimate in story points', type=int)
-@click.option('--fix-versions', help='Issue fix versions as comma-separated')
+@click.option('--fix-versions', help='Issue fix version as comma-separated list')
 @click.option('--labels', help='Issue labels as comma-separated')
-@click.option('--priority', help='Set the priority of the issue')
-@click.option('--reporter', help='Username of Issue reporter (defaults to creator)')
+@click.option('--priority', help='Priority of the issue')
+@click.option('--reporter', help='Username of issue reporter')
 @click.pass_context
 @global_options
 def cli_new(_, projectkey: str, issuetype: str, summary: str, as_json: bool=False, **kwargs):
@@ -328,21 +328,21 @@ def cli_new(_, projectkey: str, issuetype: str, summary: str, as_json: bool=Fals
     click.echo(output)
 
 
-@click.command(name='edit')
+@click.command(name='edit', no_args_is_help=True)
 @click.argument('key')
 @click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
-@click.option('--editor', is_flag=True, help='Free edit the issue in your shell editor')
-@click.option('--assignee', help='Username of person assigned to complete the Issue')
-@click.option('--description', help='Long description of Issue')
+@click.option('--editor', is_flag=True, help='Free edit all issue fields in your shell editor')
+@click.option('--assignee', help='Username of person assigned to the issue')
+@click.option('--description', help='Long description of issue')
 @click.option('--epic-name', help='Short epic name')
 @click.option('--epic-ref', help='Epic key to which this Issue belongs')
 @click.option('--story-points', help='Issue estimate in story points', type=int)
-@click.option('--fix-versions', help='Issue fix versions as comma-separated')
+@click.option('--fix-versions', help='Issue fix version as comma-separated list')
 @click.option('--labels', help='Issue labels as comma-separated')
-@click.option('--priority', help='Set the priority of the issue')
-@click.option('--reporter', help='Username of Issue reporter')
+@click.option('--priority', help='Priority of the issue')
+@click.option('--reporter', help='Username of issue reporter')
 @click.option('--summary', help='Summary one-liner for this issue')
-@click.option('--status', help='Set issue status to any valid for the issuetype')
+@click.option('--status', help='Valid status for the issue\'s type')
 @click.pass_context
 @global_options
 def cli_edit(_, key: str, as_json: bool=False, editor: bool=False, **kwargs):
@@ -411,7 +411,7 @@ def cli_edit(_, key: str, as_json: bool=False, editor: bool=False, **kwargs):
         print_diff(issue)
 
 
-@click.command(name='import')
+@click.command(name='import', no_args_is_help=True)
 @click.argument('file', type=click.File('r'))
 @click.pass_context
 @global_options
