@@ -1,5 +1,5 @@
 arrow==0.15.8
-click==7.1.2
+click==8.0.1
 cryptography==3.4.7
 dataclasses; python_version<='3.6'
 dictdiffer-jira-offline-fork==0.0.1

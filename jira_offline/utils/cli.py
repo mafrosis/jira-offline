@@ -1,5 +1,6 @@
 '''
 Print and text rendering utils for the CLI commands
+Click library extension classes
 '''
 import dataclasses
 import decimal
@@ -13,8 +14,9 @@ from tabulate import tabulate
 import typing_inspect
 
 from jira_offline.exceptions import EditorRepeatFieldFound
-from jira_offline.models import Issue
-from jira_offline.utils import friendly_title
+from jira_offline.jira import jira
+from jira_offline.models import CustomFields, Issue
+from jira_offline.utils import friendly_title, get_field_by_name
 from jira_offline.utils.serializer import istype
 
 
@@ -41,9 +43,6 @@ def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pro
         fields = ['project_key']
     else:
         fields = []
-
-    # late import to avoid cyclic import
-    from jira_offline.jira import jira  # pylint: disable=import-outside-toplevel, cyclic-import
 
     if not verbose:
         fields += jira.config.display.ls_fields
@@ -235,3 +234,25 @@ def parse_editor_result(issue: Issue, editor_result_raw: str, conflicts: Optiona
 
 
     return editor_result
+
+
+class CustomfieldsAsOptions(click.Command):
+    '''
+    Add configured customfields as optional CLI parameters
+    '''
+    def __init__(self, *args, **kwargs):
+        for customfield_name in jira.config.iter_customfields():
+            try:
+                # Extract help text if defined on Customfields class
+                f = get_field_by_name(CustomFields, customfield_name)
+                help_text = f.metadata['cli_help']
+            except ValueError:
+                # Dynamic user-defined customfields have no help text
+                help_text = ''
+
+            kwargs['params'].insert(
+                len(kwargs['params'])-3,  # insert above global_options
+                click.Option([f"--{customfield_name.replace('_', '-')}"], help=help_text),
+            )
+
+        super().__init__(*args, **kwargs)

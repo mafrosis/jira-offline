@@ -45,19 +45,27 @@ class CustomFields(DataclassSerializer):
     the Issue class.
     '''
     # Default set of customfields from Jira
-    epic_ref: Optional[str] = field(default='')
-    epic_name: Optional[str] = field(default='')
-    sprint: Optional[str] = field(default='', metadata={'parse_func': preprocess_sprint})
+    epic_ref: Optional[str] = field(
+        default='', metadata={'cli_help': 'Epic key this issue is related to'}
+    )
+    epic_name: Optional[str] = field(
+        default='', metadata={'cli_help': 'Short epic name'}
+    )
+    sprint: Optional[str] = field(
+        default='', metadata={'cli_help': 'Sprint number', 'parse_func': preprocess_sprint}
+    )
 
     # Additional special-case customfields defined in this application
-    story_points: Optional[str] = field(default='')
+    story_points: Optional[str] = field(
+        default='', metadata={'cli_help': 'Complexity estimate in story points'}
+    )
 
     # Extended set of user-defined customfields
     extended: Optional[Dict[str, str]] = field(default_factory=dict)  # type: ignore[assignment]
 
 
     def items(self) -> Iterator:
-        'Iterate the customfields set for the associated project, plus k:v pairs in self.extended'
+        'Iterate the customfields set for the associated project, plus user-defined ones in self.extended'
         attrs = {k:v for k,v in asdict(self).items() if v}
         if self.extended:
             del attrs['extended']
@@ -236,6 +244,13 @@ class AppConfig(DataclassSerializer):
         with open(get_app_config_filepath(), 'w') as f:
             json.dump(self.serialize(), f)
             f.write('\n')
+
+    def iter_customfields(self) -> set:
+        '''
+        Return unique set of customfields defined across all Jiras.
+        Hard-coded items are the mandatory customfields specified by Jira server.
+        '''
+        return {'epic_ref', 'epic_name', 'sprint'}.union(*self.customfields.values())
 
 
 @dataclass

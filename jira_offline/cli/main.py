@@ -19,7 +19,8 @@ from jira_offline.jira import jira
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.sync import pull_issues, pull_single_project, push_issues
 from jira_offline.utils import find_project
-from jira_offline.utils.cli import parse_editor_result, print_diff, print_list
+from jira_offline.utils.cli import CustomfieldsAsOptions, parse_editor_result, print_diff, print_list
+
 
 logger = logging.getLogger('jira')
 
@@ -265,16 +266,13 @@ def cli_pull(ctx: click.core.Context, projects: str=None, reset: bool=False, no_
     pull_issues(projects=projects_set, force=reset, verbose=ctx.obj.verbose, no_retry=no_retry)
 
 
-@click.command(name='new', no_args_is_help=True)
+@click.command(name='new', cls=CustomfieldsAsOptions, no_args_is_help=True)
 @click.argument('projectkey')
 @click.argument('issuetype')
 @click.argument('summary')
 @click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
 @click.option('--assignee', help='Username of person assigned to the issue')
 @click.option('--description', help='Long description of Issue')
-@click.option('--epic-name', help='Short epic name')
-@click.option('--epic-ref', help='Epic key to which this Issue belongs')
-@click.option('--story-points', help='Issue estimate in story points', type=int)
 @click.option('--fix-versions', help='Issue fix version as comma-separated list')
 @click.option('--labels', help='Issue labels as comma-separated')
 @click.option('--priority', help='Priority of the issue')
@@ -328,15 +326,12 @@ def cli_new(_, projectkey: str, issuetype: str, summary: str, as_json: bool=Fals
     click.echo(output)
 
 
-@click.command(name='edit', no_args_is_help=True)
+@click.command(name='edit', cls=CustomfieldsAsOptions, no_args_is_help=True)
 @click.argument('key')
 @click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
 @click.option('--editor', is_flag=True, help='Free edit all issue fields in your shell editor')
 @click.option('--assignee', help='Username of person assigned to the issue')
 @click.option('--description', help='Long description of issue')
-@click.option('--epic-name', help='Short epic name')
-@click.option('--epic-ref', help='Epic key to which this Issue belongs')
-@click.option('--story-points', help='Issue estimate in story points', type=int)
 @click.option('--fix-versions', help='Issue fix version as comma-separated list')
 @click.option('--labels', help='Issue labels as comma-separated')
 @click.option('--priority', help='Priority of the issue')
