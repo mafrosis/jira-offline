@@ -182,6 +182,9 @@ class Jira(collections.abc.MutableMapping):
         '''
         Load issues from parquet cache file, and store in underlying pandas DataFrame
         '''
+        if not self._df.empty:
+            return
+
         cache_filepath = get_cache_filepath()
         if os.path.exists(cache_filepath) and os.stat(cache_filepath).st_size > 0:
             self._df = pd.read_feather(

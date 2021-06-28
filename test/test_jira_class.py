@@ -7,6 +7,7 @@ conftest.py
 import copy
 from unittest import mock
 
+import pandas as pd
 import pytest
 
 from fixtures import EPIC_1, ISSUE_1, ISSUE_2, ISSUE_MISSING_EPIC, ISSUE_NEW
@@ -169,6 +170,27 @@ def test_jira__load_issues__calls_read_feather_when_cache_file_exists(mock_os, m
     mock_jira_core.load_issues()
 
     mock_pandas.read_feather.assert_called_once_with('filepath')
+
+
+@mock.patch('jira_offline.jira.get_cache_filepath', return_value='filepath')
+@mock.patch('jira_offline.jira.pd', autospec=True)
+@mock.patch('jira_offline.jira.os')
+def test_jira__load_issues__reads_disk_only_once(mock_os, mock_pandas, mock_get_cache_filepath, mock_jira_core):
+    '''
+    Ensure pd.read_feather is called when the cache file exists
+    '''
+    # issues cache is present, and non-zero in size
+    mock_os.path.exists.return_value = True
+    mock_os.stat.return_value.st_size = 1
+
+    # mock pandas.read_feather to return a non-empty DataFrame
+    mock_pandas.read_feather.return_value = pd.DataFrame({'key': ['egg'], 'val': [0]})
+
+    mock_jira_core.load_issues()
+    assert mock_pandas.read_feather.call_count == 1
+
+    mock_jira_core.load_issues()
+    assert mock_pandas.read_feather.call_count == 1
 
 
 @mock.patch('jira_offline.jira.pd', autospec=True)
