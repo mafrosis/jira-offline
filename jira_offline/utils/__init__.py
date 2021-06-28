@@ -156,6 +156,8 @@ def render_value(value: Any, type_: Optional[type]=None) -> str:
         return ''
     elif type_ in (set, list):
         return tabulate([('-', v) for v in value], tablefmt='plain')
+    elif type_ is dict:
+        return tabulate(value.items(), tablefmt='plain')
     elif type_ is datetime.datetime:
         dt = arrow.get(value)
         return f'{dt.humanize()} [{dt.format()}]'
