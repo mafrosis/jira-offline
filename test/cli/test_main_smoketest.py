@@ -25,10 +25,10 @@ CLI_COMMAND_MAPPING = [
     ('diff', ('TEST-71',), 1),
     ('reset', ('TEST-71',), 1),
     ('clone', ('https://jira.atlassian.com/TEST1',), 0),
-    ('new', ('TEST', 'Story', 'Summary'), 0),
+    ('new', ('TEST', 'Story', 'Summary'), 1),
     ('pull', tuple(), 0),
     ('push', tuple(), 1),
-    ('edit', ('TEST-71', '--summary', 'Egg'), 1),
+    ('edit', ('TEST-71', '--summary', 'Egg'), 2),
 ]
 
 
@@ -50,6 +50,7 @@ def test_main_smoketest(mock_write_config, mock_authenticate, mock_push_issues, 
     runner = CliRunner()
 
     with mock.patch('jira_offline.cli.main.jira', mock_jira), \
+            mock.patch('jira_offline.utils.cli.jira', mock_jira), \
             mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, [command, *params])
 

@@ -38,6 +38,7 @@ def test_cli_commands_can_return_json(mock_jira, command, params):
     runner = CliRunner()
 
     with mock.patch('jira_offline.cli.main.jira', mock_jira), \
+            mock.patch('jira_offline.utils.cli.jira', mock_jira), \
             mock.patch('jira_offline.create.jira', mock_jira), \
             mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, [command, *params])
@@ -115,6 +116,7 @@ def test_cli_edit__can_change_an_existing_issue(mock_jira):
     runner = CliRunner()
 
     with mock.patch('jira_offline.cli.main.jira', mock_jira), \
+            mock.patch('jira_offline.utils.cli.jira', mock_jira), \
             mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, ['edit', 'TEST-71', '--summary', 'A new summary'])
 
@@ -133,6 +135,7 @@ def test_cli_edit__can_change_a_new_issue(mock_jira):
     runner = CliRunner()
 
     with mock.patch('jira_offline.cli.main.jira', mock_jira), \
+            mock.patch('jira_offline.utils.cli.jira', mock_jira), \
             mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, ['edit', '7242cc9e-ea52-4e51-bd84-2ced250cabf0', '--summary', 'A new summary'])
 

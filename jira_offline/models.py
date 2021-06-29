@@ -73,6 +73,18 @@ class CustomFields(DataclassSerializer):
                 attrs[f'extended.{k}'] = v
         return iter(attrs.items())
 
+    def __getitem__(self, key: str) -> str:
+        '''
+        Get attribute on this object by key, like a dict. Transparently maps keys into the extended
+        sub-dict if `key` does not exist as an attribute.
+        '''
+        try:
+            return str(getattr(self, key))
+        except AttributeError:
+            if self.extended:
+                return self.extended[key]
+            raise KeyError
+
 
 @dataclass
 class IssueType(DataclassSerializer):
