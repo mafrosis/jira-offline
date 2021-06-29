@@ -54,7 +54,7 @@ def test_main_smoketest(mock_write_config, mock_authenticate, mock_push_issues, 
         result = runner.invoke(cli, [command, *params])
 
     # CLI should always exit zero
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout
 
 
 @pytest.mark.parametrize('command,params,exit_code', CLI_COMMAND_MAPPING)
@@ -76,4 +76,4 @@ def test_main_smoketest_empty(mock_write_config, mock_authenticate, mock_push_is
         result = runner.invoke(cli, [command, *params])
 
     # some CLI commands will exit with error, others will not..
-    assert result.exit_code == exit_code
+    assert result.exit_code == exit_code, result.stdout

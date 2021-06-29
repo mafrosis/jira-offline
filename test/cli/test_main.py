@@ -19,7 +19,7 @@ def test_cli_show__invalid_issue_key(mock_jira):
     with mock.patch('jira_offline.cli.main.jira', mock_jira):
         result = runner.invoke(cli, ['show', 'TEST-71'])
 
-    assert result.exit_code == 1
+    assert result.exit_code == 1, result.stdout
     assert result.output == 'Unknown issue key\nAborted!\n'
 
 
@@ -42,7 +42,7 @@ def test_cli_commands_can_return_json(mock_jira, command, params):
             mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, [command, *params])
 
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout
     try:
         json.loads(f'{result.output}')
     except json.decoder.JSONDecodeError:
@@ -75,7 +75,7 @@ def test_cli_new__error_when_passed_project_not_in_config(mock_jira):
     with mock.patch('jira_offline.cli.main.jira', mock_jira):
         result = runner.invoke(cli, ['new', 'EGG', 'Story', 'Summary of issue'])
 
-    assert result.exit_code == 1
+    assert result.exit_code == 1, result.stdout
     assert not mock_jira.new_issue.called
 
 
@@ -88,7 +88,7 @@ def test_cli_new__error_when_not_passed_epic_name_for_epic(mock_jira):
     with mock.patch('jira_offline.cli.main.jira', mock_jira):
         result = runner.invoke(cli, ['new', 'TEST', 'Epic', 'Summary of issue'])
 
-    assert result.exit_code == 1
+    assert result.exit_code == 1, result.stdout
     assert not mock_jira.new_issue.called
 
 
@@ -101,7 +101,7 @@ def test_cli_new__error_when_passed_epic_ref_for_epic(mock_jira):
     with mock.patch('jira_offline.cli.main.jira', mock_jira):
         result = runner.invoke(cli, ['new', 'TEST', 'Epic', 'Summary of issue', '--epic-ref', 'TEST-1'])
 
-    assert result.exit_code == 1
+    assert result.exit_code == 1, result.stdout
     assert not mock_jira.new_issue.called
 
 
@@ -118,7 +118,7 @@ def test_cli_edit__can_change_an_existing_issue(mock_jira):
             mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, ['edit', 'TEST-71', '--summary', 'A new summary'])
 
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout
     assert mock_jira['TEST-71'].summary == 'A new summary'
     assert mock_jira.write_issues.called
 
@@ -136,7 +136,7 @@ def test_cli_edit__can_change_a_new_issue(mock_jira):
             mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, ['edit', '7242cc9e-ea52-4e51-bd84-2ced250cabf0', '--summary', 'A new summary'])
 
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout
     assert mock_jira['7242cc9e-ea52-4e51-bd84-2ced250cabf0'].summary == 'A new summary'
     assert mock_jira.write_issues.called
 
@@ -148,7 +148,7 @@ def test_cli_config__config_path_used_when_config_param_supplied(mock_write_defa
     '''
     result = CliRunner().invoke(cli, ['config', '--config', '/tmp/egg.ini'])
 
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout
     mock_write_default_user_config.assert_called_with('/tmp/egg.ini')
 
 
@@ -164,5 +164,5 @@ def test_cli_config__default_config_path_used_when_config_param_not_supplied(
 
     result = CliRunner().invoke(cli, ['config'])
 
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout
     mock_write_default_user_config.assert_called_with('/tmp/bacon.ini')
