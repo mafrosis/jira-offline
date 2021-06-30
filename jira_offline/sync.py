@@ -17,9 +17,8 @@ import pandas as pd
 from tabulate import tabulate
 from tqdm import tqdm
 
-from jira_offline.exceptions import (EditorFieldParseFailed, EpicNotFound, EstimateFieldUnavailable,
-                                     FailedPullingIssues, FailedPullingProjectMeta, JiraApiError,
-                                     JiraUnavailable)
+from jira_offline.exceptions import (EditorFieldParseFailed, EpicNotFound, FailedPullingIssues,
+                                     FailedPullingProjectMeta, JiraApiError, JiraUnavailable)
 from jira_offline.jira import jira
 from jira_offline.create import patch_issue_from_dict
 from jira_offline.models import Issue, ProjectMeta
@@ -445,7 +444,7 @@ def push_issues(verbose: bool=False):
                     new_issue = jira.new_issue(project, update_dict)
                     logger.info('Created new %s %s', new_issue.issuetype, new_issue.key)
                     count += 1
-                except (EpicNotFound, EstimateFieldUnavailable) as e:
+                except EpicNotFound as e:
                     logger.error(e)
 
             if pbar:

@@ -13,9 +13,9 @@ from peak.util.proxies import LazyProxy
 import pytz
 
 from jira_offline.config import get_cache_filepath, load_config
-from jira_offline.exceptions import (EpicNotFound, EstimateFieldUnavailable, JiraApiError,
-                                     JiraNotConfigured, MissingFieldsForNewIssue,
-                                     MultipleTimezoneError, ProjectDoesntExist)
+from jira_offline.exceptions import (EpicNotFound, JiraApiError, JiraNotConfigured,
+                                     MissingFieldsForNewIssue, MultipleTimezoneError,
+                                     ProjectDoesntExist)
 from jira_offline.models import AppConfig, CustomFields, Issue, IssueType, ProjectMeta
 from jira_offline.sql_filter import IssueFilter
 from jira_offline.utils.api import get as api_get, post as api_post, put as api_put
@@ -354,8 +354,6 @@ class Jira(collections.abc.MutableMapping):
             )
             if e.message == 'gh.epic.error.not.found':
                 raise EpicNotFound(err)
-            if "Field 'estimate' cannot be set" in e.message:
-                raise EstimateFieldUnavailable(project.key, project.jira_server)
             if 'cannot be set. It is not on the appropriate screen, or unknown.' in e.message:
                 raise JiraNotConfigured(project.key, project.jira_server, err)
 

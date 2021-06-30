@@ -11,8 +11,8 @@ import pytest
 
 from fixtures import EPIC_1, ISSUE_1, ISSUE_2, ISSUE_MISSING_EPIC, ISSUE_NEW
 from helpers import compare_issue_helper, setup_jira_dataframe_helper
-from jira_offline.exceptions import (EpicNotFound, EstimateFieldUnavailable, FailedAuthError,
-                                     JiraApiError, JiraNotConfigured, ProjectDoesntExist)
+from jira_offline.exceptions import (EpicNotFound, FailedAuthError, JiraApiError, JiraNotConfigured,
+                                     ProjectDoesntExist)
 from jira_offline.models import CustomFields, Issue, IssueType, ProjectMeta
 
 
@@ -559,7 +559,6 @@ def test_jira__new_issue__removes_fields_which_cannot_be_posted_for_new_issue(
 
 @pytest.mark.parametrize('error_msg,exception', [
     ('gh.epic.error.not.found', EpicNotFound),
-    ("Field 'estimate' cannot be set", EstimateFieldUnavailable),
     ('cannot be set. It is not on the appropriate screen, or unknown.', JiraNotConfigured),
 ])
 @mock.patch('jira_offline.jira.api_post')
