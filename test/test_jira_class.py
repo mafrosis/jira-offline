@@ -393,6 +393,51 @@ def test_jira__get_project_meta__handles_removal_of_issuetype(mock_api_get, mock
     }
 
 
+@pytest.mark.parametrize('jira_ref', [
+    ('fieldId'),
+    ('key'),
+])
+@mock.patch('jira_offline.jira.api_get')
+def test_jira__get_project_meta__extracts_locked_customfield(mock_api_get, mock_jira_core, project, jira_ref):
+    '''
+    Ensure get_project_meta() method extracts the Jira-provided "locked" customfield for a project
+
+    The parameterization covers the scenario where Jira Cloud uses the fieldname "key", but Jira
+    Server uses "fieldId"
+    '''
+    # mock out call to _get_project_issue_statuses and _get_project_components
+    mock_jira_core._get_project_issue_statuses = mock.Mock()
+    mock_jira_core._get_project_components = mock.Mock()
+
+    # mock return from Jira createmeta API call
+    mock_api_get.return_value = {
+        'projects': [{
+            'id': '56120',
+            'key': 'EGG',
+            'name': 'Project EGG',
+            'issuetypes': [{
+                'self': 'https://example.com/rest/api/2/issuetype/5',
+                'id': '5',
+                'name': 'Epic',
+                'fields': {
+                    'summary': {
+                        'name': 'Summary'
+                    },
+                    'customfield_10200': {
+                        jira_ref: 'customfield_10200',
+                        'name': 'Epic Name',
+                    },
+                },
+            }]
+        }]
+    }
+
+    mock_jira_core.get_project_meta(project)
+
+    assert mock_api_get.called
+    assert project.customfields.epic_name == 'customfield_10200'
+
+
 @mock.patch('jira_offline.utils.decorators.get_user_creds')
 @mock.patch('jira_offline.utils.api._request', side_effect=FailedAuthError)
 def test_jira__get_project_meta__auth_retry_decorator(mock_api_request, mock_get_user_creds, mock_jira_core, project):
