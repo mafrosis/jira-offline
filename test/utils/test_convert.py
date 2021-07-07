@@ -8,7 +8,7 @@ import pytest
 
 from fixtures import ISSUE_1, JIRAAPI_OBJECT
 from jira_offline.models import CustomFields, Issue, ProjectMeta
-from jira_offline.utils.convert import issue_to_jiraapi_update, jiraapi_object_to_issue
+from jira_offline.utils.convert import issue_to_jiraapi_update, jiraapi_object_to_issue, preprocess_sprint
 
 
 def test_jiraapi_object_to_issue__handles_customfields(mock_jira):
@@ -18,6 +18,7 @@ def test_jiraapi_object_to_issue__handles_customfields(mock_jira):
     customfields = CustomFields(
         epic_ref='customfield_10100',
         epic_name='customfield_10200',
+        sprint='customfield_10300',
     )
     project = ProjectMeta(key='TEST', customfields=customfields)
 
@@ -32,6 +33,7 @@ def test_jiraapi_object_to_issue__handles_customfields_2(mock_jira):
     customfields = CustomFields(
         epic_ref='customfield_10100',
         epic_name='customfield_10200',
+        sprint='customfield_10300',
         story_points='customfield_10400',
     )
     project = ProjectMeta(key='TEST', customfields=customfields)
@@ -95,3 +97,15 @@ def test_issue_to_jiraapi_update__all_fields_are_returned_for_new_issue(mock_jir
         'reporter': {'name': 'danil1'},
         'summary': 'This is the story summary',
     }
+
+
+@pytest.mark.parametrize('sprint', [
+    [{'id': 123, 'name': 'SCRUM Sprint 2', 'state': 'active', 'boardId': 99, 'goal': 'Fix Things', 'startDate': '2020-01-01T00:00:00.000Z', 'endDate': '2020-01-14T00:00:00.000Z'}],
+    ['com.atlassian.greenhopper.service.sprint.Sprint@64cd2ea7[id=2,rapidViewId=3,state=FUTURE,name=SCRUM Sprint 2,startDate=<null>,endDate=<null>,completeDate=<null>,activatedDate=<null>,sequence=2,goal=<null>]'],
+])
+def test_preprocess_sprint__returns_sprint_name(sprint):
+    '''
+    Ensure the API conversion util function `preprocess_sprint` parses the sprint name from the API
+    returns from different Jiras.
+    '''
+    assert preprocess_sprint(sprint) == 'SCRUM Sprint 2'

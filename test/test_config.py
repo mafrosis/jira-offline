@@ -305,6 +305,7 @@ def test_write_default_user_config(tmpdir):
 class CustomFields_v3(DataclassSerializer):
     epic_ref: Optional[str]
     epic_name: Optional[str]
+    sprint: Optional[str]
     story_points: Optional[str]
 
 @dataclass

@@ -287,7 +287,7 @@ class Jira(collections.abc.MutableMapping):
 
         logger.debug('Customfields for project %s are %s', project.key, project_customfields)
 
-        customfield_epic_name = customfield_epic_ref = ''
+        customfield_epic_name = customfield_epic_ref = customfield_sprint = ''
 
         # Epic Name, Epic Link & Sprint are "locked" custom fields, and so should always exist
         for name, field_props in project_customfields.items():
@@ -295,11 +295,14 @@ class Jira(collections.abc.MutableMapping):
                 customfield_epic_name = str(field_props['fieldId'])
             elif field_props['name'] == 'Epic Link':
                 customfield_epic_ref = str(field_props['fieldId'])
+            elif field_props['name'] == 'Sprint':
+                customfield_sprint = str(field_props['fieldId'])
 
         # Initialise project's customfields
         project.customfields = CustomFields(
             epic_name=customfield_epic_name,
             epic_ref=customfield_epic_ref,
+            sprint=customfield_sprint,
         )
 
         def apply_customfield_config(name, value):

@@ -42,6 +42,7 @@ def project(timezone):
         customfields=CustomFields(
             epic_ref='customfield_10100',
             epic_name='customfield_10200',
+            sprint='customfield_10300',
         ),
         priorities=['High', 'Low'],
         timezone=timezone,

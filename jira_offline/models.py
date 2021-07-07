@@ -28,6 +28,7 @@ from jira_offline.exceptions import (BadProjectMetaUri, CannotSetIssueAttributeD
                                      UnableToCopyCustomCACert, NoAuthenticationMethod)
 from jira_offline.utils import (get_dataclass_defaults_for_pandas, get_field_by_name, render_field,
                                 render_value)
+from jira_offline.utils.convert import preprocess_sprint
 from jira_offline.utils.serializer import DataclassSerializer, get_base_type
 
 # pylint: disable=too-many-instance-attributes
@@ -46,8 +47,9 @@ class CustomFields(DataclassSerializer):
     # Default set of customfields from Jira
     epic_ref: Optional[str] = field(default='')
     epic_name: Optional[str] = field(default='')
+    sprint: Optional[str] = field(default='', metadata={'parse_func': preprocess_sprint})
 
-    # Additional customfields defined in this application
+    # Additional special-case customfields defined in this application
     story_points: Optional[str] = field(default='')
 
     def items(self) -> Iterator:
@@ -254,6 +256,7 @@ class Issue(DataclassSerializer):
     # work well with multiple inheritance
     epic_ref: Optional[str] = field(default=None)
     epic_name: Optional[str] = field(default=None, metadata={'friendly': 'Epic Short Name'})
+    sprint: Optional[str] = field(default=None)
 
     # Story points special-case Customfield using decimal type
     story_points: Optional[decimal.Decimal] = field(default=None)
@@ -477,8 +480,8 @@ class Issue(DataclassSerializer):
             epicdetails = fmt('epic_ref')
 
         def iter_optionals() -> Generator[str, None, None]:
-            for f in ('priority', 'assignee', 'story_points', 'description', 'fix_versions', 'labels',
-                      'components', 'reporter', 'creator', 'created', 'updated'):
+            for f in ('sprint', 'priority', 'assignee', 'story_points', 'description', 'fix_versions',
+                      'labels', 'components', 'reporter', 'creator', 'created', 'updated'):
 
                 # Always display modified fields
                 if modified_fields and f in modified_fields:
