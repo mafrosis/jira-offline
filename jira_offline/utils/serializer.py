@@ -3,7 +3,7 @@ import datetime
 import decimal
 import enum
 import functools
-from typing import Any, Optional, Tuple, Union
+from typing import Any, cast, Dict, Hashable, List, Optional, Tuple, Union
 import uuid
 
 import arrow
@@ -292,8 +292,111 @@ def _validate_optional_fields_have_a_default(field):
         raise DeserializeError(f'Field {field.name} is Optional with no default configured')
 
 
+class SchemaClass(type):
+    '''
+    Metaclass to add @property `schema` to all instances of DataclassSerializer.
+
+    The generated schema is `jsonschema`-like; the difference being the addition of a type `dict`,
+    which has only fields `key` and `value`, and supports object key types.
+
+    Using a metaclass is the simplest way to add a property to a class (as opposed to an instance of
+    a class).
+    '''
+    @property
+    def schema(cls) -> Dict[Any, Any]:
+        return {
+            '$id': f'https://github.com/mafrosis/jira-offline/{cls.__name__}.json',
+            'title': cls.__name__,
+            'type': 'object',
+            'required': cls._required(cls),
+            'properties': cls._properties(cls),
+        }
+
+    @classmethod
+    def _required(cls, dataclass: Any) -> List[str]:
+        return [
+            f.name for f in dataclasses.fields(dataclass)
+            if not typing_inspect.is_optional_type(f.type)
+        ]
+
+    @classmethod
+    def _properties(cls, dataclass: Any) -> dict:
+        data: Dict[Any, Any] = {}
+
+        for f in dataclasses.fields(dataclass):
+            base_type = get_base_type(cast(Hashable, f.type))
+
+            # Handle edge-case `typing.ForwardRef`s
+            if 'ForwardRef' in str(base_type):
+                data[f.name] = {'type': base_type.__forward_arg__}
+
+            # Recurse into DataclassSerializer instances
+            elif issubclass(base_type, DataclassSerializer):
+                data[f.name] = {
+                    'type': 'object',
+                    'required': cls._required(base_type),
+                    'properties': cls._properties(base_type),
+                }
+
+            # Recurse into typed Dicts
+            elif base_type is dict and typing_inspect.is_generic_type(f.type):
+                # Extract key and value types for the generic Dict
+                generic_key_type, generic_value_type = f.type.__args__[0], f.type.__args__[1]
+
+                # Handle object keys and primitive keys
+                if issubclass(generic_key_type, DataclassSerializer):
+                    key_schema = {
+                        'type': 'object',
+                        'required': cls._required(generic_key_type),
+                        'properties': cls._properties(generic_key_type),
+                    }
+                else:
+                    key_schema = {'type': generic_key_type.__name__}
+
+                # Handle object values and primitive values
+                if issubclass(generic_value_type, DataclassSerializer):
+                    value_schema = {
+                        'type': 'object',
+                        'required': cls._required(generic_value_type),
+                        'properties': cls._properties(generic_value_type),
+                    }
+                else:
+                    value_schema = {'type': generic_value_type.__name__}
+
+                data[f.name] = {
+                    'type': 'dict',
+                    'key': key_schema,
+                    'value': value_schema,
+                }
+
+            # Recurse into typed Lists
+            elif base_type is list and typing_inspect.is_generic_type(f.type):
+                # extract value type for the generic List
+                generic_type = f.type.__args__[0]
+
+                if issubclass(generic_type, DataclassSerializer):
+                    data[f.name] = {
+                        'type': 'array',
+                        'items': {
+                            'type': 'object',
+                            'properties': cls._properties(generic_value_type),
+                        }
+                    }
+                else:
+                    data[f.name] = {
+                        'type': 'array',
+                        'items': {
+                            'type': generic_type.__name___,
+                        }
+                    }
+            else:
+                data[f.name] = {'type': base_type.__name__}
+
+        return data
+
+
 @dataclasses.dataclass
-class DataclassSerializer:
+class DataclassSerializer(metaclass=SchemaClass):
     @classmethod
     def deserialize(cls, attrs: dict, tz: Optional[datetime.tzinfo]=None, ignore_missing: bool=False,
                     constructor_kwargs: Optional[dict]=None) -> Any:

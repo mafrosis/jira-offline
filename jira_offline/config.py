@@ -34,17 +34,22 @@ def load_config():
         except json.decoder.JSONDecodeError:
             raise UnreadableConfig('Bad JSON in config file!', path=config_filepath)
 
+        upgraded_config = False
+
         # Upgrade configuration file if version has changed
         if config_json['schema_version'] != AppConfig().schema_version:
-            upgrade_schema(config_json, config_json['schema_version'], AppConfig().schema_version)
+            upgraded_config = upgrade_schema(
+                config_json, config_json['schema_version'], AppConfig().schema_version
+            )
 
         try:
             config = AppConfig.deserialize(config_json)
         except DeserializeError as e:
             raise UnreadableConfig(e, path=config_filepath)
 
-        # Ensure schema is set to latest
-        config.schema_version = AppConfig().schema_version
+        # If the config schema was upgraded, persist back to disk immediately
+        if upgraded_config:
+            config.write_to_disk()
 
         # Ensure each ProjectMeta instance has a reference to the AppConfig instance
         for p in config.projects.values():
@@ -134,17 +139,22 @@ def get_cache_filepath() -> str:
     return os.path.join(click.get_app_dir(__title__), 'issue_cache.feather')
 
 
-def upgrade_schema(config_json: dict, from_version: int, to_version: int):
+def upgrade_schema(config_json: dict, from_version: int, to_version: int) -> bool:
     '''
     Upgrade the config file schema from one version to another
     '''
     func = globals().get(f'config_upgrade_{from_version}_to_{to_version}')
     if callable(func):
         try:
+            # Run the upgrade function
             func(config_json)
             logger.info('Upgraded app.config schema from %s to %s', from_version, to_version)
         except:
             raise FailedConfigUpgrade
+
+    # Ensure schema is set to latest
+    config_json['schema_version'] = AppConfig().schema_version
+    return True
 
 
 def config_upgrade_1_to_2(config_json: dict):

@@ -1,9 +1,13 @@
+from dataclasses import dataclass
+import datetime
 import os
+from typing import Dict, Optional, Set
 from unittest import mock
 
 from jira_offline.config import (get_default_user_config_filepath, load_config, upgrade_schema,
                                  write_default_user_config)
 from jira_offline.models import AppConfig
+from jira_offline.utils.serializer import DataclassSerializer
 
 
 @mock.patch('jira_offline.config._load_user_config')
@@ -63,7 +67,7 @@ def test_get_default_user_config_filepath_2():
 
 @mock.patch('jira_offline.config._load_user_config')
 @mock.patch('jira_offline.config.upgrade_schema')
-@mock.patch('jira_offline.config.AppConfig')
+@mock.patch('jira_offline.config.AppConfig', autospec=AppConfig)
 @mock.patch('jira_offline.config.json')
 @mock.patch('jira_offline.config.os')
 @mock.patch('jira_offline.config.click')
@@ -77,10 +81,10 @@ def test_load_config__upgrade_called_when_version_changes(mock_open, mock_click,
     # config file exists
     mock_os.path.exists.return_value = True
 
-    # mock AppConfig constgructor to return version == 2
-    mock_appconfig_class.return_value = AppConfig(schema_version=2)
+    # mock AppConfig constructor and AppConfig.deserialize to return an AppConfig object
+    mock_appconfig_class.return_value = mock_appconfig_class.deserialize.return_value = AppConfig()
 
-    # mock config existing file to be scheme version == 1
+    # mock config existing file to have schema_version==1
     mock_json.load.return_value = {
         'schema_version': 1,
         'projects': {
@@ -88,10 +92,13 @@ def test_load_config__upgrade_called_when_version_changes(mock_open, mock_click,
         }
     }
 
+    # ensure config.write_to_disk is not called
+    mock_upgrade_schema.return_value = False
+
     config = load_config()
 
     assert mock_upgrade_schema.called
-    assert config.schema_version == 2
+    assert config.schema_version == AppConfig().schema_version
 
 
 @mock.patch('jira_offline.config.config_upgrade_1_to_2')
@@ -118,3 +125,73 @@ def test_write_default_user_config(tmpdir):
     Ensure the default config is written to disk without error
     '''
     write_default_user_config(os.path.join(tmpdir, 'jira-offline.ini'))
+
+
+#################
+# Redefinition of the classes in models.py, when AppConfig.schema_version == 2
+#
+# Subsequent test compares these classes to the those in models.py to ensure that schema_version is
+# incremented on release.
+#
+@dataclass
+class CustomFields_v2(DataclassSerializer):
+    epic_ref: Optional[str]
+    epic_name: Optional[str]
+    estimate: Optional[str]
+    acceptance_criteria: Optional[str]
+
+@dataclass
+class IssueType_v2(DataclassSerializer):
+    name: str
+    statuses: Set[str]
+
+@dataclass
+class OAuth_v2(DataclassSerializer):
+    access_token: Optional[str]
+    access_token_secret: Optional[str]
+    consumer_key: Optional[str]
+    key_cert: Optional[str]
+
+@dataclass  # pylint: disable=too-many-instance-attributes
+class ProjectMeta_v2(DataclassSerializer):  # pylint: disable=too-many-instance-attributes
+    key: str
+    name: Optional[str]
+    username: Optional[str]
+    password: Optional[str]
+    protocol: Optional[str]
+    hostname: Optional[str]
+    last_updated: Optional[str]
+    issuetypes: Dict[str, IssueType_v2]
+    custom_fields: CustomFields_v2
+    priorities: Optional[Set[str]]
+    components: Optional[Set[str]]
+    oauth: Optional[OAuth_v2]
+    ca_cert: Optional[str]
+    timezone: datetime.tzinfo
+    config: Optional['AppConfig']
+
+@dataclass
+class AppConfig_v2(DataclassSerializer):
+    schema_version: int
+    user_config_filepath: str
+    projects: Dict[str, ProjectMeta_v2]
+
+    sync: AppConfig.Sync
+
+    display: AppConfig.Display
+#
+#################
+
+
+def test_appconfig_model__validate_schema_version():
+    '''
+    Validate that the current AppConfig model has not changed from the v2 schema defined above.
+
+    If this test fails, do the following:
+
+      1. Bump the AppConfig.schema_version default value
+      2. Write an upgrade function for app config in config.py
+      3. Update the above data model to match the new schema
+    '''
+    assert AppConfig.schema['properties'] == AppConfig_v2.schema['properties'], \
+            'Current AppConfig schema does not match schema_version = 2'
