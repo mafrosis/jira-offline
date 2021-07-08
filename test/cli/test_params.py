@@ -48,5 +48,5 @@ def test_cli__filter_options__filter_flag_sets_jira_object_filter(mock_jira):
 
         result = runner.invoke(cli, ['ls', '--filter', "project == TEST"])
 
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout
     assert mock_jira.filter._where is not None

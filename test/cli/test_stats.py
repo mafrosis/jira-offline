@@ -31,7 +31,7 @@ def test_stats_smoketest(mock_jira, subcommand):
         result = runner.invoke(cli, ['stats', subcommand])
 
     # CLI should always exit zero
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout
 
 
 @pytest.mark.parametrize('subcommand', STATS_SUBCOMMANDS)
@@ -46,7 +46,7 @@ def test_stats_smoketest_empty(mock_jira, subcommand):
         result = runner.invoke(cli, ['stats', subcommand])
 
     # CLI should always exit 1
-    assert result.exit_code == 1
+    assert result.exit_code == 1, result.stdout
 
 
 @mock.patch('jira_offline.cli.stats.print_table')
@@ -64,5 +64,5 @@ def test_cli_stats__no_errors_when_no_subcommand_passed(mock_print_table, mock_j
             mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, ['stats'])
 
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout
     assert mock_print_table.call_count == 3

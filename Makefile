@@ -5,7 +5,7 @@ INT_PASS?=logmein
 
 
 .PHONY: all
-all: lint typecheck test
+all: typecheck lint test
 	@true
 
 .PHONY: test

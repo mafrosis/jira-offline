@@ -35,7 +35,7 @@ def get_field_by_name(cls: type, field_name: str) -> dataclasses.Field:
     for f in dataclasses.fields(cls):
         if f.metadata.get('property') == field_name or f.name == field_name:
             return f
-    raise Exception
+    raise ValueError(f'{cls}.{field_name} does not exist!')
 
 
 @functools.lru_cache()
