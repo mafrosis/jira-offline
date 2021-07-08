@@ -16,7 +16,7 @@ ISSUE_1 = {
     'summary': 'This is the story summary',
     'updated': '2019-08-20T16:41:19',
     'epic_ref': 'TEST-1',
-    'estimate': '1',
+    'story_points': '1',
     'diff_to_original': [],
     'modified': False,
 }
@@ -39,7 +39,7 @@ ISSUE_1_WITH_UPDATED_DIFF = {
     'summary': 'This is the story summary',
     'updated': '2000-08-21T00:00:00',
     'epic_ref': 'TEST-1',
-    'estimate': '1',
+    'story_points': '1',
     'diff_to_original': [('change', 'updated', ('2000-08-20T00:00:00', '2019-08-20T16:41:19'))],
     'modified': True,
 }
@@ -62,7 +62,7 @@ ISSUE_1_WITH_ASSIGNEE_DIFF = {
     'summary': 'This is the story summary',
     'updated': '2019-08-23T16:41:19',
     'epic_ref': 'TEST-1',
-    'estimate': '1',
+    'story_points': '1',
     'diff_to_original': [('change', 'assignee', ('hoganp', 'danil1'))],
     'modified': True,
 }
@@ -85,7 +85,7 @@ ISSUE_1_WITH_FIXVERSIONS_DIFF = {
     'summary': 'This is the story summary',
     'updated': '2019-08-24T16:41:19',
     'epic_ref': 'TEST-1',
-    'estimate': '1',
+    'story_points': '1',
     'diff_to_original': [('remove', 'fix_versions', [(1, '0.2')])],
     'modified': True,
 }
@@ -128,7 +128,7 @@ ISSUE_MISSING_EPIC = {
     'status': 'Backlog',
     'summary': 'This is the story summary',
     'updated': '2019-08-20T16:41:19',
-    'estimate': '1.5',
+    'story_points': '1.5',
     'diff_to_original': [],
     'modified': False,
 }

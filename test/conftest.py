@@ -31,7 +31,7 @@ def timezone(request):
 
 @pytest.fixture(params=[
     CustomFields(),
-    CustomFields(epic_ref='10100', epic_name='10200', estimate='10300', acceptance_criteria='10400'),
+    CustomFields(epic_ref='10100', epic_name='10200', story_points='10300', acceptance_criteria='10400'),
 ])
 def customfields(request):
     '''
@@ -89,7 +89,7 @@ def mock_jira(mock_jira_core):
     '''
     mock_jira_core._df = pd.DataFrame(columns=[
         'project_id', 'issuetype', 'summary', 'assignee', 'created', 'creator', 'epic_name',
-        'epic_ref', 'estimate', 'description', 'fix_versions', 'components', 'id', 'key', 'labels',
+        'epic_ref', 'story_points', 'description', 'fix_versions', 'components', 'id', 'key', 'labels',
         'priority', 'reporter', 'status', 'updated', 'diff_to_original', 'modified', 'project_key',
     ])
     mock_jira_core.load_issues = mock.Mock()
@@ -159,9 +159,9 @@ def jira_project(request, run_in_docker):
         f'http://{hostname}/rest/api/2/screens/{screen_ids[0]}/availableFields',
         auth=HTTPBasicAuth(username, password),
     )
-    estimate_customfield_id = [x['id'] for x in resp.json() if x['name'] == 'Story Points'][0]
+    story_points_customfield_id = [x['id'] for x in resp.json() if x['name'] == 'Story Points'][0]
 
-    # add "Story Points" (aka Issue.estimate) to every screen in the project
+    # add "Story Points" (aka Issue.story_points) to every screen in the project
     for screen_id in screen_ids:
         # iterate the screen's tabs (there should be only 1 for a new project)
         resp = requests.get(
@@ -173,7 +173,7 @@ def jira_project(request, run_in_docker):
                 f'http://{hostname}/rest/api/2/screens/{screen_id}/tabs/{tab_id}/fields',
                 auth=HTTPBasicAuth(username, password),
                 json={
-                    'fieldId': estimate_customfield_id,
+                    'fieldId': story_points_customfield_id,
                 },
             )
 

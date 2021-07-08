@@ -11,8 +11,8 @@ import pytest
 
 from fixtures import EPIC_1, ISSUE_1, ISSUE_2, ISSUE_MISSING_EPIC, ISSUE_NEW
 from helpers import compare_issue_helper, setup_jira_dataframe_helper
-from jira_offline.exceptions import (EpicNotFound, EstimateFieldUnavailable, FailedAuthError,
-                                     JiraApiError, JiraNotConfigured, ProjectDoesntExist)
+from jira_offline.exceptions import (EpicNotFound, FailedAuthError, JiraApiError, JiraNotConfigured,
+                                     ProjectDoesntExist)
 from jira_offline.models import CustomFields, Issue, IssueType, ProjectMeta
 
 
@@ -416,7 +416,7 @@ def test_jira__get_project_meta__extracts_custom_fields(mock_api_get, mock_jira_
     mock_jira_core.get_project_meta(project)
 
     assert mock_api_get.called
-    assert project.custom_fields == CustomFields(epic_name='10104', estimate='10106')
+    assert project.custom_fields == CustomFields(epic_name='10104', story_points='10106')
 
 
 @mock.patch('jira_offline.jira.api_get')
@@ -453,7 +453,7 @@ def test_jira__get_project_meta__handles_no_priority_for_issuetype(mock_api_get,
     mock_jira_core.get_project_meta(project)
 
     assert mock_api_get.called
-    assert project.custom_fields == CustomFields(estimate='10106')
+    assert project.custom_fields == CustomFields(story_points='10106')
 
 
 @mock.patch('jira_offline.utils.decorators.get_user_creds')
@@ -559,7 +559,6 @@ def test_jira__new_issue__removes_fields_which_cannot_be_posted_for_new_issue(
 
 @pytest.mark.parametrize('error_msg,exception', [
     ('gh.epic.error.not.found', EpicNotFound),
-    ("Field 'estimate' cannot be set", EstimateFieldUnavailable),
     ('cannot be set. It is not on the appropriate screen, or unknown.', JiraNotConfigured),
 ])
 @mock.patch('jira_offline.jira.api_post')

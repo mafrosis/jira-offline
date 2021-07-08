@@ -185,12 +185,7 @@ https://jira.atlassian.com:8080/PROJ'''
 
 # Raised if Jira is not setup correctly
 class JiraNotConfigured(BaseAppException):
-    '''Jira screens are not configured correctly. Unable to continue.
-
-Go to your Jira project screens configuration:
-{host}/plugins/servlet/project-config/{proj}/screens
-
-Ensure that "Story Points" is on the fields list.'''
+    'Jira screens are not configured correctly. Unable to continue.'
 
     def __init__(self, project_key, jira_server, extra_message=''):
         self.project_key = project_key
@@ -200,11 +195,6 @@ Ensure that "Story Points" is on the fields list.'''
 
     def __str__(self):
         return self.__doc__.format(host=self.jira_server, proj=self.project_key)
-
-
-# Raised when Story Points field is missing
-class EstimateFieldUnavailable(JiraNotConfigured):
-    pass
 
 
 class FailedPullingProjectMeta(BaseAppException):

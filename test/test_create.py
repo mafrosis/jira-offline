@@ -200,7 +200,7 @@ def test_create__import_modified_issue__merges_writable_fields(mock_jira):
     # import some modified fields for Issue key=issue1
     import_dict = {
         'key': 'TEST-71',
-        'estimate': 99,
+        'story_points': 99,
         'description': 'bacon',
     }
 
@@ -210,7 +210,7 @@ def test_create__import_modified_issue__merges_writable_fields(mock_jira):
 
     assert isinstance(imported_issue, Issue)
     assert imported_issue.key == 'TEST-71'
-    assert imported_issue.estimate == 99
+    assert imported_issue.story_points == 99
     assert imported_issue.description == 'bacon'
 
 
@@ -294,14 +294,14 @@ def test_create__import_new_issue__calls_create_issue(mock_create_issue, mock_fi
         'project': 'TEST',
         'issuetype': 'Epic',
         'summary': 'Egg',
-        'estimate': 99,
+        'story_points': 99,
         'description': 'bacon',
     }
 
     with mock.patch('jira_offline.create.jira', mock_jira):
         _import_new_issue(import_dict)
 
-    mock_create_issue.assert_called_with(project, 'Epic', 'Egg', estimate=99, description='bacon')
+    mock_create_issue.assert_called_with(project, 'Epic', 'Egg', story_points=99, description='bacon')
 
 
 @pytest.mark.parametrize('keys', [
