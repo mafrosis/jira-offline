@@ -199,7 +199,7 @@ Ensure that "Story Points" is on the fields list.'''
         super().__init__('')
 
     def __str__(self):
-        self.__doc__.format(host=self.jira_server, proj=self.project_key)
+        return self.__doc__.format(host=self.jira_server, proj=self.project_key)
 
 
 # Raised when Story Points field is missing
