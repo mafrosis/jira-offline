@@ -5,7 +5,6 @@ import logging
 import os
 import pathlib
 from typing import Optional
-import warnings
 
 import click
 
@@ -68,31 +67,43 @@ def load_config():
 def _load_user_config(config: AppConfig):
     '''
     Load user configuration from local INI file.
-
-    Override fields on AppConfig with any fields set in user configuration.
+    Override fields on AppConfig with any fields set in user configuration, validating supplied
+    values.
     '''
     def parse_set(value: str) -> set:
         'Helper to parse comma-separated list into a set type'
         return {f.strip() for f in value.split(',')}
 
-    if os.path.exists(config.user_config_filepath):
+
+    def handle_display_section(items):
+        for key, value in items:
+            if key == 'ls':
+                config.display.ls_fields = parse_set(value)
+            elif key == 'ls-verbose':
+                config.display.ls_fields_verbose = parse_set(value)
+            elif key == 'ls-default-filter':
+                config.display.ls_default_filter = value
+
+    def handle_sync_section(items):
+        for key, value in items:
+            if key == 'page-size':
+                try:
+                    config.sync.page_size = int(value)
+                except ValueError:
+                    logger.warning('Config option sync.page-size must be supplied as an integer. Ignoring.')
+
+
+    if os.path.exists(config.user_config_filepath):  # pylint: disable=too-many-nested-blocks
         cfg = configparser.ConfigParser(inline_comment_prefixes='#')
-        cfg.read(config.user_config_filepath)
+
+        with open(config.user_config_filepath) as f:
+            cfg.read_string(f.read())
 
         for section in cfg.sections():
             if section == 'display':
-                if cfg[section].get('ls'):
-                    config.display.ls_fields = parse_set(cfg[section]['ls'])
-                if cfg[section].get('ls-verbose'):
-                    config.display.ls_fields_verbose = parse_set(cfg[section]['ls-verbose'])
-                if cfg[section].get('ls-default-filter'):
-                    config.display.ls_default_filter = cfg[section]['ls-default-filter']
-            if section == 'sync':
-                if cfg[section].get('page-size'):
-                    try:
-                        config.sync.page_size = int(cfg[section]['page-size'])
-                    except ValueError:
-                        warnings.warn('Bad value in config for sync.page-size')
+                handle_display_section(cfg.items(section))
+            elif section == 'sync':
+                handle_sync_section(cfg.items(section))
 
 
 def write_default_user_config(config_filepath: str):

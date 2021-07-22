@@ -4,8 +4,8 @@ import os
 from typing import Dict, Optional, Set
 from unittest import mock
 
-from jira_offline.config import (get_default_user_config_filepath, load_config, upgrade_schema,
-                                 write_default_user_config)
+from jira_offline.config import (_load_user_config, get_default_user_config_filepath, load_config,
+                                 upgrade_schema, write_default_user_config)
 from jira_offline.models import AppConfig
 from jira_offline.utils.serializer import DataclassSerializer
 
@@ -99,6 +99,70 @@ def test_load_config__upgrade_called_when_version_changes(mock_open, mock_click,
 
     assert mock_upgrade_schema.called
     assert config.schema_version == AppConfig().schema_version
+
+
+@mock.patch('jira_offline.config.os')
+def test_load_user_config__handles_comma_separated_set(mock_os):
+    '''
+    Ensure comma-separated list is parsed into a python set type
+    '''
+    # config file exists
+    mock_os.path.exists.return_value = True
+
+    user_config_fixture = '''
+    [display]
+    ls = status,summary
+    '''
+
+    config = AppConfig()
+
+    with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
+        _load_user_config(config)
+
+    assert config.display.ls_fields == {'status', 'summary'}
+
+
+
+@mock.patch('jira_offline.config.os')
+def test_load_user_config__sync_handles_integer_page_size(mock_os):
+    '''
+    Config option sync.page-size must be supplied as an integer
+    '''
+    # config file exists
+    mock_os.path.exists.return_value = True
+
+    user_config_fixture = '''
+    [sync]
+    page-size = 99
+    '''
+
+    config = AppConfig()
+
+    with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
+        _load_user_config(config)
+
+    assert config.sync.page_size == 99
+
+
+@mock.patch('jira_offline.config.os')
+def test_load_user_config__sync_ignores_non_integer_page_size(mock_os):
+    '''
+    Config option sync.page-size must be supplied as an integer
+    '''
+    # config file exists
+    mock_os.path.exists.return_value = True
+
+    user_config_fixture = '''
+    [sync]
+    page-size = abc
+    '''
+
+    config = AppConfig()
+
+    with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
+        _load_user_config(config)
+
+    assert config.sync.page_size == 25
 
 
 @mock.patch('jira_offline.config.config_upgrade_1_to_2')
