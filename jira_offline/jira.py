@@ -98,8 +98,7 @@ class Jira(collections.abc.MutableMapping):
         if not all(i.updated.tzinfo == issues[0].updated.tzinfo for i in issues):  # type: ignore[union-attr]
             raise MultipleTimezoneError
 
-        # Construct a DataFrame from the passed list of Issues
-        # also fill any NaNs with blank
+        # Construct a DataFrame from the passed list of Issues, and fill any NaNs with blank
         df = pd.DataFrame.from_dict(
             {issue.key:issue.__dict__ for issue in issues},
             orient='index'
@@ -109,8 +108,7 @@ class Jira(collections.abc.MutableMapping):
         for col in ('created', 'updated'):
             df[col] = df[col].dt.tz_convert('UTC')
 
-        # Convert the "project" object column - which contains ProjectMeta instances -
-        # into "project_key" - a string column
+        # Extract ProjectMeta.key into a new string column named `project_key`
         df.loc[:, 'project_key'] = [p.key if p else None for p in df['project']]
 
         # Drop columns for fields marked repr=False
@@ -131,10 +129,13 @@ class Jira(collections.abc.MutableMapping):
         # In-place update for modified issues
         self._df.update(df)
 
+        # Customfields are stored as a dict in the extended column of the DataFrame
+        self._df = self._expand_customfields()
+
         # Let Pandas pick the best datatypes
         self._df = self._df.convert_dtypes()
 
-        # write to disk
+        # Persist new data to disk
         self.write_issues()
 
 
@@ -178,9 +179,25 @@ class Jira(collections.abc.MutableMapping):
         return Jira.ValuesView(self, self.filter)
 
 
+    def _expand_customfields(self) -> pd.DataFrame:
+        '''
+        Customfields are stored as a dict in the extended column of the DataFrame. Expand the
+        key-value pairs from the dict into columns.
+        '''
+        # Drop all extended columns, previously created via this method
+        df1 = self._df.drop(self._df.columns[self._df.columns.str.startswith('extended.')], axis=1)
+
+        # Expand extended dict into columns in a new DataFrame
+        # Prefix each field with "extended."
+        df2 = self._df['extended'].apply(pd.Series).add_prefix('extended.')
+
+        # Merge the customfields columns onto the core DataFrame
+        return pd.merge(df1, df2, left_index=True, right_index=True)
+
+
     def load_issues(self) -> None:
         '''
-        Load issues from parquet cache file, and store in underlying pandas DataFrame
+        Load issues from feather cache file, and store in underlying pandas DataFrame.
         '''
         if not self._df.empty:
             return
@@ -191,19 +208,25 @@ class Jira(collections.abc.MutableMapping):
                 cache_filepath
             ).set_index('key', drop=False).rename_axis(None).convert_dtypes()
 
-            # add an empty column to for Issue.original
+            # Add an empty column to for Issue.original
             self._df['original'] = ''
+
+            # Customfields are stored as a dict in the extended column of the DataFrame
+            self._df = self._expand_customfields()
 
 
     def write_issues(self):
         '''
-        Dump issues to parquet cache file
+        Dump issues to feather cache file.
         '''
-        # Don't write out the original field, as diff_to_original will recreate it
+        # Make a copy of the DataFrame, for munging before write
+        # Don't write out the original field as it can be recreated from Issue.diff_to_original
         df = self._df.drop(columns=['original'])
 
-        # convert `set` columns to `list`, as `set` will not serialize via PyArrow when writing
-        # to disk
+        # Drop the extended columns, which were created via `self._expand_customfields`
+        df.drop(df.columns[df.columns.str.startswith('extended.')], axis=1, inplace=True)
+
+        # PyArrow does not like sets
         for col in ('components', 'fix_versions', 'labels'):
             df[col] = df[col].apply(list)
 

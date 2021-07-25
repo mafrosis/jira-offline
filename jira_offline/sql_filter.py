@@ -15,7 +15,8 @@ import pandas as pd
 from tzlocal import get_localzone
 
 from jira_offline.exceptions import (FilterMozParseFailed, FilterUnknownOperatorException,
-                                     FilterQueryEscapingError, FilterQueryParseFailed)
+                                     FilterUnknownFieldException, FilterQueryEscapingError,
+                                     FilterQueryParseFailed)
 from jira_offline.models import Issue
 from jira_offline.utils import get_field_by_name
 from jira_offline.utils.serializer import istype
@@ -159,12 +160,22 @@ class IssueFilter:
                 # Support "project" keyword for Issue.project_key, just like Jira
                 column = 'project_key'
             else:
-                # Else, validate field keyword is a valid Issue model attribute
-                f = get_field_by_name(Issue, field_)
-                column = f.name
+                try:
+                    # Else, validate field keyword is a valid Issue model attribute
+                    f = get_field_by_name(Issue, conditions[0])
+                    column = f.name
 
-                # Cast for mypy as istype uses @functools.lru_cache
-                typ = cast(Hashable, f.type)
+                    # Cast for mypy as istype uses @functools.lru_cache
+                    typ = cast(Hashable, f.type)
+
+                except ValueError:
+                    # A ValueError is raised by `get_field_by_name`, when the supplied field doesn't
+                    # exist on the Issue model. Validate if the field is a user-defined customfield.
+                    if f'extended.{conditions[0]}' in df:
+                        column = f'extended.{conditions[0]}'
+                        typ = str
+                    else:
+                        raise FilterUnknownFieldException(conditions[0])
 
                 if istype(typ, int):
                     # Coerce supplied strings to int if more appropriate

@@ -620,6 +620,9 @@ class Issue(DataclassSerializer):
         # Remove the original attribute before the Issue constructor call
         original = attrs.pop('original', None)
 
+        # Remove the extended customfield attrs created by `jira._expand_customfields`
+        attrs = {k:v for k,v in attrs.items() if not k.startswith('extended.')}
+
         # Create a mapping of field names to their pandas default
         pandas_null_defaults = get_dataclass_defaults_for_pandas(Issue)
 
