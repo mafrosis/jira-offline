@@ -11,7 +11,7 @@ from typing import Optional
 
 import click
 
-import jira_offline
+from jira_offline import __title__, __version__
 from jira_offline.cli.linters import cli_lint
 from jira_offline.cli.main import (cli_clone, cli_config, cli_diff, cli_edit, cli_ls, cli_new,
                                    cli_projects, cli_pull, cli_push, cli_reset, cli_show, cli_import)
@@ -27,7 +27,7 @@ logger.setLevel(logging.WARNING)
 
 
 @click.group()
-@click.version_option(jira_offline.__version__, prog_name=jira_offline.__title__)
+@click.version_option(__version__, prog_name=__title__)
 @click.pass_context
 @global_options
 def cli(_):
