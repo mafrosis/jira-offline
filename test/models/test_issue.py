@@ -216,3 +216,133 @@ def test_issue_model__to_series_from_series_roundtrip(project):
     roundtrip_issue = Issue.from_series(issue_1.to_series(), project)
 
     compare_issue_helper(issue_1, roundtrip_issue)
+
+
+def test_issue_model__render_returns_core_fields():
+    '''
+    Validate Issue.render returns the set of core fields as used in `jira show`
+    '''
+    issue = Issue.deserialize(ISSUE_1)
+    output = issue.render()
+
+    assert output[0] == ('Summary', '[TEST-71] This is the story summary')
+    assert output[1] == ('Type', 'Story')
+    assert output[2] == ('Epic Ref', 'TEST-1')
+    assert output[3] == ('Status', 'Story Done')
+    assert output[4] == ('Priority', 'Normal')
+    assert output[5] == ('Assignee', 'danil1')
+    assert output[6] == ('Story Points', '1')
+    assert output[7] == ('Description', 'This is a story or issue')
+    assert output[8] == ('Fix Version', '-  0.1')
+    assert output[9] == ('Reporter', 'danil1')
+    assert output[10] == ('Creator', 'danil1')
+
+
+def test_issue_model__render_returns_core_does_not_include_space_prefix():
+    '''
+    Validate Issue.render DOES NOT return each row with a special spacer char as prefix, when not
+    printing any modified fields
+    '''
+    issue = Issue.deserialize(ISSUE_1)
+    output = issue.render()
+
+    assert output[0][0][0] != '\u2800'
+    assert output[len(output)-1][0][0] != '\u2800'
+
+
+def test_issue_model__render_returns_optional_fields_only_when_set():
+    '''
+    Validate Issue.render returns the optional fields when they are set
+    '''
+    issue = Issue.deserialize(ISSUE_1)
+
+    # Remove all optional fields created from the issue fixture
+    issue.priority = None
+    issue.assignee = None
+    issue.story_points = None
+    issue.description = None
+    issue.fix_versions = None
+
+    output = issue.render()
+
+    assert output[0] == ('Summary', '[TEST-71] This is the story summary')
+    assert output[1] == ('Type', 'Story')
+    assert output[2] == ('Epic Ref', 'TEST-1')
+    assert output[3] == ('Status', 'Story Done')
+    assert output[4] == ('Reporter', 'danil1')
+    assert output[5] == ('Creator', 'danil1')
+
+
+def test_issue_model__render_returns_conflict():
+    '''
+    Validate Issue.render produces a git-style conflict for a specified field
+    '''
+    issue = Issue.deserialize(ISSUE_1)
+
+    # Render assignee field as in-conflict
+    output = issue.render(conflicts={'assignee': {'original': 'danil1', 'updated': 'hoganp', 'base': 'murphye'}})
+
+    # Rendered output includes both sides of conflict with git-like formatting
+    assert output[5] == ('<<<<<<< base', '')
+    assert output[6] == ('Assignee', 'murphye')
+    assert output[7] == ('=======', '')
+    assert output[8] == ('Assignee', 'hoganp')
+    assert output[9] == ('>>>>>>> updated', '')
+
+
+def test_issue_model__render_returns_modified_includes_space_prefix():
+    '''
+    Validate Issue.render returns each row with a special spacer char as prefix, to ensure printed
+    fields line up vertically
+    '''
+    issue = Issue.deserialize(ISSUE_1)
+    output = issue.render(modified_fields={'priority'})
+
+    assert output[0][0][0] == '\u2800'
+    assert output[len(output)-1][0][0] == '\u2800'
+
+
+def test_issue_model__render_returns_modified_field_added():
+    '''
+    Validate Issue.render returns an added field with a "+" prefix
+    '''
+    issue = Issue.deserialize(ISSUE_1)
+
+    # Add a new field on the issue
+    issue.components = {'thing'}
+
+    output = issue.render(modified_fields={'components'})
+
+    # Rendered output is in colour with a "+" prefix
+    assert output[9] == ('\x1b[32m+Components\x1b[0m', '\x1b[32m-  thing\x1b[0m')
+
+
+def test_issue_model__render_returns_modified_field_removed():
+    '''
+    Validate Issue.render returns a removed field with a "-" prefix
+    '''
+    issue = Issue.deserialize(ISSUE_1)
+
+    # Remove a field from the issue
+    issue.description = None
+
+    output = issue.render(modified_fields={'description'})
+
+    # Rendered output is in colour with a "-" prefix
+    assert output[7] == ('\x1b[31m-Description\x1b[0m', '\x1b[31mThis is a story or issue\x1b[0m')
+
+
+def test_issue_model__render_returns_modified_field_changed():
+    '''
+    Validate Issue.render returns an added and removed rows, when a field is changed
+    '''
+    issue = Issue.deserialize(ISSUE_1)
+
+    # Modify a field on the issue
+    issue.description = 'New description'
+
+    output = issue.render(modified_fields={'description'})
+
+    # Rendered output is in colour, one line with a "-" prefix and another with a "+" prefix
+    assert output[7] == ('\x1b[31m-Description\x1b[0m', '\x1b[31mThis is a story or issue\x1b[0m')
+    assert output[8] == ('\x1b[32m+Description\x1b[0m', '\x1b[32mNew description\x1b[0m')

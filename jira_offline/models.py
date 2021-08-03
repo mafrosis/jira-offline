@@ -420,22 +420,25 @@ class Issue(DataclassSerializer):
                 )
 
             elif modified_fields and field_name in modified_fields:
-                # render the old version in red with a minus
-                old_value = self.original.get(field_name)
-                if old_value:
-                    old_field = render_field(Issue, field_name, old_value, title_prefix='-',
-                                             value_prefix=prefix, color='red')
-                # render the new version in green with a plus
-                new_value = getattr(self, field_name)
-                if new_value:
-                    new_field = render_field(Issue, field_name, new_value, title_prefix='+',
-                                             value_prefix=prefix, color='green')
-                if old_value and new_value:
-                    return (old_field, new_field)
-                elif old_value:
-                    return (old_field,)
+                # Determine if a field has been added and/or removed
+                removed_value = self.original.get(field_name)
+                added_value = getattr(self, field_name)
+
+                if removed_value:
+                    # Render a removed field in green with a plus
+                    removed_field = render_field(Issue, field_name, removed_value, title_prefix='-',
+                                                 value_prefix=prefix, color='red')
+                if added_value:
+                    # Render an added field in green with a plus
+                    added_field = render_field(Issue, field_name, added_value, title_prefix='+',
+                                               value_prefix=prefix, color='green')
+
+                if removed_value and added_value:
+                    return (removed_field, added_field)
+                elif removed_value:
+                    return (removed_field,)
                 else:
-                    return (new_field,)
+                    return (added_field,)
 
             else:
                 # Render a single blank char prefix to ensure the unmodified fields line up nicely
@@ -456,7 +459,14 @@ class Issue(DataclassSerializer):
         def iter_optionals() -> Generator[str, None, None]:
             for f in ('priority', 'assignee', 'story_points', 'description', 'fix_versions', 'labels',
                       'components', 'reporter', 'creator', 'created', 'updated'):
-                if getattr(self, f):
+
+                # Always display modified fields
+                if modified_fields and f in modified_fields:
+                    for fv in fmt(f):
+                        yield fv
+
+                # Else display optionals only when set
+                elif getattr(self, f):
                     for fv in fmt(f):
                         yield fv
 
