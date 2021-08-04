@@ -103,6 +103,9 @@ def print_table(df: pd.DataFrame):
 
 
 def print_diff(issue: Issue):
+    '''
+    Build and render a diff of the passed issue.
+    '''
     if not issue.exists:
         # this issue was locally created offline so no diff is available; just do a plain print
         click.echo(issue)

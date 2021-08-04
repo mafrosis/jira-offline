@@ -455,14 +455,23 @@ class Issue(DataclassSerializer):
                 )
 
             elif modified_fields and field_name in modified_fields:
+                added_value = removed_value = None
+
                 # Determine if a field has been added and/or removed
-                removed_value = self.original.get(field_name)
-                added_value = getattr(self, field_name)
+                if field_name.startswith('extended.') and self.extended:
+                    field_name = field_name[9:]
+                    if 'extended' in self.original:
+                        removed_value = self.original['extended'][field_name]
+                    added_value = self.extended[field_name]
+                else:
+                    removed_value = self.original.get(field_name)
+                    added_value = getattr(self, field_name)
 
                 if removed_value:
-                    # Render a removed field in green with a plus
+                    # Render a removed field in red with a minus
                     removed_field = render_field(Issue, field_name, removed_value, title_prefix='-',
                                                  value_prefix=prefix, color='red')
+
                 if added_value:
                     # Render an added field in green with a plus
                     added_field = render_field(Issue, field_name, added_value, title_prefix='+',
@@ -477,33 +486,52 @@ class Issue(DataclassSerializer):
 
             else:
                 # Render a single blank char prefix to ensure the unmodified fields line up nicely
-                # with the modified ones, which are printed with +/- diff chars.
+                # with the modified fields. Modified fields are printed with a +/- diff prefix char.
                 # Char u2800 is used to prevent the tabulate module from stripping the prefix.
                 if modified_fields:
                     title_prefix = '\u2800'
                 else:
                     title_prefix = ''
-                return (render_field(Issue, field_name, getattr(self, field_name),
-                                     title_prefix=title_prefix, value_prefix=prefix),)
+
+                # Handle render of extended customfields
+                if field_name.startswith('extended.') and self.extended:
+                    value = self.extended[field_name[9:]]
+                else:
+                    value = getattr(self, field_name)
+
+                return (render_field(Issue, field_name, value, title_prefix=title_prefix,
+                                     value_prefix=prefix),)
 
         if self.issuetype == 'Epic':
             epicdetails = fmt('epic_name')
         else:
             epicdetails = fmt('epic_ref')
 
-        def iter_optionals() -> Generator[str, None, None]:
-            for f in ('sprint', 'priority', 'assignee', 'story_points', 'description', 'fix_versions',
-                      'labels', 'components', 'reporter', 'creator', 'created', 'updated'):
-
+        def iter_optionals():
+            'Iterate the optional attributes of this issue'
+            def iter_fields(field_name, customfield_value) -> Generator[Tuple, None, None]:
                 # Always display modified fields
-                if modified_fields and f in modified_fields:
-                    for fv in fmt(f):
-                        yield fv
+                if modified_fields and field_name in modified_fields:
+                    for x in fmt(field_name):
+                        yield x
+                # Else display fields only when set
+                elif getattr(self, field_name, None) or customfield_value:
+                    for x in fmt(field_name):
+                        yield x
 
-                # Else display optionals only when set
-                elif getattr(self, f):
-                    for fv in fmt(f):
-                        yield fv
+            # First return optionals in specific order
+            for field_name in ('sprint', 'priority', 'assignee', 'story_points', 'description',
+                               'fix_versions', 'labels', 'components'):
+                yield from iter_fields(field_name, None)
+
+            # Next return user-defined customfields
+            if self.extended:
+                for customfield_name, customfield_value in self.extended.items():
+                    yield from iter_fields(f'extended.{customfield_name}', customfield_value)
+
+            # Last return authors and dates
+            for field_name in ('reporter', 'creator', 'created', 'updated'):
+                yield from iter_fields(field_name, None)
 
         fields = [
             *fmt('summary', prefix=f'[{self.key}] '),

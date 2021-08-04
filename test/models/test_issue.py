@@ -273,6 +273,20 @@ def test_issue_model__render_returns_optional_fields_only_when_set():
     assert output[5] == ('Creator', 'danil1')
 
 
+def test_issue_model__render_returns_extended_fields():
+    '''
+    Validate Issue.render includes extended customfields
+    '''
+    # Set an extended customfield on the issue
+    issue_fixture = copy.copy(ISSUE_1)
+    issue_fixture['extended'] = {'arbitrary_key': 'arbitrary_value'}
+    issue = Issue.deserialize(issue_fixture)
+
+    output = issue.render()
+
+    assert output[9] == ('Arbitrary Key', 'arbitrary_value')
+
+
 def test_issue_model__render_returns_conflict():
     '''
     Validate Issue.render produces a git-style conflict for a specified field
@@ -288,6 +302,30 @@ def test_issue_model__render_returns_conflict():
     assert output[7] == ('=======', '')
     assert output[8] == ('Assignee', 'hoganp')
     assert output[9] == ('>>>>>>> updated', '')
+
+
+def test_issue_model__render_returns_conflict_for_extended_fields():
+    '''
+    Validate Issue.render produces a git-style conflict for an extended customfield
+    '''
+    # Set an extended customfield on the issue
+    issue_fixture = copy.copy(ISSUE_1)
+    issue_fixture['extended'] = {'arbitrary_key': 'arbitrary_value'}
+    issue = Issue.deserialize(issue_fixture)
+
+    # Render assignee field as in-conflict
+    output = issue.render(
+        conflicts={'extended.arbitrary_key': {
+            'original': 'arbitrary_value', 'updated': 'upstream_value', 'base': 'other_value'
+        }}
+    )
+
+    # Rendered output includes both sides of conflict with git-like formatting
+    assert output[9] == ('<<<<<<< base', '')
+    assert output[10] == ('Arbitrary Key', 'other_value')
+    assert output[11] == ('=======', '')
+    assert output[12] == ('Arbitrary Key', 'upstream_value')
+    assert output[13] == ('>>>>>>> updated', '')
 
 
 def test_issue_model__render_returns_modified_includes_space_prefix():
@@ -346,3 +384,55 @@ def test_issue_model__render_returns_modified_field_changed():
     # Rendered output is in colour, one line with a "-" prefix and another with a "+" prefix
     assert output[7] == ('\x1b[31m-Description\x1b[0m', '\x1b[31mThis is a story or issue\x1b[0m')
     assert output[8] == ('\x1b[32m+Description\x1b[0m', '\x1b[32mNew description\x1b[0m')
+
+
+def test_issue_model__render_returns_modified_field_added_extended():
+    '''
+    Validate Issue.render returns an added extended customfield with a "+" prefix
+    '''
+    issue = Issue.deserialize(ISSUE_1)
+
+    # Add a new extended customfield on the issue
+    issue.extended['arbitrary_key'] = 'arbitrary_value'
+
+    output = issue.render(modified_fields={'extended.arbitrary_key'})
+
+    # Rendered output is in colour with a "+" prefix
+    assert output[9] == ('\x1b[32m+Arbitrary Key\x1b[0m', '\x1b[32marbitrary_value\x1b[0m')
+
+
+def test_issue_model__render_returns_modified_field_removed_extended():
+    '''
+    Validate Issue.render returns a removed extended customfield with a "-" prefix
+    '''
+    # Set an extended customfield on the issue
+    issue_fixture = copy.copy(ISSUE_1)
+    issue_fixture['extended'] = {'arbitrary_key': 'arbitrary_value'}
+    issue = Issue.deserialize(issue_fixture)
+
+    # Remove a field from the issue
+    issue.extended['arbitrary_key'] = None
+
+    output = issue.render(modified_fields={'extended.arbitrary_key'})
+
+    # Rendered output is in colour with a "-" prefix
+    assert output[9] == ('\x1b[31m-Arbitrary Key\x1b[0m', '\x1b[31marbitrary_value\x1b[0m')
+
+
+def test_issue_model__render_returns_modified_field_changed_extended():
+    '''
+    Validate Issue.render returns an added and removed rows, when an extended customfield is changed
+    '''
+    # Set an extended customfield on the issue
+    issue_fixture = copy.copy(ISSUE_1)
+    issue_fixture['extended'] = {'arbitrary_key': 'arbitrary_value'}
+    issue = Issue.deserialize(issue_fixture)
+
+    # Modify a field on the issue
+    issue.extended['arbitrary_key'] = 'updated_value'
+
+    output = issue.render(modified_fields={'extended.arbitrary_key'})
+
+    # Rendered output is in colour, one line with a "-" prefix and another with a "+" prefix
+    assert output[9] == ('\x1b[31m-Arbitrary Key\x1b[0m', '\x1b[31marbitrary_value\x1b[0m')
+    assert output[10] == ('\x1b[32m+Arbitrary Key\x1b[0m', '\x1b[32mupdated_value\x1b[0m')
