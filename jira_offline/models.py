@@ -24,7 +24,7 @@ from tabulate import tabulate
 from tzlocal import get_localzone
 
 from jira_offline import __title__
-from jira_offline.exceptions import (BadProjectMetaUri, CannotSetIssueAttributeDirectly,
+from jira_offline.exceptions import (BadProjectMetaUri, CannotSetIssueOriginalDirectly,
                                      UnableToCopyCustomCACert, NoAuthenticationMethod)
 from jira_offline.utils import (get_dataclass_defaults_for_pandas, get_field_by_name, render_field,
                                 render_value)
@@ -343,7 +343,7 @@ class Issue(DataclassSerializer):
         '''
         if self._active:
             if name == 'original':
-                raise CannotSetIssueAttributeDirectly
+                raise CannotSetIssueOriginalDirectly
 
             # modified is only set to true if this issue exists on the Jira server
             self.__dict__['modified'] = bool(self.exists)

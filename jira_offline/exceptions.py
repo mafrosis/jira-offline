@@ -253,9 +253,9 @@ class ImportFailed(DynamicBaseAppException):
         return msg
 
 
-# Raised by Issue.__set_attr__ for attribute names which must be set via a helper
-class CannotSetIssueAttributeDirectly(Exception):
-    'This attribute cannot be set directly, you must use the set_<attrib>() helper'
+# Raised by Issue.__set_attr__ when setting issue.original with direct assignment
+class CannotSetIssueOriginalDirectly(Exception):
+    'This attribute must not be set directly, use the set_original() helper'
 
 
 # Raised by Jira.update when a sync returns Issues with a different timezone to those already present

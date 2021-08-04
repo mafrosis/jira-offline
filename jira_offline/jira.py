@@ -471,7 +471,7 @@ class Jira(collections.abc.MutableMapping):
             api_put(project, f'issue/{issue.key}', data={'fields': fields})
 
             # Jira is now updated to match local; synchronize our local reference to the Jira object
-            issue.original = issue.serialize()
+            issue.set_original(issue.serialize())
 
             if issue.key is None:
                 # this code path is not possible, as Jira always provides the key field
