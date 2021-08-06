@@ -1,3 +1,5 @@
+import copy
+
 import pytest
 
 from conftest import not_raises
@@ -98,6 +100,42 @@ def test_parse_editor_result__parses_summary_str():
         '\n'.join(editor_result_raw),
     )
     assert patch_dict['summary'] == 'This is the story summary'
+
+
+def test_parse_editor_result__handles_extended_customfield():
+    '''
+    Ensure editor parser handles an extended customfield on an Issue
+    '''
+    editor_result_raw = [
+        '----------------  --------------------------------------',
+        'Summary           [TEST-71] This is the story summary',
+        'Type              Story',
+        'Epic Ref',
+        'Status            Story Done',
+        'Priority          Normal',
+        'Assignee          mafro',
+        'Story Points',
+        'Description       This is a story or issue',
+        'Fix Version       -  0.1',
+        'Arbitrary Key     arbitrary_updated',
+        'Labels',
+        'Reporter          danil1',
+        'Creator           danil1',
+        'Created           a year ago [2018-09-24 08:44:06+10:00]',
+        'Updated           a year ago [2018-09-24 08:44:06+10:00]',
+        'Last Viewed       a year ago [2018-09-24 08:44:06+10:00]',
+        '----------------  --------------------------------------',
+    ]
+
+    # Set an extended customfield on the issue
+    issue_fixture = copy.copy(ISSUE_1)
+    issue_fixture['extended'] = {'arbitrary_key': 'arbitrary_value'}
+
+    patch_dict = parse_editor_result(
+        Issue.deserialize(issue_fixture),
+        '\n'.join(editor_result_raw),
+    )
+    assert patch_dict['extended.arbitrary_key'] == 'arbitrary_updated'
 
 
 def test_parse_editor_result__handles_add_to_set():
