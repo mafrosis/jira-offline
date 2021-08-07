@@ -59,6 +59,8 @@ def _request(method: str, project: ProjectMeta, path: str, params: Optional[Dict
             message = ''
             try:
                 message = resp.json().get('errorMessages')
+                if not message:
+                    message = resp.json().get('errors')
             except json.decoder.JSONDecodeError:
                 if 'text/html' not in resp.headers['Content-Type']:
                     message = f'{resp.text}'
