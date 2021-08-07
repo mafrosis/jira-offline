@@ -95,7 +95,7 @@ def issue_to_jiraapi_update(project: 'ProjectMeta', issue: 'Issue', modified: se
             if customfield_name.startswith('extended.'):
                 issue_values[customfield_name] = issue_values['extended'][customfield_name[9:]]
 
-    for field_name in ('assignee', 'issuetype', 'reporter'):
+    for field_name in ('assignee', 'issuetype', 'reporter', 'priority'):
         if field_name in issue_values:
             issue_values[field_name] = {'name': issue_values[field_name]}
 

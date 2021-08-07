@@ -126,6 +126,7 @@ def test_issue_to_jiraapi_update__returns_only_fields_passed_in_modified(mock_ji
     {'assignee'},
     {'issuetype'},
     {'reporter'},
+    {'priority'},
 ])
 def test_issue_to_jiraapi_update__fields_are_formatted_correctly(mock_jira, project, modified):
     '''
