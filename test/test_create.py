@@ -67,6 +67,29 @@ def test_create__create_issue__mandatory_fields_are_set_in_new_issue(mock_jira, 
     assert offline_issue.description is None
     assert len(offline_issue.key) == 36  # UUID
 
+    # Validate a roundtrip via the DataFrame
+    assert mock_jira[offline_issue.key].project == project
+    assert mock_jira[offline_issue.key].issuetype == 'Story'
+    assert mock_jira[offline_issue.key].summary == 'This is a summary'
+    assert mock_jira[offline_issue.key].description is None
+    assert len(mock_jira[offline_issue.key].key) == 36  # UUID
+
+
+def test_create__create_issue__kwargs_are_set_in_new_issue(mock_jira, project):
+    '''
+    Ensure create_issue() sets the extra fields passed as kwargs (not args)
+    '''
+    # Add an Epic fixture to the Jira dict
+    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
+
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        offline_issue = create_issue(project, 'Story', 'This is a summary', epic_ref='TEST-1')
+
+    assert offline_issue.epic_ref == 'TEST-1'
+
+    # Validate a roundtrip via the DataFrame
+    assert mock_jira[offline_issue.key].epic_ref == 'TEST-1'
+
 
 def test_create__create_issue__raises_exception_when_passed_an_unknown_epic_ref(mock_jira, project):
     '''

@@ -82,14 +82,14 @@ def create_issue(project: ProjectMeta, issuetype: str, summary: str, **kwargs) -
         key=str(uuid.uuid4()),
     )
 
-    # Set into jira dict
-    jira[new_issue.key] = new_issue
-
     # Although description is mandatory on the Jira API, the Issue can survive with an empty one
     if 'description' not in kwargs or not kwargs['description']:
         kwargs['description'] = ''
 
     patch_issue_from_dict(new_issue, kwargs)
+
+    # Set into jira dict, and the underlying DataFrame
+    jira[new_issue.key] = new_issue
 
     # Write changes to disk
     jira.write_issues()
