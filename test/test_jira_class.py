@@ -21,7 +21,7 @@ def test_jira__mutablemapping__get_item__(mock_jira_core, project):
     '''
     Ensure that __get_item__ returns a valid Issue object from the underlying dataframe
     '''
-    # Setup the the Jira dataframe
+    # Setup the Jira DataFrame
     issue_1 = Issue.deserialize(ISSUE_1, project=project)
     mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
 
@@ -35,7 +35,7 @@ def test_jira__mutablemapping__set_item__new(mock_jira_core, project):
     '''
     Ensure that __set_item__ adds a valid new Issue to the underlying dataframe
     '''
-    # Setup the the Jira dataframe
+    # Setup the Jira DataFrame
     issue_1 = Issue.deserialize(ISSUE_1, project=project)
     mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
 
@@ -56,7 +56,7 @@ def test_jira__mutablemapping__set_item__overwrite(mock_jira_core, project):
     '''
     Ensure that __set_item__ overwrites an existing Issue to the underlying dataframe
     '''
-    # Setup the the Jira dataframe
+    # Setup the Jira DataFrame
     issue_1 = Issue.deserialize(ISSUE_1, project=project)
     mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
 
@@ -76,7 +76,7 @@ def test_jira__mutablemapping__del_item__(mock_jira_core, project):
     '''
     issue_1 = Issue.deserialize(ISSUE_1, project=project)
 
-    # Setup the the Jira dataframe
+    # Setup the Jira DataFrame
     mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
 
     assert len(mock_jira_core._df) == 1
@@ -93,7 +93,7 @@ def test_jira__mutablemapping__in_operator(mock_jira_core, project):
     '''
     issue_1 = Issue.deserialize(ISSUE_1, project=project)
 
-    # Setup the the Jira dataframe
+    # Setup the Jira DataFrame
     mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
 
     # simply assert the key is in the dict
@@ -104,7 +104,7 @@ def test_jira__mutablemapping__in_operator_with_new_issue(mock_jira_core, projec
     '''
     Ensure that one can use the "in" operator with the Jira dict
     '''
-    # Setup the the Jira dataframe
+    # Setup the Jira DataFrame
     issue_1 = Issue.deserialize(ISSUE_1, project=project)
     mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
 
@@ -120,7 +120,7 @@ def test_jira__mutablemapping__roundtrip(mock_jira, project, issue_fixture):
     Ensure an issue can be set into the Jira object and be recreated without change.
     Parameterized with the various different types of Issue fixtures.
     '''
-    # Setup the the Jira dataframe
+    # Setup the Jira DataFrame
     issue_1 = Issue.deserialize(ISSUE_MISSING_EPIC, project=project)
     mock_jira._df = setup_jira_dataframe_helper([issue_1])
 
@@ -221,7 +221,7 @@ def test_jira__write_issues_load_issues__roundtrip(mock_os, mock_jira_core, proj
     mock_os.path.exists.return_value = True
     mock_os.stat.return_value.st_size = 1
 
-    # Setup the the Jira dataframe
+    # Setup the Jira DataFrame
     issue = Issue.deserialize(issue_fixture, project=project)
     mock_jira_core._df = setup_jira_dataframe_helper([issue])
 
@@ -692,7 +692,7 @@ def test_jira__new_issue__removes_fields_which_cannot_be_posted_for_new_issue(
     '''
     Some fields cannot be posted to the Jira API. Ensure they are removed before the API call.
     '''
-    # Setup the the Jira dataframe
+    # Setup the the Jira DataFrame
     issue_1 = Issue.deserialize(ISSUE_1, project=project)
     mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
 
@@ -751,7 +751,7 @@ def test_jira__new_issue__removes_temp_key_when_new_post_successful(
     '''
     Ensure a successful post of a new Issue deletes the old temp UUID key from self
     '''
-    # Setup the the Jira dataframe
+    # Setup the the Jira DataFrame
     issue_1 = Issue.deserialize(ISSUE_1, project=project)
     mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
 
@@ -802,7 +802,7 @@ def test_jira__keys__respect_the_filter(mock_jira_core):
     '''
     Ensure that jira.keys() respects a filter set in jira.filter
     '''
-    # Setup the the Jira dataframe
+    # Setup the Jira DataFrame
     issue_1 = Issue.deserialize(ISSUE_1, project=ProjectMeta('FIRST'))
     issue_2 = Issue.deserialize(ISSUE_2, project=ProjectMeta('SECOND'))
     mock_jira_core._df = setup_jira_dataframe_helper([issue_1, issue_2])
@@ -819,7 +819,7 @@ def test_jira__values__respect_the_filter(mock_jira_core):
     '''
     Ensure that jira.values() respects a filter set in jira.filter
     '''
-    # Setup the the Jira dataframe
+    # Setup the Jira DataFrame
     issue_1 = Issue.deserialize(ISSUE_1, project=ProjectMeta('FIRST'))
     issue_2 = Issue.deserialize(ISSUE_2, project=ProjectMeta('SECOND'))
     mock_jira_core._df = setup_jira_dataframe_helper([issue_1, issue_2])
@@ -836,7 +836,7 @@ def test_jira__items__respect_the_filter(mock_jira_core):
     '''
     Ensure that jira.items() respects a filter set in jira.filter
     '''
-    # Setup the the Jira dataframe
+    # Setup the Jira DataFrame
     issue_1 = Issue.deserialize(ISSUE_1, project=ProjectMeta('FIRST'))
     issue_2 = Issue.deserialize(ISSUE_2, project=ProjectMeta('SECOND'))
     mock_jira_core._df = setup_jira_dataframe_helper([issue_1, issue_2])
@@ -880,7 +880,7 @@ def test_jira__update__merge_new_issues_into_existing_dataframe(mock_jira, proje
     '''
     issue_1 = Issue.deserialize(ISSUE_1, project=project)
 
-    # Setup the the Jira dataframe
+    # Setup the Jira DataFrame
     mock_jira._df = setup_jira_dataframe_helper([issue_1])
 
     # output from sync.pull_single_project
@@ -907,7 +907,7 @@ def test_jira__update__merge_existing_issues_into_existing_dataframe(mock_jira, 
     issue_1 = Issue.deserialize(ISSUE_1, project=project)
     issue_2 = Issue.deserialize(ISSUE_2, project=project)
 
-    # Setup the the Jira dataframe
+    # Setup the Jira DataFrame
     mock_jira._df = setup_jira_dataframe_helper([issue_1, issue_2])
 
     # change some fields for the update
