@@ -220,19 +220,19 @@ def merge_issues(base_issue: Issue, updated_issue: Issue, is_upstream_merge: boo
     Returns:
         An IssueUpdate object created by build_update
     '''
-    # construct an object representing changes/conflicts
+    # Construct an object representing changes/conflicts
     update_obj = build_update(base_issue, updated_issue)
 
     if update_obj.conflicts:
-        # resolve any conflicts
+        # Resolve any conflicts
         manual_conflict_resolution(update_obj)
 
     if is_upstream_merge and updated_issue is not None:
-        # set the original property to the latest version of this Issue incoming from upstream
+        # Set the original property to the latest version of this Issue incoming from upstream
         # this ensures the correct diff is written to disk
         update_obj.merged_issue.set_original(updated_issue.serialize())
 
-    # refresh merged Issue's diff_to_original field
+    # Refresh merged Issue's diff_to_original field
     update_obj.merged_issue.diff()
 
     return update_obj
@@ -274,7 +274,7 @@ def build_update(base_issue: Issue, updated_issue: Optional[Issue]) -> IssueUpda
         # for new Issues created offline, the updated_issue must be set to Issue.blank
         updated_issue = Issue.blank()
 
-    # serialize both Issue objects to dict
+    # Serialize both Issue objects to dict
     base_issue_dict: dict = base_issue.serialize()
     updated_issue_dict: dict = updated_issue.serialize()
 
@@ -304,9 +304,14 @@ def build_update(base_issue: Issue, updated_issue: Optional[Issue]) -> IssueUpda
     def modified_fields(diffs):
         '''Yield each field name in the Merger patches'''
         for mode, field_name, value in diffs:
-            if mode in ('add', 'remove') and field_name == '':
-                for fn, _ in value:
-                    yield fn
+            if mode == 'add' and field_name == 'extended':
+                pass
+            elif mode in ('add', 'remove') and field_name == '':
+                for fn, patch in value:
+                    if fn == 'extended':
+                        yield f'extended.{list(patch.keys())[0]}'
+                    else:
+                        yield fn
             elif mode == 'change':
                 if isinstance(field_name, str):
                     yield field_name

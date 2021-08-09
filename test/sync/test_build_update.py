@@ -259,7 +259,7 @@ def test_build_update__base_modified_on_single_field_and_updated_modified_on_mul
 
 def test_build_update__new_issue():
     '''
-    Validate return when calling build_update with NEW issue
+    Validate build_update with NEW issue
     '''
     # create a new Issue fixture
     new_issue = Issue.deserialize(ISSUE_NEW)
@@ -267,13 +267,50 @@ def test_build_update__new_issue():
     # for new Issues created offline, the updated_issue is None
     update_obj = build_update(new_issue, None)
 
-    # modified fields should match all non-readonly fields
-    assert update_obj.modified == set(
-        ['project_id', 'key', 'description', 'epic_ref', 'fix_versions', 'issuetype', 'reporter', 'summary']
-    )
+    # modified fields should match all non-readonly fields, which are set in ISSUE_NEW fixture
+    assert update_obj.modified == {
+        'project_id', 'key', 'description', 'epic_ref', 'fix_versions', 'issuetype', 'reporter', 'summary',
+    }
     assert not update_obj.conflicts
-    for field in update_obj.modified:
-        assert getattr(update_obj.merged_issue, field) == getattr(new_issue, field)
+
+    assert new_issue.project_id == update_obj.merged_issue.project_id
+    assert new_issue.key == update_obj.merged_issue.key
+    assert new_issue.description == update_obj.merged_issue.description
+    assert new_issue.epic_ref == update_obj.merged_issue.epic_ref
+    assert new_issue.fix_versions == update_obj.merged_issue.fix_versions
+    assert new_issue.issuetype == update_obj.merged_issue.issuetype
+    assert new_issue.reporter == update_obj.merged_issue.reporter
+    assert new_issue.summary == update_obj.merged_issue.summary
+
+
+def test_build_update__new_issue_with_extended_customfield():
+    '''
+    Validate build_update with NEW issue that has extended customfields
+    '''
+    # create a new Issue fixture
+    issue_fixture = copy.copy(ISSUE_NEW)
+    issue_fixture['extended'] = {'arbitrary_key': 'arbitrary_original'}
+    del issue_fixture['fix_versions']
+    del issue_fixture['epic_ref']
+    new_issue = Issue.deserialize(issue_fixture)
+
+    # for new Issues created offline, the updated_issue is None
+    update_obj = build_update(new_issue, None)
+
+    # modified fields should match all non-readonly fields
+    assert update_obj.modified == {
+        'project_id', 'key', 'description', 'issuetype', 'reporter', 'summary', 'extended.arbitrary_key',
+    }
+    assert not update_obj.conflicts
+
+    assert new_issue.project_id == update_obj.merged_issue.project_id
+    assert new_issue.key == update_obj.merged_issue.key
+    assert new_issue.description == update_obj.merged_issue.description
+    assert new_issue.epic_ref == update_obj.merged_issue.epic_ref
+    assert new_issue.fix_versions == update_obj.merged_issue.fix_versions
+    assert new_issue.issuetype == update_obj.merged_issue.issuetype
+    assert new_issue.reporter == update_obj.merged_issue.reporter
+    assert new_issue.summary == update_obj.merged_issue.summary
 
 
 @pytest.mark.parametrize('val', [
