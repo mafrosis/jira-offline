@@ -59,10 +59,10 @@ def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pro
         else:
             return f'{dt.humanize()}'
 
-    # pretty dates
+    # Pretty dates
     df['updated'] = df.updated.apply(format_datetime)
 
-    # shorten the summary field for printing
+    # Shorten the summary field for printing
     df['summary'] = df.summary.str.slice(0, width)
 
     def abbrev_key(key):
@@ -72,12 +72,15 @@ def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pro
             return key[0:8]
         return key
 
-    # abbreviate long issue keys (offline-created issues have a UUID as the key)
+    # Abbreviate long issue keys (offline-created issues have a UUID as the key)
     df['key'] = df.key.apply(abbrev_key)
     df['epic_ref'] = df.epic_ref.apply(abbrev_key)
 
     if verbose:
         df.fix_versions = df.fix_versions.apply(lambda x: '' if x is None else ','.join(x))
+
+    # Rename all extended customfield columns, removing the "extended." prefix
+    df.rename(columns={f'extended.{f}': f for f in jira.config.iter_customfields()}, inplace=True)
 
     print_table(df[fields])
 
