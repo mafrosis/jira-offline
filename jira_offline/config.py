@@ -71,9 +71,9 @@ def _load_user_config(config: AppConfig):
     Override fields on AppConfig with any fields set in user configuration, validating supplied
     values.
     '''
-    def parse_set(value: str) -> set:
-        'Helper to parse comma-separated list into a set type'
-        return {f.strip() for f in value.split(',')}
+    def parse_list(value: str) -> list:
+        'Helper to parse comma-separated list into a list type'
+        return [f.strip() for f in value.split(',')]
 
     def validate_customfield(value: str) -> bool:
         if not value.startswith('customfield_'):
@@ -88,9 +88,9 @@ def _load_user_config(config: AppConfig):
     def handle_display_section(items):
         for key, value in items:
             if key == 'ls':
-                config.display.ls_fields = parse_set(value)
+                config.display.ls_fields = parse_list(value)
             elif key == 'ls-verbose':
-                config.display.ls_fields_verbose = parse_set(value)
+                config.display.ls_fields_verbose = parse_list(value)
             elif key == 'ls-default-filter':
                 config.display.ls_default_filter = value
 

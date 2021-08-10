@@ -228,8 +228,8 @@ class AppConfig(DataclassSerializer):
 
     @dataclass
     class Display:
-        ls_fields: Set[str]
-        ls_fields_verbose: Set[str]
+        ls_fields: List[str]
+        ls_fields_verbose: List[str]
         ls_default_filter: str
 
     display: Display = field(init=False, metadata={'serialize': False})
@@ -243,8 +243,8 @@ class AppConfig(DataclassSerializer):
         self.user_config_filepath = get_default_user_config_filepath()
 
         self.display = AppConfig.Display(
-            ls_fields = {'issuetype', 'epic_ref', 'summary', 'status', 'assignee', 'updated'},
-            ls_fields_verbose = {'issuetype', 'epic_ref', 'epic_name', 'summary', 'status', 'assignee', 'fix_versions', 'updated'},
+            ls_fields = ['issuetype', 'epic_ref', 'summary', 'status', 'assignee', 'updated'],
+            ls_fields_verbose = ['issuetype', 'epic_ref', 'epic_name', 'summary', 'status', 'assignee', 'fix_versions', 'updated'],
             ls_default_filter = 'status not in ("Done", "Story Done", "Epic Done", "Closed")'
         )
         self.sync = AppConfig.Sync()
