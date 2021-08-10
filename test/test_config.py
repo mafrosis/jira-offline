@@ -337,6 +337,7 @@ class ProjectMeta_v3(DataclassSerializer):  # pylint: disable=too-many-instance-
     oauth: Optional[OAuth_v3]
     ca_cert: Optional[str]
     timezone: datetime.tzinfo
+    jira_id: Optional[str]
     config: Optional['AppConfig']
 
 @dataclass

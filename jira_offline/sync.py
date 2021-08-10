@@ -17,7 +17,7 @@ import pandas as pd
 from tabulate import tabulate
 from tqdm import tqdm
 
-from jira_offline.exceptions import (EditorFieldParseFailed, EpicNotFound, FailedPullingIssues,
+from jira_offline.exceptions import (EditorFieldParseFailed, FailedPullingIssues,
                                      FailedPullingProjectMeta, JiraApiError, JiraUnavailable)
 from jira_offline.jira import jira
 from jira_offline.create import patch_issue_from_dict
@@ -412,7 +412,7 @@ def manual_conflict_resolution(update_obj: IssueUpdate):
     patch_issue_from_dict(update_obj.merged_issue, patch_dict)
 
 
-def push_issues(verbose: bool=False):
+def push_issues(verbose: bool=False) -> int:
     '''
     Push new/changed issues back to Jira server
 
@@ -448,19 +448,20 @@ def push_issues(verbose: bool=False):
                 project, update_obj.merged_issue, update_obj.modified
             )
 
-            if update_obj.merged_issue.exists:
-                jira.update_issue(project, update_obj.merged_issue, update_dict)
-                logger.info(
-                    'Updated %s %s', update_obj.merged_issue.issuetype, update_obj.merged_issue.key
-                )
-                count += 1
-            else:
-                try:
-                    new_issue = jira.new_issue(project, update_dict)
+            try:
+                if update_obj.merged_issue.exists:
+                    jira.update_issue(project, update_obj.merged_issue, update_dict)
+                    logger.info(
+                        'Updated %s %s', update_obj.merged_issue.issuetype, update_obj.merged_issue.key
+                    )
+                else:
+                    new_issue = jira.new_issue(project, update_dict, update_obj.merged_issue.key)
                     logger.info('Created new %s %s', new_issue.issuetype, new_issue.key)
-                    count += 1
-                except EpicNotFound as e:
-                    logger.error(e)
+
+                count += 1
+
+            except JiraApiError as e:
+                logger.error('Failed pushing %s with error "%s"', update_obj.merged_issue.key, e.message)
 
             if pbar:
                 # update progress
@@ -494,3 +495,4 @@ def push_issues(verbose: bool=False):
         push_result_log_level = logging.INFO
 
     logger.log(push_result_log_level, 'Pushed %s of %s issues', total, len(issues_to_push))
+    return total

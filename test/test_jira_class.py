@@ -12,9 +12,9 @@ import pytest
 
 from fixtures import EPIC_1, ISSUE_1, ISSUE_2, ISSUE_MISSING_EPIC, ISSUE_NEW
 from helpers import compare_issue_helper, setup_jira_dataframe_helper
-from jira_offline.exceptions import (EpicNotFound, FailedAuthError, JiraApiError, JiraNotConfigured,
-                                     ProjectDoesntExist)
+from jira_offline.exceptions import FailedAuthError, JiraApiError, ProjectDoesntExist
 from jira_offline.models import Issue, IssueType, ProjectMeta
+from jira_offline.utils.convert import issue_to_jiraapi_update
 
 
 def test_jira__mutablemapping__get_item__(mock_jira_core, project):
@@ -686,99 +686,153 @@ def test_jira__load_customfields__project_specific_customfield_overrides_all_pro
 
 
 @mock.patch('jira_offline.jira.api_post')
-def test_jira__new_issue__removes_fields_which_cannot_be_posted_for_new_issue(
-        mock_api_post, mock_jira_core, project
-    ):
+def test_jira__new_issue__calls_write_issues_on_success(mock_api_post, mock_jira_core, project):
     '''
-    Some fields cannot be posted to the Jira API. Ensure they are removed before the API call.
+    Ensure a successful new issue API request causes call to write_issues and returns the new Issue
     '''
     # Setup the the Jira DataFrame
-    issue_1 = Issue.deserialize(ISSUE_1, project=project)
-    mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
+    issue_new = Issue.deserialize(ISSUE_NEW, project=project)
+    mock_jira_core._df = setup_jira_dataframe_helper([issue_new])
 
-    # dont write to disk during tests
+    # Don't write to disk during tests
     mock_jira_core.write_issues = mock.Mock()
 
-    # add new issue to the jira object
-    mock_jira_core[ISSUE_NEW['key']] = Issue.deserialize(ISSUE_NEW)
+    # Mock the return from fetch_issue() which happens after a successful new_issue() call
+    issue_1 = Issue.deserialize(ISSUE_1, project=project)
+    mock_jira_core.fetch_issue = mock.Mock(return_value=issue_1)
 
-    # mock the fetch_issue() call that happens after successful new_issue() call
-    mock_jira_core.fetch_issue = mock.Mock(return_value=Issue.deserialize(ISSUE_1))
-
-    mock_jira_core.new_issue(
+    updated_issue = mock_jira_core.new_issue(
         project,
         fields={
-            'project_id': 'notarealprojecthash',
-            'key': ISSUE_NEW['key'],
+            'project': {'id': project.jira_id},
             'summary': 'A summary',
             'issuetype': {'name': 'Story'},
-        }
+        },
+        offline_temp_key=issue_new.key,
     )
 
-    # assert "key" and "status" are removed
-    mock_api_post.assert_called_with(project, 'issue', data={'fields': {'summary': 'A summary', 'issuetype': {'name': 'Story'}}})
+    assert updated_issue is issue_1
+    assert mock_jira_core.fetch_issue.called
+    assert mock_jira_core.write_issues.called
 
 
-@pytest.mark.parametrize('error_msg,exception', [
-    ('gh.epic.error.not.found', EpicNotFound),
-    ('cannot be set. It is not on the appropriate screen, or unknown.', JiraNotConfigured),
-])
 @mock.patch('jira_offline.jira.api_post')
-def test_jira__new_issue__raises_specific_exceptions(mock_api_post, mock_jira_core, project, error_msg, exception):
+def test_jira__new_issue__does_not_call_write_issues_on_failure(mock_api_post, mock_jira_core, project):
     '''
-    Ensure correct custom exception is raised when specific string found in Jira API error message
+    Ensure a failed new issue API request does not cause call to write_issues
     '''
-    # mock the Jira library to raise
-    mock_api_post.side_effect = JiraApiError(error_msg)
+    # Setup the the Jira DataFrame
+    issue_new = Issue.deserialize(ISSUE_NEW, project=project)
+    mock_jira_core._df = setup_jira_dataframe_helper([issue_new])
 
-    with pytest.raises(exception):
-        mock_jira_core.new_issue(
+    # Don't write to disk during tests
+    mock_jira_core.write_issues = mock.Mock()
+
+    # Mock api_post() to raise an exception, and mock jira.fetch_issue
+    mock_api_post.side_effect = [JiraApiError]
+    mock_jira_core.fetch_issue = mock.Mock()
+
+    updated_issue = None
+
+    with pytest.raises(JiraApiError):
+        updated_issue = mock_jira_core.new_issue(
             project,
             fields={
-                'project_id': 'notarealprojecthash',
-                'key': ISSUE_NEW['key'],
-                'status': 'Backlog',
+                'project': {'id': project.jira_id},
                 'summary': 'A summary',
                 'issuetype': {'name': 'Story'},
-            }
+            },
+            offline_temp_key=issue_new.key,
         )
+
+    assert updated_issue is None
+    assert not mock_jira_core.fetch_issue.called
+    assert not mock_jira_core.write_issues.called
 
 
 @mock.patch('jira_offline.jira.api_post')
-def test_jira__new_issue__removes_temp_key_when_new_post_successful(
-        mock_api_post, mock_jira_core, project
+def test_jira__new_issue__removes_temp_key_when_new_post_successful(mock_api_post, mock_jira_core, project):
+    '''
+    Ensure a successful new Issue creation deletes the old temp UUID key
+    '''
+    # Setup the the Jira DataFrame
+    issue_new = Issue.deserialize(ISSUE_NEW, project=project)
+    mock_jira_core._df = setup_jira_dataframe_helper([issue_new])
+
+    # Don't write to disk during tests
+    mock_jira_core.write_issues = mock.Mock()
+
+    # Mock the return from fetch_issue() which happens after a successful new_issue() call
+    issue_1 = Issue.deserialize(ISSUE_1, project=project)
+    mock_jira_core.fetch_issue = mock.Mock(return_value=issue_1)
+
+    mock_jira_core.new_issue(
+        project,
+        fields={
+            'project': {'id': project.jira_id},
+            'summary': 'A summary',
+            'issuetype': {'name': 'Story'},
+        },
+        offline_temp_key=issue_new.key,
+    )
+
+    # Assert new key returned from Jira API has been added
+    assert issue_1.key in mock_jira_core
+    # Assert temporary key has been removed
+    assert issue_new.key not in mock_jira_core
+
+
+@mock.patch('jira_offline.jira.jiraapi_object_to_issue')
+@mock.patch('jira_offline.jira.api_put')
+@mock.patch('jira_offline.jira.api_get')
+def test_jira__update_issue__successful_put_results_in_get(
+        mock_api_get, mock_api_put, mock_jiraapi_object_to_issue, mock_jira_core, project
     ):
     '''
-    Ensure a successful post of a new Issue deletes the old temp UUID key from self
+    Ensure a successful PUT of an Issue is followed by a GET
     '''
     # Setup the the Jira DataFrame
     issue_1 = Issue.deserialize(ISSUE_1, project=project)
     mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
 
-    # dont write to disk during tests
+    # Don't write to disk during tests
     mock_jira_core.write_issues = mock.Mock()
 
-    # add new issue to the jira object, under temporary key
-    mock_jira_core[ISSUE_NEW['key']] = Issue.deserialize(ISSUE_NEW)
+    # Mock api_get conversion function to return a valid issue
+    mock_jiraapi_object_to_issue.return_value = issue_1
 
-    # mock the fetch_issue() call that happens after successful new_issue() call
-    mock_jira_core.fetch_issue = mock.Mock(return_value=Issue.deserialize(ISSUE_1))
-
-    mock_jira_core.new_issue(
-        project,
-        fields={
-            'project_id': 'notarealprojecthash',
-            'key': ISSUE_NEW['key'],
-            'status': 'Backlog',
-            'summary': 'A summary',
-            'issuetype': {'name': 'Story'},
-        }
+    mock_jira_core.update_issue(
+        project, issue_1, issue_to_jiraapi_update(project, issue_1, {'priority'})
     )
 
-    # assert temporary key has been removed
-    assert ISSUE_NEW['key'] not in mock_jira_core
-    # assert new key returned from Jira API has been added (found in return from jiraapi_object_to_issue)
-    assert ISSUE_1['key'] in mock_jira_core
+    assert mock_api_put.called
+    assert mock_api_get.called
+    assert mock_jira_core.write_issues.called
+
+
+@mock.patch('jira_offline.jira.api_put', side_effect=JiraApiError)
+@mock.patch('jira_offline.jira.api_get')
+def test_jira__update_issue__failed_put_raises_exception(
+        mock_api_get, mock_api_put, mock_jira_core, project
+    ):
+    '''
+    Ensure a failed PUT of an Issue causes an exception
+    '''
+    # Setup the the Jira DataFrame
+    issue_1 = Issue.deserialize(ISSUE_1, project=project)
+    mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
+
+    # Don't write to disk during tests
+    mock_jira_core.write_issues = mock.Mock()
+
+    with pytest.raises(JiraApiError):
+        mock_jira_core.update_issue(
+            project, issue_1, issue_to_jiraapi_update(project, issue_1, {'priority'})
+        )
+
+    assert mock_api_put.called
+    assert not mock_api_get.called
+    assert not mock_jira_core.write_issues.called
 
 
 @mock.patch('jira_offline.jira.jiraapi_object_to_issue')

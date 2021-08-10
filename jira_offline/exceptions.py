@@ -95,11 +95,6 @@ class CannotSetFieldOnIssueWithoutJira(BaseAppException):
     'Issue does not have a reference to Jira'
 
 
-# Raised when the API call to create a new issue is missing a mandatory Issue fields
-class MissingFieldsForNewIssue(BaseAppException):
-    'Mandatory fields missing on call to create a new issue'
-
-
 class InvalidIssueType(BaseAppException):
     '''
     Only a small set of issuetypes are available on each project. An error occurs if `create_issue`

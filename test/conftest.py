@@ -36,6 +36,7 @@ def project(timezone):
     '''
     return ProjectMeta(
         key='TEST',
+        jira_id='10000',
         username='test',
         password='dummy',
         # Default set of customfields from Jira

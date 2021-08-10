@@ -129,6 +129,7 @@ class ProjectMeta(DataclassSerializer):
     oauth: Optional[OAuth] = field(default=None)
     ca_cert: Optional[str] = field(default=None)
     timezone: datetime.tzinfo = field(default=get_localzone())
+    jira_id: Optional[str] = field(default=None)
 
     # reference to parent AppConfig class
     config: Optional['AppConfig'] = field(default=None, metadata={'serialize': False})
