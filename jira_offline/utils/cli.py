@@ -13,7 +13,7 @@ import pandas as pd
 from tabulate import tabulate
 import typing_inspect
 
-from jira_offline.exceptions import EditorRepeatFieldFound
+from jira_offline.exceptions import EditorRepeatFieldFound, InvalidLsFieldInConfig
 from jira_offline.jira import jira
 from jira_offline.models import CustomFields, Issue, ProjectMeta
 from jira_offline.utils import find_project, friendly_title, get_field_by_name
@@ -82,7 +82,10 @@ def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pro
     # Rename all extended customfield columns, removing the "extended." prefix
     df.rename(columns={f'extended.{f}': f for f in jira.config.iter_customfields()}, inplace=True)
 
-    print_table(df[fields])
+    try:
+        print_table(df[fields])
+    except KeyError as e:
+        raise InvalidLsFieldInConfig(e)
 
     if print_filter:
         print_filter = f'Filter: {print_filter}'
