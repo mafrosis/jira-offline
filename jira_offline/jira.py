@@ -98,8 +98,7 @@ class Jira(collections.abc.MutableMapping):
         if not all(i.updated.tzinfo == issues[0].updated.tzinfo for i in issues):  # type: ignore[union-attr]
             raise MultipleTimezoneError
 
-        # Construct a DataFrame from the passed list of Issues
-        # also fill any NaNs with blank
+        # Construct a DataFrame from the passed list of Issues, and fill any NaNs with blank
         df = pd.DataFrame.from_dict(
             {issue.key:issue.__dict__ for issue in issues},
             orient='index'
@@ -109,8 +108,7 @@ class Jira(collections.abc.MutableMapping):
         for col in ('created', 'updated'):
             df[col] = df[col].dt.tz_convert('UTC')
 
-        # Convert the "project" object column - which contains ProjectMeta instances -
-        # into "project_key" - a string column
+        # Extract ProjectMeta.key into a new string column named `project_key`
         df.loc[:, 'project_key'] = [p.key if p else None for p in df['project']]
 
         # Drop columns for fields marked repr=False
@@ -131,10 +129,13 @@ class Jira(collections.abc.MutableMapping):
         # In-place update for modified issues
         self._df.update(df)
 
+        # Customfields are stored as a dict in the extended column of the DataFrame
+        self._df = self._expand_customfields()
+
         # Let Pandas pick the best datatypes
         self._df = self._df.convert_dtypes()
 
-        # write to disk
+        # Persist new data to disk
         self.write_issues()
 
 
@@ -178,29 +179,54 @@ class Jira(collections.abc.MutableMapping):
         return Jira.ValuesView(self, self.filter)
 
 
+    def _expand_customfields(self) -> pd.DataFrame:
+        '''
+        Customfields are stored as a dict in the extended column of the DataFrame. Expand the
+        key-value pairs from the dict into columns.
+        '''
+        # Drop all extended columns, previously created via this method
+        df1 = self._df.drop(self._df.columns[self._df.columns.str.startswith('extended.')], axis=1)
+
+        # Expand extended dict into columns in a new DataFrame
+        # Prefix each field with "extended."
+        df2 = self._df['extended'].apply(pd.Series).add_prefix('extended.')
+
+        # Merge the customfields columns onto the core DataFrame
+        return pd.merge(df1, df2, left_index=True, right_index=True)
+
+
     def load_issues(self) -> None:
         '''
-        Load issues from parquet cache file, and store in underlying pandas DataFrame
+        Load issues from feather cache file, and store in underlying pandas DataFrame.
         '''
+        if not self._df.empty:
+            return
+
         cache_filepath = get_cache_filepath()
         if os.path.exists(cache_filepath) and os.stat(cache_filepath).st_size > 0:
             self._df = pd.read_feather(
                 cache_filepath
             ).set_index('key', drop=False).rename_axis(None).convert_dtypes()
 
-            # add an empty column to for Issue.original
+            # Add an empty column to for Issue.original
             self._df['original'] = ''
+
+            # Customfields are stored as a dict in the extended column of the DataFrame
+            self._df = self._expand_customfields()
 
 
     def write_issues(self):
         '''
-        Dump issues to parquet cache file
+        Dump issues to feather cache file.
         '''
-        # Don't write out the original field, as diff_to_original will recreate it
+        # Make a copy of the DataFrame, for munging before write
+        # Don't write out the original field as it can be recreated from Issue.diff_to_original
         df = self._df.drop(columns=['original'])
 
-        # convert `set` columns to `list`, as `set` will not serialize via PyArrow when writing
-        # to disk
+        # Drop the extended columns, which were created via `self._expand_customfields`
+        df.drop(df.columns[df.columns.str.startswith('extended.')], axis=1, inplace=True)
+
+        # PyArrow does not like sets
         for col in ('components', 'fix_versions', 'labels'):
             df[col] = df[col].apply(list)
 
@@ -244,25 +270,8 @@ class Jira(collections.abc.MutableMapping):
             project.issuetypes = issuetypes_
             project.priorities = priorities_
 
-            custom_fields = CustomFields()
-
-            # extract custom fields from the API
-            for issuetype in data['projects'][0]['issuetypes']:
-                if custom_fields:
-                    # exit loop when all custom field mappings have been extracted
-                    break
-
-                for field_props in issuetype['fields'].values():
-                    if not custom_fields.epic_name and field_props['name'] == 'Epic Name':
-                        custom_fields.epic_name = str(field_props['schema']['customId'])
-                    elif not custom_fields.epic_ref and field_props['name'] == 'Epic Link':
-                        custom_fields.epic_ref = str(field_props['schema']['customId'])
-                    elif not custom_fields.story_points and field_props['name'] == 'Story Points':
-                        custom_fields.story_points = str(field_props['schema']['customId'])
-                    elif not custom_fields.story_points and field_props['name'] == 'Acceptance Criteria':
-                        custom_fields.acceptance_criteria = str(field_props['schema']['customId'])
-
-            project.custom_fields = custom_fields
+            # Map all customfields for this project
+            self._load_customfields(project, data['projects'][0]['issuetypes'])
 
             # Pull project statuses for issue types
             self._get_project_issue_statuses(project)
@@ -282,9 +291,79 @@ class Jira(collections.abc.MutableMapping):
             ))
 
 
+    def _load_customfields(self, project: ProjectMeta, issuetypes_data: dict):
+        '''
+        Load the customfields for this project from the Jira API.
+
+        User-specified customfields are added to jira-offline.ini and can be accessed via
+        `jira.config.customfields`. Projects can have 0-N configured customfields, this method
+        does the mapping between the two.
+
+        Params:
+            project:          Jira project to query
+            issuetypes_data:  Data from Jira API describing issuetypes on this project
+        '''
+        project_customfields = {}
+
+        # Extract custom fields from the API response for each issuetype on this project
+        for issuetype in issuetypes_data:
+            for name, field_props in issuetype['fields'].items():
+                if name.startswith('customfield_'):
+                    project_customfields[name] = field_props
+
+        logger.debug('Customfields for project %s are %s', project.key, project_customfields)
+
+        customfield_epic_name = customfield_epic_ref = customfield_sprint = ''
+
+        # Epic Name, Epic Link & Sprint are "locked" custom fields, and so should always exist
+        for name, field_props in project_customfields.items():
+            if field_props['name'] == 'Epic Name':
+                customfield_epic_name = field_props.get('fieldId', field_props.get('key'))
+            elif field_props['name'] == 'Epic Link':
+                customfield_epic_ref = field_props.get('fieldId', field_props.get('key'))
+            elif field_props['name'] == 'Sprint':
+                customfield_sprint = field_props.get('fieldId', field_props.get('key'))
+
+        # Initialise project's customfields
+        project.customfields = CustomFields(
+            epic_name=customfield_epic_name,
+            epic_ref=customfield_epic_ref,
+            sprint=customfield_sprint,
+        )
+
+        def apply_customfield_config(name, value):
+            '''
+            Apply user-defined customfield configuration to this Jira project, if mapped in the Jira
+            project metadata.
+
+            Customfields must be mapped on the Jira server to this project _and_ be set in the
+            user's configuration.
+            '''
+            # Check to ensure the user-defined customfield is in use on this project
+            if value in project_customfields.keys():
+                # Replace field name dashes with underscores
+                name = name.replace('-', '_')
+
+                if hasattr(project.customfields, name):
+                    setattr(project.customfields, name, value)
+                else:
+                    project.customfields.extended[name] = value
+
+        # Iterate customfields defined in user config
+        for jira_host, customfield_mapping in self.config.customfields.items():
+            # Only apply config set for this Jira host. Matching is either all Jiras with
+            # asterisk, or by Jira server with hostname match
+            if jira_host in ('*', project.hostname):
+                for name, value in customfield_mapping.items():
+                    apply_customfield_config(name, value)
+
+
     def _get_user_timezone(self, project: ProjectMeta) -> Optional[str]:  # pylint: disable=no-self-use
         '''
         Retrieve user-specific timezone setting
+
+        Params:
+            project:  The project mapped to the Jira to query for timezone info
         '''
         data = api_get(project, 'myself')
         return data.get('timeZone')

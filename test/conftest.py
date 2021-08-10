@@ -29,19 +29,8 @@ def timezone(request):
     return request.param
 
 
-@pytest.fixture(params=[
-    CustomFields(),
-    CustomFields(epic_ref='10100', epic_name='10200', story_points='10300', acceptance_criteria='10400'),
-])
-def customfields(request):
-    '''
-    Parameterized fixture to test Jiras with customfields and those without
-    '''
-    return request.param
-
-
 @pytest.fixture
-def project(timezone, customfields):
+def project(timezone):
     '''
     Fixture representing a configured Jira project
     '''
@@ -49,7 +38,12 @@ def project(timezone, customfields):
         key='TEST',
         username='test',
         password='dummy',
-        custom_fields=customfields,
+        # Default set of customfields from Jira
+        customfields=CustomFields(
+            epic_ref='customfield_10100',
+            epic_name='customfield_10200',
+            sprint='customfield_10300',
+        ),
         priorities=['High', 'Low'],
         timezone=timezone,
         issuetypes={
@@ -74,10 +68,10 @@ def mock_jira_core(mock_load_config, project, project2):
     '''
     jira = Jira()
     jira.config = AppConfig(projects={project.id: project, project2.id: project2})
-    # ensure each ProjectMeta instance has a reference to the AppConfig instance
-    # in normal operation, this is done in `load_config` in config.py, and so applies to all projects
+    # Ensure each ProjectMeta instance has a reference to the AppConfig instance.
+    # In normal operation, this is done in `load_config` in config.py, and so applies to all projects
     project.config = jira.config
-    # never write to disk during tests
+    # Never write to disk during tests
     jira.config.write_to_disk = mock.Mock()
     return jira
 
@@ -91,6 +85,7 @@ def mock_jira(mock_jira_core):
         'project_id', 'issuetype', 'summary', 'assignee', 'created', 'creator', 'epic_name',
         'epic_ref', 'story_points', 'description', 'fix_versions', 'components', 'id', 'key', 'labels',
         'priority', 'reporter', 'status', 'updated', 'diff_to_original', 'modified', 'project_key',
+        'extended',
     ])
     mock_jira_core.load_issues = mock.Mock()
     mock_jira_core.write_issues = mock.Mock()

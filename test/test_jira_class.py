@@ -7,13 +7,14 @@ conftest.py
 import copy
 from unittest import mock
 
+import pandas as pd
 import pytest
 
 from fixtures import EPIC_1, ISSUE_1, ISSUE_2, ISSUE_MISSING_EPIC, ISSUE_NEW
 from helpers import compare_issue_helper, setup_jira_dataframe_helper
 from jira_offline.exceptions import (EpicNotFound, FailedAuthError, JiraApiError, JiraNotConfigured,
                                      ProjectDoesntExist)
-from jira_offline.models import CustomFields, Issue, IssueType, ProjectMeta
+from jira_offline.models import Issue, IssueType, ProjectMeta
 
 
 def test_jira__mutablemapping__get_item__(mock_jira_core, project):
@@ -171,6 +172,28 @@ def test_jira__load_issues__calls_read_feather_when_cache_file_exists(mock_os, m
     mock_pandas.read_feather.assert_called_once_with('filepath')
 
 
+@mock.patch('jira_offline.jira.get_cache_filepath', return_value='filepath')
+@mock.patch('jira_offline.jira.pd', autospec=True)
+@mock.patch('jira_offline.jira.os')
+def test_jira__load_issues__reads_disk_only_once(mock_os, mock_pandas, mock_get_cache_filepath, mock_jira_core):
+    '''
+    Ensure pd.read_feather is called when the cache file exists
+    '''
+    # issues cache is present, and non-zero in size
+    mock_os.path.exists.return_value = True
+    mock_os.stat.return_value.st_size = 1
+
+    # method `_expand_customfields` returns the final DataFrame
+    mock_jira_core._expand_customfields = mock.Mock()
+    mock_jira_core._expand_customfields.return_value = pd.DataFrame({'key': ['egg'], 'val': [0]})
+
+    mock_jira_core.load_issues()
+    assert mock_pandas.read_feather.call_count == 1
+
+    mock_jira_core.load_issues()
+    assert mock_pandas.read_feather.call_count == 1
+
+
 @mock.patch('jira_offline.jira.pd', autospec=True)
 @mock.patch('jira_offline.jira.os')
 def test_jira__load_issues__DOES_NOT_call_read_feather_when_cache_file_missing(mock_os, mock_pandas, mock_jira_core):
@@ -319,9 +342,7 @@ def test_jira__get_project_meta__extracts_issuetypes(mock_api_get, mock_jira_cor
                         'name': 'Summary'
                     },
                     'customfield_10104': {
-                        'schema': {
-                            'customId': 10104
-                        },
+                        'fieldId': 'customfield_10104',
                         'name': 'Story Points',
                     },
                 },
@@ -373,10 +394,17 @@ def test_jira__get_project_meta__handles_removal_of_issuetype(mock_api_get, mock
     }
 
 
+@pytest.mark.parametrize('jira_ref', [
+    ('fieldId'),
+    ('key'),
+])
 @mock.patch('jira_offline.jira.api_get')
-def test_jira__get_project_meta__extracts_custom_fields(mock_api_get, mock_jira_core, project):
+def test_jira__get_project_meta__extracts_locked_customfield(mock_api_get, mock_jira_core, project, jira_ref):
     '''
-    Ensure get_project_meta() method parses the custom_fields for a project
+    Ensure get_project_meta() method extracts the Jira-provided "locked" customfield for a project
+
+    The parameterization covers the scenario where Jira Cloud uses the fieldname "key", but Jira
+    Server uses "fieldId"
     '''
     # mock out call to _get_project_issue_statuses and _get_project_components
     mock_jira_core._get_project_issue_statuses = mock.Mock()
@@ -396,18 +424,10 @@ def test_jira__get_project_meta__extracts_custom_fields(mock_api_get, mock_jira_
                     'summary': {
                         'name': 'Summary'
                     },
-                    'customfield_10104': {
-                        'schema': {
-                            'customId': 10104
-                        },
+                    'customfield_10200': {
+                        jira_ref: 'customfield_10200',
                         'name': 'Epic Name',
                     },
-                    'customfield_10106': {
-                        'schema': {
-                            'customId': 10106
-                        },
-                        'name': 'Story Points',
-                    },
                 },
             }]
         }]
@@ -416,44 +436,7 @@ def test_jira__get_project_meta__extracts_custom_fields(mock_api_get, mock_jira_
     mock_jira_core.get_project_meta(project)
 
     assert mock_api_get.called
-    assert project.custom_fields == CustomFields(epic_name='10104', story_points='10106')
-
-
-@mock.patch('jira_offline.jira.api_get')
-def test_jira__get_project_meta__handles_no_priority_for_issuetype(mock_api_get, mock_jira_core, project):
-    '''
-    Ensure get_project_meta() method doesn't choke if an issuetype has no priority field
-    '''
-    # mock out call to _get_project_issue_statuses and _get_project_components
-    mock_jira_core._get_project_issue_statuses = mock.Mock()
-    mock_jira_core._get_project_components = mock.Mock()
-
-    # mock return from Jira createmeta API call
-    mock_api_get.return_value = {
-        'projects': [{
-            'id': '56120',
-            'key': 'EGG',
-            'name': 'Project EGG',
-            'issuetypes': [{
-                'self': 'https://example.com/rest/api/2/issuetype/5',
-                'id': '5',
-                'name': 'Epic',
-                'fields': {
-                    'customfield_10106': {
-                        'schema': {
-                            'customId': 10106
-                        },
-                        'name': 'Story Points',
-                    },
-                },
-            }]
-        }]
-    }
-
-    mock_jira_core.get_project_meta(project)
-
-    assert mock_api_get.called
-    assert project.custom_fields == CustomFields(story_points='10106')
+    assert project.customfields.epic_name == 'customfield_10200'
 
 
 @mock.patch('jira_offline.utils.decorators.get_user_creds')
@@ -521,6 +504,185 @@ def test_jira__get_project_components__does_not_fail(mock_api_get, mock_jira_cor
 
     assert mock_api_get.called
     assert project.components == {'Egg', 'Bacon'}
+
+
+def test_jira__load_customfields__extracts_locked_customfield(mock_jira_core, project):
+    '''
+    Ensure _load_customfields() method extracts the Jira-provided "locked" customfield for a project
+    '''
+    # Fixture for partial return from Jira createmeta API
+    issuetypes_fixture = [{
+        'self': 'https://example.com/rest/api/2/issuetype/5',
+        'id': '5',
+        'name': 'Epic',
+        'fields': {
+            'summary': {
+                'name': 'Summary'
+            },
+            'customfield_10200': {
+                'fieldId': 'customfield_10200',
+                'name': 'Epic Name',
+            },
+        },
+    }]
+
+    mock_jira_core._load_customfields(project, issuetypes_fixture)
+
+    assert project.customfields.epic_name == 'customfield_10200'
+
+
+@pytest.mark.parametrize('customfield_id,customfield_value', [
+    ('story-points', 'customfield_10300'),
+    ('story_points', 'customfield_10300'),
+])
+def test_jira__load_customfields__predefined_customfield(mock_jira_core, customfield_id, customfield_value):
+    '''
+    Ensure _load_customfields() method extracts known user-specified customfield for a project
+    '''
+    # Fixture for partial return from Jira createmeta API
+    issuetypes_fixture = [{
+        'self': 'https://example.com/rest/api/2/issuetype/5',
+        'id': '5',
+        'name': 'Epic',
+        'fields': {
+            'summary': {
+                'name': 'Summary'
+            },
+            'customfield_10200': {
+                'fieldId': 'customfield_10200',
+                'name': 'Epic Name',
+            },
+            'customfield_10300': {
+                'fieldId': 'customfield_10300',
+                'name': 'Story Points',
+            },
+        },
+    }]
+
+    # Setup app config as extracted from jira-offline.ini
+    mock_jira_core.config.customfields = {
+        '*': {customfield_id: customfield_value},
+    }
+
+    project = ProjectMeta(key='TEST')
+
+    mock_jira_core._load_customfields(project, issuetypes_fixture)
+
+    assert project.customfields.epic_name == 'customfield_10200'
+    assert project.customfields.story_points == 'customfield_10300'
+
+
+def test_jira__load_customfields__user_defined_customfield_for_all_projects(mock_jira_core):
+    '''
+    Ensure _load_customfields() method extracts arbitrary user-defined customfields which apply to
+    all projects
+    '''
+    # Fixture for partial return from Jira createmeta API
+    issuetypes_fixture = [{
+        'self': 'https://example.com/rest/api/2/issuetype/5',
+        'id': '5',
+        'name': 'Epic',
+        'fields': {
+            'summary': {
+                'name': 'Summary'
+            },
+            'customfield_10400': {
+                'fieldId': 'customfield_10400',
+                'name': 'Arbitrary User-Defined Field',
+            },
+        },
+    }]
+
+    # Setup app config as extracted from jira-offline.ini
+    mock_jira_core.config.customfields = {
+        '*': {'arbitrary-user-defined-field': 'customfield_10400'},
+    }
+
+    project1 = ProjectMeta(key='TEST1')
+    project2 = ProjectMeta(key='TEST2')
+
+    mock_jira_core._load_customfields(project1, issuetypes_fixture)
+    mock_jira_core._load_customfields(project2, issuetypes_fixture)
+
+    assert project1.customfields.extended['arbitrary_user_defined_field'] == 'customfield_10400'
+    assert project2.customfields.extended['arbitrary_user_defined_field'] == 'customfield_10400'
+
+
+def test_jira__load_customfields__user_defined_customfield_for_projects_on_host(mock_jira_core):
+    '''
+    Ensure _load_customfields() method extracts arbitrary user-defined customfields which apply to
+    projects on a single Jira host only
+    '''
+    # Fixture for partial return from Jira createmeta API
+    issuetypes_fixture = [{
+        'self': 'https://example.com/rest/api/2/issuetype/5',
+        'id': '5',
+        'name': 'Epic',
+        'fields': {
+            'summary': {
+                'name': 'Summary'
+            },
+            'customfield_10400': {
+                'fieldId': 'customfield_10400',
+                'name': 'Arbitrary User-Defined Field',
+            },
+        },
+    }]
+
+    # Setup app config as extracted from jira-offline.ini
+    mock_jira_core.config.customfields = {
+        'jira.example.com': {'arbitrary-user-defined-field': 'customfield_10400'},
+    }
+
+    project1 = ProjectMeta(key='TEST1', hostname='jira.example.com')
+    project2 = ProjectMeta(key='TEST2', hostname='notjira.example.com')
+
+    mock_jira_core._load_customfields(project1, issuetypes_fixture)
+    mock_jira_core._load_customfields(project2, issuetypes_fixture)
+
+    assert project1.customfields.extended['arbitrary_user_defined_field'] == 'customfield_10400'
+    assert 'arbitrary_user_defined_field' not in project2.customfields.extended
+
+
+def test_jira__load_customfields__project_specific_customfield_overrides_all_projects(mock_jira_core):
+    '''
+    Ensure _load_customfields() overrides general all-project customfields config with host-specific
+    Jira customfields
+    '''
+    # Fixture for partial return from Jira createmeta API
+    issuetypes_fixture = [{
+        'self': 'https://example.com/rest/api/2/issuetype/5',
+        'id': '5',
+        'name': 'Epic',
+        'fields': {
+            'summary': {
+                'name': 'Summary'
+            },
+            'customfield_10400': {
+                'fieldId': 'customfield_10400',
+                'name': 'Arbitrary User-Defined Field 1',
+            },
+            'customfield_10999': {
+                'fieldId': 'customfield_10999',
+                'name': 'Arbitrary User-Defined Field 2',
+            },
+        },
+    }]
+
+    # Setup app config as extracted from jira-offline.ini
+    mock_jira_core.config.customfields = {
+        '*': {'custom1': 'customfield_10400'},
+        'jira.example.com': {'custom1': 'customfield_10999'},
+    }
+
+    project1 = ProjectMeta(key='TEST1', hostname='jira.example.com')
+    project2 = ProjectMeta(key='TEST2', hostname='notjira.example.com')
+
+    mock_jira_core._load_customfields(project1, issuetypes_fixture)
+    mock_jira_core._load_customfields(project2, issuetypes_fixture)
+
+    assert project1.customfields.extended['custom1'] == 'customfield_10999'
+    assert project2.customfields.extended['custom1'] == 'customfield_10400'
 
 
 @mock.patch('jira_offline.jira.api_post')

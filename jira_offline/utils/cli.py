@@ -1,5 +1,6 @@
 '''
 Print and text rendering utils for the CLI commands
+Click library extension classes
 '''
 import dataclasses
 import decimal
@@ -13,8 +14,9 @@ from tabulate import tabulate
 import typing_inspect
 
 from jira_offline.exceptions import EditorRepeatFieldFound
-from jira_offline.models import Issue
-from jira_offline.utils import friendly_title
+from jira_offline.jira import jira
+from jira_offline.models import CustomFields, Issue, ProjectMeta
+from jira_offline.utils import find_project, friendly_title, get_field_by_name
 from jira_offline.utils.serializer import istype
 
 
@@ -41,9 +43,6 @@ def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pro
         fields = ['project_key']
     else:
         fields = []
-
-    # late import to avoid cyclic import
-    from jira_offline.jira import jira  # pylint: disable=import-outside-toplevel, cyclic-import
 
     if not verbose:
         fields += jira.config.display.ls_fields
@@ -103,6 +102,9 @@ def print_table(df: pd.DataFrame):
 
 
 def print_diff(issue: Issue):
+    '''
+    Build and render a diff of the passed issue.
+    '''
     if not issue.exists:
         # this issue was locally created offline so no diff is available; just do a plain print
         click.echo(issue)
@@ -232,3 +234,70 @@ def parse_editor_result(issue: Issue, editor_result_raw: str, conflicts: Optiona
 
 
     return editor_result
+
+
+class ValidCustomfield(click.Option):
+    '''
+    Validating click command line option for dynamic customfield parameters.
+
+    Compatible CLI commands must pass either `Issue.key` or `ProjectMeta.key`. As customfields are
+    found at `Issue.project.customfields`, a call to `jira.load_issues` must be executed.
+    '''
+    def handle_parse_result(self, ctx, opts, args):
+        if 'key' in opts:
+            # Load ProjectMeta instance via Issue.key
+            jira.load_issues()
+            issue = self._get_issue(opts['key'])
+            project = issue.project
+
+        elif 'projectkey' in opts:
+            # Load ProjectMeta instance by ProjectMeta.key
+            project = self._get_project(opts['projectkey'])
+
+        else:
+            raise Exception('ValidCustomfield constructor must be passed `key` or `projectkey`')
+
+        # Iterate all configured customfields
+        for customfield_name in jira.config.iter_customfields():
+            # If one was passed as a CLI parameter..
+            if opts.get(customfield_name):
+                try:
+                    # Validate for the project by issue key or project key
+                    assert project.customfields[customfield_name]
+                except KeyError:
+                    raise click.UsageError(
+                        f"Option '--{customfield_name.replace('_', '-')}' is not available on project {project.key}"
+                    )
+
+        return super().handle_parse_result(ctx, opts, args)
+
+    def _get_issue(self, key: str) -> Issue:  # pylint: disable=no-self-use
+        if key not in jira:
+            raise click.UsageError('Unknown issue key')
+
+        return cast(Issue, jira[key])
+
+    def _get_project(self, projectkey: str) -> ProjectMeta:  # pylint: disable=no-self-use
+        return find_project(jira, projectkey)
+
+
+class CustomfieldsAsOptions(click.Command):
+    '''
+    Add configured customfields as optional CLI parameters
+    '''
+    def __init__(self, *args, **kwargs):
+        for customfield_name in jira.config.iter_customfields():
+            try:
+                # Extract help text if defined on Customfields class
+                f = get_field_by_name(CustomFields, customfield_name)
+                help_text = f.metadata['cli_help']
+            except ValueError:
+                # Dynamic user-defined customfields have no help text
+                help_text = ''
+
+            kwargs['params'].insert(
+                len(kwargs['params'])-3,  # insert above global_options
+                ValidCustomfield([f"--{customfield_name.replace('_', '-')}"], help=help_text),
+            )
+
+        super().__init__(*args, **kwargs)

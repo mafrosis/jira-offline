@@ -82,14 +82,14 @@ def create_issue(project: ProjectMeta, issuetype: str, summary: str, **kwargs) -
         key=str(uuid.uuid4()),
     )
 
-    # Set into jira dict
-    jira[new_issue.key] = new_issue
-
     # Although description is mandatory on the Jira API, the Issue can survive with an empty one
     if 'description' not in kwargs or not kwargs['description']:
         kwargs['description'] = ''
 
     patch_issue_from_dict(new_issue, kwargs)
+
+    # Set into jira dict, and the underlying DataFrame
+    jira[new_issue.key] = new_issue
 
     # Write changes to disk
     jira.write_issues()
@@ -185,22 +185,35 @@ def patch_issue_from_dict(issue: Issue, attrs: dict):
             # Skip nulls in patch dict
             continue
 
-        f = get_field_by_name(Issue, field_name)
+        try:
+            # Extract type from Issue dataclass field
+            f = get_field_by_name(Issue, field_name)
 
-        if f.metadata.get('readonly'):
-            # Do not modify readonly fields
-            continue
+            # Cast for mypy as get_base_type uses @functools.lru_cache
+            typ = cast(Hashable, f.type)
 
-        # cast for mypy as get_base_type uses @functools.lru_cache
-        typ = cast(Hashable, f.type)
+            if f.metadata.get('readonly'):
+                # Do not modify readonly fields
+                continue
 
-        if get_base_type(typ) is str and value == '':
-            # When setting an Issue attribute to empty string, map it to None
-            value = None
-        else:
-            value = deserialize_single_issue_field(field_name, value)
+            if get_base_type(typ) is str and value == '':
+                # When setting an Issue attribute to empty string, map it to None
+                value = None
+            else:
+                value = deserialize_single_issue_field(field_name, value)
 
-        setattr(issue, field_name, value)
+            setattr(issue, field_name, value)
+
+        except ValueError:
+            # Dynamic user-defined customfields are stored in issue.extended dict and are always
+            # str, so no type conversion is necessary.
+            if not issue.extended:
+                issue.extended = dict()
+
+            if field_name.startswith('extended.'):
+                field_name = field_name[9:]
+
+            issue.extended[field_name] = value
 
     # Link issue to epic if epic_ref is present
     if attrs.get('epic_ref'):

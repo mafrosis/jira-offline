@@ -77,7 +77,8 @@ def find_project(jira: 'Jira', project_key: str) -> 'ProjectMeta':
 @functools.lru_cache()
 def friendly_title(cls: type, field_name: str) -> str:
     '''
-    Util function to convert a dataclass field name into a friendly title
+    Util function to convert a dataclass field name into a friendly title. If `field_name` does not
+    exist as a field on the dataclass, return a capitalised string.
 
     Params:
         cls:         The class which has `field_name` as an attrib
@@ -85,8 +86,18 @@ def friendly_title(cls: type, field_name: str) -> str:
     Returns:
         Pretty field title
     '''
-    f = get_field_by_name(cls, field_name)
-    return f.metadata.get('friendly', field_name.replace('_', ' ').title())
+    try:
+        f = get_field_by_name(cls, field_name)
+        title = f.metadata.get('friendly', field_name)
+    except ValueError:
+        # Field does not exist on cls
+        if field_name.startswith('extended.'):
+            # Trim the 'extended.' prefix from Issue class extended customfields
+            title = field_name[9:]
+        else:
+            title = field_name
+
+    return str(title.replace('_', ' ').title())
 
 
 def render_field(cls: type, field_name: str, value: Any, title_prefix: str=None, value_prefix: str=None,
@@ -109,14 +120,16 @@ def render_field(cls: type, field_name: str, value: Any, title_prefix: str=None,
     if title_prefix:
         title = f'{title_prefix}{title}'
 
-    # cast for mypy as get_base_type uses @functools.lru_cache
-    typ = cast(Hashable, get_field_by_name(cls, field_name).type)
+    try:
+        # Determine the origin type for this field (thus handling Optional[type])
+        type_ = get_base_type(cast(Hashable, get_field_by_name(cls, field_name).type))
 
-    # determine the origin type for this field (thus handling Optional[type])
-    type_ = get_base_type(typ)
+        # Format value as type specified by dataclass.field
+        value = render_value(value, type_)
 
-    # format value as dataclass.field type
-    value = render_value(value, type_)
+    except ValueError:
+        # Assume string type if `field_name` does not exist as a field on the dataclass
+        value = render_value(value, str)
 
     if value_prefix:
         value = f'{value_prefix}{value}'
@@ -143,6 +156,8 @@ def render_value(value: Any, type_: Optional[type]=None) -> str:
         return ''
     elif type_ in (set, list):
         return tabulate([('-', v) for v in value], tablefmt='plain')
+    elif type_ is dict:
+        return tabulate(value.items(), tablefmt='plain')
     elif type_ is datetime.datetime:
         dt = arrow.get(value)
         return f'{dt.humanize()} [{dt.format()}]'

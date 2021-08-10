@@ -1,7 +1,7 @@
 '''
 Application data structures. Mostly dataclasses inheriting from utils.DataclassSerializer.
 '''
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 import datetime
 import decimal
 import functools
@@ -10,7 +10,7 @@ import hashlib
 import os
 import pathlib
 import shutil
-from typing import Any, cast, Dict, Generator, List, Optional, Set, Tuple
+from typing import Any, cast, Dict, Generator, Iterator, List, Optional, Set, Tuple
 from urllib.parse import urlparse
 
 import click
@@ -28,6 +28,7 @@ from jira_offline.exceptions import (BadProjectMetaUri, CannotSetIssueAttributeD
                                      UnableToCopyCustomCACert, NoAuthenticationMethod)
 from jira_offline.utils import (get_dataclass_defaults_for_pandas, get_field_by_name, render_field,
                                 render_value)
+from jira_offline.utils.convert import preprocess_sprint
 from jira_offline.utils.serializer import DataclassSerializer, get_base_type
 
 # pylint: disable=too-many-instance-attributes
@@ -35,15 +36,57 @@ from jira_offline.utils.serializer import DataclassSerializer, get_base_type
 
 @dataclass
 class CustomFields(DataclassSerializer):
-    epic_ref: Optional[str] = field(default='')
-    epic_name: Optional[str] = field(default='')
-    story_points: Optional[str] = field(default='')
-    acceptance_criteria: Optional[str] = field(default='')
+    '''
+    CustomFields are dynamic fields defined per-project on Jira. This class tracks the mapping of the
+    field name, such as `epic_ref`, back to the underlying Jira customfield name, such as
+    `customfield_10100`.
 
-    def __bool__(self):
-        if self.epic_ref and self.epic_name and self.story_points and self.acceptance_criteria:
-            return True
-        return False
+    Each customfield name defined in this class will match 1-1 with an identically named attribute on
+    the Issue class.
+    '''
+    # Default set of customfields from Jira
+    epic_ref: Optional[str] = field(
+        default='', metadata={'cli_help': 'Epic key this issue is related to'}
+    )
+    epic_name: Optional[str] = field(
+        default='', metadata={'cli_help': 'Short epic name'}
+    )
+    sprint: Optional[str] = field(
+        default='', metadata={'cli_help': 'Sprint number', 'parse_func': preprocess_sprint}
+    )
+
+    # Additional special-case customfields defined in this application
+    story_points: Optional[str] = field(
+        default='', metadata={'cli_help': 'Complexity estimate in story points'}
+    )
+
+    # Extended set of user-defined customfields
+    extended: Optional[Dict[str, str]] = field(default_factory=dict)  # type: ignore[assignment]
+
+
+    def items(self) -> Iterator:
+        'Iterate the customfields set for the associated project, plus user-defined ones in self.extended'
+        attrs = {k:v for k,v in asdict(self).items() if v}
+        if self.extended:
+            del attrs['extended']
+            for k,v in self.extended.items():
+                attrs[f'extended.{k}'] = v
+        return iter(attrs.items())
+
+    def __getitem__(self, key: str) -> str:
+        '''
+        Get attribute on this object by key, like a dict. Transparently maps keys into the extended
+        sub-dict if `key` does not exist as an attribute.
+        '''
+        try:
+            return str(getattr(self, key))
+        except AttributeError:
+            if self.extended:
+                return self.extended[key]
+            raise KeyError
+
+    def __str__(self):
+        return render_value(dict(self.items()))
 
 
 @dataclass
@@ -80,7 +123,7 @@ class ProjectMeta(DataclassSerializer):
     hostname: Optional[str] = field(default='jira.atlassian.com')
     last_updated: Optional[str] = field(default=None, metadata={'friendly': 'Last Sync'})
     issuetypes: Dict[str, IssueType] = field(default_factory=dict)
-    custom_fields: CustomFields = field(default_factory=CustomFields)
+    customfields: Optional[CustomFields] = field(default=None)
     priorities: Optional[Set[str]] = field(default_factory=set)  # type: ignore[assignment]
     components: Optional[Set[str]] = field(default_factory=set)  # type: ignore[assignment]
     oauth: Optional[OAuth] = field(default=None)
@@ -159,6 +202,7 @@ class ProjectMeta(DataclassSerializer):
             ('Project URI', self.project_uri),
             ('Auth', auth),
             ('Issue Types', render_value(list(self.issuetypes.keys()))),
+            ('Customfields', str(self.customfields)),
             fmt('components'),
             fmt('timezone'),
             fmt('last_updated'),
@@ -190,6 +234,8 @@ class AppConfig(DataclassSerializer):
 
     display: Display = field(init=False, metadata={'serialize': False})
 
+    customfields: Dict[str, dict] = field(init=False, metadata={'serialize': False})
+
 
     def __post_init__(self):
         # Late import to avoid circular dependency
@@ -202,6 +248,8 @@ class AppConfig(DataclassSerializer):
             ls_default_filter = 'status not in ("Done", "Story Done", "Epic Done", "Closed")'
         )
         self.sync = AppConfig.Sync()
+        self.customfields = dict()
+
 
     def write_to_disk(self):
         # Ensure config path exists
@@ -213,6 +261,13 @@ class AppConfig(DataclassSerializer):
             json.dump(self.serialize(), f)
             f.write('\n')
 
+    def iter_customfields(self) -> set:
+        '''
+        Return unique set of customfields defined across all Jiras.
+        Hard-coded items are the mandatory customfields specified by Jira server.
+        '''
+        return {'epic_ref', 'epic_name', 'sprint'}.union(*self.customfields.values())
+
 
 @dataclass
 class Issue(DataclassSerializer):
@@ -222,12 +277,10 @@ class Issue(DataclassSerializer):
     summary: str
     key: str = field(metadata={'readonly': True})
 
+    # Core fields
     assignee: Optional[str] = field(default=None)
     created: Optional[datetime.datetime] = field(default=None, metadata={'readonly': True})
     creator: Optional[str] = field(default=None, metadata={'readonly': True})
-    epic_name: Optional[str] = field(default=None, metadata={'friendly': 'Epic Short Name'})
-    epic_ref: Optional[str] = field(default=None)
-    story_points: Optional[decimal.Decimal] = field(default=None)
     description: Optional[str] = field(default=None)
     fix_versions: Optional[set] = field(default_factory=set, metadata={'friendly': 'Fix Version'})
     components: Optional[set] = field(default_factory=set)
@@ -238,7 +291,20 @@ class Issue(DataclassSerializer):
     status: Optional[str] = field(default=None, metadata={'friendly': 'Status', 'readonly': True})
     updated: Optional[datetime.datetime] = field(default=None, metadata={'readonly': True})
 
-    # dict which represents serialized Issue last seen on Jira server
+    # Customfields
+    # Fields defined here match the CustomFields class, but must be redefined as dataclasses don't
+    # work well with multiple inheritance
+    epic_ref: Optional[str] = field(default=None)
+    epic_name: Optional[str] = field(default=None, metadata={'friendly': 'Epic Short Name'})
+    sprint: Optional[str] = field(default=None)
+
+    # Story points special-case Customfield using decimal type
+    story_points: Optional[decimal.Decimal] = field(default=None)
+
+    # Extended Customfields dict to capture arbitrary user-defined Customfields as strings
+    extended: Optional[Dict[str, str]] = field(default_factory=dict)  # type: ignore[assignment]
+
+    # The `original` dict which represents serialized Issue last seen on Jira server
     # this attribute is not written to cache, and is created at runtime from Issue.diff_to_original
     original: Dict[str, Any] = field(
         init=False, repr=False, default_factory=dict, metadata={'serialize': False}
@@ -420,45 +486,83 @@ class Issue(DataclassSerializer):
                 )
 
             elif modified_fields and field_name in modified_fields:
-                # render the old version in red with a minus
-                old_value = self.original.get(field_name)
-                if old_value:
-                    old_field = render_field(Issue, field_name, old_value, title_prefix='-',
-                                             value_prefix=prefix, color='red')
-                # render the new version in green with a plus
-                new_value = getattr(self, field_name)
-                if new_value:
-                    new_field = render_field(Issue, field_name, new_value, title_prefix='+',
-                                             value_prefix=prefix, color='green')
-                if old_value and new_value:
-                    return (old_field, new_field)
-                elif old_value:
-                    return (old_field,)
+                added_value = removed_value = None
+
+                # Determine if a field has been added and/or removed
+                if field_name.startswith('extended.') and self.extended:
+                    field_name = field_name[9:]
+                    if 'extended' in self.original:
+                        removed_value = self.original['extended'][field_name]
+                    added_value = self.extended[field_name]
                 else:
-                    return (new_field,)
+                    removed_value = self.original.get(field_name)
+                    added_value = getattr(self, field_name)
+
+                if removed_value:
+                    # Render a removed field in red with a minus
+                    removed_field = render_field(Issue, field_name, removed_value, title_prefix='-',
+                                                 value_prefix=prefix, color='red')
+
+                if added_value:
+                    # Render an added field in green with a plus
+                    added_field = render_field(Issue, field_name, added_value, title_prefix='+',
+                                               value_prefix=prefix, color='green')
+
+                if removed_value and added_value:
+                    return (removed_field, added_field)
+                elif removed_value:
+                    return (removed_field,)
+                else:
+                    return (added_field,)
 
             else:
                 # Render a single blank char prefix to ensure the unmodified fields line up nicely
-                # with the modified ones, which are printed with +/- diff chars.
+                # with the modified fields. Modified fields are printed with a +/- diff prefix char.
                 # Char u2800 is used to prevent the tabulate module from stripping the prefix.
                 if modified_fields:
                     title_prefix = '\u2800'
                 else:
                     title_prefix = ''
-                return (render_field(Issue, field_name, getattr(self, field_name),
-                                     title_prefix=title_prefix, value_prefix=prefix),)
+
+                # Handle render of extended customfields
+                if field_name.startswith('extended.') and self.extended:
+                    value = self.extended[field_name[9:]]
+                else:
+                    value = getattr(self, field_name)
+
+                return (render_field(Issue, field_name, value, title_prefix=title_prefix,
+                                     value_prefix=prefix),)
 
         if self.issuetype == 'Epic':
             epicdetails = fmt('epic_name')
         else:
             epicdetails = fmt('epic_ref')
 
-        def iter_optionals() -> Generator[str, None, None]:
-            for f in ('priority', 'assignee', 'story_points', 'description', 'fix_versions', 'labels',
-                      'components', 'reporter', 'creator', 'created', 'updated'):
-                if getattr(self, f):
-                    for fv in fmt(f):
-                        yield fv
+        def iter_optionals():
+            'Iterate the optional attributes of this issue'
+            def iter_fields(field_name, customfield_value) -> Generator[Tuple, None, None]:
+                # Always display modified fields
+                if modified_fields and field_name in modified_fields:
+                    for x in fmt(field_name):
+                        yield x
+                # Else display fields only when set
+                elif getattr(self, field_name, None) or customfield_value:
+                    for x in fmt(field_name):
+                        yield x
+
+            # First return optionals in specific order
+            for field_name in ('sprint', 'priority', 'assignee', 'story_points', 'description',
+                               'fix_versions', 'labels', 'components'):
+                yield from iter_fields(field_name, None)
+
+            # Next return user-defined customfields
+            if self.extended:
+                for customfield_name, customfield_value in self.extended.items():
+                    yield from iter_fields(f'extended.{customfield_name}', customfield_value)
+
+            # Last return authors and dates
+            for field_name in ('reporter', 'creator', 'created', 'updated'):
+                yield from iter_fields(field_name, None)
 
         fields = [
             *fmt('summary', prefix=f'[{self.key}] '),
@@ -488,14 +592,14 @@ class Issue(DataclassSerializer):
         for col in ('diff_to_original', 'original'):
             attrs[col] = json.dumps(attrs[col])
 
-        # convert Issue.story_points from Decimal to str for pandas
+        # Convert Issue.story_points from Decimal to str for pandas
         if attrs['story_points']:
             attrs['story_points'] = str(attrs['story_points'])
 
         # Create Series and fill blanks with pandas-compatible defaults
         series = pd.Series(attrs).fillna(value=get_dataclass_defaults_for_pandas(Issue))
 
-        # convert all datetimes to UTC, where they are non-null (which is all non-new issues)
+        # Convert all datetimes to UTC, where they are non-null (which is all non-new issues)
         for col in ('created', 'updated'):
             series[col] = pd.Timestamp(series[col]).tz_convert('UTC')
 
@@ -515,6 +619,9 @@ class Issue(DataclassSerializer):
 
         # Remove the original attribute before the Issue constructor call
         original = attrs.pop('original', None)
+
+        # Remove the extended customfield attrs created by `jira._expand_customfields`
+        attrs = {k:v for k,v in attrs.items() if not k.startswith('extended.')}
 
         # Create a mapping of field names to their pandas default
         pandas_null_defaults = get_dataclass_defaults_for_pandas(Issue)

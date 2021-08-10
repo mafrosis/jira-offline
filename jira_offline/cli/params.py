@@ -55,7 +55,7 @@ def global_options(func):
     '''
     Define a set of global CLI options which are applied to all subcommands
     '''
-    @click.option('--config', '-c', type=click.Path(exists=True), help='Read configuration from FILE')
+    @click.option('--config', '-c', type=click.Path(exists=True), help='Read configuration from PATH')
     @click.option('--verbose', '-v', is_flag=True, help='Display INFO level logging')
     @click.option('--debug', '-d', is_flag=True, help='Display DEBUG level logging')
     @functools.wraps(func)

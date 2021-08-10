@@ -4,8 +4,10 @@ import os
 from typing import Dict, Optional, Set
 from unittest import mock
 
-from jira_offline.config import (get_default_user_config_filepath, load_config, upgrade_schema,
-                                 write_default_user_config)
+import pytest
+
+from jira_offline.config import (_load_user_config, get_default_user_config_filepath, load_config,
+                                 upgrade_schema, write_default_user_config)
 from jira_offline.models import AppConfig
 from jira_offline.utils.serializer import DataclassSerializer
 
@@ -101,6 +103,172 @@ def test_load_config__upgrade_called_when_version_changes(mock_open, mock_click,
     assert config.schema_version == AppConfig().schema_version
 
 
+@mock.patch('jira_offline.config.os')
+def test_load_user_config__handles_comma_separated_set(mock_os):
+    '''
+    Ensure comma-separated list is parsed into a python set type
+    '''
+    # config file exists
+    mock_os.path.exists.return_value = True
+
+    user_config_fixture = '''
+    [display]
+    ls = status,summary
+    '''
+
+    config = AppConfig()
+
+    with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
+        _load_user_config(config)
+
+    assert config.display.ls_fields == {'status', 'summary'}
+
+
+
+@mock.patch('jira_offline.config.os')
+def test_load_user_config__sync_handles_integer_page_size(mock_os):
+    '''
+    Config option sync.page-size must be supplied as an integer
+    '''
+    # config file exists
+    mock_os.path.exists.return_value = True
+
+    user_config_fixture = '''
+    [sync]
+    page-size = 99
+    '''
+
+    config = AppConfig()
+
+    with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
+        _load_user_config(config)
+
+    assert config.sync.page_size == 99
+
+
+@mock.patch('jira_offline.config.os')
+def test_load_user_config__sync_ignores_non_integer_page_size(mock_os):
+    '''
+    Config option sync.page-size must be supplied as an integer
+    '''
+    # config file exists
+    mock_os.path.exists.return_value = True
+
+    user_config_fixture = '''
+    [sync]
+    page-size = abc
+    '''
+
+    config = AppConfig()
+
+    with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
+        _load_user_config(config)
+
+    assert config.sync.page_size == 25
+
+
+@mock.patch('jira_offline.config.os')
+def test_load_user_config__customfields_handles_story_points(mock_os):
+    '''
+    User-defined customfield "story-points" has special handling
+    '''
+    # Config file exists
+    mock_os.path.exists.return_value = True
+
+    user_config_fixture = '''
+    [customfields]
+    story-points = customfield_10101
+
+    [customfields jira.example.com]
+    story-points = customfield_10102
+    '''
+
+    config = AppConfig()
+
+    # Mock return from open() to return the config.ini fixture
+    with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
+        _load_user_config(config)
+
+    assert config.customfields['*']['story_points'] == 'customfield_10101'
+
+
+@mock.patch('jira_offline.config.os')
+def test_load_user_config__customfields_ignore_reserved_keyword(mock_os):
+    '''
+    User-defined customfields must not be named using an Issue attribute keyword
+    '''
+    # Config file exists
+    mock_os.path.exists.return_value = True
+
+    user_config_fixture = '''
+    [customfields]
+    priority = customfield_10101
+    '''
+
+    config = AppConfig()
+
+    # Mock return from open() to return the config.ini fixture
+    with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
+        _load_user_config(config)
+
+    assert 'priority' not in config.customfields
+
+
+@pytest.mark.parametrize('customfield_value', [
+    ('customfield1'),
+    ('customfield_xxx'),
+    ('10101'),
+    (''),
+])
+@mock.patch('jira_offline.config.os')
+def test_load_user_config__customfields_ignore_invalid(mock_os, customfield_value):
+    '''
+    User-defined customfields must be configured using the correct format
+    '''
+    # Config file exists
+    mock_os.path.exists.return_value = True
+
+    user_config_fixture = f'''
+    [customfields]
+    story-points = {customfield_value}
+    '''
+
+    config = AppConfig()
+
+    # Mock return from open() to return the config.ini fixture
+    with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
+        _load_user_config(config)
+
+    assert 'story_points' not in config.customfields
+
+
+@mock.patch('jira_offline.config.os')
+def test_load_user_config__customfields_handles_general_and_host_specific(mock_os):
+    '''
+    Ensure overriding user-defined customfield set per-Jira host is loaded correctly
+    '''
+    # Config file exists
+    mock_os.path.exists.return_value = True
+
+    user_config_fixture = '''
+    [customfields]
+    arbitrary = customfield_10144
+
+    [customfields jira.example.com]
+    arbitrary = customfield_10155
+    '''
+
+    config = AppConfig()
+
+    # Mock return from open() to return the config.ini fixture
+    with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
+        _load_user_config(config)
+
+    assert 'arbitrary' not in config.customfields
+    assert config.customfields['*']['arbitrary'] == 'customfield_10144'
+    assert config.customfields['jira.example.com']['arbitrary'] == 'customfield_10155'
+
+
 @mock.patch('jira_offline.config.config_upgrade_1_to_2')
 def test_upgrade_schema__calls_correct_upgrade_func(mock_upgrade_func):
     '''
@@ -137,8 +305,9 @@ def test_write_default_user_config(tmpdir):
 class CustomFields_v3(DataclassSerializer):
     epic_ref: Optional[str]
     epic_name: Optional[str]
+    sprint: Optional[str]
     story_points: Optional[str]
-    acceptance_criteria: Optional[str]
+    extended: Optional[Dict[str, str]]
 
 @dataclass
 class IssueType_v3(DataclassSerializer):
@@ -162,7 +331,7 @@ class ProjectMeta_v3(DataclassSerializer):  # pylint: disable=too-many-instance-
     hostname: Optional[str]
     last_updated: Optional[str]
     issuetypes: Dict[str, IssueType_v3]
-    custom_fields: CustomFields_v3
+    customfields: Optional[CustomFields_v3]
     priorities: Optional[Set[str]]
     components: Optional[Set[str]]
     oauth: Optional[OAuth_v3]
@@ -175,10 +344,9 @@ class AppConfig_v3(DataclassSerializer):
     schema_version: int
     user_config_filepath: str
     projects: Dict[str, ProjectMeta_v3]
-
     sync: AppConfig.Sync
-
     display: AppConfig.Display
+    customfields: Dict[str, dict]
 #
 #################
 

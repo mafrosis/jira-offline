@@ -292,6 +292,16 @@ class FilterQueryParseFailed(BaseAppException):
 class FilterQueryEscapingError(FilterQueryParseFailed):
     'Ensure your whole filter string is not double-escaped'
 
+class FilterUnknownFieldException(BaseAppException):
+    'Unknown field "{}" passed in SQL filter.'
+
+    def __init__(self, field):
+        self.field = field
+        super().__init__('')
+
+    def __str__(self):
+        return self.__doc__.format(self.field)
+
 class FilterUnknownOperatorException(BaseAppException):
     'Unknown operator "{}" passed in SQL filter. Please report as an issue.'
 

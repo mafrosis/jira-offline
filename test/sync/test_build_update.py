@@ -82,6 +82,37 @@ def test_build_update__base_modified_and_updated_modified_on_conflicting_str():
     assert isinstance(update_obj.merged_issue.assignee, Conflict)
 
 
+def test_build_update__base_modified_and_updated_modified_on_conflicting_str_extended():
+    '''
+    Ensure conflict when (for str type):
+      - base changed to field A="1"
+      - updated changed to field A="2"
+
+    Special-case test for extended customfields (which are always string type)
+    '''
+    # Create a base Issue fixture with a extended customfield
+    issue_fixture = copy.copy(ISSUE_1)
+    issue_fixture['extended'] = {'arbitrary_key': 'arbitrary_original'}
+    base_issue = Issue.deserialize(issue_fixture)
+
+    # Modify the extended field
+    base_issue.extended['arbitrary_key'] = 'arbitrary_base'
+
+    # Supply a conflicting Issue
+    issue_fixture['extended'] = {'arbitrary_key': 'arbitrary_updated'}
+    updated_issue = Issue.deserialize(issue_fixture)
+
+    update_obj = build_update(base_issue, updated_issue)
+
+    assert update_obj.modified == {'extended.arbitrary_key'}
+    assert update_obj.conflicts == {
+        'extended.arbitrary_key': {
+            'original': 'arbitrary_original', 'updated': 'arbitrary_updated', 'base': 'arbitrary_base'
+        }
+    }
+    assert isinstance(update_obj.merged_issue.extended['arbitrary_key'], Conflict)
+
+
 def test_build_update__base_modified_and_updated_modified_on_conflicting_set():
     '''
     Ensure conflict when (for set type):
