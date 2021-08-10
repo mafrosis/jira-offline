@@ -203,6 +203,7 @@ class ProjectMeta(DataclassSerializer):
             ('Project URI', self.project_uri),
             ('Auth', auth),
             ('Issue Types', render_value(list(self.issuetypes.keys()))),
+            ('Priorities', render_value(self.priorities)),
             ('Customfields', str(self.customfields)),
             fmt('components'),
             fmt('timezone'),
