@@ -5,7 +5,7 @@ Click library extension classes
 import dataclasses
 import decimal
 import logging
-from typing import Any, cast, Dict, Hashable, List, Optional
+from typing import Any, cast, Dict, Hashable, List, Optional, Set
 
 import arrow
 import click
@@ -13,7 +13,7 @@ import pandas as pd
 from tabulate import tabulate
 import typing_inspect
 
-from jira_offline.exceptions import EditorRepeatFieldFound
+from jira_offline.exceptions import EditorRepeatFieldFound, InvalidLsFieldInConfig
 from jira_offline.jira import jira
 from jira_offline.models import CustomFields, Issue, ProjectMeta
 from jira_offline.utils import find_project, friendly_title, get_field_by_name
@@ -59,10 +59,10 @@ def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pro
         else:
             return f'{dt.humanize()}'
 
-    # pretty dates
+    # Pretty dates
     df['updated'] = df.updated.apply(format_datetime)
 
-    # shorten the summary field for printing
+    # Shorten the summary field for printing
     df['summary'] = df.summary.str.slice(0, width)
 
     def abbrev_key(key):
@@ -72,14 +72,20 @@ def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pro
             return key[0:8]
         return key
 
-    # abbreviate long issue keys (offline-created issues have a UUID as the key)
+    # Abbreviate long issue keys (offline-created issues have a UUID as the key)
     df['key'] = df.key.apply(abbrev_key)
     df['epic_ref'] = df.epic_ref.apply(abbrev_key)
 
     if verbose:
         df.fix_versions = df.fix_versions.apply(lambda x: '' if x is None else ','.join(x))
 
-    print_table(df[fields])
+    # Rename all extended customfield columns, removing the "extended." prefix
+    df.rename(columns={f'extended.{f}': f for f in jira.config.iter_customfields()}, inplace=True)
+
+    try:
+        print_table(df[fields])
+    except KeyError as e:
+        raise InvalidLsFieldInConfig(e)
 
     if print_filter:
         print_filter = f'Filter: {print_filter}'
@@ -134,16 +140,41 @@ def parse_editor_result(issue: Issue, editor_result_raw: str, conflicts: Optiona
     class SkipEditorField:
         pass
 
-    # Create dict to lookup a dataclass field by its pretty formatted name
-    issue_fields_by_friendly = {
-        friendly_title(Issue, f.name):f for f in dataclasses.fields(Issue)
+    # Create dict mapping Issue attribute friendly names to the attribute name
+    # Skip all internal tracking fields
+    issue_fields_by_friendly: Dict[str, str] = {
+        friendly_title(Issue, f.name):f.name
+        for f in dataclasses.fields(Issue)
+        if f.name not in ('extended', 'original', 'diff_to_original', '_active', 'modified')
     }
+
+    if issue.extended:
+        # Include all extended customfields defined on this issue
+        issue_fields_by_friendly.update(
+            {friendly_title(Issue, k):f'extended.{k}' for k in issue.extended.keys()}
+        )
 
     editor_result: Dict[str, List[str]] = {}
 
-    def preprocess_field(field: dataclasses.Field, input_data: List[str]) -> Any:
+    def preprocess_field(field_name: str, input_data: List[str]) -> Any:
+        try:
+            # Extract the dataclasses.field for this Issue attribute, to use the type for preprocessing
+            field = get_field_by_name(Issue, field_name)
+            is_extended = False
+
+            # cast for mypy as istype uses @functools.lru_cache
+            typ = cast(Hashable, field.type)
+
+        except ValueError:
+            # ValueError means this field_name must be an extended customfield
+            is_extended = True
+            typ = str
+
         # Validate empty
         if input_data in ('', ['']):
+            if is_extended:
+                return None
+
             if not typing_inspect.is_optional_type(field.type):
                 # Field is mandatory, and editor returned blank - skip this field
                 return SkipEditorField()
@@ -151,9 +182,6 @@ def parse_editor_result(issue: Issue, editor_result_raw: str, conflicts: Optiona
                 return field.default_factory()  # type: ignore[misc]
             else:
                 return field.default
-
-        # cast for mypy as istype uses @functools.lru_cache
-        typ = cast(Hashable, field.type)
 
         if istype(typ, set):
             return {item[1:].strip() for item in input_data if len(item[1:].strip()) > 0}
@@ -168,7 +196,7 @@ def parse_editor_result(issue: Issue, editor_result_raw: str, conflicts: Optiona
             # Else assume string and join list of strings to a single one
             field_value = ' '.join(input_data)
 
-        if field.name == 'summary':
+        if field_name == 'summary':
             summary_prefix = f'[{issue.key}]'
 
             # special case to strip the key prefix from the summary
@@ -178,8 +206,10 @@ def parse_editor_result(issue: Issue, editor_result_raw: str, conflicts: Optiona
         return field_value
 
 
-    current_field = previous_field = None
-    seen_fields = set()
+    current_field: Optional[str] = None
+    previous_field: Optional[str] = None
+    field_value: List = []
+    seen_fields: Set[str] = set()
 
     for line in editor_result_raw.splitlines():
         # Skip blank lines, comments, header/footer & conflict markers
@@ -194,28 +224,35 @@ def parse_editor_result(issue: Issue, editor_result_raw: str, conflicts: Optiona
 
             # Error if a field is found twice in the editor output
             if current_field in seen_fields:
-                raise EditorRepeatFieldFound(current_field.name)
+                raise EditorRepeatFieldFound(current_field)
 
             # Track the fields already seen
             seen_fields.add(current_field)
 
             if previous_field:
                 # Next field found, finish processing the previous field
-                logger.debug('Read "%s" for Issue.%s', field_value, previous_field.name)  # type: ignore[unreachable]
+                logger.debug('Read "%s" for Issue.%s', field_value, previous_field)
+
+                try:
+                    # Extract the dataclasses.field for this Issue attribute, and skip readonlys
+                    skip_readonly = False
+                    if get_field_by_name(Issue, previous_field).metadata.get('readonly', False):
+                        skip_readonly = True
+                except ValueError:
+                    pass
 
                 # If processing Issue conflicts in the editor, skip any fields which aren't in conflict
-                if conflicts and previous_field.name not in conflicts:
-                    logger.debug('Skipped %s, as not in conflict', previous_field.name)
+                if conflicts and previous_field not in conflicts:
+                    logger.debug('Skipped %s, as not in conflict', previous_field)
 
-                # Skip all readonly fields
-                elif previous_field.metadata.get('readonly', False):
-                    logger.debug('Skipped %s, as readonly', previous_field.name)
+                elif skip_readonly:
+                    logger.debug('Skipped %s, as readonly', previous_field)
 
                 else:
                     processed_value = preprocess_field(previous_field, field_value)
 
                     if not isinstance(processed_value, SkipEditorField):
-                        editor_result[previous_field.name] = processed_value
+                        editor_result[previous_field] = processed_value
 
             # Set local variables for next field
             previous_field = current_field

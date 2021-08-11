@@ -312,6 +312,7 @@ class FilterUnknownOperatorException(BaseAppException):
     def __str__(self):
         return self.__doc__.format(self.operator)
 
+
 class UserConfigAlreadyExists(BaseAppException):
     'Config file already exists at {}!'
 
@@ -321,3 +322,14 @@ class UserConfigAlreadyExists(BaseAppException):
 
     def __str__(self):
         return self.__doc__.format(self.operator)
+
+
+class InvalidLsFieldInConfig(BaseAppException):
+    'Invalid field specified in config.display.ls: {}'
+
+    def __init__(self, field):
+        self.field = field
+        super().__init__('')
+
+    def __str__(self):
+        return self.__doc__.format(self.field)

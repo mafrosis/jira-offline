@@ -104,9 +104,9 @@ def test_load_config__upgrade_called_when_version_changes(mock_open, mock_click,
 
 
 @mock.patch('jira_offline.config.os')
-def test_load_user_config__handles_comma_separated_set(mock_os):
+def test_load_user_config__handles_comma_separated_list(mock_os):
     '''
-    Ensure comma-separated list is parsed into a python set type
+    Ensure comma-separated list is parsed into a python list type
     '''
     # config file exists
     mock_os.path.exists.return_value = True
@@ -121,7 +121,7 @@ def test_load_user_config__handles_comma_separated_set(mock_os):
     with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
         _load_user_config(config)
 
-    assert config.display.ls_fields == {'status', 'summary'}
+    assert config.display.ls_fields == ['status', 'summary']
 
 
 
