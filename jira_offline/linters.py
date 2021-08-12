@@ -24,14 +24,14 @@ def fix_versions(fix: bool=False, value: str=None) -> pd.DataFrame:
         jira.df.epic_name.fillna(value='', inplace=True)
 
         # iterate only epics
-        for epic_ref in jira.df[jira.df.issuetype == 'Epic'].index:
-            if not jira[epic_ref].fix_versions:
+        for epic_link in jira.df[jira.df.issuetype == 'Epic'].index:
+            if not jira[epic_link].fix_versions:
                 continue
 
             # if value is in the epic's fix_versions field
-            if value in jira[epic_ref].fix_versions:
+            if value in jira[epic_link].fix_versions:
                 # filter for all issues under this epic, and add value to fix_versions
-                jira.df[jira.df.epic_ref == jira[epic_ref].key].fix_versions.apply(
+                jira.df[jira.df.epic_link == jira[epic_link].key].fix_versions.apply(
                     lambda x: {value} if x is None else x.add(value)
                 )
 
@@ -42,20 +42,20 @@ def fix_versions(fix: bool=False, value: str=None) -> pd.DataFrame:
     return jira.df[jira.df.fix_versions.str.len() == 0]
 
 
-def issues_missing_epic(fix: bool=False, epic_ref: str=None) -> pd.DataFrame:
+def issues_missing_epic(fix: bool=False, epic_link: str=None) -> pd.DataFrame:
     '''
     Lint issues without an epic set, default to Open issues only.
 
     Params:
         fix:       Flag to indicate if a fix should be applied
-        epic_ref:  Epic to set on issues with no epic (only applicable when fix=True)
+        epic_link:  Epic to set on issues with no epic (only applicable when fix=True)
     '''
     if fix:
-        # update epic_ref where missing
-        jira.df.loc[(jira.df.issuetype != 'Epic') & (jira.df.epic_ref == ''), 'epic_ref'] = epic_ref
+        # update epic_link where missing
+        jira.df.loc[(jira.df.issuetype != 'Epic') & (jira.df.epic_link == ''), 'epic_link'] = epic_link
 
         # write updates to disk
         jira.write_issues()
 
     # return dataframe of open issues missing an epic
-    return jira.df[(jira.df.issuetype != 'Epic') & (jira.df.epic_ref == '')]
+    return jira.df[(jira.df.issuetype != 'Epic') & (jira.df.epic_link == '')]

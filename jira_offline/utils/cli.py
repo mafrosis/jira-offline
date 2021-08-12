@@ -74,7 +74,7 @@ def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pro
 
     # Abbreviate long issue keys (offline-created issues have a UUID as the key)
     df['key'] = df.key.apply(abbrev_key)
-    df['epic_ref'] = df.epic_ref.apply(abbrev_key)
+    df['epic_link'] = df.epic_link.apply(abbrev_key)
 
     if verbose:
         df.fix_versions = df.fix_versions.apply(lambda x: '' if x is None else ','.join(x))

@@ -41,7 +41,7 @@ def project(timezone):
         password='dummy',
         # Default set of customfields from Jira
         customfields=CustomFields(
-            epic_ref='customfield_10100',
+            epic_link='customfield_10100',
             epic_name='customfield_10200',
             sprint='customfield_10300',
         ),
@@ -84,7 +84,7 @@ def mock_jira(mock_jira_core):
     '''
     mock_jira_core._df = pd.DataFrame(columns=[
         'project_id', 'issuetype', 'summary', 'assignee', 'created', 'creator', 'epic_name',
-        'epic_ref', 'story_points', 'description', 'fix_versions', 'components', 'id', 'key', 'labels',
+        'epic_link', 'story_points', 'description', 'fix_versions', 'components', 'id', 'key', 'labels',
         'priority', 'reporter', 'status', 'updated', 'diff_to_original', 'modified', 'project_key',
         'extended',
     ])

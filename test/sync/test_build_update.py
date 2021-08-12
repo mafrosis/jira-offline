@@ -269,14 +269,14 @@ def test_build_update__new_issue():
 
     # modified fields should match all non-readonly fields, which are set in ISSUE_NEW fixture
     assert update_obj.modified == {
-        'project_id', 'key', 'description', 'epic_ref', 'fix_versions', 'issuetype', 'reporter', 'summary',
+        'project_id', 'key', 'description', 'epic_link', 'fix_versions', 'issuetype', 'reporter', 'summary',
     }
     assert not update_obj.conflicts
 
     assert new_issue.project_id == update_obj.merged_issue.project_id
     assert new_issue.key == update_obj.merged_issue.key
     assert new_issue.description == update_obj.merged_issue.description
-    assert new_issue.epic_ref == update_obj.merged_issue.epic_ref
+    assert new_issue.epic_link == update_obj.merged_issue.epic_link
     assert new_issue.fix_versions == update_obj.merged_issue.fix_versions
     assert new_issue.issuetype == update_obj.merged_issue.issuetype
     assert new_issue.reporter == update_obj.merged_issue.reporter
@@ -291,7 +291,7 @@ def test_build_update__new_issue_with_extended_customfield():
     issue_fixture = copy.copy(ISSUE_NEW)
     issue_fixture['extended'] = {'arbitrary_key': 'arbitrary_original'}
     del issue_fixture['fix_versions']
-    del issue_fixture['epic_ref']
+    del issue_fixture['epic_link']
     new_issue = Issue.deserialize(issue_fixture)
 
     # for new Issues created offline, the updated_issue is None
@@ -306,7 +306,7 @@ def test_build_update__new_issue_with_extended_customfield():
     assert new_issue.project_id == update_obj.merged_issue.project_id
     assert new_issue.key == update_obj.merged_issue.key
     assert new_issue.description == update_obj.merged_issue.description
-    assert new_issue.epic_ref == update_obj.merged_issue.epic_ref
+    assert new_issue.epic_link == update_obj.merged_issue.epic_link
     assert new_issue.fix_versions == update_obj.merged_issue.fix_versions
     assert new_issue.issuetype == update_obj.merged_issue.issuetype
     assert new_issue.reporter == update_obj.merged_issue.reporter

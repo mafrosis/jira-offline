@@ -81,12 +81,12 @@ class DynamicBaseAppException(BaseAppException):
 class EpicNotFound(BaseAppException):
     """Epic {} doesn't exist!"""
 
-    def __init__(self, epic_ref):
-        self.epic_ref = epic_ref
+    def __init__(self, epic_link):
+        self.epic_link = epic_link
         super().__init__()
 
     def __str__(self):
-        return self.__doc__.format(self.epic_ref)
+        return self.__doc__.format(self.epic_link)
 
 
 # Raised when Issue.__setattr__ is called when the Issue object has no reference to the central

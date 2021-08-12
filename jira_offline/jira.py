@@ -314,21 +314,21 @@ class Jira(collections.abc.MutableMapping):
 
         logger.debug('Customfields for project %s are %s', project.key, project_customfields)
 
-        customfield_epic_name = customfield_epic_ref = customfield_sprint = ''
+        customfield_epic_name = customfield_epic_link = customfield_sprint = ''
 
         # Epic Name, Epic Link & Sprint are "locked" custom fields, and so should always exist
         for name, field_props in project_customfields.items():
             if field_props['name'] == 'Epic Name':
                 customfield_epic_name = field_props.get('fieldId', field_props.get('key'))
             elif field_props['name'] == 'Epic Link':
-                customfield_epic_ref = field_props.get('fieldId', field_props.get('key'))
+                customfield_epic_link = field_props.get('fieldId', field_props.get('key'))
             elif field_props['name'] == 'Sprint':
                 customfield_sprint = field_props.get('fieldId', field_props.get('key'))
 
         # Initialise project's customfields
         project.customfields = CustomFields(
             epic_name=customfield_epic_name,
-            epic_ref=customfield_epic_ref,
+            epic_link=customfield_epic_link,
             sprint=customfield_sprint,
         )
 
@@ -427,8 +427,8 @@ class Jira(collections.abc.MutableMapping):
 
         if new_issue.issuetype == 'Epic':
             # relink any issue linked to this epic to the new Jira-generated key
-            for linked_issue in [i for i in self.values() if i.epic_ref == offline_temp_key]:
-                linked_issue.epic_ref = new_issue.key
+            for linked_issue in [i for i in self.values() if i.epic_link == offline_temp_key]:
+                linked_issue.epic_link = new_issue.key
 
         # remove the placeholder Issue
         del self[offline_temp_key]

@@ -227,7 +227,7 @@ def test_issue_model__render_returns_core_fields():
 
     assert output[0] == ('Summary', '[TEST-71] This is the story summary')
     assert output[1] == ('Type', 'Story')
-    assert output[2] == ('Epic Ref', 'TEST-1')
+    assert output[2] == ('Epic Link', 'TEST-1')
     assert output[3] == ('Status', 'Story Done')
     assert output[4] == ('Priority', 'Normal')
     assert output[5] == ('Assignee', 'danil1')
@@ -267,7 +267,7 @@ def test_issue_model__render_returns_optional_fields_only_when_set():
 
     assert output[0] == ('Summary', '[TEST-71] This is the story summary')
     assert output[1] == ('Type', 'Story')
-    assert output[2] == ('Epic Ref', 'TEST-1')
+    assert output[2] == ('Epic Link', 'TEST-1')
     assert output[3] == ('Status', 'Story Done')
     assert output[4] == ('Reporter', 'danil1')
     assert output[5] == ('Creator', 'danil1')

@@ -298,8 +298,8 @@ def cli_new(_, projectkey: str, issuetype: str, summary: str, as_json: bool=Fals
 
     # validate epic parameters
     if issuetype == 'Epic':
-        if kwargs.get('epic_ref'):
-            click.echo('You cannot pass --epic-ref when creating an Epic!')
+        if kwargs.get('epic_link'):
+            click.echo('You cannot pass --epic-link when creating an Epic!')
             raise click.Abort
         if not kwargs.get('epic_name'):
             click.echo('You must pass --epic-name when creating an Epic!')
@@ -377,9 +377,9 @@ def cli_edit(_, key: str, as_json: bool=False, editor: bool=False, **kwargs):
     else:
         # Validate epic parameters
         if issue.issuetype == 'Epic':
-            if kwargs.get('epic_ref'):
-                click.echo('Parameter --epic-ref is ignored when modifing an Epic')
-                del kwargs['epic_ref']
+            if kwargs.get('epic_link'):
+                click.echo('Parameter --epic-link is ignored when modifing an Epic')
+                del kwargs['epic_link']
         else:
             if kwargs.get('epic_name'):
                 click.echo('Parameter --epic-name is ignored for anything other than an Epic')

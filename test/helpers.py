@@ -17,8 +17,8 @@ def compare_issue_helper(issue, compare_issue):
     assert issue.creator == compare_issue.creator
     assert issue.epic_name is None and compare_issue.epic_name == '' or \
             issue.epic_name == compare_issue.epic_name
-    assert issue.epic_ref is None and compare_issue.epic_ref == '' or \
-            issue.epic_ref == compare_issue.epic_ref
+    assert issue.epic_link is None and compare_issue.epic_link == '' or \
+            issue.epic_link == compare_issue.epic_link
     assert issue.sprint is None and compare_issue.sprint == '' or \
             issue.sprint == compare_issue.sprint
     assert issue.story_points is None and compare_issue.story_points == '' or \

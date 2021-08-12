@@ -16,14 +16,14 @@ def test_jiraapi_object_to_issue__handles_customfields(mock_jira):
     Ensure jiraapi_object_to_issue extracts customfield value into correct Issue attribute
     '''
     customfields = CustomFields(
-        epic_ref='customfield_10100',
+        epic_link='customfield_10100',
         epic_name='customfield_10200',
         sprint='customfield_10300',
     )
     project = ProjectMeta(key='TEST', customfields=customfields)
 
     issue = jiraapi_object_to_issue(project, JIRAAPI_OBJECT)
-    assert issue.epic_ref == 'TEST-1'
+    assert issue.epic_link == 'TEST-1'
 
 
 def test_jiraapi_object_to_issue__handles_customfields_2(mock_jira):
@@ -31,7 +31,7 @@ def test_jiraapi_object_to_issue__handles_customfields_2(mock_jira):
     Ensure jiraapi_object_to_issue extracts customfield value into correct Issue attribute
     '''
     customfields = CustomFields(
-        epic_ref='customfield_10100',
+        epic_link='customfield_10100',
         epic_name='customfield_10200',
         sprint='customfield_10300',
         story_points='customfield_10400',
@@ -42,7 +42,7 @@ def test_jiraapi_object_to_issue__handles_customfields_2(mock_jira):
     jiraobj['fields']['customfield_10400'] = '1.234'
 
     issue = jiraapi_object_to_issue(project, JIRAAPI_OBJECT)
-    assert issue.epic_ref == 'TEST-1'
+    assert issue.epic_link == 'TEST-1'
     assert issue.story_points == decimal.Decimal('1.234')
 
 
@@ -51,7 +51,7 @@ def test_jiraapi_object_to_issue__handles_customfields_extended(mock_jira):
     Ensure jiraapi_object_to_issue extracts extended customfield value into correct Issue attribute
     '''
     customfields = CustomFields(
-        epic_ref='customfield_10100',
+        epic_link='customfield_10100',
         epic_name='customfield_10200',
         sprint='customfield_10300',
         extended={
@@ -64,7 +64,7 @@ def test_jiraapi_object_to_issue__handles_customfields_extended(mock_jira):
     jiraobj['fields']['customfield_10111'] = 'arbitrary_value'
 
     issue = jiraapi_object_to_issue(project, JIRAAPI_OBJECT)
-    assert issue.epic_ref == 'TEST-1'
+    assert issue.epic_link == 'TEST-1'
     assert issue.extended['arbitrary_key'] == 'arbitrary_value'
 
 
@@ -73,7 +73,7 @@ def test_issue_to_jiraapi_update__handles_customfields(mock_jira):
     Ensure issue_to_jiraapi_update converts Issue customfield attributes into the Jira API update format
     '''
     customfields = CustomFields(
-        epic_ref='customfield_10100',
+        epic_link='customfield_10100',
         epic_name='customfield_10200',
         sprint='customfield_10300',
         story_points='customfield_10400',
@@ -93,7 +93,7 @@ def test_issue_to_jiraapi_update__handles_customfields_extended(mock_jira):
     Ensure issue_to_jiraapi_update converts Issue customfield extended attributes into the Jira API update format
     '''
     customfields = CustomFields(
-        epic_ref='customfield_10100',
+        epic_link='customfield_10100',
         epic_name='customfield_10200',
         sprint='customfield_10300',
         extended={
@@ -150,7 +150,7 @@ def test_issue_to_jiraapi_update__core_mandatory_fields_returned_for_new_issue(m
     '''
     # Setup the project configuration with customfields
     customfields = CustomFields(
-        epic_ref='customfield_10100',
+        epic_link='customfield_10100',
         epic_name='customfield_10200',
         sprint='customfield_10300',
     )
@@ -159,7 +159,7 @@ def test_issue_to_jiraapi_update__core_mandatory_fields_returned_for_new_issue(m
     # Create a plain & simple new issue with no extra pre-set fields
     issue_fixture = copy.copy(ISSUE_NEW)
     del issue_fixture['fix_versions']
-    del issue_fixture['epic_ref']
+    del issue_fixture['epic_link']
     del issue_fixture['reporter']
     new_issue = Issue.deserialize(issue_fixture)
 
@@ -180,7 +180,7 @@ def test_issue_to_jiraapi_update__customfields_and_extended_customfields_returne
     '''
     # Setup the project configuration with customfields
     customfields = CustomFields(
-        epic_ref='customfield_10100',
+        epic_link='customfield_10100',
         epic_name='customfield_10200',
         sprint='customfield_10300',
         extended={
@@ -192,16 +192,16 @@ def test_issue_to_jiraapi_update__customfields_and_extended_customfields_returne
     # Create a plain & simple new issue with no extra pre-set fields
     issue_fixture = copy.copy(ISSUE_NEW)
     del issue_fixture['fix_versions']
-    del issue_fixture['epic_ref']
+    del issue_fixture['epic_link']
     del issue_fixture['reporter']
 
     # Set a customfield, and an extended customfield
-    issue_fixture['epic_ref'] = 'EPIC-1'
+    issue_fixture['epic_link'] = 'EPIC-1'
     issue_fixture['extended'] = {'arbitrary_key': 'arbitrary_value'}
     new_issue = Issue.deserialize(issue_fixture)
 
     issue_dict = issue_to_jiraapi_update(
-        project, new_issue, {'project_id', 'issuetype', 'summary', 'key', 'description', 'epic_ref', 'extended.arbitrary_key'}
+        project, new_issue, {'project_id', 'issuetype', 'summary', 'key', 'description', 'epic_link', 'extended.arbitrary_key'}
     )
 
     assert issue_dict == {

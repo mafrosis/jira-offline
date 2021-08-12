@@ -124,9 +124,9 @@ def test_cli_lint__issues_missing_epic__echo(mock_lint_issues_missing_epic, mock
 
 
 @mock.patch('jira_offline.cli.linters.lint_issues_missing_epic')
-def test_cli_lint__issues_missing_epic__fix_requires_epic_ref(mock_lint_issues_missing_epic, mock_jira):
+def test_cli_lint__issues_missing_epic__fix_requires_epic_link(mock_lint_issues_missing_epic, mock_jira):
     '''
-    Ensure lint issues_missing_epic with --fix param errors without --epic-ref
+    Ensure lint issues_missing_epic with --fix param errors without --epic-link
     '''
     # add fixture to Jira dict
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
@@ -138,13 +138,13 @@ def test_cli_lint__issues_missing_epic__fix_requires_epic_ref(mock_lint_issues_m
         result = runner.invoke(cli, ['lint', '--fix', 'issues-missing-epic'])
 
     assert result.exit_code != 0, result.stdout
-    assert result.output.endswith('You must pass --epic_ref with --fix\n')
+    assert result.output.endswith('You must pass --epic_link with --fix\n')
 
 
 @mock.patch('jira_offline.cli.linters.lint_issues_missing_epic')
-def test_cli_lint__issues_missing_epic__fix_passes_epic_ref_to_lint_func(mock_lint_issues_missing_epic, mock_jira):
+def test_cli_lint__issues_missing_epic__fix_passes_epic_link_to_lint_func(mock_lint_issues_missing_epic, mock_jira):
     '''
-    Ensure lint issues-missing-epic with --fix and --epic_ref calls lint_issues_missing_epic
+    Ensure lint issues-missing-epic with --fix and --epic_link calls lint_issues_missing_epic
     '''
     # add fixture to Jira dict
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
@@ -153,7 +153,7 @@ def test_cli_lint__issues_missing_epic__fix_passes_epic_ref_to_lint_func(mock_li
 
     with mock.patch('jira_offline.cli.linters.jira', mock_jira), \
             mock.patch('jira_offline.jira.jira', mock_jira):
-        result = runner.invoke(cli, ['lint', '--fix', 'issues-missing-epic', '--epic-ref', 'TEST'])
+        result = runner.invoke(cli, ['lint', '--fix', 'issues-missing-epic', '--epic-link', 'TEST'])
 
     assert result.exit_code == 0, result.stdout
-    mock_lint_issues_missing_epic.assert_called_with(fix=True, epic_ref='TEST')
+    mock_lint_issues_missing_epic.assert_called_with(fix=True, epic_link='TEST')
