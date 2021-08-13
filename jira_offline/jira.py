@@ -436,18 +436,20 @@ class Jira(collections.abc.MutableMapping):
             # is included to keep the type-checker happy
             raise Exception
 
-        # add to self under the new key
+        # Add to self under the new key
         self[new_issue.key] = new_issue
 
-        if new_issue.issuetype == 'Epic':
-            # relink any issue linked to this epic to the new Jira-generated key
-            for linked_issue in [i for i in self.values() if i.epic_link == offline_temp_key]:
-                linked_issue.epic_link = new_issue.key
+        for link_name in ('epic_link', 'parent_link'):
+            # Re-link all issues to the new Jira-generated key
+            for key in self._df.loc[self._df[link_name] == offline_temp_key, 'key']:
+                linked_issue = jira[key]
+                setattr(linked_issue, link_name, new_issue.key)
+                linked_issue.commit()
 
-        # remove the placeholder Issue
+        # Remove the placeholder Issue
         del self[offline_temp_key]
 
-        # write changes to disk
+        # Write changes to disk
         self.write_issues()
 
         return new_issue

@@ -419,10 +419,12 @@ def push_issues(verbose: bool=False) -> int:
     Params:
         verbose:  Verbose print all issues as they're pushed to Jira server (default is progress bar)
     '''
-    def _run(issues: list, pbar=None) -> int:
+    def _run(issue_keys: List[str], pbar=None) -> int:
         count = 0
 
-        for local_issue in issues:
+        for key in issue_keys:
+            local_issue = jira[key]
+
             # skip issues which belong to unconfigured projects
             if local_issue.project_id not in jira.config.projects:
                 logger.warning('Skipped issue for unconfigured project: %s', local_issue.summary)
@@ -470,13 +472,11 @@ def push_issues(verbose: bool=False) -> int:
         return count
 
 
-    # Build up a list of issues to push in a specific order.
-    #  1. Push existing issues with local changes first
-    issues_to_push: List[Issue] = [i for i in jira.values() if i.diff_to_original and i.exists]
-    #  2. Push new epics
-    issues_to_push.extend(i for i in jira.values() if not i.exists and i.issuetype == 'Epic')
-    #  3. Push all other new issues
-    issues_to_push.extend(i for i in jira.values() if not i.exists and i.issuetype != 'Epic')
+    # Build up a list of issues to push in a specific order
+    # 1. Push new issues; those created offline
+    issues_to_push = jira.df.loc[jira.df.id == 0, 'key'].tolist()
+    # 2. Push modified issues
+    issues_to_push += jira.df.loc[(jira.df.id > 0) & jira.df.modified, 'key'].tolist()
 
     if verbose:
         total = _run(issues_to_push)

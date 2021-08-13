@@ -161,6 +161,15 @@ EPIC_1 = {
     'modified': False,
 }
 
+EPIC_NEW = {
+    'project_id': '99fd9182cfc4c701a8a662f6293f4136201791b4',
+    'key': '9fb9e0f9-6c0c-4d9d-a8b4-6e19a378275c',
+    'summary': 'This is an epic',
+    'epic_name': '0.1: Epic about a thing',
+    'issuetype': 'Epic',
+    'reporter': 'danil1',
+}
+
 ISSUE_DIFF_PROJECT = {
     'project_id': 'ae7da7e6f3199b1f10e0c4ecfa54ce52158da4db',
     'assignee': 'bea1',

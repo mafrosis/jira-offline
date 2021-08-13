@@ -10,7 +10,7 @@ from unittest import mock
 import pandas as pd
 import pytest
 
-from fixtures import EPIC_1, ISSUE_1, ISSUE_2, ISSUE_MISSING_EPIC, ISSUE_NEW
+from fixtures import EPIC_1, EPIC_NEW, ISSUE_1, ISSUE_2, ISSUE_MISSING_EPIC, ISSUE_NEW
 from helpers import compare_issue_helper, setup_jira_dataframe_helper
 from jira_offline.exceptions import FailedAuthError, JiraApiError, ProjectDoesntExist
 from jira_offline.models import Issue, IssueType, ProjectMeta
@@ -780,6 +780,48 @@ def test_jira__new_issue__removes_temp_key_when_new_post_successful(mock_api_pos
     assert issue_1.key in mock_jira_core
     # Assert temporary key has been removed
     assert issue_new.key not in mock_jira_core
+
+
+@pytest.mark.parametrize('link_name', [
+    'epic_link',
+    'parent_link'
+])
+@mock.patch('jira_offline.jira.api_post')
+def test_jira__new_issue__link_is_updated_after_post(mock_api_post, mock_jira_core, project, link_name):
+    '''
+    Ensure that "Parent Link" and "Epic Link" are updated to the new parent key
+    '''
+    # Setup the the Jira DataFrame: a new issue linking to a new epic
+    issue_new_fixture = copy.copy(ISSUE_NEW)
+    issue_new_fixture[link_name] = EPIC_NEW['key']
+    issue_new = Issue.deserialize(issue_new_fixture, project=project)
+    epic_new = Issue.deserialize(EPIC_NEW, project=project)
+    mock_jira_core._df = setup_jira_dataframe_helper([issue_new, epic_new])
+
+    # Don't write to disk during tests
+    mock_jira_core.write_issues = mock.Mock()
+
+    # Mock the return from fetch_issue() which happens after a successful new_issue() call
+    epic_1 = Issue.deserialize(EPIC_1, project=project)
+    mock_jira_core.fetch_issue = mock.Mock(return_value=epic_1)
+
+    # Validate the link value before the call to new_issue
+    assert getattr(mock_jira_core[ISSUE_NEW['key']], link_name) == epic_new.key
+
+    with mock.patch('jira_offline.jira.jira', mock_jira_core):
+        # Simulated post of the epic for issue creation
+        mock_jira_core.new_issue(
+            project,
+            fields={
+                'project': {'id': project.jira_id},
+                'summary': 'A summary',
+                'issuetype': {'name': 'Epic'},
+            },
+            offline_temp_key=epic_new.key,
+        )
+
+    # Validate the link value has been updated
+    assert getattr(mock_jira_core[ISSUE_NEW['key']], link_name) == epic_1.key
 
 
 @mock.patch('jira_offline.jira.jiraapi_object_to_issue')
