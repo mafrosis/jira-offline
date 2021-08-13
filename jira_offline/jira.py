@@ -212,6 +212,17 @@ class Jira(collections.abc.MutableMapping):
             # Customfields are stored as a dict in the extended column of the DataFrame
             self._df = self._expand_customfields()
 
+        else:
+            # Handle the case where an empty project has been cloned, which results in no Feather
+            # file on disk.
+            self._df = pd.DataFrame(columns=[
+                'project_id', 'issuetype', 'summary', 'key', 'assignee', 'created',
+                'creator', 'description', 'fix_versions', 'components', 'id', 'labels',
+                'priority', 'reporter', 'status', 'updated', 'epic_link', 'epic_name',
+                'sprint', 'story_points', 'extended', 'diff_to_original', 'modified',
+                'project_key', 'original',
+            ])
+
 
     def write_issues(self):
         '''
