@@ -220,7 +220,7 @@ class Jira(collections.abc.MutableMapping):
                 'creator', 'description', 'fix_versions', 'components', 'id', 'labels',
                 'priority', 'reporter', 'status', 'updated', 'epic_link', 'epic_name',
                 'sprint', 'story_points', 'extended', 'diff_to_original', 'modified',
-                'project_key', 'original',
+                'project_key', 'original', 'parent_link'
             ])
 
 
@@ -325,7 +325,7 @@ class Jira(collections.abc.MutableMapping):
 
         logger.debug('Customfields for project %s are %s', project.key, project_customfields)
 
-        customfield_epic_name = customfield_epic_link = customfield_sprint = ''
+        customfield_epic_name = customfield_epic_link = customfield_sprint = customfield_parent_link = ''
 
         # Epic Name, Epic Link & Sprint are "locked" custom fields, and so should always exist
         for name, field_props in project_customfields.items():
@@ -335,12 +335,15 @@ class Jira(collections.abc.MutableMapping):
                 customfield_epic_link = field_props.get('fieldId', field_props.get('key'))
             elif field_props['name'] == 'Sprint':
                 customfield_sprint = field_props.get('fieldId', field_props.get('key'))
+            elif field_props['name'] == 'Parent Link':
+                customfield_parent_link = field_props.get('fieldId', field_props.get('key'))
 
         # Initialise project's customfields
         project.customfields = CustomFields(
             epic_name=customfield_epic_name,
             epic_link=customfield_epic_link,
             sprint=customfield_sprint,
+            parent_link=customfield_parent_link,
         )
 
         def apply_customfield_config(name, value):

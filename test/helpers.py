@@ -23,6 +23,8 @@ def compare_issue_helper(issue, compare_issue):
             issue.sprint == compare_issue.sprint
     assert issue.story_points is None and compare_issue.story_points == '' or \
             issue.story_points == compare_issue.story_points
+    assert issue.parent_link is None and compare_issue.parent_link == '' or \
+            issue.parent_link == compare_issue.parent_link
     assert issue.extended is None and compare_issue.extended == {} or \
             issue.extended == compare_issue.extended
     assert issue.description == compare_issue.description

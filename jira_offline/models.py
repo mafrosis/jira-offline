@@ -59,6 +59,9 @@ class CustomFields(DataclassSerializer):
     story_points: Optional[str] = field(
         default='', metadata={'cli_help': 'Complexity estimate in story points'}
     )
+    parent_link: Optional[str] = field(
+        default='', metadata={'cli_help': 'Link to a non-epic parent issue, such as Feature or Theme'}
+    )
 
     # Extended set of user-defined customfields
     extended: Optional[Dict[str, str]] = field(default_factory=dict)  # type: ignore[assignment]
@@ -302,6 +305,9 @@ class Issue(DataclassSerializer):
 
     # Story points special-case Customfield using decimal type
     story_points: Optional[decimal.Decimal] = field(default=None)
+
+    # Parent link is used for all parent/child relationships except epic->issue
+    parent_link: Optional[str] = field(default=None)
 
     # Extended Customfields dict to capture arbitrary user-defined Customfields as strings
     extended: Optional[Dict[str, str]] = field(default_factory=dict)  # type: ignore[assignment]

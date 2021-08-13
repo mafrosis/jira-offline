@@ -169,6 +169,7 @@ def test_load_user_config__sync_ignores_non_integer_page_size(mock_os):
 
 @pytest.mark.parametrize('customfield_name', [
     ('story-points'),
+    ('parent-link'),
 ])
 @mock.patch('jira_offline.config.os')
 def test_load_user_config__customfields_handles_firstclass_issue_attributes(mock_os, customfield_name):
@@ -308,6 +309,7 @@ class CustomFields_v3(DataclassSerializer):
     epic_name: Optional[str]
     sprint: Optional[str]
     story_points: Optional[str]
+    parent_link: Optional[str]
     extended: Optional[Dict[str, str]]
 
 @dataclass

@@ -109,7 +109,7 @@ def _load_user_config(config: AppConfig):
                 continue
 
             # Handle customfields which are defined first-class on the Issue model
-            for customfield_name in ('story_points',):
+            for customfield_name in ('story_points', 'parent_link'):
                 if key in (customfield_name, customfield_name.replace('_', '-')):
                     if not jira_host in config.customfields:
                         config.customfields[jira_host] = {}
