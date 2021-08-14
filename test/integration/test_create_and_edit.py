@@ -14,7 +14,7 @@ def test_create_new_issue_and_edit_before_push(jira_project, run_in_docker):
     Ensure Story can be created, and subsequently edited before a push
     '''
     # create a new issue
-    output = run_in_docker(jira_project, f'new --json {jira_project} Story EGGpic')
+    output = run_in_docker(jira_project, f'new --json {jira_project} Story Story1')
 
     # parse new issue created (printed on stdout with --json)
     data = json.loads(output)
@@ -24,7 +24,7 @@ def test_create_new_issue_and_edit_before_push(jira_project, run_in_docker):
 
     # push to Jira
     output = run_in_docker(jira_project, '--verbose push')
-    assert 'INFO: Pushed 1 of 1 issues' in output
+    assert 'Pushed 1 of 1 issues' in output
 
     # load and parse all current issues (there will be only 1!)
     output = run_in_docker(jira_project, 'ls --json')
@@ -41,11 +41,11 @@ def test_edit_existing_issue_and_push(jira_project, run_in_docker):
     '''
     def setup():
         # create a new issue
-        output = run_in_docker(jira_project, f'new --json {jira_project} Story EGGpic')
+        output = run_in_docker(jira_project, f'new --json {jira_project} Story Story1')
 
         # push to Jira
         output = run_in_docker(jira_project, '--verbose push')
-        assert 'INFO: Pushed 1 of 1 issues' in output
+        assert 'Pushed 1 of 1 issues' in output
 
     # setup Jira for test
     setup()
@@ -59,7 +59,7 @@ def test_edit_existing_issue_and_push(jira_project, run_in_docker):
 
     # push to Jira
     output = run_in_docker(jira_project, '--verbose push')
-    assert 'INFO: Pushed 1 of 1 issues' in output
+    assert 'Pushed 1 of 1 issues' in output
 
     # load and parse all current issues (there will be only 1!)
     output = run_in_docker(jira_project, 'ls --json')
