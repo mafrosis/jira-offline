@@ -5,7 +5,7 @@ dataclasses; python_version<='3.6'
 dictdiffer-jira-offline-fork==0.0.1
 pyarrow==3.0.0
 feather-format==0.4.1
-moz-sql-parser==4.21.21059
+mo-sql-parsing==0.1.2
 numpy==1.19.5; python_version=='3.6'
 numpy==1.20.1; python_version>='3.7'
 oauthlib==3.1.0
