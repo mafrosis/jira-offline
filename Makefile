@@ -1,5 +1,5 @@
 # Variables for integration testing
-INT_HOST?=locahost
+INT_HOST?=jira:8080
 INT_USER?=jirauser
 INT_PASS?=logmein
 
@@ -18,7 +18,7 @@ test:
 
 .PHONY: integration
 integration:
-	docker-compose run --rm test \
+	docker-compose run --rm test -v \
 		-m 'integration' \
 		--hostname=$(INT_HOST) \
 		--username=$(INT_USER) \
