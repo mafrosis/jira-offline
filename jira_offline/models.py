@@ -24,7 +24,7 @@ from tabulate import tabulate
 from tzlocal import get_localzone
 
 from jira_offline import __title__
-from jira_offline.exceptions import (BadProjectMetaUri, CannotSetIssueAttributeDirectly,
+from jira_offline.exceptions import (BadProjectMetaUri, CannotSetIssueOriginalDirectly,
                                      UnableToCopyCustomCACert, NoAuthenticationMethod)
 from jira_offline.utils import (get_dataclass_defaults_for_pandas, get_field_by_name, render_field,
                                 render_value)
@@ -38,14 +38,14 @@ from jira_offline.utils.serializer import DataclassSerializer, get_base_type
 class CustomFields(DataclassSerializer):
     '''
     CustomFields are dynamic fields defined per-project on Jira. This class tracks the mapping of the
-    field name, such as `epic_ref`, back to the underlying Jira customfield name, such as
+    field name, such as `epic_link`, back to the underlying Jira customfield name, such as
     `customfield_10100`.
 
     Each customfield name defined in this class will match 1-1 with an identically named attribute on
     the Issue class.
     '''
     # Default set of customfields from Jira
-    epic_ref: Optional[str] = field(
+    epic_link: Optional[str] = field(
         default='', metadata={'cli_help': 'Epic key this issue is related to'}
     )
     epic_name: Optional[str] = field(
@@ -58,6 +58,9 @@ class CustomFields(DataclassSerializer):
     # Additional special-case customfields defined in this application
     story_points: Optional[str] = field(
         default='', metadata={'cli_help': 'Complexity estimate in story points'}
+    )
+    parent_link: Optional[str] = field(
+        default='', metadata={'cli_help': 'Link to a non-epic parent issue, such as Feature or Theme'}
     )
 
     # Extended set of user-defined customfields
@@ -129,6 +132,7 @@ class ProjectMeta(DataclassSerializer):
     oauth: Optional[OAuth] = field(default=None)
     ca_cert: Optional[str] = field(default=None)
     timezone: datetime.tzinfo = field(default=get_localzone())
+    jira_id: Optional[str] = field(default=None)
 
     # reference to parent AppConfig class
     config: Optional['AppConfig'] = field(default=None, metadata={'serialize': False})
@@ -202,6 +206,7 @@ class ProjectMeta(DataclassSerializer):
             ('Project URI', self.project_uri),
             ('Auth', auth),
             ('Issue Types', render_value(list(self.issuetypes.keys()))),
+            ('Priorities', render_value(self.priorities)),
             ('Customfields', str(self.customfields)),
             fmt('components'),
             fmt('timezone'),
@@ -243,8 +248,8 @@ class AppConfig(DataclassSerializer):
         self.user_config_filepath = get_default_user_config_filepath()
 
         self.display = AppConfig.Display(
-            ls_fields = ['issuetype', 'epic_ref', 'summary', 'status', 'assignee', 'updated'],
-            ls_fields_verbose = ['issuetype', 'epic_ref', 'epic_name', 'summary', 'status', 'assignee', 'fix_versions', 'updated'],
+            ls_fields = ['issuetype', 'epic_link', 'summary', 'status', 'assignee', 'updated'],
+            ls_fields_verbose = ['issuetype', 'epic_link', 'epic_name', 'summary', 'status', 'assignee', 'fix_versions', 'updated'],
             ls_default_filter = 'status not in ("Done", "Story Done", "Epic Done", "Closed")'
         )
         self.sync = AppConfig.Sync()
@@ -266,7 +271,7 @@ class AppConfig(DataclassSerializer):
         Return unique set of customfields defined across all Jiras.
         Hard-coded items are the mandatory customfields specified by Jira server.
         '''
-        return {'epic_ref', 'epic_name', 'sprint'}.union(*self.customfields.values())
+        return {'epic_link', 'epic_name', 'sprint'}.union(*self.customfields.values())
 
 
 @dataclass
@@ -294,12 +299,15 @@ class Issue(DataclassSerializer):
     # Customfields
     # Fields defined here match the CustomFields class, but must be redefined as dataclasses don't
     # work well with multiple inheritance
-    epic_ref: Optional[str] = field(default=None)
+    epic_link: Optional[str] = field(default=None)
     epic_name: Optional[str] = field(default=None, metadata={'friendly': 'Epic Short Name'})
     sprint: Optional[str] = field(default=None)
 
     # Story points special-case Customfield using decimal type
     story_points: Optional[decimal.Decimal] = field(default=None)
+
+    # Parent link is used for all parent/child relationships except epic->issue
+    parent_link: Optional[str] = field(default=None)
 
     # Extended Customfields dict to capture arbitrary user-defined Customfields as strings
     extended: Optional[Dict[str, str]] = field(default_factory=dict)  # type: ignore[assignment]
@@ -343,7 +351,7 @@ class Issue(DataclassSerializer):
         '''
         if self._active:
             if name == 'original':
-                raise CannotSetIssueAttributeDirectly
+                raise CannotSetIssueOriginalDirectly
 
             # modified is only set to true if this issue exists on the Jira server
             self.__dict__['modified'] = bool(self.exists)
@@ -536,7 +544,7 @@ class Issue(DataclassSerializer):
         if self.issuetype == 'Epic':
             epicdetails = fmt('epic_name')
         else:
-            epicdetails = fmt('epic_ref')
+            epicdetails = fmt('epic_link')
 
         def iter_optionals():
             'Iterate the optional attributes of this issue'

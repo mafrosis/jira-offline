@@ -17,7 +17,7 @@ import pandas as pd
 from tabulate import tabulate
 from tqdm import tqdm
 
-from jira_offline.exceptions import (EditorFieldParseFailed, EpicNotFound, FailedPullingIssues,
+from jira_offline.exceptions import (EditorFieldParseFailed, FailedPullingIssues,
                                      FailedPullingProjectMeta, JiraApiError, JiraUnavailable)
 from jira_offline.jira import jira
 from jira_offline.create import patch_issue_from_dict
@@ -412,17 +412,19 @@ def manual_conflict_resolution(update_obj: IssueUpdate):
     patch_issue_from_dict(update_obj.merged_issue, patch_dict)
 
 
-def push_issues(verbose: bool=False):
+def push_issues(verbose: bool=False) -> int:
     '''
     Push new/changed issues back to Jira server
 
     Params:
         verbose:  Verbose print all issues as they're pushed to Jira server (default is progress bar)
     '''
-    def _run(issues: list, pbar=None) -> int:
+    def _run(issue_keys: List[str], pbar=None) -> int:
         count = 0
 
-        for local_issue in issues:
+        for key in issue_keys:
+            local_issue = jira[key]
+
             # skip issues which belong to unconfigured projects
             if local_issue.project_id not in jira.config.projects:
                 logger.warning('Skipped issue for unconfigured project: %s', local_issue.summary)
@@ -448,19 +450,20 @@ def push_issues(verbose: bool=False):
                 project, update_obj.merged_issue, update_obj.modified
             )
 
-            if update_obj.merged_issue.exists:
-                jira.update_issue(project, update_obj.merged_issue, update_dict)
-                logger.info(
-                    'Updated %s %s', update_obj.merged_issue.issuetype, update_obj.merged_issue.key
-                )
-                count += 1
-            else:
-                try:
-                    new_issue = jira.new_issue(project, update_dict)
+            try:
+                if update_obj.merged_issue.exists:
+                    jira.update_issue(project, update_obj.merged_issue, update_dict)
+                    logger.info(
+                        'Updated %s %s', update_obj.merged_issue.issuetype, update_obj.merged_issue.key
+                    )
+                else:
+                    new_issue = jira.new_issue(project, update_dict, update_obj.merged_issue.key)
                     logger.info('Created new %s %s', new_issue.issuetype, new_issue.key)
-                    count += 1
-                except EpicNotFound as e:
-                    logger.error(e)
+
+                count += 1
+
+            except JiraApiError as e:
+                logger.error('Failed pushing %s with error "%s"', update_obj.merged_issue.key, e.message)
 
             if pbar:
                 # update progress
@@ -469,13 +472,11 @@ def push_issues(verbose: bool=False):
         return count
 
 
-    # Build up a list of issues to push in a specific order.
-    #  1. Push existing issues with local changes first
-    issues_to_push: List[Issue] = [i for i in jira.values() if i.diff_to_original and i.exists]
-    #  2. Push new epics
-    issues_to_push.extend(i for i in jira.values() if not i.exists and i.issuetype == 'Epic')
-    #  3. Push all other new issues
-    issues_to_push.extend(i for i in jira.values() if not i.exists and i.issuetype != 'Epic')
+    # Build up a list of issues to push in a specific order
+    # 1. Push new issues; those created offline
+    issues_to_push = jira.df.loc[jira.df.id == 0, 'key'].tolist()
+    # 2. Push modified issues
+    issues_to_push += jira.df.loc[(jira.df.id > 0) & jira.df.modified, 'key'].tolist()
 
     if verbose:
         total = _run(issues_to_push)
@@ -494,3 +495,4 @@ def push_issues(verbose: bool=False):
         push_result_log_level = logging.INFO
 
     logger.log(push_result_log_level, 'Pushed %s of %s issues', total, len(issues_to_push))
+    return total

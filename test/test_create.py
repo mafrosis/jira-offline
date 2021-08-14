@@ -83,12 +83,12 @@ def test_create__create_issue__kwargs_are_set_in_new_issue(mock_jira, project):
     mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
 
     with mock.patch('jira_offline.create.jira', mock_jira):
-        offline_issue = create_issue(project, 'Story', 'This is a summary', epic_ref='TEST-1')
+        offline_issue = create_issue(project, 'Story', 'This is a summary', epic_link='TEST-1')
 
-    assert offline_issue.epic_ref == 'TEST-1'
+    assert offline_issue.epic_link == 'TEST-1'
 
     # Validate a roundtrip via the DataFrame
-    assert mock_jira[offline_issue.key].epic_ref == 'TEST-1'
+    assert mock_jira[offline_issue.key].epic_link == 'TEST-1'
 
 
 def test_create__create_issue__kwargs_are_set_in_new_issue_extended(mock_jira, project):
@@ -110,9 +110,9 @@ def test_create__create_issue__kwargs_are_set_in_new_issue_extended(mock_jira, p
     assert mock_jira[offline_issue.key].extended['arbitrary_key'] == 'arbitrary_value'
 
 
-def test_create__create_issue__raises_exception_when_passed_an_unknown_epic_ref(mock_jira, project):
+def test_create__create_issue__raises_exception_when_passed_an_unknown_epic_link(mock_jira, project):
     '''
-    Ensure create_issue() raises exception when an epic_ref is passed which does not match an
+    Ensure create_issue() raises exception when an epic_link is passed which does not match an
     existing epic on either summary OR epic_name
     '''
     # add an Epic fixture to the Jira dict
@@ -120,26 +120,26 @@ def test_create__create_issue__raises_exception_when_passed_an_unknown_epic_ref(
 
     with mock.patch('jira_offline.create.jira', mock_jira):
         with pytest.raises(EpicNotFound):
-            create_issue(project, 'Story', 'This is summary', epic_ref='Nothing')
+            create_issue(project, 'Story', 'This is summary', epic_link='Nothing')
 
 
-@pytest.mark.parametrize('epic_ref_value', [
+@pytest.mark.parametrize('epic_link_value', [
     ('This is an epic'),
     ('0.1: Epic about a thing'),
 ])
-def test_create__create_issue__issue_is_mapped_to_existing_epic_summary(mock_jira, project, epic_ref_value):
+def test_create__create_issue__issue_is_mapped_to_existing_epic_summary(mock_jira, project, epic_link_value):
     '''
-    Ensure create_issue() maps new Issue to the matching epic, when supplied epic_ref matches the
+    Ensure create_issue() maps new Issue to the matching epic, when supplied epic_link matches the
     epic's summary OR epic_name
     '''
     # add an Epic fixture to the Jira dict
     mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
 
     with mock.patch('jira_offline.create.jira', mock_jira), mock.patch('jira_offline.jira.jira', mock_jira):
-        new_issue = create_issue(project, 'Story', 'This is summary', epic_ref=epic_ref_value)
+        new_issue = create_issue(project, 'Story', 'This is summary', epic_link=epic_link_value)
 
     # assert new Issue to linked to the epic
-    assert new_issue.epic_ref == mock_jira['TEST-1'].key
+    assert new_issue.epic_link == mock_jira['TEST-1'].key
 
 
 def test_create__find_epic_by_reference__match_by_key(mock_jira):

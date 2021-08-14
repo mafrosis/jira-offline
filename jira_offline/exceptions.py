@@ -81,23 +81,18 @@ class DynamicBaseAppException(BaseAppException):
 class EpicNotFound(BaseAppException):
     """Epic {} doesn't exist!"""
 
-    def __init__(self, epic_ref):
-        self.epic_ref = epic_ref
+    def __init__(self, epic_link):
+        self.epic_link = epic_link
         super().__init__()
 
     def __str__(self):
-        return self.__doc__.format(self.epic_ref)
+        return self.__doc__.format(self.epic_link)
 
 
 # Raised when Issue.__setattr__ is called when the Issue object has no reference to the central
 # Jira instance
 class CannotSetFieldOnIssueWithoutJira(BaseAppException):
     'Issue does not have a reference to Jira'
-
-
-# Raised when the API call to create a new issue is missing a mandatory Issue fields
-class MissingFieldsForNewIssue(BaseAppException):
-    'Mandatory fields missing on call to create a new issue'
 
 
 class InvalidIssueType(BaseAppException):
@@ -253,9 +248,9 @@ class ImportFailed(DynamicBaseAppException):
         return msg
 
 
-# Raised by Issue.__set_attr__ for attribute names which must be set via a helper
-class CannotSetIssueAttributeDirectly(Exception):
-    'This attribute cannot be set directly, you must use the set_<attrib>() helper'
+# Raised by Issue.__set_attr__ when setting issue.original with direct assignment
+class CannotSetIssueOriginalDirectly(Exception):
+    'This attribute must not be set directly, use the set_original() helper'
 
 
 # Raised by Jira.update when a sync returns Issues with a different timezone to those already present

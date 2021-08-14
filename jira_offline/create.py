@@ -16,7 +16,7 @@ from jira_offline.utils import deserialize_single_issue_field, find_project, get
 logger = logging.getLogger('jira')
 
 
-def find_epic_by_reference(epic_ref_string: str) -> Issue:
+def find_epic_by_reference(epic_link_string: str) -> Issue:
     '''
     Find an epic by search string.
 
@@ -26,12 +26,12 @@ def find_epic_by_reference(epic_ref_string: str) -> Issue:
         3. Issue.epic_name
 
     Params:
-        epic_ref_string:  String by which to find an epic
+        epic_link_string:  String by which to find an epic
     Returns:
         Issue for matched Epic object
     '''
-    # first attempt to match issue.epic_ref to an existing epic on key
-    matched_epic: Optional[Issue] = jira.get(epic_ref_string)
+    # first attempt to match issue.epic_link to an existing epic on key
+    matched_epic: Optional[Issue] = jira.get(epic_link_string)
 
     if matched_epic:
         return matched_epic
@@ -41,16 +41,16 @@ def find_epic_by_reference(epic_ref_string: str) -> Issue:
         if epic.issuetype != 'Epic':
             continue
 
-        if epic_ref_string in (epic.summary, epic.epic_name):
+        if epic_link_string in (epic.summary, epic.epic_name):
             if matched_epic:
-                # finding two epics that match epic_ref_string is an exception, as you can only link
+                # finding two epics that match epic_link_string is an exception, as you can only link
                 # an issue to a single epic
-                raise EpicSearchStrUsedMoreThanOnce(epic_ref_string)
+                raise EpicSearchStrUsedMoreThanOnce(epic_link_string)
 
             matched_epic = epic
 
     if not matched_epic:
-        raise EpicNotFound(epic_ref_string)
+        raise EpicNotFound(epic_link_string)
 
     return matched_epic
 
@@ -215,7 +215,7 @@ def patch_issue_from_dict(issue: Issue, attrs: dict):
 
             issue.extended[field_name] = value
 
-    # Link issue to epic if epic_ref is present
-    if attrs.get('epic_ref'):
-        matched_epic = find_epic_by_reference(attrs['epic_ref'])
-        issue.epic_ref = matched_epic.key
+    # Link issue to epic if epic_link is present
+    if attrs.get('epic_link'):
+        matched_epic = find_epic_by_reference(attrs['epic_link'])
+        issue.epic_link = matched_epic.key

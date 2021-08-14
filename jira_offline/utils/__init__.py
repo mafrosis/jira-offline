@@ -33,7 +33,7 @@ def get_field_by_name(cls: type, field_name: str) -> dataclasses.Field:
         Dataclass field
     '''
     for f in dataclasses.fields(cls):
-        if f.metadata.get('property') == field_name or f.name == field_name:
+        if f.name == field_name:
             return f
     raise ValueError(f'{cls}.{field_name} does not exist!')
 

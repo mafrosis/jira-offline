@@ -36,11 +36,12 @@ def project(timezone):
     '''
     return ProjectMeta(
         key='TEST',
+        jira_id='10000',
         username='test',
         password='dummy',
         # Default set of customfields from Jira
         customfields=CustomFields(
-            epic_ref='customfield_10100',
+            epic_link='customfield_10100',
             epic_name='customfield_10200',
             sprint='customfield_10300',
         ),
@@ -82,10 +83,11 @@ def mock_jira(mock_jira_core):
     Mock additional methods of Jira class which have side-effects (eg. disk/network access)
     '''
     mock_jira_core._df = pd.DataFrame(columns=[
-        'project_id', 'issuetype', 'summary', 'assignee', 'created', 'creator', 'epic_name',
-        'epic_ref', 'story_points', 'description', 'fix_versions', 'components', 'id', 'key', 'labels',
-        'priority', 'reporter', 'status', 'updated', 'diff_to_original', 'modified', 'project_key',
-        'extended',
+        'project_id', 'issuetype', 'summary', 'key', 'assignee', 'created',
+        'creator', 'description', 'fix_versions', 'components', 'id', 'labels',
+        'priority', 'reporter', 'status', 'updated', 'epic_link', 'epic_name',
+        'sprint', 'story_points', 'extended', 'diff_to_original', 'modified',
+        'project_key', 'parent_link',
     ])
     mock_jira_core.load_issues = mock.Mock()
     mock_jira_core.write_issues = mock.Mock()

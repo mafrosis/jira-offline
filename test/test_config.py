@@ -167,20 +167,22 @@ def test_load_user_config__sync_ignores_non_integer_page_size(mock_os):
     assert config.sync.page_size == 25
 
 
+@pytest.mark.parametrize('customfield_name', [
+    ('story-points'),
+    ('parent-link'),
+])
 @mock.patch('jira_offline.config.os')
-def test_load_user_config__customfields_handles_story_points(mock_os):
+def test_load_user_config__customfields_handles_firstclass_issue_attributes(mock_os, customfield_name):
     '''
-    User-defined customfield "story-points" has special handling
+    Some optional user-defined customfields are defined first-class attributes on the Issue model.
+    They have slightly different handling.
     '''
     # Config file exists
     mock_os.path.exists.return_value = True
 
-    user_config_fixture = '''
+    user_config_fixture = f'''
     [customfields]
-    story-points = customfield_10101
-
-    [customfields jira.example.com]
-    story-points = customfield_10102
+    {customfield_name} = customfield_10102
     '''
 
     config = AppConfig()
@@ -189,7 +191,7 @@ def test_load_user_config__customfields_handles_story_points(mock_os):
     with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
         _load_user_config(config)
 
-    assert config.customfields['*']['story_points'] == 'customfield_10101'
+    assert config.customfields['*'][customfield_name.replace('-', '_')] == 'customfield_10102'
 
 
 @mock.patch('jira_offline.config.os')
@@ -303,10 +305,11 @@ def test_write_default_user_config(tmpdir):
 #
 @dataclass
 class CustomFields_v3(DataclassSerializer):
-    epic_ref: Optional[str]
+    epic_link: Optional[str]
     epic_name: Optional[str]
     sprint: Optional[str]
     story_points: Optional[str]
+    parent_link: Optional[str]
     extended: Optional[Dict[str, str]]
 
 @dataclass
@@ -337,6 +340,7 @@ class ProjectMeta_v3(DataclassSerializer):  # pylint: disable=too-many-instance-
     oauth: Optional[OAuth_v3]
     ca_cert: Optional[str]
     timezone: datetime.tzinfo
+    jira_id: Optional[str]
     config: Optional['AppConfig']
 
 @dataclass

@@ -17,13 +17,13 @@ def test_print_list__display_ls_fields_config_rendered_in_listing(mock_jira):
     # add fixture to Jira dict
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
-    mock_jira.config.display.ls_fields = {'key'}
+    mock_jira.config.display.ls_fields = {'summary'}
 
     with mock.patch('jira_offline.utils.cli.jira', mock_jira), \
         mock.patch('jira_offline.jira.jira', mock_jira):
         df = print_list(mock_jira.df)
 
-    assert set(df.columns) == {'key'}
+    assert set(df.columns) == {'summary'}
 
 
 def test_print_list__display_ls_fields_defaults_rendered_in_listing(mock_jira):
@@ -38,7 +38,7 @@ def test_print_list__display_ls_fields_defaults_rendered_in_listing(mock_jira):
         mock.patch('jira_offline.jira.jira', mock_jira):
         df = print_list(mock_jira.df)
 
-    assert set(df.columns) == set(['issuetype', 'epic_ref', 'summary', 'status', 'assignee', 'updated'])
+    assert set(df.columns) == set(['issuetype', 'epic_link', 'summary', 'status', 'assignee', 'updated'])
 
 
 @mock.patch('jira_offline.utils.cli.ValidCustomfield')
@@ -57,7 +57,7 @@ def test_click_customfieldsasoptions__configured_customfields_become_options(moc
     with mock.patch('jira_offline.utils.cli.jira', mock_jira):
         CustomfieldsAsOptions(*tuple(), **kwargs)
 
-    assert mock_ValidCustomfield.called_once_with(['--epic-ref'], '')
+    assert mock_ValidCustomfield.called_once_with(['--epic-link'], '')
     assert mock_ValidCustomfield.called_once_with(['--epic-name'], '')
     assert mock_ValidCustomfield.called_once_with(['--sprint'], '')
     assert mock_ValidCustomfield.called_once_with(['--arbitrary-user-defined-field'], '')

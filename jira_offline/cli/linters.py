@@ -64,29 +64,29 @@ def cli_lint_fix_versions(ctx: click.core.Context, value: str=None):
 
 
 @cli_lint.command(name='issues-missing-epic')
-@click.option('--epic-ref', help='Epic to set on issues with no epic. Used with --fix.')
+@click.option('--epic-link', help='Epic to set on issues with no epic. Used with --fix.')
 @click.pass_context
 @global_options
 @filter_option
-def cli_lint_issues_missing_epic(ctx: click.core.Context, epic_ref: str=None):
+def cli_lint_issues_missing_epic(ctx: click.core.Context, epic_link: str=None):
     '''
     Lint issues without an epic set
     '''
-    if ctx.obj.lint.fix and not epic_ref:
-        raise click.BadParameter('You must pass --epic_ref with --fix', ctx)
+    if ctx.obj.lint.fix and not epic_link:
+        raise click.BadParameter('You must pass --epic_link with --fix', ctx)
 
-    if epic_ref:
+    if epic_link:
         if not ctx.obj.lint.fix:
-            logger.warning('Passing --epic-ref without --fix has no effect')
+            logger.warning('Passing --epic-link without --fix has no effect')
 
     # query issues missing the epic field
     df = lint_issues_missing_epic(fix=False)
     initial_missing_count = len(df)
 
     if ctx.obj.lint.fix:
-        df = lint_issues_missing_epic(fix=ctx.obj.lint.fix, epic_ref=epic_ref)
+        df = lint_issues_missing_epic(fix=ctx.obj.lint.fix, epic_link=epic_link)
 
-        click.echo(f'Set epic to {epic_ref} on {initial_missing_count - len(df)} issues')
+        click.echo(f'Set epic to {epic_link} on {initial_missing_count - len(df)} issues')
     else:
         click.echo(f'There are {len(df)} issues missing an epic')
 

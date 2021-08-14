@@ -85,6 +85,14 @@ def issue_to_jiraapi_update(project: 'ProjectMeta', issue: 'Issue', modified: se
     # posted to the Jira API
     field_keys: dict = {k: k for k in issue_values.keys()}
 
+    # Pass the Jira-internal project ID
+    field_keys['project_id'] = 'project'
+    issue_values['project_id'] = {'id': project.jira_id}
+
+    # Never include Issue.key, as it's invalid for create and in the URL for edit
+    if 'key' in modified:
+        modified.remove('key')
+
     # Include the customfields
     if project.customfields:
         for customfield_name, customfield_ref in project.customfields.items():
@@ -95,7 +103,7 @@ def issue_to_jiraapi_update(project: 'ProjectMeta', issue: 'Issue', modified: se
             if customfield_name.startswith('extended.'):
                 issue_values[customfield_name] = issue_values['extended'][customfield_name[9:]]
 
-    for field_name in ('assignee', 'issuetype', 'reporter'):
+    for field_name in ('assignee', 'issuetype', 'reporter', 'priority'):
         if field_name in issue_values:
             issue_values[field_name] = {'name': issue_values[field_name]}
 

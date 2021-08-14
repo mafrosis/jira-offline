@@ -13,9 +13,7 @@ from peak.util.proxies import LazyProxy
 import pytz
 
 from jira_offline.config import get_cache_filepath, load_config
-from jira_offline.exceptions import (EpicNotFound, JiraApiError, JiraNotConfigured,
-                                     MissingFieldsForNewIssue, MultipleTimezoneError,
-                                     ProjectDoesntExist)
+from jira_offline.exceptions import JiraApiError, MultipleTimezoneError, ProjectDoesntExist
 from jira_offline.models import AppConfig, CustomFields, Issue, IssueType, ProjectMeta
 from jira_offline.sql_filter import IssueFilter
 from jira_offline.utils.api import get as api_get, post as api_post, put as api_put
@@ -214,6 +212,17 @@ class Jira(collections.abc.MutableMapping):
             # Customfields are stored as a dict in the extended column of the DataFrame
             self._df = self._expand_customfields()
 
+        else:
+            # Handle the case where an empty project has been cloned, which results in no Feather
+            # file on disk.
+            self._df = pd.DataFrame(columns=[
+                'project_id', 'issuetype', 'summary', 'key', 'assignee', 'created',
+                'creator', 'description', 'fix_versions', 'components', 'id', 'labels',
+                'priority', 'reporter', 'status', 'updated', 'epic_link', 'epic_name',
+                'sprint', 'story_points', 'extended', 'diff_to_original', 'modified',
+                'project_key', 'original', 'parent_link'
+            ])
+
 
     def write_issues(self):
         '''
@@ -253,6 +262,9 @@ class Jira(collections.abc.MutableMapping):
 
             # Project friendly name
             project.name = data['projects'][0]['name']
+
+            # Jira's internal ID for this project
+            project.jira_id = data['projects'][0]['id']
 
             issuetypes_: Dict[str, IssueType] = dict()
             priorities_: Set[str] = set()
@@ -313,22 +325,25 @@ class Jira(collections.abc.MutableMapping):
 
         logger.debug('Customfields for project %s are %s', project.key, project_customfields)
 
-        customfield_epic_name = customfield_epic_ref = customfield_sprint = ''
+        customfield_epic_name = customfield_epic_link = customfield_sprint = customfield_parent_link = ''
 
         # Epic Name, Epic Link & Sprint are "locked" custom fields, and so should always exist
         for name, field_props in project_customfields.items():
             if field_props['name'] == 'Epic Name':
                 customfield_epic_name = field_props.get('fieldId', field_props.get('key'))
             elif field_props['name'] == 'Epic Link':
-                customfield_epic_ref = field_props.get('fieldId', field_props.get('key'))
+                customfield_epic_link = field_props.get('fieldId', field_props.get('key'))
             elif field_props['name'] == 'Sprint':
                 customfield_sprint = field_props.get('fieldId', field_props.get('key'))
+            elif field_props['name'] == 'Parent Link':
+                customfield_parent_link = field_props.get('fieldId', field_props.get('key'))
 
         # Initialise project's customfields
         project.customfields = CustomFields(
             epic_name=customfield_epic_name,
-            epic_ref=customfield_epic_ref,
+            epic_link=customfield_epic_link,
             sprint=customfield_sprint,
+            parent_link=customfield_parent_link,
         )
 
         def apply_customfield_config(name, value):
@@ -397,94 +412,68 @@ class Jira(collections.abc.MutableMapping):
         project.components = {x['name'] for x in data}
 
 
-    def new_issue(self, project: ProjectMeta, fields: dict) -> Issue:
+    def new_issue(self, project: ProjectMeta, fields: dict, offline_temp_key: str) -> Issue:
         '''
-        Create a new issue on a Jira project via the API
+        Create a new issue on a Jira project via the API. A POST request is immediately followed by a
+        GET for the new issue, to retrive the new key and other default fields provided by the Jira
+        server.
 
         Params:
-            project:  Properties of the Jira project on which to create new Issue
-            fields:   JSON-compatible key-value pairs for new Issue
+            project:           Properties of the Jira project on which to create new Issue
+            fields:            K/V pairs for the issue; output from `utils.convert.issue_to_jiraapi_update`
+            offline_temp_key:  Temporary key created for this issue until it's sync'd to Jira
         Returns:
             The new Issue, including the Jira-generated key field
         '''
-        if 'key' not in fields or 'issuetype' not in fields or 'summary' not in fields:
-            raise MissingFieldsForNewIssue(
-                '{} is missing a mandatory field {}'.format(fields['key'], ','.join(fields))
-            )
+        # Create new issue in Jira
+        data = api_post(project, 'issue', data={'fields': fields})
 
-        try:
-            # key is set by Jira server; remove it
-            temp_key = fields['key']
-            del fields['key']
-            # project_id is application data; remove it
-            del fields['project_id']
-
-            # create new issue in Jira
-            data = api_post(project, 'issue', data={'fields': fields})
-
-            # retrieve the freshly minted Jira issue
-            new_issue: Issue = self.fetch_issue(project, data['key'])
-
-        except JiraApiError as e:
-            err: str = 'Failed creating new {} "{}" with error "{}"'.format(
-                fields['issuetype']['name'],
-                fields['summary'],
-                e.message
-            )
-            if e.message == 'gh.epic.error.not.found':
-                raise EpicNotFound(err)
-            if 'cannot be set. It is not on the appropriate screen, or unknown.' in e.message:
-                raise JiraNotConfigured(project.key, project.jira_server, err)
+        # Retrieve the freshly minted Jira issue
+        new_issue: Issue = self.fetch_issue(project, data['key'])
 
         if new_issue.key is None:
             # This code path is not reachable, as the `key` field is mandatory on the Jira API. This
             # is included to keep the type-checker happy
             raise Exception
 
-        # add to self under the new key
+        # Add to self under the new key
         self[new_issue.key] = new_issue
 
-        if new_issue.issuetype == 'Epic':
-            # relink any issue linked to this epic to the new Jira-generated key
-            for linked_issue in [i for i in self.values() if i.epic_ref == temp_key]:
-                linked_issue.epic_ref = new_issue.key
+        for link_name in ('epic_link', 'parent_link'):
+            # Re-link all issues to the new Jira-generated key
+            for key in self._df.loc[self._df[link_name] == offline_temp_key, 'key']:
+                linked_issue = jira[key]
+                setattr(linked_issue, link_name, new_issue.key)
+                linked_issue.commit()
 
-        # remove the placeholder Issue
-        del self[temp_key]
+        # Remove the placeholder Issue
+        del self[offline_temp_key]
 
-        # write changes to disk
+        # Write changes to disk
         self.write_issues()
 
         return new_issue
 
 
-    def update_issue(self, project: ProjectMeta, issue: Issue, fields: dict) -> Optional[Issue]:
+    def update_issue(self, project: ProjectMeta, issue: Issue, fields: dict):
         '''
-        Update an issue on Jira via the API
+        Update an issue on a Jira project via the API. A PUT request is immediately followed by a
+        GET for the updated issue - which is rather heavyweight, but ensures that issue timestamps
+        are correct as they can only be set by the Jira server.
 
         Params:
             project:  Properties of the Jira project to update
             issue:    Issue object to update
-            fields:   JSON-compatible key-value pairs to write
+            fields:   K/V pairs for the issue; output from `utils.convert.issue_to_jiraapi_update`
         '''
-        try:
-            api_put(project, f'issue/{issue.key}', data={'fields': fields})
+        api_put(project, f'issue/{issue.key}', data={'fields': fields})
 
-            # Jira is now updated to match local; synchronize our local reference to the Jira object
-            issue.original = issue.serialize()
+        # Jira is now updated to match local; synchronise offline issue to the server version
+        issue_data = api_get(project, 'issue/EGG-1')
+        self[issue.key] = jiraapi_object_to_issue(project, issue_data)
 
-            if issue.key is None:
-                # this code path is not possible, as Jira always provides the key field
-                # but it keeps the type-checker happy
-                raise Exception
-
-            self[issue.key] = issue
-            return issue
-
-        except JiraApiError as e:
-            logger.error('Failed updating %s with error "%s"', issue.key, e)
-
-        return None
+        # Write changes to disk
+        self.write_issues()
 
 
     def fetch_issue(self, project: ProjectMeta, key: str) -> Issue:  # pylint: disable=no-self-use

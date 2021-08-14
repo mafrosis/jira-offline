@@ -93,14 +93,14 @@ def test_cli_new__error_when_not_passed_epic_name_for_epic(mock_jira):
     assert not mock_jira.new_issue.called
 
 
-def test_cli_new__error_when_passed_epic_ref_for_epic(mock_jira):
+def test_cli_new__error_when_passed_epic_link_for_epic(mock_jira):
     '''
-    Ensure an error happens when --epic-ref is passed for Epic creation
+    Ensure an error happens when --epic-link is passed for Epic creation
     '''
     runner = CliRunner()
 
     with mock.patch('jira_offline.cli.main.jira', mock_jira):
-        result = runner.invoke(cli, ['new', 'TEST', 'Epic', 'Summary of issue', '--epic-ref', 'TEST-1'])
+        result = runner.invoke(cli, ['new', 'TEST', 'Epic', 'Summary of issue', '--epic-link', 'TEST-1'])
 
     assert result.exit_code == 1, result.stdout
     assert not mock_jira.new_issue.called
