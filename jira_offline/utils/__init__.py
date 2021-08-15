@@ -67,9 +67,7 @@ def find_project(jira: 'Jira', project_key: str) -> 'ProjectMeta':
         project_key:  Short Jira project key
     '''
     try:
-        return next(iter(
-            [pm for id, pm in jira.config.projects.items() if pm.key == project_key]
-        ))
+        return next(p for p in jira.config.projects.values() if p.key == project_key)
     except StopIteration:
         raise ProjectNotConfigured(project_key)
 

@@ -6,6 +6,7 @@ from tabulate import tabulate
 
 from jira_offline.cli.params import global_options
 from jira_offline.jira import jira
+from jira_offline.utils import find_project
 
 
 @click.group(name='project')
@@ -42,8 +43,9 @@ def cli_project_delete(ctx: click.core.Context, projectkey: str):
     '''
     Delete a cloned project from local storage
     '''
-    project = next(p for p in jira.config.projects.values() if p.key == projectkey)
-    if not project:
+    try:
+        project = find_project(jira, projectkey)
+    except ProjectNotConfigured:
         click.echo('Unknown project!')
         ctx.invoke(cli_project_list)
         raise click.Abort
