@@ -142,24 +142,6 @@ def cli_push(ctx: click.core.Context):
     push_issues(verbose=ctx.obj.verbose)
 
 
-@click.command(name='projects')
-@click.pass_context
-@global_options
-def cli_projects(ctx: click.core.Context):
-    '''
-    View currently cloned projects
-    '''
-    if ctx.obj.verbose:
-        for p in jira.config.projects.values():
-            click.echo(p)
-    else:
-        click.echo(tabulate(
-            [(p.key, p.name, p.project_uri, p.last_updated) for p in jira.config.projects.values()],
-            headers=['Key', 'Name', 'Project URI', 'Last Sync'],
-            tablefmt='psql'
-        ))
-
-
 @click.command(name='config')
 @click.option('--config', '-c', type=click.Path(), help='Write default configuration to PATH')
 def cli_config(config: Optional[str]=None):

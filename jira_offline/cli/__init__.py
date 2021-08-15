@@ -14,9 +14,10 @@ import click
 from jira_offline import __title__, __version__
 from jira_offline.cli.linters import cli_lint
 from jira_offline.cli.main import (cli_clone, cli_config, cli_diff, cli_edit, cli_ls, cli_new,
-                                   cli_projects, cli_pull, cli_push, cli_reset, cli_show, cli_import,
+                                   cli_pull, cli_push, cli_reset, cli_show, cli_import,
                                    cli_delete_issue)
 from jira_offline.cli.params import global_options
+from jira_offline.cli.project import cli_projects
 from jira_offline.cli.stats import cli_stats
 
 
@@ -43,7 +44,6 @@ cli.add_command(cli_diff)
 cli.add_command(cli_edit)
 cli.add_command(cli_ls)
 cli.add_command(cli_new)
-cli.add_command(cli_projects)
 cli.add_command(cli_config)
 cli.add_command(cli_pull)
 cli.add_command(cli_push)
@@ -53,3 +53,4 @@ cli.add_command(cli_import)
 cli.add_command(cli_lint)
 cli.add_command(cli_stats)
 cli.add_command(cli_delete_issue)
+cli.add_command(cli_projects)
