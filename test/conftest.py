@@ -1,5 +1,4 @@
 from contextlib import contextmanager
-import os
 import random
 import string
 import tempfile
@@ -135,7 +134,7 @@ def jira_project(request, run_in_docker):
         auth=HTTPBasicAuth(username, password),
         json={
             'key': project_key,
-            'lead': os.environ.get('INT_USER'),
+            'lead': username,
             'name': project_key,
             'projectTypeKey': 'software',
             'projectTemplateKey': 'com.pyxis.greenhopper.jira:gh-scrum-template',
@@ -209,6 +208,7 @@ def run_in_docker(request):
             stdout = client.containers.run(
                 'mafrosis/jira-offline',
                 command=cmd,
+                network='jira-offline_default',  # Connect to the compose network where Jira should be running on 8080
                 remove=True,
                 stderr=True,
                 mounts=[

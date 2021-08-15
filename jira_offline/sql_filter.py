@@ -10,7 +10,7 @@ import warnings
 import arrow
 from dateutil.tz import gettz
 import mo_parsing
-from moz_sql_parser import parse as mozparse
+from mo_sql_parsing import parse as mozparse
 import pandas as pd
 from tzlocal import get_localzone
 
