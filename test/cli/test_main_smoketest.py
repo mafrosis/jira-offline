@@ -18,18 +18,18 @@ from jira_offline.jira import Issue
 # 1: tuple of "basic" parameters to pass
 # 2: expected return code when Jira dict is empty (used in test_cli_smoketest_empty)
 CLI_COMMAND_MAPPING = [
-    ('config', tuple(), 0),
-    ('projects', tuple(), 0),
-    ('ls', tuple(), 1),
-    ('show', ('TEST-71',), 1),
-    ('diff', ('TEST-71',), 1),
-    ('reset', ('TEST-71',), 1),
-    ('clone', ('https://jira.atlassian.com/TEST1',), 0),
-    ('new', ('TEST', 'Story', 'Summary'), 1),
-    ('pull', tuple(), 0),
-    ('push', tuple(), 1),
-    ('edit', ('TEST-71', '--summary', 'Egg'), 1),
-    ('delete', ('TEST-71',), 1),
+    (('config',), tuple(), 0),
+    (('project', 'list'), tuple(), 0),
+    (('ls',), tuple(), 1),
+    (('show',), ('TEST-71',), 1),
+    (('diff',), ('TEST-71',), 1),
+    (('reset',), ('TEST-71',), 1),
+    (('clone',), ('https://jira.atlassian.com/TEST1',), 0),
+    (('new',), ('TEST', 'Story', 'Summary'), 1),
+    (('pull',), tuple(), 0),
+    (('push',), tuple(), 1),
+    (('edit',), ('TEST-71', '--summary', 'Egg'), 1),
+    (('delete',), ('TEST-71',), 1),
 ]
 
 
@@ -53,7 +53,7 @@ def test_main_smoketest(mock_write_config, mock_authenticate, mock_push_issues, 
     with mock.patch('jira_offline.cli.main.jira', mock_jira), \
             mock.patch('jira_offline.utils.cli.jira', mock_jira), \
             mock.patch('jira_offline.jira.jira', mock_jira):
-        result = runner.invoke(cli, [command, *params])
+        result = runner.invoke(cli, [*command, *params])
 
     # CLI should always exit zero
     assert result.exit_code == 0, result.stdout
@@ -75,7 +75,7 @@ def test_main_smoketest_empty(mock_write_config, mock_authenticate, mock_push_is
     runner = CliRunner()
 
     with mock.patch('jira_offline.cli.main.jira', mock_jira):
-        result = runner.invoke(cli, [command, *params])
+        result = runner.invoke(cli, [*command, *params])
 
     # some CLI commands will exit with error, others will not..
     assert result.exit_code == exit_code, result.stdout
