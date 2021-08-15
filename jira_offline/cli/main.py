@@ -450,3 +450,21 @@ def cli_import(_, file: io.TextIOWrapper):
 
     if write:
         jira.write_issues()
+
+
+@click.command(name='delete')
+@click.argument('key')
+@click.pass_context
+@global_options
+def cli_delete_issue(_, key: str):
+    '''
+    Delete an issue
+    '''
+    jira.load_issues()
+
+    if key not in jira:
+        click.echo('Unknown issue key')
+        raise click.Abort
+
+    del jira[key]
+    jira.write_issues()

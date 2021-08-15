@@ -312,7 +312,8 @@ class ValidCustomfield(click.Option):
 
     def _get_issue(self, key: str) -> Issue:  # pylint: disable=no-self-use
         if key not in jira:
-            raise click.UsageError('Unknown issue key')
+            click.echo('Unknown issue key')
+            raise click.Abort
 
         return cast(Issue, jira[key])
 
