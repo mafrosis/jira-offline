@@ -26,6 +26,32 @@ You can invoke any individual stage directly with:
  4. `make integration`
 
 
+## Integration Tests
+
+In the `docker-compose.yml` there's an additional service named `jira`, which will create a real dev
+instance of Jira, using a trial license.
+
+The licence creation process is not currently automated, so you must do this manually with a valid
+email address.
+
+```
+docker-compose up -d jira
+```
+
+Jira takes some time to start, so go make a cup of tea. You will be able to access this Jira in your
+browser at http://localhost:8666.
+
+The `Makefile` defines a few environment variables to configure the integration test run; you will
+need to specify your Jira username/password; the host is assumed to be unchanged as `jira:8080` is
+defined in `docker-compose.yml`.
+
+|ENV variable|Default||
+|-|-|-|
+|`INT_HOST`|`jira:8080`|Hostname of the test Jira instance|
+|`INT_USER`|`jirauser`|Jira test user login username|
+|`INT_PASS`|`logmein`|Jira test user login password|
+
+
 ## Debugging
 
 The simplest way to debug before opening an issue or contributing is to run the application from
