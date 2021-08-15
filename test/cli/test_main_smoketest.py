@@ -28,7 +28,7 @@ CLI_COMMAND_MAPPING = [
     ('new', ('TEST', 'Story', 'Summary'), 1),
     ('pull', tuple(), 0),
     ('push', tuple(), 1),
-    ('edit', ('TEST-71', '--summary', 'Egg'), 2),
+    ('edit', ('TEST-71', '--summary', 'Egg'), 1),
     ('delete', ('TEST-71',), 1),
 ]
 
@@ -67,7 +67,7 @@ def test_main_smoketest(mock_write_config, mock_authenticate, mock_push_issues, 
 @mock.patch('jira_offline.cli.main.authenticate')
 @mock.patch('jira_offline.cli.main.write_default_user_config')
 def test_main_smoketest_empty(mock_write_config, mock_authenticate, mock_push_issues, mock_pull_issues,
-                              mock_pull_single_project, mock_create_issue,  mock_jira, command,
+                              mock_pull_single_project, mock_create_issue, mock_jira, command,
                               params, exit_code):
     '''
     Test when the jira-offline issue cache is empty
