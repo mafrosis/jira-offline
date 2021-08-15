@@ -29,6 +29,7 @@ CLI_COMMAND_MAPPING = [
     ('pull', tuple(), 0),
     ('push', tuple(), 1),
     ('edit', ('TEST-71', '--summary', 'Egg'), 2),
+    ('delete', ('TEST-71',), 1),
 ]
 
 

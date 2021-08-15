@@ -144,6 +144,25 @@ def test_cli_edit__can_change_a_new_issue(mock_jira):
     assert mock_jira.write_issues.called
 
 
+def test_cli_delete__can_delete_an_issue(mock_jira):
+    '''
+    Ensure success when deleting a new issue
+    '''
+    # Add fixture to Jira dict
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+
+    runner = CliRunner()
+
+    with mock.patch('jira_offline.cli.main.jira', mock_jira), \
+            mock.patch('jira_offline.utils.cli.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
+        result = runner.invoke(cli, ['delete', 'TEST-71'])
+
+    assert result.exit_code == 0, result.stdout
+    assert 'TEST-71' not in mock_jira
+    assert mock_jira.write_issues.called
+
+
 @mock.patch('jira_offline.cli.main.write_default_user_config')
 def test_cli_config__config_path_used_when_config_param_supplied(mock_write_default_user_config):
     '''
