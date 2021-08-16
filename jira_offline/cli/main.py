@@ -1,12 +1,16 @@
 '''
 Module containing the simple top-level commands which do not have any subcommands
 '''
+from contextlib import redirect_stdout
 import json
 import io
 import logging
+import os
+from pathlib import Path
 from typing import Optional, Set
 
 import click
+from click.shell_completion import shell_complete  # pylint: disable=no-name-in-module
 from tabulate import tabulate
 
 from jira_offline.auth import authenticate
@@ -460,3 +464,45 @@ def cli_delete_issue(_, key: str):
 
     del jira[key]
     jira.write_issues()
+
+
+@click.command(name='completion', no_args_is_help=True)
+@click.argument('shell', type=click.Choice(['bash', 'zsh', 'fish']))
+@click.option('--stdout', is_flag=True, help='Print the completion text on STDOUT')
+@click.pass_context
+def cli_completion(_, shell: str, stdout: bool=False):
+    '''
+    Generate shell completion file.
+
+    SHELL  "bash", "zsh", or "fish"
+    '''
+    captured = io.StringIO()
+
+    # Capture printed output from `shell_complete` function
+    with redirect_stdout(captured):
+        # Following call was determined by reading source code at:
+        # https://github.com/pallets/click/blob/8.0.1/src/click/shell_completion.py#L44
+        shell_complete(cli_completion, dict(), 'jira', 'None', f'{shell}_source')
+
+    autocomplete_txt = captured.getvalue()
+
+    if stdout:
+        click.echo(autocomplete_txt)
+        return
+
+    if shell == 'fish':
+        # Ensure the path to the fish completions exists
+        config_dir = os.environ.get('XDG_CONFIG_HOME', os.path.join(os.path.expanduser('~'), '.config'))
+        Path(os.path.join(config_dir, 'fish', 'completions')).mkdir(parents=True, exist_ok=True)
+        path = os.path.join(config_dir, 'fish', 'completions', 'foo-bar.fish')
+    else:
+        path = os.path.join(os.path.dirname(get_default_user_config_filepath()), f'jira-offline.{shell}')
+
+    with open(path, 'w') as f:
+        f.write(autocomplete_txt)
+
+    if shell == 'fish':
+        click.echo(f'Completion written to {path}')
+    else:
+        click.echo(f'Add the following to your .{shell}rc')
+        click.echo(f'source {path}')

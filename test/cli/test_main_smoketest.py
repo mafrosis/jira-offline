@@ -32,6 +32,7 @@ CLI_COMMAND_MAPPING = [
     (('push',), tuple(), 1),
     (('edit',), ('TEST-71', '--summary', 'Egg'), 1),
     (('delete',), ('TEST-71',), 1),
+    (('completion',), ('bash','--stdout'), 0),
 ]
 
 
