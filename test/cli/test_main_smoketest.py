@@ -20,6 +20,8 @@ from jira_offline.jira import Issue
 CLI_COMMAND_MAPPING = [
     (('config',), tuple(), 0),
     (('project', 'list'), tuple(), 0),
+    (('project', 'delete'), ('TEST',), 0),
+    (('project', 'update-auth'), ('TEST',), 0),
     (('ls',), tuple(), 1),
     (('show',), ('TEST-71',), 1),
     (('diff',), ('TEST-71',), 1),
@@ -39,8 +41,9 @@ CLI_COMMAND_MAPPING = [
 @mock.patch('jira_offline.cli.main.pull_issues')
 @mock.patch('jira_offline.cli.main.push_issues')
 @mock.patch('jira_offline.cli.main.authenticate')
+@mock.patch('jira_offline.cli.project.authenticate')
 @mock.patch('jira_offline.cli.main.write_default_user_config')
-def test_main_smoketest(mock_write_config, mock_authenticate, mock_push_issues, mock_pull_issues,
+def test_main_smoketest(mock_write_config, mock_auth1, mock_auth2, mock_push_issues, mock_pull_issues,
                         mock_pull_single_project, mock_create_issue, mock_jira, command, params, _):
     '''
     Test when the jira-offline issue cache has a single issue
@@ -51,6 +54,7 @@ def test_main_smoketest(mock_write_config, mock_authenticate, mock_push_issues, 
     runner = CliRunner()
 
     with mock.patch('jira_offline.cli.main.jira', mock_jira), \
+            mock.patch('jira_offline.cli.project.jira', mock_jira), \
             mock.patch('jira_offline.utils.cli.jira', mock_jira), \
             mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, [*command, *params])
@@ -65,8 +69,9 @@ def test_main_smoketest(mock_write_config, mock_authenticate, mock_push_issues, 
 @mock.patch('jira_offline.cli.main.pull_issues')
 @mock.patch('jira_offline.cli.main.push_issues')
 @mock.patch('jira_offline.cli.main.authenticate')
+@mock.patch('jira_offline.cli.project.authenticate')
 @mock.patch('jira_offline.cli.main.write_default_user_config')
-def test_main_smoketest_empty(mock_write_config, mock_authenticate, mock_push_issues, mock_pull_issues,
+def test_main_smoketest_empty(mock_write_config, mock_auth1, mock_auth2, mock_push_issues, mock_pull_issues,
                               mock_pull_single_project, mock_create_issue, mock_jira, command,
                               params, exit_code):
     '''
@@ -74,7 +79,8 @@ def test_main_smoketest_empty(mock_write_config, mock_authenticate, mock_push_is
     '''
     runner = CliRunner()
 
-    with mock.patch('jira_offline.cli.main.jira', mock_jira):
+    with mock.patch('jira_offline.cli.main.jira', mock_jira), \
+            mock.patch('jira_offline.cli.project.jira', mock_jira):
         result = runner.invoke(cli, [*command, *params])
 
     # some CLI commands will exit with error, others will not..
