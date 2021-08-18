@@ -1,4 +1,3 @@
-import copy
 from unittest import mock
 
 import pytest
@@ -194,11 +193,11 @@ def test_create__find_epic_by_reference__raise_on_duplicate_ref_string(mock_jira
     '''
     Ensure exception raised when there are two epics matching the search string
     '''
-    # add two Epic fixtures to the Jira dict
-    mock_jira['EPIC-1'] = Issue.deserialize(EPIC_1)
-    epic2 = copy.deepcopy(Issue.deserialize(EPIC_1))
-    epic2.key = 'EPIC-2'
-    mock_jira['EPIC-2'] = epic2
+    # Setup two epic fixtures
+    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
+
+    with mock.patch.dict(EPIC_1, {'key': 'TEST-2'}):
+        mock_jira['TEST-2'] = Issue.deserialize(EPIC_1)
 
     with mock.patch('jira_offline.create.jira', mock_jira), mock.patch('jira_offline.jira.jira', mock_jira):
         with pytest.raises(EpicSearchStrUsedMoreThanOnce):

@@ -1,4 +1,4 @@
-import copy
+from unittest import mock
 
 import pytest
 
@@ -91,16 +91,15 @@ def test_build_update__base_modified_and_updated_modified_on_conflicting_str_ext
     Special-case test for extended customfields (which are always string type)
     '''
     # Create a base Issue fixture with a extended customfield
-    issue_fixture = copy.copy(ISSUE_1)
-    issue_fixture['extended'] = {'arbitrary_key': 'arbitrary_original'}
-    base_issue = Issue.deserialize(issue_fixture)
+    with mock.patch.dict(ISSUE_1, {'extended': {'arbitrary_key': 'arbitrary_original'}}):
+        base_issue = Issue.deserialize(ISSUE_1)
 
     # Modify the extended field
     base_issue.extended['arbitrary_key'] = 'arbitrary_base'
 
     # Supply a conflicting Issue
-    issue_fixture['extended'] = {'arbitrary_key': 'arbitrary_updated'}
-    updated_issue = Issue.deserialize(issue_fixture)
+    with mock.patch.dict(ISSUE_1, {'extended': {'arbitrary_key': 'arbitrary_updated'}}):
+        updated_issue = Issue.deserialize(ISSUE_1)
 
     update_obj = build_update(base_issue, updated_issue)
 
@@ -288,11 +287,10 @@ def test_build_update__new_issue_with_extended_customfield():
     Validate build_update with NEW issue that has extended customfields
     '''
     # create a new Issue fixture
-    issue_fixture = copy.copy(ISSUE_NEW)
-    issue_fixture['extended'] = {'arbitrary_key': 'arbitrary_original'}
-    del issue_fixture['fix_versions']
-    del issue_fixture['epic_link']
-    new_issue = Issue.deserialize(issue_fixture)
+    with mock.patch.dict(ISSUE_NEW, {'extended': {'arbitrary_key': 'arbitrary_original'}}):
+        new_issue = Issue.deserialize(ISSUE_NEW)
+        new_issue.fix_versions = set()
+        new_issue.epic_link = None
 
     # for new Issues created offline, the updated_issue is None
     update_obj = build_update(new_issue, None)
@@ -362,23 +360,19 @@ def test_build_update__base_unmodified_and_updated_modified_to_append_to_set(val
     The sets here use integers, as it's the simplest way to ensure a deterministic (and thus testable)
     order on the resulting set (https://stackoverflow.com/a/51949325/425050)
     '''
-    # make a copy of ISSUE_1 fixture so it can modified without affecting other tests
-    LOCAL_ISSUE_1 = copy.deepcopy(ISSUE_1)
+    # Create test fixtures with starting Issue.fix_version == set(1)
+    with mock.patch.dict(ISSUE_1, {'fix_versions': {1}}):
+        base_issue = Issue.deserialize(ISSUE_1)
+        updated_issue = Issue.deserialize(ISSUE_1)
 
-    # set the starting Issue.fix_version value
-    LOCAL_ISSUE_1['fix_versions'] = {1}
-
-    # create unmodified base Issue fixture
-    base_issue = Issue.deserialize(LOCAL_ISSUE_1)
-    # supply a modified Issue fixture
-    updated_issue = Issue.deserialize(LOCAL_ISSUE_1)
+    # Modify the upstream fixture
     updated_issue.fix_versions.add(value_to_append)
 
     update_obj = build_update(base_issue, updated_issue)
 
     assert update_obj.modified == {'fix_versions'}
     assert not update_obj.conflicts
-    assert update_obj.merged_issue.fix_versions == set(LOCAL_ISSUE_1['fix_versions']) | {value_to_append}
+    assert update_obj.merged_issue.fix_versions == {1, value_to_append}
 
 
 @pytest.mark.parametrize('value_to_append', [0, 2])
@@ -391,20 +385,16 @@ def test_build_update__base_modified_and_updated_modified_to_append_to_set(value
     The sets here use integers, as it's the simplest way to ensure a deterministic (and thus testable)
     order on the resulting set (https://stackoverflow.com/a/51949325/425050)
     '''
-    # make a copy of ISSUE_1 fixture so it can modified without affecting other tests
-    LOCAL_ISSUE_1 = copy.deepcopy(ISSUE_1)
+    # Create test fixtures with starting Issue.fix_version == set(1)
+    with mock.patch.dict(ISSUE_1, {'fix_versions': {1}}):
+        base_issue = Issue.deserialize(ISSUE_1)
+        updated_issue = Issue.deserialize(ISSUE_1)
 
-    # set the starting Issue.fix_version value
-    LOCAL_ISSUE_1['fix_versions'] = {1}
-
-    # create unmodified base Issue fixture
-    base_issue = Issue.deserialize(LOCAL_ISSUE_1)
-    # supply a modified Issue fixture
-    updated_issue = Issue.deserialize(LOCAL_ISSUE_1)
+    # Modify the upstream fixture
     updated_issue.fix_versions.add(value_to_append)
 
     update_obj = build_update(base_issue, updated_issue)
 
     assert update_obj.modified == {'fix_versions'}
     assert not update_obj.conflicts
-    assert update_obj.merged_issue.fix_versions == set(LOCAL_ISSUE_1['fix_versions']) | {value_to_append}
+    assert update_obj.merged_issue.fix_versions == {1, value_to_append}

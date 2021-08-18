@@ -1,4 +1,4 @@
-import copy
+from unittest import mock
 
 import pytest
 
@@ -128,13 +128,12 @@ def test_parse_editor_result__handles_extended_customfield():
     ]
 
     # Set an extended customfield on the issue
-    issue_fixture = copy.copy(ISSUE_1)
-    issue_fixture['extended'] = {'arbitrary_key': 'arbitrary_value'}
+    with mock.patch.dict(ISSUE_1, {'extended': {'arbitrary_key': 'arbitrary_value'}}):
+        patch_dict = parse_editor_result(
+            Issue.deserialize(ISSUE_1),
+            '\n'.join(editor_result_raw),
+        )
 
-    patch_dict = parse_editor_result(
-        Issue.deserialize(issue_fixture),
-        '\n'.join(editor_result_raw),
-    )
     assert patch_dict['extended.arbitrary_key'] == 'arbitrary_updated'
 
 

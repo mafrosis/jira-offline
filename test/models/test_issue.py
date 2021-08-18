@@ -278,9 +278,8 @@ def test_issue_model__render_returns_extended_fields():
     Validate Issue.render includes extended customfields
     '''
     # Set an extended customfield on the issue
-    issue_fixture = copy.copy(ISSUE_1)
-    issue_fixture['extended'] = {'arbitrary_key': 'arbitrary_value'}
-    issue = Issue.deserialize(issue_fixture)
+    with mock.patch.dict(ISSUE_1, {'extended': {'arbitrary_key': 'arbitrary_value'}}):
+        issue = Issue.deserialize(ISSUE_1)
 
     output = issue.render()
 
@@ -309,9 +308,8 @@ def test_issue_model__render_returns_conflict_for_extended_fields():
     Validate Issue.render produces a git-style conflict for an extended customfield
     '''
     # Set an extended customfield on the issue
-    issue_fixture = copy.copy(ISSUE_1)
-    issue_fixture['extended'] = {'arbitrary_key': 'arbitrary_value'}
-    issue = Issue.deserialize(issue_fixture)
+    with mock.patch.dict(ISSUE_1, {'extended': {'arbitrary_key': 'arbitrary_value'}}):
+        issue = Issue.deserialize(ISSUE_1)
 
     # Render assignee field as in-conflict
     output = issue.render(
@@ -406,9 +404,8 @@ def test_issue_model__render_returns_modified_field_removed_extended():
     Validate Issue.render returns a removed extended customfield with a "-" prefix
     '''
     # Set an extended customfield on the issue
-    issue_fixture = copy.copy(ISSUE_1)
-    issue_fixture['extended'] = {'arbitrary_key': 'arbitrary_value'}
-    issue = Issue.deserialize(issue_fixture)
+    with mock.patch.dict(ISSUE_1, {'extended': {'arbitrary_key': 'arbitrary_value'}}):
+        issue = Issue.deserialize(ISSUE_1)
 
     # Remove a field from the issue
     issue.extended['arbitrary_key'] = None
@@ -424,9 +421,8 @@ def test_issue_model__render_returns_modified_field_changed_extended():
     Validate Issue.render returns an added and removed rows, when an extended customfield is changed
     '''
     # Set an extended customfield on the issue
-    issue_fixture = copy.copy(ISSUE_1)
-    issue_fixture['extended'] = {'arbitrary_key': 'arbitrary_value'}
-    issue = Issue.deserialize(issue_fixture)
+    with mock.patch.dict(ISSUE_1, {'extended': {'arbitrary_key': 'arbitrary_value'}}):
+        issue = Issue.deserialize(ISSUE_1)
 
     # Modify a field on the issue
     issue.extended['arbitrary_key'] = 'updated_value'

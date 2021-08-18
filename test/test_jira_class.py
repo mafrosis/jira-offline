@@ -4,7 +4,6 @@ Tests for the Jira API class in main.py
 Unlike other tests, these access the class directly, not via the mock_jira interface defined in
 conftest.py
 '''
-import copy
 from unittest import mock
 
 import pandas as pd
@@ -792,9 +791,9 @@ def test_jira__new_issue__link_is_updated_after_post(mock_api_post, mock_jira_co
     Ensure that "Parent Link" and "Epic Link" are updated to the new parent key
     '''
     # Setup the the Jira DataFrame: a new issue linking to a new epic
-    issue_new_fixture = copy.copy(ISSUE_NEW)
-    issue_new_fixture[link_name] = EPIC_NEW['key']
-    issue_new = Issue.deserialize(issue_new_fixture, project=project)
+    with mock.patch.dict(ISSUE_NEW, {link_name: EPIC_NEW['key']}):
+        issue_new = Issue.deserialize(ISSUE_NEW, project=project)
+
     epic_new = Issue.deserialize(EPIC_NEW, project=project)
     mock_jira_core._df = setup_jira_dataframe_helper([issue_new, epic_new])
 
@@ -954,20 +953,18 @@ def test_jira__update__merge_new_issues_into_empty_dataframe(mock_jira, project)
     '''
     Ensure list of Issues can be appended without error when the cache is empty
     '''
-    # output from sync.pull_single_project
-    incoming_issues = [
-        Issue.deserialize(ISSUE_1, project),
-        Issue.deserialize(ISSUE_2, project),
-    ]
-
     assert len(mock_jira) == 0
 
-    mock_jira.update(incoming_issues)
+    incoming_issue_1 = Issue.deserialize(ISSUE_1, project)
+    incoming_issue_2 = Issue.deserialize(ISSUE_2, project)
+
+    # Two issues passed from `sync.pull_single_project` into `jira.update`
+    mock_jira.update([incoming_issue_1, incoming_issue_2])
 
     assert len(mock_jira) == 2
 
-    compare_issue_helper(incoming_issues[0], mock_jira['TEST-71'])
-    compare_issue_helper(incoming_issues[1], mock_jira['TEST-72'])
+    compare_issue_helper(incoming_issue_1, mock_jira['TEST-71'])
+    compare_issue_helper(incoming_issue_2, mock_jira['TEST-72'])
 
 
 def test_jira__update__merge_new_issues_into_existing_dataframe(mock_jira, project):
@@ -979,21 +976,19 @@ def test_jira__update__merge_new_issues_into_existing_dataframe(mock_jira, proje
     # Setup the Jira DataFrame
     mock_jira._df = setup_jira_dataframe_helper([issue_1])
 
-    # output from sync.pull_single_project
-    incoming_issues = [
-        Issue.deserialize(ISSUE_2, project),
-        Issue.deserialize(EPIC_1, project),
-    ]
-
     assert len(mock_jira) == 1
 
-    mock_jira.update(incoming_issues)
+    incoming_issue_1 = Issue.deserialize(ISSUE_2, project)
+    incoming_issue_2 = Issue.deserialize(EPIC_1, project)
+
+    # Two issues passed from `sync.pull_single_project` into `jira.update`
+    mock_jira.update([incoming_issue_1, incoming_issue_2])
 
     assert len(mock_jira) == 3
 
     compare_issue_helper(issue_1, mock_jira['TEST-71'])
-    compare_issue_helper(incoming_issues[0], mock_jira['TEST-72'])
-    compare_issue_helper(incoming_issues[1], mock_jira['TEST-1'])
+    compare_issue_helper(incoming_issue_1, mock_jira['TEST-72'])
+    compare_issue_helper(incoming_issue_2, mock_jira['TEST-1'])
 
 
 def test_jira__update__merge_existing_issues_into_existing_dataframe(mock_jira, project):
@@ -1006,23 +1001,18 @@ def test_jira__update__merge_existing_issues_into_existing_dataframe(mock_jira, 
     # Setup the Jira DataFrame
     mock_jira._df = setup_jira_dataframe_helper([issue_1, issue_2])
 
-    # change some fields for the update
-    ISSUE_1_MODIFIED = copy.deepcopy(ISSUE_1)
-    ISSUE_1_MODIFIED['summary'] = 'Updated summary 1'
-    ISSUE_2_MODIFIED = copy.deepcopy(ISSUE_2)
-    ISSUE_2_MODIFIED['summary'] = 'Updated summary 2'
+    assert len(mock_jira) == 2
 
-    # output from sync.pull_single_project
-    incoming_issues = [
-        Issue.deserialize(ISSUE_1_MODIFIED, project),
-        Issue.deserialize(ISSUE_2_MODIFIED, project),
-    ]
+    # Created fixtures with modified summary field coming from upstream
+    with mock.patch.dict(ISSUE_1, {'summary': 'Updated summary 1'}):
+        incoming_issue_1 = Issue.deserialize(ISSUE_1, project)
+    with mock.patch.dict(ISSUE_2, {'summary': 'Updated summary 2'}):
+        incoming_issue_2 = Issue.deserialize(ISSUE_2, project)
+
+    # Two issues passed from `sync.pull_single_project` into `jira.update`
+    mock_jira.update([incoming_issue_1, incoming_issue_2])
 
     assert len(mock_jira) == 2
 
-    mock_jira.update(incoming_issues)
-
-    assert len(mock_jira) == 2
-
-    compare_issue_helper(incoming_issues[0], mock_jira['TEST-71'])
-    compare_issue_helper(incoming_issues[1], mock_jira['TEST-72'])
+    compare_issue_helper(incoming_issue_1, mock_jira['TEST-71'])
+    compare_issue_helper(incoming_issue_2, mock_jira['TEST-72'])

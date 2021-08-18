@@ -1,7 +1,6 @@
 '''
 Tests for push_issues() in the sync module
 '''
-import copy
 from unittest import mock
 import uuid
 
@@ -103,21 +102,22 @@ def test_push_issues__skips_issues_from_unconfigured_projects(
 @mock.patch('jira_offline.sync.merge_issues')
 @mock.patch('jira_offline.sync.issue_to_jiraapi_update')
 def test_push_issues__count_only_successful_new_issue_calls(
-        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira
+        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira, project
     ):
     '''
     Ensure that count reflects the total successful new_issue calls
     '''
-    # Add two new Issues to the Jira dict
-    mock_jira[ISSUE_NEW['key']] = Issue.deserialize(ISSUE_NEW)
-    issue_fixture = copy.copy(ISSUE_NEW)
-    issue_fixture['key'] = uuid.uuid4()
-    mock_jira[issue_fixture['key']] = Issue.deserialize(issue_fixture)
+    # Create two new issue fixtures
+    mock_jira[ISSUE_NEW['key']] = Issue.deserialize(ISSUE_NEW, project=project)
+
+    issue_key = uuid.uuid4()
+    with mock.patch.dict(ISSUE_NEW, {'key': issue_key}):
+        mock_jira[issue_key] = Issue.deserialize(ISSUE_NEW, project)
 
     # Mock `sync.merge_issues` to return valid issues
     mock_merge_issues.side_effect = [
         IssueUpdate(merged_issue=mock_jira[ISSUE_NEW['key']]),
-        IssueUpdate(merged_issue=mock_jira[issue_fixture['key']]),
+        IssueUpdate(merged_issue=mock_jira[issue_key]),
     ]
 
     with mock.patch('jira_offline.sync.jira', mock_jira), \
@@ -131,16 +131,17 @@ def test_push_issues__count_only_successful_new_issue_calls(
 @mock.patch('jira_offline.sync.merge_issues')
 @mock.patch('jira_offline.sync.issue_to_jiraapi_update')
 def test_push_issues__count_only_successful_new_issue_calls_when_one_fails(
-        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira
+        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira, project
     ):
     '''
     Ensure that count reflects the total successful updates
     '''
-    # Add two new Issues to the Jira dict
-    mock_jira[ISSUE_NEW['key']] = Issue.deserialize(ISSUE_NEW)
-    issue_fixture = copy.copy(ISSUE_NEW)
-    issue_fixture['key'] = uuid.uuid4()
-    mock_jira[issue_fixture['key']] = Issue.deserialize(issue_fixture)
+    # Create two new issue fixtures
+    mock_jira[ISSUE_NEW['key']] = Issue.deserialize(ISSUE_NEW, project=project)
+
+    issue_key = uuid.uuid4()
+    with mock.patch.dict(ISSUE_NEW, {'key': issue_key}):
+        mock_jira[issue_key] = Issue.deserialize(ISSUE_NEW, project)
 
     # Mock an exception to occur on the second call to `jira.new_issue`
     mock_jira.new_issue.side_effect = [mock_jira[ISSUE_NEW['key']], JiraApiError]
@@ -148,7 +149,7 @@ def test_push_issues__count_only_successful_new_issue_calls_when_one_fails(
     # Mock `sync.merge_issues` to return valid issues
     mock_merge_issues.side_effect = [
         IssueUpdate(merged_issue=mock_jira[ISSUE_NEW['key']]),
-        IssueUpdate(merged_issue=mock_jira[issue_fixture['key']]),
+        IssueUpdate(merged_issue=mock_jira[issue_key]),
     ]
 
     with mock.patch('jira_offline.sync.jira', mock_jira), \
@@ -162,18 +163,16 @@ def test_push_issues__count_only_successful_new_issue_calls_when_one_fails(
 @mock.patch('jira_offline.sync.merge_issues')
 @mock.patch('jira_offline.sync.issue_to_jiraapi_update')
 def test_push_issues__count_only_successful_update_issue_calls(
-        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira
+        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira, project
     ):
     '''
     Ensure that count reflects the total successful updates
     '''
     # Create fixtures: two modified issues
-    issue_1 = copy.copy(ISSUE_1_WITH_ASSIGNEE_DIFF)
-    issue_1['key'] = 'SYNC-1'
-    mock_jira['SYNC-1'] = Issue.deserialize(issue_1)
-    issue_2 = copy.copy(ISSUE_1_WITH_FIXVERSIONS_DIFF)
-    issue_2['key'] = 'SYNC-2'
-    mock_jira['SYNC-2'] = Issue.deserialize(issue_2)
+    with mock.patch.dict(ISSUE_1_WITH_ASSIGNEE_DIFF, {'key': 'SYNC-1'}):
+        mock_jira['SYNC-1'] = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF, project)
+    with mock.patch.dict(ISSUE_1_WITH_FIXVERSIONS_DIFF, {'key': 'SYNC-2'}):
+        mock_jira['SYNC-2'] = Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF, project)
 
     # Mock `sync.merge_issues` to return valid issues
     mock_merge_issues.side_effect = [
@@ -192,18 +191,16 @@ def test_push_issues__count_only_successful_update_issue_calls(
 @mock.patch('jira_offline.sync.merge_issues')
 @mock.patch('jira_offline.sync.issue_to_jiraapi_update')
 def test_push_issues__count_only_successful_update_issue_calls_when_one_fails(
-        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira
+        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira, project
     ):
     '''
     Ensure that count reflects the total successful updates
     '''
     # Create fixtures: two modified issues
-    issue_1 = copy.copy(ISSUE_1_WITH_ASSIGNEE_DIFF)
-    issue_1['key'] = 'SYNC-1'
-    mock_jira['SYNC-1'] = Issue.deserialize(issue_1)
-    issue_2 = copy.copy(ISSUE_1_WITH_FIXVERSIONS_DIFF)
-    issue_2['key'] = 'SYNC-2'
-    mock_jira['SYNC-2'] = Issue.deserialize(issue_2)
+    with mock.patch.dict(ISSUE_1_WITH_ASSIGNEE_DIFF, {'key': 'SYNC-1'}):
+        mock_jira['SYNC-1'] = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF, project)
+    with mock.patch.dict(ISSUE_1_WITH_FIXVERSIONS_DIFF, {'key': 'SYNC-2'}):
+        mock_jira['SYNC-2'] = Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF, project)
 
     # Mock an exception to occur on the second call to `jira.update_issue`
     mock_jira.update_issue.side_effect = [None, JiraApiError]

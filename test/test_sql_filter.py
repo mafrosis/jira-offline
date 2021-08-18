@@ -1,4 +1,3 @@
-import copy
 from unittest import mock
 
 import pytest
@@ -30,15 +29,11 @@ def test_parse__primitive_str(mock_jira, operator, search_term, count):
     Test string field ==,!= value filter
     '''
     # Setup test fixtures to target in the filter query
-    ISSUE_1['summary'] = 'This is the story summary'
+    with mock.patch.dict(ISSUE_1, {'summary': 'This is the story summary'}):
+        mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
-    ISSUE_A = copy.deepcopy(ISSUE_1)
-    ISSUE_A['summary'] = 'eggcellent'
-    ISSUE_A['key'] = 'FILT-1'
-
-    # Add test fixture and a spare to the local Jira storage
-    mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A)
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    with mock.patch.dict(ISSUE_1, {'summary': 'eggcellent', 'key': 'FILT-1'}):
+        mock_jira['FILT-1'] = Issue.deserialize(ISSUE_1)
 
     assert len(mock_jira) == 2
 
@@ -57,11 +52,10 @@ def test_parse__primitive_project_eq_str(mock_jira, project, project2):
     The underlying field name is "project_key"
     '''
     # Setup test fixtures to target in the filter query
-    ISSUE_A = copy.deepcopy(ISSUE_1)
-    ISSUE_A['key'] = 'FILT-1'
-
-    mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A, project=project2)
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project=project)
+
+    with mock.patch.dict(ISSUE_1, {'key': 'FILT-1'}):
+        mock_jira['FILT-1'] = Issue.deserialize(ISSUE_1, project=project2)
 
     assert len(mock_jira) == 2
 
@@ -84,14 +78,11 @@ def test_parse__primitive_like_str(mock_jira, where):
     Test string field LIKE value filter
     '''
     # Setup test fixtures to target in the filter query
-    ISSUE_1['summary'] = 'This is the story summary'
+    with mock.patch.dict(ISSUE_1, {'summary': 'This is the story summary'}):
+        mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
-    ISSUE_A = copy.deepcopy(ISSUE_1)
-    ISSUE_A['summary'] = 'An eggcellent summarisation'
-    ISSUE_A['key'] = 'FILT-1'
-
-    mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A)
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    with mock.patch.dict(ISSUE_1, {'summary': 'An eggcellent summarisation', 'key': 'FILT-1'}):
+        mock_jira['FILT-1'] = Issue.deserialize(ISSUE_1)
 
     assert len(mock_jira) == 2
 
@@ -118,14 +109,11 @@ def test_parse__primitive_int(mock_jira, fixture, operator, count):
     Test field ==,!=,<,<=,>,>= integer filter
     '''
     # Setup test fixtures to target in the filter query
-    ISSUE_1['created'] = 1231
+    with mock.patch.dict(ISSUE_1, {'id': 1231}):
+        mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
-    ISSUE_A = copy.deepcopy(ISSUE_1)
-    ISSUE_A['id'] = fixture
-    ISSUE_A['key'] = 'FILT-1'
-
-    mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A)
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    with mock.patch.dict(ISSUE_1, {'id': fixture, 'key': 'FILT-1'}):
+        mock_jira['FILT-1'] = Issue.deserialize(ISSUE_1)
 
     assert len(mock_jira) == 2
 
@@ -150,14 +138,11 @@ def test_parse__primitive_datetime(mock_tz, mock_jira, project, operator, fixtur
     Test field <,<=,>,>= datetime filter
     '''
     # Setup test fixtures to target in the filter query
-    ISSUE_1['created'] = '2018-09-24T08:44:06'
+    with mock.patch.dict(ISSUE_1, {'created': '2018-09-24T08:44:06'}):
+        mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project=project)
 
-    ISSUE_A = copy.deepcopy(ISSUE_1)
-    ISSUE_A['created'] = fixture
-    ISSUE_A['key'] = 'FILT-1'
-
-    mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A, project)
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
+    with mock.patch.dict(ISSUE_1, {'created': fixture, 'key': 'FILT-1'}):
+        mock_jira['FILT-1'] = Issue.deserialize(ISSUE_1, project=project)
 
     assert len(mock_jira) == 2
 
@@ -171,7 +156,6 @@ def test_parse__primitive_datetime(mock_tz, mock_jira, project, operator, fixtur
         df = filt.apply()
 
     assert len(df) == count
-    assert df.iloc[0]['key'] == 'FILT-1'
 
 
 @pytest.mark.parametrize('operator,search_terms,count', [
@@ -194,14 +178,11 @@ def test_parse__primitive_list__set(mock_jira, operator, search_terms, count):
     Test set field IN/NOT IN a list of values
     '''
     # Setup test fixtures to target in the filter query
-    ISSUE_1['fix_versions'] = ['0.1']
+    with mock.patch.dict(ISSUE_1, {'fix_versions': ['0.1']}):
+        mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
-    ISSUE_A = copy.deepcopy(ISSUE_1)
-    ISSUE_A['fix_versions'] = {'EGG', 'BACON', '0.1'}
-    ISSUE_A['key'] = 'FILT-1'
-
-    mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A)
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    with mock.patch.dict(ISSUE_1, {'fix_versions': ['EGG', 'BACON', '0.1'], 'key': 'FILT-1'}):
+        mock_jira['FILT-1'] = Issue.deserialize(ISSUE_1)
 
     assert len(mock_jira) == 2
 
@@ -230,14 +211,11 @@ def test_parse__primitive_list__string(mock_jira, operator, search_terms, count)
     Test string field IN/NOT IN a list of values
     '''
     # Setup test fixtures to target in the filter query
-    ISSUE_1['status'] = 'Story Done'
+    with mock.patch.dict(ISSUE_1, {'status': 'Story Done'}):
+        mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
-    ISSUE_A = copy.deepcopy(ISSUE_1)
-    ISSUE_A['status'] = 'Egg'
-    ISSUE_A['key'] = 'FILT-1'
-
-    mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A)
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    with mock.patch.dict(ISSUE_1, {'status': 'Egg', 'key': 'FILT-1'}):
+        mock_jira['FILT-1'] = Issue.deserialize(ISSUE_1)
 
     assert len(mock_jira) == 2
 
@@ -259,16 +237,11 @@ def test_parse__compound_and_eq_str(mock_jira, where, count):
     Test field EQUALS string AND otherfield EQUALS otherstring filter
     '''
     # Setup test fixtures to target in the filter query
-    ISSUE_1['summary'] = 'This is the story summary'
-    ISSUE_1['creator'] = 'danil1'
+    with mock.patch.dict(ISSUE_1, {'summary': 'This is the story summary', 'creator': 'danil1'}):
+        mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
-    ISSUE_A = copy.deepcopy(ISSUE_1)
-    ISSUE_A['summary'] = 'eggcellent'
-    ISSUE_A['creator'] = 'dave'
-    ISSUE_A['key'] = 'FILT-1'
-
-    mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A)
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    with mock.patch.dict(ISSUE_1, {'summary': 'eggcellent', 'creator': 'dave', 'key': 'FILT-1'}):
+        mock_jira['FILT-1'] = Issue.deserialize(ISSUE_1)
 
     assert len(mock_jira) == 2
 
@@ -290,16 +263,11 @@ def test_parse__compound_or_eq_str(mock_jira, where, count):
     Test field EQUALS string OR otherfield EQUALS otherstring filter
     '''
     # Setup test fixtures to target in the filter query
-    ISSUE_1['summary'] = 'This is the story summary'
-    ISSUE_1['creator'] = 'danil1'
+    with mock.patch.dict(ISSUE_1, {'summary': 'This is the story summary', 'creator': 'danil1'}):
+        mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
 
-    ISSUE_A = copy.deepcopy(ISSUE_1)
-    ISSUE_A['summary'] = 'eggcellent'
-    ISSUE_A['creator'] = 'notarealcreator'
-    ISSUE_A['key'] = 'FILT-1'
-
-    mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A)
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    with mock.patch.dict(ISSUE_1, {'summary': 'eggcellent', 'creator': 'notarealcreator', 'key': 'FILT-1'}):
+        mock_jira['FILT-1'] = Issue.deserialize(ISSUE_1)
 
     assert len(mock_jira) == 2
 
@@ -323,14 +291,11 @@ def test_parse__compound_in_daterange(mock_tz, mock_jira, project, where, count)
     Test field BETWEEN two datetimes
     '''
     # Setup test fixtures to target in the filter query
-    ISSUE_1['creator'] = 'danil1'
+    with mock.patch.dict(ISSUE_1, {'created': '2018-09-24T08:44:06'}):
+        mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project=project)
 
-    ISSUE_A = copy.deepcopy(ISSUE_1)
-    ISSUE_A['created'] = '2018-09-24T08:44:07'
-    ISSUE_A['key'] = 'FILT-1'
-
-    mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A, project)
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
+    with mock.patch.dict(ISSUE_1, {'created': '2018-09-24T08:44:07', 'key': 'FILT-1'}):
+        mock_jira['FILT-1'] = Issue.deserialize(ISSUE_1, project=project)
 
     assert len(mock_jira) == 2
 
@@ -406,14 +371,9 @@ def test_parse__primitive_date_special_case(mock_tz, mock_jira, project, operato
     '''
     Test special-case datetime field ==,>,>=,<,<= to specific day date
     '''
-    # Setup test fixtures to target in the filter query
-    ISSUE_1['creator'] = 'danil1'
-
-    ISSUE_A = copy.deepcopy(ISSUE_1)
-    ISSUE_A['created'] = fixture
-    ISSUE_A['key'] = 'FILT-1'
-
-    mock_jira['FILT-1'] = Issue.deserialize(ISSUE_A, project)
+    # Setup test fixture to target in the filter query
+    with mock.patch.dict(ISSUE_1, {'created': fixture, 'key': 'FILT-1'}):
+        mock_jira['FILT-1'] = Issue.deserialize(ISSUE_1, project=project)
 
     filt = IssueFilter()
     filt.set(f"created {operator} '2018-09-24'")
