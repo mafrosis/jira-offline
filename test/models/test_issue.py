@@ -9,6 +9,7 @@ import pytest
 from conftest import not_raises
 from fixtures import ISSUE_1, ISSUE_NEW
 from helpers import compare_issue_helper, modified_issue_helper
+from jira_offline.exceptions import CannotSetIssueOriginalDirectly
 from jira_offline.models import Issue
 
 
@@ -123,8 +124,8 @@ def test_issue_model__setting_the_original_attribute_directly_raises_exception()
     '''
     issue = Issue.deserialize(ISSUE_1)
 
-    with pytest.raises(Exception):
-        issue.original(issue.serialize())
+    with pytest.raises(CannotSetIssueOriginalDirectly):
+        issue.original = issue.serialize()
 
 
 def test_issue_model__existing_issue_modified_set_true_during_attribute_set():
