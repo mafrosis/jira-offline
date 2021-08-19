@@ -13,7 +13,8 @@ import pandas as pd
 from tabulate import tabulate
 import typing_inspect
 
-from jira_offline.exceptions import EditorRepeatFieldFound, InvalidLsFieldInConfig
+from jira_offline.exceptions import (BadParamsPassedToValidCustomfield, EditorRepeatFieldFound,
+                                     InvalidLsFieldInConfig)
 from jira_offline.jira import jira
 from jira_offline.models import CustomFields, Issue, ProjectMeta
 from jira_offline.utils import find_project, friendly_title, get_field_by_name
@@ -294,7 +295,7 @@ class ValidCustomfield(click.Option):
             project = self._get_project(opts['projectkey'])
 
         else:
-            raise Exception('ValidCustomfield constructor must be passed `key` or `projectkey`')
+            raise BadParamsPassedToValidCustomfield
 
         # Iterate all configured customfields
         for customfield_name in jira.config.iter_customfields():
