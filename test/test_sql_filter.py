@@ -4,7 +4,7 @@ import pytest
 
 from fixtures import ISSUE_1
 from jira_offline.exceptions import FilterQueryEscapingError
-from jira_offline.models import Issue
+from jira_offline.models import Issue, ProjectMeta
 from jira_offline.sql_filter import IssueFilter
 
 
@@ -46,7 +46,7 @@ def test_parse__primitive_str(mock_jira, operator, search_term, count):
     assert len(df) == count
 
 
-def test_parse__primitive_project_eq_str(mock_jira, project, project2):
+def test_parse__primitive_project_eq_str(mock_jira, project):
     '''
     Test special-case project field EQUALS string filter
     The underlying field name is "project_key"
@@ -54,13 +54,15 @@ def test_parse__primitive_project_eq_str(mock_jira, project, project2):
     # Setup test fixtures to target in the filter query
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project=project)
 
+    project_2 = ProjectMeta.factory('http://example.com/EGG')
+
     with mock.patch.dict(ISSUE_1, {'key': 'FILT-1'}):
-        mock_jira['FILT-1'] = Issue.deserialize(ISSUE_1, project=project2)
+        mock_jira['FILT-1'] = Issue.deserialize(ISSUE_1, project=project_2)
 
     assert len(mock_jira) == 2
 
     filt = IssueFilter()
-    filt.set(f'project == {project2.key}')
+    filt.set(f'project == {project_2.key}')
 
     with mock.patch('jira_offline.jira.jira', mock_jira):
         df = filt.apply()

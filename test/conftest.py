@@ -51,23 +51,19 @@ def project(timezone):
         },
     )
 
-@pytest.fixture
-def project2():
-    '''
-    Fixture representing a second configured Jira project. Used in some test cases validating
-    behavior across multiple projects. See also the ISSUE_DIFF_PROJECT fixture.
-    '''
-    return ProjectMeta.factory('http://example.com/EGG')
-
 
 @pytest.fixture
 @mock.patch('jira_offline.jira.load_config')
-def mock_jira_core(mock_load_config, project, project2):
+def mock_jira_core(mock_load_config, project):
     '''
     Return a Jira class instance with connect method and underlying Jira lib mocked
     '''
+    # Fixture representing a second configured Jira project. Used in some test cases to validate
+    # behaviour across multiple projects.
+    project_2 = ProjectMeta.factory('http://example.com/EGG')
+
     jira = Jira()
-    jira.config = AppConfig(projects={project.id: project, project2.id: project2})
+    jira.config = AppConfig(projects={project.id: project, project_2.id: project_2})
     # Ensure each ProjectMeta instance has a reference to the AppConfig instance.
     # In normal operation, this is done in `load_config` in config.py, and so applies to all projects
     project.config = jira.config

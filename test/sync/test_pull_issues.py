@@ -30,29 +30,35 @@ def test_pull_issues__doesnt_call_load_issues_when_self_populated(mock_pull_sing
 
 
 @mock.patch('jira_offline.sync.pull_single_project')
-def test_pull_issues__calls_pull_single_project_for_each_project(mock_pull_single_project, mock_jira, project, project2):
+def test_pull_issues__calls_pull_single_project_for_each_project(mock_pull_single_project, mock_jira):
     '''
     Ensure that pull_single_project() is called for each project
     '''
     with mock.patch('jira_offline.sync.jira', mock_jira):
         pull_issues(force=True, verbose=False)
 
-    assert mock_pull_single_project.call_args_list[0][0] ==  (project,)
+    project_1 = mock_jira.config.projects[list(mock_jira.config.projects.keys())[0]]
+    project_2 = mock_jira.config.projects[list(mock_jira.config.projects.keys())[1]]
+
+    assert mock_pull_single_project.call_args_list[0][0] ==  (project_1,)
     assert mock_pull_single_project.call_args_list[0][1] ==  {'force': True, 'verbose': False, 'page_size': 25}
-    assert mock_pull_single_project.call_args_list[1][0] ==  (project2,)
+    assert mock_pull_single_project.call_args_list[1][0] ==  (project_2,)
     assert mock_pull_single_project.call_args_list[1][1] ==  {'force': True, 'verbose': False, 'page_size': 25}
 
 
 @mock.patch('jira_offline.sync.pull_single_project')
-def test_pull_issues__calls_get_project_meta_for_each_project(mock_pull_single_project, mock_jira, project, project2):
+def test_pull_issues__calls_get_project_meta_for_each_project(mock_pull_single_project, mock_jira):
     '''
     Ensure that pull_single_project() is called for each project
     '''
     with mock.patch('jira_offline.sync.jira', mock_jira):
         pull_issues(force=True, verbose=False)
 
-    assert mock_jira.get_project_meta.call_args_list[0][0] ==  (project,)
-    assert mock_jira.get_project_meta.call_args_list[1][0] ==  (project2,)
+    project_1 = mock_jira.config.projects[list(mock_jira.config.projects.keys())[0]]
+    project_2 = mock_jira.config.projects[list(mock_jira.config.projects.keys())[1]]
+
+    assert mock_jira.get_project_meta.call_args_list[0][0] ==  (project_1,)
+    assert mock_jira.get_project_meta.call_args_list[1][0] ==  (project_2,)
 
 
 @mock.patch('jira_offline.sync.pull_single_project')
