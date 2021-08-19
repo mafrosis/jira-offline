@@ -9,7 +9,7 @@ from unittest import mock
 import pandas as pd
 import pytest
 
-from fixtures import EPIC_1, EPIC_NEW, ISSUE_1, ISSUE_2, ISSUE_MISSING_EPIC, ISSUE_NEW
+from fixtures import EPIC_1, EPIC_NEW, ISSUE_1, ISSUE_NEW
 from helpers import compare_issue_helper, setup_jira_dataframe_helper
 from jira_offline.exceptions import FailedAuthError, JiraApiError, ProjectDoesntExist
 from jira_offline.models import Issue, IssueType, ProjectMeta
@@ -41,7 +41,8 @@ def test_jira__mutablemapping__set_item__new(mock_jira_core, project):
     assert len(mock_jira_core._df) == 1
 
     # create another Issue fixture
-    issue_2 = Issue.deserialize(ISSUE_2, project=project)
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
+        issue_2 = Issue.deserialize(ISSUE_1, project=project)
 
     # add the issue via __set_item__
     mock_jira_core['TEST-72'] = issue_2
@@ -113,23 +114,17 @@ def test_jira__mutablemapping__in_operator_with_new_issue(mock_jira_core, projec
     assert '7242cc9e-ea52-4e51-bd84-2ced250cabf0' in mock_jira_core
 
 
-@pytest.mark.parametrize('issue_fixture', [ISSUE_1, ISSUE_2, ISSUE_NEW, EPIC_1])
+@pytest.mark.parametrize('issue_fixture', [ISSUE_1, ISSUE_NEW, EPIC_1])
 def test_jira__mutablemapping__roundtrip(mock_jira, project, issue_fixture):
     '''
     Ensure an issue can be set into the Jira object and be recreated without change.
     Parameterized with the various different types of Issue fixtures.
     '''
-    # Setup the Jira DataFrame
-    issue_1 = Issue.deserialize(ISSUE_MISSING_EPIC, project=project)
-    mock_jira._df = setup_jira_dataframe_helper([issue_1])
-
-    key = issue_fixture['key']
-
     # add to dataframe (via __set_item__)
-    mock_jira[key] = issue_1 = Issue.deserialize(issue_fixture, project=project)
+    mock_jira[issue_fixture['key']] = issue_1 = Issue.deserialize(issue_fixture, project=project)
 
     # extract back out of dataframe (via __get_item__)
-    issue_2 = mock_jira[key]
+    issue_2 = mock_jira[issue_fixture['key']]
 
     compare_issue_helper(issue_1, issue_2)
     assert issue_1.original == issue_2.original
@@ -207,7 +202,7 @@ def test_jira__load_issues__DOES_NOT_call_read_feather_when_cache_file_missing(m
     assert not mock_pandas.read_feather.called
 
 
-@pytest.mark.parametrize('issue_fixture', [ISSUE_1, ISSUE_2, ISSUE_NEW, EPIC_1])
+@pytest.mark.parametrize('issue_fixture', [ISSUE_1, ISSUE_NEW, EPIC_1])
 @mock.patch('jira_offline.jira.os')
 def test_jira__write_issues_load_issues__roundtrip(mock_os, mock_jira_core, project, tmpdir, issue_fixture):
     '''
@@ -897,9 +892,12 @@ def test_jira__keys__respect_the_filter(mock_jira_core):
     '''
     Ensure that jira.keys() respects a filter set in jira.filter
     '''
-    # Setup the Jira DataFrame
     issue_1 = Issue.deserialize(ISSUE_1, project=ProjectMeta('FIRST'))
-    issue_2 = Issue.deserialize(ISSUE_2, project=ProjectMeta('SECOND'))
+
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
+        issue_2 = Issue.deserialize(ISSUE_1, project=ProjectMeta('SECOND'))
+
+    # Setup the Jira DataFrame
     mock_jira_core._df = setup_jira_dataframe_helper([issue_1, issue_2])
 
     with mock.patch('jira_offline.jira.jira', mock_jira_core):
@@ -914,9 +912,12 @@ def test_jira__values__respect_the_filter(mock_jira_core):
     '''
     Ensure that jira.values() respects a filter set in jira.filter
     '''
-    # Setup the Jira DataFrame
     issue_1 = Issue.deserialize(ISSUE_1, project=ProjectMeta('FIRST'))
-    issue_2 = Issue.deserialize(ISSUE_2, project=ProjectMeta('SECOND'))
+
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
+        issue_2 = Issue.deserialize(ISSUE_1, project=ProjectMeta('SECOND'))
+
+    # Setup the Jira DataFrame
     mock_jira_core._df = setup_jira_dataframe_helper([issue_1, issue_2])
 
     with mock.patch('jira_offline.jira.jira', mock_jira_core):
@@ -931,9 +932,12 @@ def test_jira__items__respect_the_filter(mock_jira_core):
     '''
     Ensure that jira.items() respects a filter set in jira.filter
     '''
-    # Setup the Jira DataFrame
     issue_1 = Issue.deserialize(ISSUE_1, project=ProjectMeta('FIRST'))
-    issue_2 = Issue.deserialize(ISSUE_2, project=ProjectMeta('SECOND'))
+
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
+        issue_2 = Issue.deserialize(ISSUE_1, project=ProjectMeta('SECOND'))
+
+    # Setup the Jira DataFrame
     mock_jira_core._df = setup_jira_dataframe_helper([issue_1, issue_2])
 
     with mock.patch('jira_offline.jira.jira', mock_jira_core):
@@ -956,7 +960,9 @@ def test_jira__update__merge_new_issues_into_empty_dataframe(mock_jira, project)
     assert len(mock_jira) == 0
 
     incoming_issue_1 = Issue.deserialize(ISSUE_1, project)
-    incoming_issue_2 = Issue.deserialize(ISSUE_2, project)
+
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
+        incoming_issue_2 = Issue.deserialize(ISSUE_1, project)
 
     # Two issues passed from `sync.pull_single_project` into `jira.update`
     mock_jira.update([incoming_issue_1, incoming_issue_2])
@@ -978,7 +984,9 @@ def test_jira__update__merge_new_issues_into_existing_dataframe(mock_jira, proje
 
     assert len(mock_jira) == 1
 
-    incoming_issue_1 = Issue.deserialize(ISSUE_2, project)
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
+        incoming_issue_1 = Issue.deserialize(ISSUE_1, project)
+
     incoming_issue_2 = Issue.deserialize(EPIC_1, project)
 
     # Two issues passed from `sync.pull_single_project` into `jira.update`
@@ -996,7 +1004,8 @@ def test_jira__update__merge_existing_issues_into_existing_dataframe(mock_jira, 
     Ensure list of Issues can be updated in-place without error when the issues already in the cache
     '''
     issue_1 = Issue.deserialize(ISSUE_1, project=project)
-    issue_2 = Issue.deserialize(ISSUE_2, project=project)
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
+        issue_2 = Issue.deserialize(ISSUE_1, project)
 
     # Setup the Jira DataFrame
     mock_jira._df = setup_jira_dataframe_helper([issue_1, issue_2])
@@ -1006,8 +1015,8 @@ def test_jira__update__merge_existing_issues_into_existing_dataframe(mock_jira, 
     # Created fixtures with modified summary field coming from upstream
     with mock.patch.dict(ISSUE_1, {'summary': 'Updated summary 1'}):
         incoming_issue_1 = Issue.deserialize(ISSUE_1, project)
-    with mock.patch.dict(ISSUE_2, {'summary': 'Updated summary 2'}):
-        incoming_issue_2 = Issue.deserialize(ISSUE_2, project)
+    with mock.patch.dict(ISSUE_1, {'summary': 'Updated summary 2', 'key': 'TEST-72'}):
+        incoming_issue_2 = Issue.deserialize(ISSUE_1, project)
 
     # Two issues passed from `sync.pull_single_project` into `jira.update`
     mock_jira.update([incoming_issue_1, incoming_issue_2])

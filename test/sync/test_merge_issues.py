@@ -2,7 +2,8 @@ from unittest import mock
 
 import pytest
 
-from fixtures import ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF, ISSUE_1_WITH_FIXVERSIONS_DIFF
+from fixtures import ISSUE_1
+from helpers import modified_issue_helper
 from jira_offline.models import Issue
 from jira_offline.sync import (merge_issues, ConflictResolutionFailed,
                                IssueUpdate, manual_conflict_resolution)
@@ -14,12 +15,12 @@ def test_merge_issues__doesnt_call_conflict_resolution_on_NO_conflict(mock_build
     '''
     Ensure that merge_issues does NOT call manual_conflict_resolution when no conflicts found
     '''
-    issue1 = Issue.deserialize(ISSUE_1)
+    issue_1 = Issue.deserialize(ISSUE_1)
 
     # mock build_update to return NO conflicts
-    mock_build_update.return_value = IssueUpdate(merged_issue=issue1)
+    mock_build_update.return_value = IssueUpdate(merged_issue=issue_1)
 
-    merge_issues(issue1, issue1, is_upstream_merge=True)
+    merge_issues(issue_1, issue_1, is_upstream_merge=True)
 
     # ensure build_update is called
     assert mock_build_update.called is True
@@ -32,8 +33,10 @@ def test_merge_issues__merged_issue_has_original_property_updated_to_match_upstr
     Ensure the Issue returned from merge_issues has an original property set to the serialized upstream
     Issue returned by the Jira server
     '''
-    local_issue = Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF)
-    updated_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-71'}):
+        local_issue = Issue.deserialize(ISSUE_1)
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
+        updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='hoganp')
 
     update_obj = merge_issues(local_issue, updated_issue, is_upstream_merge=True)
 
@@ -49,8 +52,10 @@ def test_merge_issues__merged_issue_has_diff_to_original():
     '''
     Ensure the Issue returned from merge_issues has a diff_to_original attribute
     '''
-    local_issue = Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF)
-    updated_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-71'}):
+        local_issue = Issue.deserialize(ISSUE_1)
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-72', 'assignee': 'hoganp'}):
+        updated_issue = Issue.deserialize(ISSUE_1)
 
     update_obj = merge_issues(local_issue, updated_issue, is_upstream_merge=True)
 
@@ -63,8 +68,10 @@ def test_merge_issues__is_upstream_merge_equals_true__merged_issue_original_equa
     Ensure the Issue returned from merge_issues has Issue.set_original() called,
     when is_upstream_merge=True
     '''
-    local_issue = Issue.deserialize(ISSUE_1)
-    updated_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-71'}):
+        local_issue = Issue.deserialize(ISSUE_1)
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
+        updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='hoganp')
 
     # mock build_update to return a valid IssueUpdate object
     update_obj = IssueUpdate(
@@ -92,8 +99,10 @@ def test_merge_issues__is_upstream_merge_equals_false__merged_issue_original_DOE
     Ensure the Issue returned from merge_issues does not have Issue.set_original() called,
     when is_upstream_merge=False
     '''
-    local_issue = Issue.deserialize(ISSUE_1)
-    updated_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-71'}):
+        local_issue = Issue.deserialize(ISSUE_1)
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-72', 'assignee': 'hoganp'}):
+        updated_issue = Issue.deserialize(ISSUE_1)
 
     # mock build_update to return a valid IssueUpdate object
     update_obj = IssueUpdate(
@@ -117,8 +126,10 @@ def test_merge_issues__calls_manual_conflict_resolution(mock_build_update, mock_
     '''
     Ensure that manual_conflict_resolution is invoked when there are conflicts
     '''
-    local_issue = Issue.deserialize(ISSUE_1)
-    updated_issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-71'}):
+        local_issue = Issue.deserialize(ISSUE_1)
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-72', 'assignee': 'hoganp'}):
+        updated_issue = Issue.deserialize(ISSUE_1)
 
     # mock build_update to return conflicts
     update_obj = IssueUpdate(
@@ -141,7 +152,8 @@ def test_manual_conflict_resolution__retries_three_times_on_none_return(mock_par
     '''
     A return of None from click.edit() should result in three retries
     '''
-    issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-72', 'assignee': 'hoganp'}):
+        issue = Issue.deserialize(ISSUE_1)
 
     update_obj = IssueUpdate(
         merged_issue=issue,
@@ -165,7 +177,8 @@ def test_manual_conflict_resolution__retries_three_times_on_blank_return(mock_pa
     '''
     A return of blank from click.edit() should result in three retries
     '''
-    issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-72', 'assignee': 'hoganp'}):
+        issue = Issue.deserialize(ISSUE_1)
 
     update_obj = IssueUpdate(
         merged_issue=issue,
@@ -190,7 +203,8 @@ def test_manual_conflict_resolution__handles_three_error_strings_in_editor_retur
     There are three strings which indicate failure in a conflict resolution string edit
     Ensure they all raise correctly
     '''
-    issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-72', 'assignee': 'hoganp'}):
+        issue = Issue.deserialize(ISSUE_1)
 
     update_obj = IssueUpdate(
         merged_issue=issue,

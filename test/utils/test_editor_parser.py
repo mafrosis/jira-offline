@@ -3,7 +3,7 @@ from unittest import mock
 import pytest
 
 from conftest import not_raises
-from fixtures import ISSUE_1, ISSUE_2
+from fixtures import ISSUE_1
 from jira_offline.exceptions import EditorFieldParseFailed, EditorRepeatFieldFound
 from jira_offline.models import Issue
 from jira_offline.utils.cli import parse_editor_result
@@ -194,10 +194,11 @@ def test_parse_editor_result__handles_remove_from_set():
         '----------------  --------------------------------------',
     ]
 
-    patch_dict = parse_editor_result(
-        Issue.deserialize(ISSUE_2),
-        '\n'.join(editor_result_raw),
-    )
+    with mock.patch.dict(ISSUE_1, {'labels': ['egg', 'bacon']}):
+        patch_dict = parse_editor_result(
+            Issue.deserialize(ISSUE_1),
+            '\n'.join(editor_result_raw),
+        )
     assert patch_dict['labels'] == {'bacon'}
 
 

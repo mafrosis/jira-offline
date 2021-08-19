@@ -1,3 +1,6 @@
+'''
+Helpers for writing easy-to-read unit tests
+'''
 from typing import List
 
 import pandas as pd
@@ -55,3 +58,13 @@ def setup_jira_dataframe_helper(issues: List[Issue]):
         df[col] = df[col].dt.tz_convert('UTC')
 
     return df
+
+
+def modified_issue_helper(issue, **kwargs):
+    'Helper to modify fixture issues in the correct way'
+    for k, v in kwargs.items():
+        setattr(issue, k, v)
+
+    # Ensure the issue has its diff created correctly
+    issue.diff()
+    return issue

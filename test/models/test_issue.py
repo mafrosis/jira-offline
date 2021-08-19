@@ -7,8 +7,8 @@ from unittest import mock
 import pytest
 
 from conftest import not_raises
-from fixtures import ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF, ISSUE_NEW
-from helpers import compare_issue_helper
+from fixtures import ISSUE_1, ISSUE_NEW
+from helpers import compare_issue_helper, modified_issue_helper
 from jira_offline.models import Issue
 
 
@@ -107,7 +107,8 @@ def test_issue_model__set_original_removes_diff_to_original_field():
     '''
     Ensure Issue.set_original does not retain the Issue.diff_to_original field created by Issue.diff
     '''
-    issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
+        issue = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='hoganp')
 
     assert bool(issue.diff_to_original)
 

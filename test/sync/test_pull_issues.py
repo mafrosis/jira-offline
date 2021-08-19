@@ -1,11 +1,13 @@
 '''
 Tests for pull_issues() and pull_single_project() in the sync module
 '''
+import copy
 from unittest import mock
 
 import pytest
 
-from fixtures import ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF, ISSUE_1_WITH_FIXVERSIONS_DIFF, ISSUE_2
+from fixtures import ISSUE_1
+from helpers import modified_issue_helper, setup_jira_dataframe_helper
 from jira_offline.exceptions import FailedPullingIssues, JiraApiError
 from jira_offline.models import Issue
 from jira_offline.sync import IssueUpdate, pull_issues, pull_single_project
@@ -16,8 +18,10 @@ def test_pull_issues__doesnt_call_load_issues_when_self_populated(mock_pull_sing
     '''
     Ensure pull_issues() doesn't call load_issues() when self (the Jira class dict) has issues
     '''
-    # add an Issue fixture to the Jira dict
-    mock_jira['issue1'] = Issue.deserialize(ISSUE_1)
+    issue_1 = Issue.deserialize(ISSUE_1)
+
+    # Setup the Jira DataFrame
+    mock_jira._df = setup_jira_dataframe_helper([issue_1])
 
     with mock.patch('jira_offline.sync.jira', mock_jira):
         pull_issues()
@@ -182,6 +186,9 @@ def test_pull_single_project__adds_issues_to_self(mock_tqdm, mock_api_get, mock_
     '''
     Ensure that issues returned by search_issues(), are added to the Jira object (which implements dict)
     '''
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
+        ISSUE_2 = copy.copy(ISSUE_1)
+
     # mock Jira API to return two issues
     mock_api_get.side_effect = [ {'total': 2}, {'issues': [ISSUE_1, ISSUE_2]}, {'issues': []} ]
 
@@ -229,16 +236,20 @@ def test_pull_single_project__merge_issues_called_when_local_issue_is_modified(
     '''
     Ensure that merge_issues is called when the Issue already exists
     '''
-    mock_jira['TEST-71'] = issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
+    issue_1 = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='hoganp')
+
+    # Setup the Jira DataFrame
+    mock_jira._df = setup_jira_dataframe_helper([issue_1])
 
     # mock search_issues to return single object
     mock_api_get.side_effect = [ {'total': 1}, {'issues': [ISSUE_1]}, {'issues': []} ]
 
     # mock conversion function to return single Issue
-    mock_jiraapi_object_to_issue.side_effect = [issue]
+    mock_jiraapi_object_to_issue.side_effect = [issue_1]
 
     # mock merge_issues function to return modified_issue
-    mock_merge_issues.return_value = IssueUpdate(merged_issue=Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF))
+    issue_2 = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='dave')
+    mock_merge_issues.return_value = IssueUpdate(merged_issue=issue_2)
 
     with mock.patch('jira_offline.sync.jira', mock_jira):
         pull_single_project(project, force=False, verbose=False, page_size=25)
@@ -256,13 +267,17 @@ def test_pull_single_project__merge_issues_NOT_called_when_local_issue_is_modifi
     '''
     Ensure that merge_issues is NOT called when the Issue already exists and force=True
     '''
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
+    issue_1 = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='hoganp')
+
+    # Setup the Jira DataFrame
+    mock_jira._df = setup_jira_dataframe_helper([issue_1])
 
     # mock search_issues to return single object
     mock_api_get.side_effect = [ {'total': 1}, {'issues': [ISSUE_1]}, {'issues': []} ]
 
     # mock conversion function to return single Issue
-    mock_jiraapi_object_to_issue.side_effect = [Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF)]
+    issue_2 = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='dave')
+    mock_jiraapi_object_to_issue.side_effect = [issue_2]
 
     with mock.patch('jira_offline.sync.jira', mock_jira):
         pull_single_project(project, force=True, verbose=False, page_size=25)
