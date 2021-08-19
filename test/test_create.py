@@ -361,7 +361,7 @@ def test_create__import_new_issue__raises_on_key_missing(mock_jira, keys):
 
 def test_create__patch_issue_from_dict__set_string_to_value(mock_jira):
     '''
-    Ensure an Issue can have attributes set a string
+    Ensure an Issue can have attributes set to a string
     '''
     issue = Issue.deserialize(ISSUE_1)
 
@@ -373,7 +373,7 @@ def test_create__patch_issue_from_dict__set_string_to_value(mock_jira):
 
 def test_create__patch_issue_from_dict__set_string_to_blank(mock_jira):
     '''
-    Ensure an Issue can have attributes set
+    Ensure an Issue can have attributes set to an empty string and it will result in None
     '''
     issue = Issue.deserialize(ISSUE_1)
 

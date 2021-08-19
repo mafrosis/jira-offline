@@ -235,7 +235,7 @@ def test_jira__write_issues_load_issues__roundtrip(mock_os, mock_jira_core, proj
 
 
 @mock.patch('jira_offline.jira.api_get')
-def test_jira__get_project_meta__overrides_default_timezone_when_set(mock_api_get, mock_jira_core, project):
+def test_jira__get_project_meta__overrides_default_timezone_when_set(mock_api_get, mock_jira_core, timezone_project):
     '''
     Ensure get_project_meta() method overrides ProjectMeta.timezone default when returned from a
     user's profile.
@@ -266,11 +266,11 @@ def test_jira__get_project_meta__overrides_default_timezone_when_set(mock_api_ge
         }]
     }
 
-    assert project.timezone.zone == project.timezone.zone
+    assert timezone_project.timezone.zone == timezone_project.timezone.zone
 
-    mock_jira_core.get_project_meta(project)
+    mock_jira_core.get_project_meta(timezone_project)
 
-    assert project.timezone.zone == 'America/New_York'
+    assert timezone_project.timezone.zone == 'America/New_York'
 
 
 @mock.patch('jira_offline.jira.api_get')
@@ -592,14 +592,14 @@ def test_jira__load_customfields__user_defined_customfield_for_all_projects(mock
         '*': {'arbitrary-user-defined-field': 'customfield_10400'},
     }
 
-    project1 = ProjectMeta(key='TEST1')
-    project2 = ProjectMeta(key='TEST2')
+    project_1 = ProjectMeta(key='TEST1')
+    project_2 = ProjectMeta(key='TEST2')
 
-    mock_jira_core._load_customfields(project1, issuetypes_fixture)
-    mock_jira_core._load_customfields(project2, issuetypes_fixture)
+    mock_jira_core._load_customfields(project_1, issuetypes_fixture)
+    mock_jira_core._load_customfields(project_2, issuetypes_fixture)
 
-    assert project1.customfields.extended['arbitrary_user_defined_field'] == 'customfield_10400'
-    assert project2.customfields.extended['arbitrary_user_defined_field'] == 'customfield_10400'
+    assert project_1.customfields.extended['arbitrary_user_defined_field'] == 'customfield_10400'
+    assert project_2.customfields.extended['arbitrary_user_defined_field'] == 'customfield_10400'
 
 
 def test_jira__load_customfields__user_defined_customfield_for_projects_on_host(mock_jira_core):
@@ -628,14 +628,14 @@ def test_jira__load_customfields__user_defined_customfield_for_projects_on_host(
         'jira.example.com': {'arbitrary-user-defined-field': 'customfield_10400'},
     }
 
-    project1 = ProjectMeta(key='TEST1', hostname='jira.example.com')
-    project2 = ProjectMeta(key='TEST2', hostname='notjira.example.com')
+    project_1 = ProjectMeta(key='TEST1', hostname='jira.example.com')
+    project_2 = ProjectMeta(key='TEST2', hostname='notjira.example.com')
 
-    mock_jira_core._load_customfields(project1, issuetypes_fixture)
-    mock_jira_core._load_customfields(project2, issuetypes_fixture)
+    mock_jira_core._load_customfields(project_1, issuetypes_fixture)
+    mock_jira_core._load_customfields(project_2, issuetypes_fixture)
 
-    assert project1.customfields.extended['arbitrary_user_defined_field'] == 'customfield_10400'
-    assert 'arbitrary_user_defined_field' not in project2.customfields.extended
+    assert project_1.customfields.extended['arbitrary_user_defined_field'] == 'customfield_10400'
+    assert 'arbitrary_user_defined_field' not in project_2.customfields.extended
 
 
 def test_jira__load_customfields__project_specific_customfield_overrides_all_projects(mock_jira_core):
@@ -669,14 +669,14 @@ def test_jira__load_customfields__project_specific_customfield_overrides_all_pro
         'jira.example.com': {'custom1': 'customfield_10999'},
     }
 
-    project1 = ProjectMeta(key='TEST1', hostname='jira.example.com')
-    project2 = ProjectMeta(key='TEST2', hostname='notjira.example.com')
+    project_1 = ProjectMeta(key='TEST1', hostname='jira.example.com')
+    project_2 = ProjectMeta(key='TEST2', hostname='notjira.example.com')
 
-    mock_jira_core._load_customfields(project1, issuetypes_fixture)
-    mock_jira_core._load_customfields(project2, issuetypes_fixture)
+    mock_jira_core._load_customfields(project_1, issuetypes_fixture)
+    mock_jira_core._load_customfields(project_2, issuetypes_fixture)
 
-    assert project1.customfields.extended['custom1'] == 'customfield_10999'
-    assert project2.customfields.extended['custom1'] == 'customfield_10400'
+    assert project_1.customfields.extended['custom1'] == 'customfield_10999'
+    assert project_2.customfields.extended['custom1'] == 'customfield_10400'
 
 
 @mock.patch('jira_offline.jira.api_post')

@@ -135,16 +135,16 @@ def test_parse__primitive_int(mock_jira, fixture, operator, count):
     ('>=', '2018-09-24T08:44:07', 2),
 ])
 @mock.patch('jira_offline.sql_filter.IssueFilter.tz', new_callable=mock.PropertyMock)
-def test_parse__primitive_datetime(mock_tz, mock_jira, project, operator, fixture, count):
+def test_parse__primitive_datetime(mock_tz, mock_jira, timezone_project, operator, fixture, count):
     '''
     Test field <,<=,>,>= datetime filter
     '''
     # Setup test fixtures to target in the filter query
     with mock.patch.dict(ISSUE_1, {'created': '2018-09-24T08:44:06'}):
-        mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project=project)
+        mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project=timezone_project)
 
     with mock.patch.dict(ISSUE_1, {'created': fixture, 'key': 'FILT-1'}):
-        mock_jira['FILT-1'] = Issue.deserialize(ISSUE_1, project=project)
+        mock_jira['FILT-1'] = Issue.deserialize(ISSUE_1, project=timezone_project)
 
     assert len(mock_jira) == 2
 
@@ -152,7 +152,7 @@ def test_parse__primitive_datetime(mock_tz, mock_jira, project, operator, fixtur
     filt.set(f"created {operator} '2018-09-24T08:44:06'")
 
     # Set the timezone of the date in the passed query (default is local system time)
-    mock_tz.return_value = project.timezone
+    mock_tz.return_value = timezone_project.timezone
 
     with mock.patch('jira_offline.jira.jira', mock_jira):
         df = filt.apply()
@@ -288,16 +288,16 @@ def test_parse__compound_or_eq_str(mock_jira, where, count):
     ("created >= '2018-09-24T08:44:07' and created < '2018-09-24T08:44:08'", 1),
 ])
 @mock.patch('jira_offline.sql_filter.IssueFilter.tz', new_callable=mock.PropertyMock)
-def test_parse__compound_in_daterange(mock_tz, mock_jira, project, where, count):
+def test_parse__compound_in_daterange(mock_tz, mock_jira, timezone_project, where, count):
     '''
     Test field BETWEEN two datetimes
     '''
     # Setup test fixtures to target in the filter query
     with mock.patch.dict(ISSUE_1, {'created': '2018-09-24T08:44:06'}):
-        mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project=project)
+        mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project=timezone_project)
 
     with mock.patch.dict(ISSUE_1, {'created': '2018-09-24T08:44:07', 'key': 'FILT-1'}):
-        mock_jira['FILT-1'] = Issue.deserialize(ISSUE_1, project=project)
+        mock_jira['FILT-1'] = Issue.deserialize(ISSUE_1, project=timezone_project)
 
     assert len(mock_jira) == 2
 
@@ -305,7 +305,7 @@ def test_parse__compound_in_daterange(mock_tz, mock_jira, project, where, count)
     filt.set(where)
 
     # Set the timezone of the date in the passed query (default is local system time)
-    mock_tz.return_value = project.timezone
+    mock_tz.return_value = timezone_project.timezone
 
     with mock.patch('jira_offline.jira.jira', mock_jira):
         df = filt.apply()
@@ -369,19 +369,19 @@ def test_parse__compound_in_daterange(mock_tz, mock_jira, project, where, count)
     ('!=', '2018-09-25T12:00:00', 1),
 ])
 @mock.patch('jira_offline.sql_filter.IssueFilter.tz', new_callable=mock.PropertyMock)
-def test_parse__primitive_date_special_case(mock_tz, mock_jira, project, operator, fixture, count):
+def test_parse__primitive_date_special_case(mock_tz, mock_jira, timezone_project, operator, fixture, count):
     '''
     Test special-case datetime field ==,>,>=,<,<= to specific day date
     '''
     # Setup test fixture to target in the filter query
     with mock.patch.dict(ISSUE_1, {'created': fixture, 'key': 'FILT-1'}):
-        mock_jira['FILT-1'] = Issue.deserialize(ISSUE_1, project=project)
+        mock_jira['FILT-1'] = Issue.deserialize(ISSUE_1, project=timezone_project)
 
     filt = IssueFilter()
     filt.set(f"created {operator} '2018-09-24'")
 
     # Set the timezone of the date in the passed query (default is local system time)
-    mock_tz.return_value = project.timezone
+    mock_tz.return_value = timezone_project.timezone
 
     with mock.patch('jira_offline.jira.jira', mock_jira):
         df = filt.apply()

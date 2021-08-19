@@ -112,10 +112,12 @@ def test_issue_to_jiraapi_update__handles_customfields_extended(mock_jira):
     {'assignee'},
     {'fix_versions', 'summary'},
 ])
-def test_issue_to_jiraapi_update__returns_only_fields_passed_in_modified(mock_jira, project, modified):
+def test_issue_to_jiraapi_update__returns_only_fields_passed_in_modified(mock_jira, modified):
     '''
     Ensure issue_to_jiraapi_update returns only set of fields passed in modified parameter
     '''
+    project = ProjectMeta(key='TEST')
+
     issue_dict = issue_to_jiraapi_update(project, Issue.deserialize(ISSUE_1), modified)
     assert issue_dict.keys() == modified
 
@@ -126,18 +128,22 @@ def test_issue_to_jiraapi_update__returns_only_fields_passed_in_modified(mock_ji
     {'reporter'},
     {'priority'},
 ])
-def test_issue_to_jiraapi_update__fields_are_formatted_correctly(mock_jira, project, modified):
+def test_issue_to_jiraapi_update__fields_are_formatted_correctly(mock_jira, modified):
     '''
     Ensure issue_to_jiraapi_update formats some fields correctly
     '''
+    project = ProjectMeta(key='TEST')
+
     issue_dict = issue_to_jiraapi_update(project, Issue.deserialize(ISSUE_1), modified)
     assert 'name' in issue_dict[next(iter(modified))]
 
 
-def test_issue_to_jiraapi_update__handles_class_property(mock_jira, project):
+def test_issue_to_jiraapi_update__handles_class_property(mock_jira):
     '''
     Ensure issue_to_jiraapi_update handles @property fields on Issue class
     '''
+    project = ProjectMeta(key='TEST')
+
     issue_dict = issue_to_jiraapi_update(project, Issue.deserialize(ISSUE_1), {'priority'})
     assert issue_dict.keys() == {'priority'}
 

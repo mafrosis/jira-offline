@@ -188,7 +188,9 @@ def test_pull_single_project__write_issues_and_config_called(
 @mock.patch('jira_offline.sync.jiraapi_object_to_issue')
 @mock.patch('jira_offline.sync.api_get')
 @mock.patch('jira_offline.sync.tqdm')
-def test_pull_single_project__adds_issues_to_self(mock_tqdm, mock_api_get, mock_jiraapi_object_to_issue, mock_jira, project):
+def test_pull_single_project__adds_issues_to_self(
+        mock_tqdm, mock_api_get, mock_jiraapi_object_to_issue, mock_jira, project
+    ):
     '''
     Ensure that issues returned by search_issues(), are added to the Jira object (which implements dict)
     '''

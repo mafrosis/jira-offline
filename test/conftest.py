@@ -17,39 +17,35 @@ from jira_offline.jira import Jira
 from jira_offline.models import AppConfig, CustomFields, IssueType, ProjectMeta
 
 
-@pytest.fixture(params=[
-    get_localzone(),
-    pytz.timezone('America/New_York'),  # UTC-5
-])
-def timezone(request):
-    '''
-    Parameterized fixture to test Jiras with different timezones
-    '''
-    return request.param
-
-
 @pytest.fixture
-def project(timezone):
+def project():
     '''
     Fixture representing a configured Jira project
     '''
     return ProjectMeta(
         key='TEST',
         jira_id='10000',
-        username='test',
-        password='dummy',
-        # Default set of customfields from Jira
-        customfields=CustomFields(
+        username='test', password='dummy',
+        customfields=CustomFields(  # Default set of customfields from Jira
             epic_link='customfield_10100',
             epic_name='customfield_10200',
             sprint='customfield_10300',
         ),
         priorities=['High', 'Low'],
-        timezone=timezone,
-        issuetypes={
-            'Story': IssueType(name='Story', statuses=['Backlog', 'Done']),
-        },
+        issuetypes={'Story': IssueType(name='Story', statuses=['Backlog', 'Done'])},
     )
+
+
+@pytest.fixture(params=[
+    get_localzone(),
+    pytz.timezone('America/New_York'),  # UTC-5
+])
+def timezone_project(request, project):
+    '''
+    Fixture that supplies ProjectMeta fixtures with varying timezones
+    '''
+    project.timezone = request.param
+    return project
 
 
 @pytest.fixture
