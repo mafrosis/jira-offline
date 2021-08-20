@@ -45,12 +45,12 @@ CLI_COMMAND_MAPPING = [
 @mock.patch('jira_offline.cli.project.authenticate')
 @mock.patch('jira_offline.cli.main.write_default_user_config')
 def test_main_smoketest(mock_write_config, mock_auth1, mock_auth2, mock_push_issues, mock_pull_issues,
-                        mock_pull_single_project, mock_create_issue, mock_jira, command, params, _):
+                        mock_pull_single_project, mock_create_issue, mock_jira, project, command, params, _):
     '''
     Test when the jira-offline issue cache has a single issue
     '''
     # add fixture to Jira dict
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
     runner = CliRunner()
 

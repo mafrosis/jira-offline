@@ -17,57 +17,49 @@ from jira_offline.jira import Jira
 from jira_offline.models import AppConfig, CustomFields, IssueType, ProjectMeta
 
 
-@pytest.fixture(params=[
-    get_localzone(),
-    pytz.timezone('America/New_York'),  # UTC-5
-])
-def timezone(request):
-    '''
-    Parameterized fixture to test Jiras with different timezones
-    '''
-    return request.param
-
-
 @pytest.fixture
-def project(timezone):
+def project():
     '''
     Fixture representing a configured Jira project
     '''
     return ProjectMeta(
         key='TEST',
         jira_id='10000',
-        username='test',
-        password='dummy',
-        # Default set of customfields from Jira
-        customfields=CustomFields(
+        username='test', password='dummy',
+        customfields=CustomFields(  # Default set of customfields from Jira
             epic_link='customfield_10100',
             epic_name='customfield_10200',
             sprint='customfield_10300',
         ),
         priorities=['High', 'Low'],
-        timezone=timezone,
-        issuetypes={
-            'Story': IssueType(name='Story', statuses=['Backlog', 'Done']),
-        },
+        issuetypes={'Story': IssueType(name='Story', statuses=['Backlog', 'Done'])},
     )
 
-@pytest.fixture
-def project2():
+
+@pytest.fixture(params=[
+    get_localzone(),
+    pytz.timezone('America/New_York'),  # UTC-5
+])
+def timezone_project(request, project):
     '''
-    Fixture representing a second configured Jira project. Used in some test cases validating
-    behavior across multiple projects. See also the ISSUE_DIFF_PROJECT fixture.
+    Fixture that supplies ProjectMeta fixtures with varying timezones
     '''
-    return ProjectMeta.factory('http://example.com/EGG')
+    project.timezone = request.param
+    return project
 
 
 @pytest.fixture
 @mock.patch('jira_offline.jira.load_config')
-def mock_jira_core(mock_load_config, project, project2):
+def mock_jira_core(mock_load_config, project):
     '''
     Return a Jira class instance with connect method and underlying Jira lib mocked
     '''
+    # Fixture representing a second configured Jira project. Used in some test cases to validate
+    # behaviour across multiple projects.
+    project_2 = ProjectMeta.factory('http://example.com/EGG')
+
     jira = Jira()
-    jira.config = AppConfig(projects={project.id: project, project2.id: project2})
+    jira.config = AppConfig(projects={project.id: project, project_2.id: project_2})
     # Ensure each ProjectMeta instance has a reference to the AppConfig instance.
     # In normal operation, this is done in `load_config` in config.py, and so applies to all projects
     project.config = jira.config

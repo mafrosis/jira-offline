@@ -13,7 +13,8 @@ import pandas as pd
 from tabulate import tabulate
 import typing_inspect
 
-from jira_offline.exceptions import EditorRepeatFieldFound, InvalidLsFieldInConfig
+from jira_offline.exceptions import (BadParamsPassedToValidCustomfield, EditorRepeatFieldFound,
+                                     InvalidLsFieldInConfig)
 from jira_offline.jira import jira
 from jira_offline.models import CustomFields, Issue, ProjectMeta
 from jira_offline.utils import find_project, friendly_title, get_field_by_name
@@ -122,7 +123,7 @@ def print_diff(issue: Issue):
     from jira_offline.sync import build_update  # pylint: disable=import-outside-toplevel, cyclic-import
 
     # run build_update to diff between the remote version of the Issue, and the locally modified one
-    update_obj = build_update(Issue.deserialize(issue.original), issue)
+    update_obj = build_update(Issue.deserialize(issue.original, issue.project), issue)
 
     # print a handsome table
     click.echo(tabulate(issue.render(modified_fields=update_obj.modified)))
@@ -294,7 +295,7 @@ class ValidCustomfield(click.Option):
             project = self._get_project(opts['projectkey'])
 
         else:
-            raise Exception('ValidCustomfield constructor must be passed `key` or `projectkey`')
+            raise BadParamsPassedToValidCustomfield
 
         # Iterate all configured customfields
         for customfield_name in jira.config.iter_customfields():

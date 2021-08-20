@@ -15,13 +15,13 @@ LINT_SUBCOMMANDS = [
 
 
 @pytest.mark.parametrize('subcommand', LINT_SUBCOMMANDS)
-def test_lint_smoketest(mock_jira, subcommand):
+def test_lint_smoketest(mock_jira, project, subcommand):
     '''
     Dumb smoke test function to check for errors via CLI - when the jira-offline issue cache has a
     single issue
     '''
     # add fixture to Jira dict
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
     runner = CliRunner()
 
@@ -50,12 +50,12 @@ def test_lint_smoketest_empty(mock_jira, subcommand):
 
 
 @mock.patch('jira_offline.cli.linters.lint_fix_versions')
-def test_cli_lint__fix_versions__echo(mock_lint_fix_versions, mock_jira):
+def test_cli_lint__fix_versions__echo(mock_lint_fix_versions, mock_jira, project):
     '''
     Ensure lint fix-versions command calls click.echo without error
     '''
     # add fixture to Jira dict
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
     runner = CliRunner()
 
@@ -69,12 +69,12 @@ def test_cli_lint__fix_versions__echo(mock_lint_fix_versions, mock_jira):
 
 
 @mock.patch('jira_offline.cli.linters.lint_fix_versions')
-def test_cli_lint__fix_versions__fix_requires_words(mock_lint_fix_versions, mock_jira):
+def test_cli_lint__fix_versions__fix_requires_words(mock_lint_fix_versions, mock_jira, project):
     '''
     Ensure lint fix-versions with --fix param errors without --value
     '''
     # add fixture to Jira dict
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
     runner = CliRunner()
 
@@ -87,12 +87,12 @@ def test_cli_lint__fix_versions__fix_requires_words(mock_lint_fix_versions, mock
 
 
 @mock.patch('jira_offline.cli.linters.lint_fix_versions')
-def test_cli_lint__fix_versions__fix_passes_words_to_lint_func(mock_lint_fix_versions, mock_jira):
+def test_cli_lint__fix_versions__fix_passes_words_to_lint_func(mock_lint_fix_versions, mock_jira, project):
     '''
     Ensure lint fix-versions with --fix and --value calls lint_fix_versions
     '''
     # add fixture to Jira dict
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
     runner = CliRunner()
 
@@ -105,12 +105,12 @@ def test_cli_lint__fix_versions__fix_passes_words_to_lint_func(mock_lint_fix_ver
 
 
 @mock.patch('jira_offline.cli.linters.lint_issues_missing_epic')
-def test_cli_lint__issues_missing_epic__echo(mock_lint_issues_missing_epic, mock_jira):
+def test_cli_lint__issues_missing_epic__echo(mock_lint_issues_missing_epic, mock_jira, project):
     '''
     Ensure lint issues_missing_epic command calls click.echo without error
     '''
     # add fixture to Jira dict
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
     runner = CliRunner()
 
@@ -124,12 +124,12 @@ def test_cli_lint__issues_missing_epic__echo(mock_lint_issues_missing_epic, mock
 
 
 @mock.patch('jira_offline.cli.linters.lint_issues_missing_epic')
-def test_cli_lint__issues_missing_epic__fix_requires_epic_link(mock_lint_issues_missing_epic, mock_jira):
+def test_cli_lint__issues_missing_epic__fix_requires_epic_link(mock_lint_issues_missing_epic, mock_jira, project):
     '''
     Ensure lint issues_missing_epic with --fix param errors without --epic-link
     '''
     # add fixture to Jira dict
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
     runner = CliRunner()
 
@@ -142,12 +142,14 @@ def test_cli_lint__issues_missing_epic__fix_requires_epic_link(mock_lint_issues_
 
 
 @mock.patch('jira_offline.cli.linters.lint_issues_missing_epic')
-def test_cli_lint__issues_missing_epic__fix_passes_epic_link_to_lint_func(mock_lint_issues_missing_epic, mock_jira):
+def test_cli_lint__issues_missing_epic__fix_passes_epic_link_to_lint_func(
+        mock_lint_issues_missing_epic, mock_jira, project
+    ):
     '''
     Ensure lint issues-missing-epic with --fix and --epic_link calls lint_issues_missing_epic
     '''
     # add fixture to Jira dict
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
     runner = CliRunner()
 

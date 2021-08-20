@@ -126,8 +126,10 @@ def cli_reset(_, key: str):
         click.echo('Unknown issue key')
         raise click.Abort
 
-    # overwrite local changes with the original
-    jira[key] = Issue.deserialize(jira[key].original)
+    issue = jira[key]
+
+    # Overwrite local changes with the original issue from Jira
+    jira[key] = Issue.deserialize(issue.original, issue.project)
     jira.write_issues()
 
     click.echo(f'Reset issue {key}')

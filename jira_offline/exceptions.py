@@ -328,3 +328,7 @@ class InvalidLsFieldInConfig(BaseAppException):
 
     def __str__(self):
         return self.__doc__.format(self.field)
+
+
+class BadParamsPassedToValidCustomfield(BaseAppException):
+    'ValidCustomfield constructor must be passed `key` or `projectkey`'

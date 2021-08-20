@@ -5,17 +5,18 @@ import pytest
 
 from conftest import not_raises
 from fixtures import ISSUE_1
+from jira_offline.exceptions import BadParamsPassedToValidCustomfield
 from jira_offline.jira import Issue
 from jira_offline.utils.cli import CustomfieldsAsOptions, print_list, ValidCustomfield
 
 
-def test_print_list__display_ls_fields_config_rendered_in_listing(mock_jira):
+def test_print_list__display_ls_fields_config_rendered_in_listing(mock_jira, project):
     '''
     Ensure the specified ls fields are rendered in the print_list output, when user config option IS
     configured
     '''
     # add fixture to Jira dict
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
     mock_jira.config.display.ls_fields = {'summary'}
 
@@ -26,13 +27,13 @@ def test_print_list__display_ls_fields_config_rendered_in_listing(mock_jira):
     assert set(df.columns) == {'summary'}
 
 
-def test_print_list__display_ls_fields_defaults_rendered_in_listing(mock_jira):
+def test_print_list__display_ls_fields_defaults_rendered_in_listing(mock_jira, project):
     '''
     Ensure the default ls fields are rendered in the print_list output, when user config option IS NOT
     configured
     '''
     # add fixture to Jira dict
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
     with mock.patch('jira_offline.utils.cli.jira', mock_jira), \
         mock.patch('jira_offline.jira.jira', mock_jira):
@@ -125,9 +126,9 @@ def test_validcustomfield__raises_error_on_neither_key_nor_projectkey_supplied(m
     command = CustomfieldsAsOptions(*tuple(), **{'name': 'new', 'params': []})
 
     with mock.patch('jira_offline.utils.cli.jira', mock_jira):
-        with pytest.raises(Exception):
+        with pytest.raises(BadParamsPassedToValidCustomfield):
             ValidCustomfield(
-                [], help=''
+                ['--arbitrary-user-defined-field'], help=''
             ).handle_parse_result(
                 click.core.Context(command), opts, None
             )

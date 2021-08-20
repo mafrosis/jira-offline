@@ -1,23 +1,27 @@
 '''
 Tests for pull_issues() and pull_single_project() in the sync module
 '''
+import copy
 from unittest import mock
 
 import pytest
 
-from fixtures import ISSUE_1, ISSUE_1_WITH_ASSIGNEE_DIFF, ISSUE_1_WITH_FIXVERSIONS_DIFF, ISSUE_2
+from fixtures import ISSUE_1
+from helpers import modified_issue_helper, setup_jira_dataframe_helper
 from jira_offline.exceptions import FailedPullingIssues, JiraApiError
 from jira_offline.models import Issue
 from jira_offline.sync import IssueUpdate, pull_issues, pull_single_project
 
 
 @mock.patch('jira_offline.sync.pull_single_project')
-def test_pull_issues__doesnt_call_load_issues_when_self_populated(mock_pull_single_project, mock_jira):
+def test_pull_issues__doesnt_call_load_issues_when_self_populated(mock_pull_single_project, mock_jira, project):
     '''
     Ensure pull_issues() doesn't call load_issues() when self (the Jira class dict) has issues
     '''
-    # add an Issue fixture to the Jira dict
-    mock_jira['issue1'] = Issue.deserialize(ISSUE_1)
+    issue_1 = Issue.deserialize(ISSUE_1, project)
+
+    # Setup the Jira DataFrame
+    mock_jira._df = setup_jira_dataframe_helper([issue_1])
 
     with mock.patch('jira_offline.sync.jira', mock_jira):
         pull_issues()
@@ -26,29 +30,35 @@ def test_pull_issues__doesnt_call_load_issues_when_self_populated(mock_pull_sing
 
 
 @mock.patch('jira_offline.sync.pull_single_project')
-def test_pull_issues__calls_pull_single_project_for_each_project(mock_pull_single_project, mock_jira, project, project2):
+def test_pull_issues__calls_pull_single_project_for_each_project(mock_pull_single_project, mock_jira):
     '''
     Ensure that pull_single_project() is called for each project
     '''
     with mock.patch('jira_offline.sync.jira', mock_jira):
         pull_issues(force=True, verbose=False)
 
-    assert mock_pull_single_project.call_args_list[0][0] ==  (project,)
+    project_1 = mock_jira.config.projects[list(mock_jira.config.projects.keys())[0]]
+    project_2 = mock_jira.config.projects[list(mock_jira.config.projects.keys())[1]]
+
+    assert mock_pull_single_project.call_args_list[0][0] ==  (project_1,)
     assert mock_pull_single_project.call_args_list[0][1] ==  {'force': True, 'verbose': False, 'page_size': 25}
-    assert mock_pull_single_project.call_args_list[1][0] ==  (project2,)
+    assert mock_pull_single_project.call_args_list[1][0] ==  (project_2,)
     assert mock_pull_single_project.call_args_list[1][1] ==  {'force': True, 'verbose': False, 'page_size': 25}
 
 
 @mock.patch('jira_offline.sync.pull_single_project')
-def test_pull_issues__calls_get_project_meta_for_each_project(mock_pull_single_project, mock_jira, project, project2):
+def test_pull_issues__calls_get_project_meta_for_each_project(mock_pull_single_project, mock_jira):
     '''
     Ensure that pull_single_project() is called for each project
     '''
     with mock.patch('jira_offline.sync.jira', mock_jira):
         pull_issues(force=True, verbose=False)
 
-    assert mock_jira.get_project_meta.call_args_list[0][0] ==  (project,)
-    assert mock_jira.get_project_meta.call_args_list[1][0] ==  (project2,)
+    project_1 = mock_jira.config.projects[list(mock_jira.config.projects.keys())[0]]
+    project_2 = mock_jira.config.projects[list(mock_jira.config.projects.keys())[1]]
+
+    assert mock_jira.get_project_meta.call_args_list[0][0] ==  (project_1,)
+    assert mock_jira.get_project_meta.call_args_list[1][0] ==  (project_2,)
 
 
 @mock.patch('jira_offline.sync.pull_single_project')
@@ -89,7 +99,7 @@ def test_pull_single_project__last_updated_set_causes_filter_query_from_last_upd
     mock_api_get.side_effect = [ {'total': 1}, {'issues': [ISSUE_1]}, {'issues': []} ]
 
     # mock conversion function to return single Issue
-    mock_jiraapi_object_to_issue.side_effect = [Issue.deserialize(ISSUE_1)]
+    mock_jiraapi_object_to_issue.side_effect = [Issue.deserialize(ISSUE_1, project)]
 
     # mock the only project fixture to have a specific last_updated value
     mock_jira.config.projects['99fd9182cfc4c701a8a662f6293f4136201791b4'].last_updated = '2019-01-01 00:00'
@@ -111,7 +121,7 @@ def test_pull_single_project__last_updated_missing_causes_filter_from_waaay_back
     mock_api_get.side_effect = [ {'total': 1}, {'issues': [ISSUE_1]}, {'issues': []} ]
 
     # mock conversion function to return single Issue
-    mock_jiraapi_object_to_issue.side_effect = [Issue.deserialize(ISSUE_1)]
+    mock_jiraapi_object_to_issue.side_effect = [Issue.deserialize(ISSUE_1, project)]
 
     with mock.patch('jira_offline.sync.jira', mock_jira):
         pull_single_project(project, force=False, verbose=False, page_size=25)
@@ -130,7 +140,7 @@ def test_pull_single_project__last_updated_set_AND_force_set_causes_filter_from_
     mock_api_get.side_effect = [ {'total': 1}, {'issues': [ISSUE_1]}, {'issues': []} ]
 
     # mock conversion function to return single Issue
-    mock_jiraapi_object_to_issue.side_effect = [Issue.deserialize(ISSUE_1)]
+    mock_jiraapi_object_to_issue.side_effect = [Issue.deserialize(ISSUE_1, project)]
 
     # mock the only project fixture to have a specific last_updated value
     mock_jira.config.projects['99fd9182cfc4c701a8a662f6293f4136201791b4'].last_updated = '2019-01-01 00:00'
@@ -167,7 +177,7 @@ def test_pull_single_project__write_issues_and_config_called(
     mock_api_get.side_effect = [ {'total': 1}, {'issues': [ISSUE_1]}, {'issues': []} ]
 
     # mock conversion function to return single Issue
-    mock_jiraapi_object_to_issue.side_effect = [Issue.deserialize(ISSUE_1)]
+    mock_jiraapi_object_to_issue.side_effect = [Issue.deserialize(ISSUE_1, project)]
 
     with mock.patch('jira_offline.sync.jira', mock_jira):
         pull_single_project(project, force=False, verbose=False, page_size=25)
@@ -178,15 +188,23 @@ def test_pull_single_project__write_issues_and_config_called(
 @mock.patch('jira_offline.sync.jiraapi_object_to_issue')
 @mock.patch('jira_offline.sync.api_get')
 @mock.patch('jira_offline.sync.tqdm')
-def test_pull_single_project__adds_issues_to_self(mock_tqdm, mock_api_get, mock_jiraapi_object_to_issue, mock_jira, project):
+def test_pull_single_project__adds_issues_to_self(
+        mock_tqdm, mock_api_get, mock_jiraapi_object_to_issue, mock_jira, project
+    ):
     '''
     Ensure that issues returned by search_issues(), are added to the Jira object (which implements dict)
     '''
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
+        ISSUE_2 = copy.copy(ISSUE_1)
+
     # mock Jira API to return two issues
     mock_api_get.side_effect = [ {'total': 2}, {'issues': [ISSUE_1, ISSUE_2]}, {'issues': []} ]
 
     # mock conversion function to return two Issues
-    mock_jiraapi_object_to_issue.side_effect = [Issue.deserialize(ISSUE_1), Issue.deserialize(ISSUE_2)]
+    mock_jiraapi_object_to_issue.side_effect = [
+        Issue.deserialize(ISSUE_1, project),
+        Issue.deserialize(ISSUE_2, project)
+    ]
 
     assert len(mock_jira.keys()) == 0
 
@@ -210,7 +228,7 @@ def test_pull_single_project__merge_issues_NOT_called_when_updated_issue_NOT_mod
     mock_api_get.side_effect = [ {'total': 1}, {'issues': [ISSUE_1]}, {'issues': []} ]
 
     # mock conversion function to return single Issue
-    mock_jiraapi_object_to_issue.side_effect = [Issue.deserialize(ISSUE_1)]
+    mock_jiraapi_object_to_issue.side_effect = [Issue.deserialize(ISSUE_1, project)]
 
     with mock.patch('jira_offline.sync.jira', mock_jira):
         pull_single_project(project, force=False, verbose=False, page_size=25)
@@ -229,16 +247,20 @@ def test_pull_single_project__merge_issues_called_when_local_issue_is_modified(
     '''
     Ensure that merge_issues is called when the Issue already exists
     '''
-    mock_jira['TEST-71'] = issue = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
+    issue_1 = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='hoganp')
+
+    # Setup the Jira DataFrame
+    mock_jira._df = setup_jira_dataframe_helper([issue_1])
 
     # mock search_issues to return single object
     mock_api_get.side_effect = [ {'total': 1}, {'issues': [ISSUE_1]}, {'issues': []} ]
 
     # mock conversion function to return single Issue
-    mock_jiraapi_object_to_issue.side_effect = [issue]
+    mock_jiraapi_object_to_issue.side_effect = [issue_1]
 
     # mock merge_issues function to return modified_issue
-    mock_merge_issues.return_value = IssueUpdate(merged_issue=Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF))
+    issue_2 = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='dave')
+    mock_merge_issues.return_value = IssueUpdate(merged_issue=issue_2)
 
     with mock.patch('jira_offline.sync.jira', mock_jira):
         pull_single_project(project, force=False, verbose=False, page_size=25)
@@ -256,13 +278,17 @@ def test_pull_single_project__merge_issues_NOT_called_when_local_issue_is_modifi
     '''
     Ensure that merge_issues is NOT called when the Issue already exists and force=True
     '''
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1_WITH_ASSIGNEE_DIFF)
+    issue_1 = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='hoganp')
+
+    # Setup the Jira DataFrame
+    mock_jira._df = setup_jira_dataframe_helper([issue_1])
 
     # mock search_issues to return single object
     mock_api_get.side_effect = [ {'total': 1}, {'issues': [ISSUE_1]}, {'issues': []} ]
 
     # mock conversion function to return single Issue
-    mock_jiraapi_object_to_issue.side_effect = [Issue.deserialize(ISSUE_1_WITH_FIXVERSIONS_DIFF)]
+    issue_2 = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='dave')
+    mock_jiraapi_object_to_issue.side_effect = [issue_2]
 
     with mock.patch('jira_offline.sync.jira', mock_jira):
         pull_single_project(project, force=True, verbose=False, page_size=25)

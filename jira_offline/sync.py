@@ -299,7 +299,7 @@ def build_update(base_issue: Issue, updated_issue: Optional[Issue]) -> IssueUpda
     merged_dict = dictdiffer.patch(m.unified_patches, base_issue.original)
 
     # Create an Issue object from the merged data
-    merged_issue = Issue.deserialize(merged_dict, project=base_issue.project)
+    merged_issue = Issue.deserialize(merged_dict, base_issue.project)
 
     def modified_fields(diffs):
         '''Yield each field name in the Merger patches'''
