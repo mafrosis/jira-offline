@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import datetime
 import os
-from typing import Dict, Optional, Set
+from typing import Dict, List, Optional, Set
 from unittest import mock
 
 import pytest
@@ -304,7 +304,7 @@ def test_write_default_user_config(tmpdir):
 # incremented on release.
 #
 @dataclass
-class CustomFields_v3(DataclassSerializer):
+class CustomFields(DataclassSerializer):
     epic_link: Optional[str]
     epic_name: Optional[str]
     sprint: Optional[str]
@@ -313,19 +313,19 @@ class CustomFields_v3(DataclassSerializer):
     extended: Optional[Dict[str, str]]
 
 @dataclass
-class IssueType_v3(DataclassSerializer):
+class IssueType(DataclassSerializer):
     name: str
     statuses: Set[str]
 
 @dataclass
-class OAuth_v3(DataclassSerializer):
+class OAuth(DataclassSerializer):
     access_token: Optional[str]
     access_token_secret: Optional[str]
     consumer_key: Optional[str]
     key_cert: Optional[str]
 
 @dataclass  # pylint: disable=too-many-instance-attributes
-class ProjectMeta_v3(DataclassSerializer):  # pylint: disable=too-many-instance-attributes
+class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-attributes
     key: str
     name: Optional[str]
     username: Optional[str]
@@ -333,11 +333,11 @@ class ProjectMeta_v3(DataclassSerializer):  # pylint: disable=too-many-instance-
     protocol: Optional[str]
     hostname: Optional[str]
     last_updated: Optional[str]
-    issuetypes: Dict[str, IssueType_v3]
-    customfields: Optional[CustomFields_v3]
+    issuetypes: Dict[str, IssueType]
+    customfields: Optional[CustomFields]
     priorities: Optional[Set[str]]
     components: Optional[Set[str]]
-    oauth: Optional[OAuth_v3]
+    oauth: Optional[OAuth]
     ca_cert: Optional[str]
     timezone: datetime.tzinfo
     jira_id: Optional[str]
@@ -347,11 +347,21 @@ class ProjectMeta_v3(DataclassSerializer):  # pylint: disable=too-many-instance-
 class AppConfig_v3(DataclassSerializer):
     schema_version: int
     user_config_filepath: str
-    projects: Dict[str, ProjectMeta_v3]
-    sync: AppConfig.Sync
-    display: AppConfig.Display
+    projects: Dict[str, ProjectMeta]
     customfields: Dict[str, dict]
-#
+
+    @dataclass
+    class Sync:
+        page_size: int
+    sync: Sync
+
+    @dataclass
+    class Display:
+        ls_fields: List[str]
+        ls_fields_verbose: List[str]
+        ls_default_filter: str
+    display: Display
+
 #################
 
 
