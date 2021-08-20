@@ -28,12 +28,12 @@ def test_cli_show__invalid_issue_key(mock_jira):
     ('new', ('--json', 'TEST', 'Story', 'Summary of issue')),
     ('edit', ('--json', 'TEST-71', '--summary', 'A new summary')),
 ])
-def test_cli_commands_can_return_json(mock_jira, command, params):
+def test_cli_commands_can_return_json(mock_jira, project, command, params):
     '''
     Ensure show command can return output as JSON
     '''
     # add a single lonely fixture to the Jira store
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
     runner = CliRunner()
 
@@ -106,12 +106,12 @@ def test_cli_new__error_when_passed_epic_link_for_epic(mock_jira):
     assert not mock_jira.new_issue.called
 
 
-def test_cli_edit__can_change_an_existing_issue(mock_jira):
+def test_cli_edit__can_change_an_existing_issue(mock_jira, project):
     '''
     Ensure success when editing an existing issue
     '''
     # add fixture to Jira dict
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
     runner = CliRunner()
 
@@ -125,12 +125,12 @@ def test_cli_edit__can_change_an_existing_issue(mock_jira):
     assert mock_jira.write_issues.called
 
 
-def test_cli_edit__can_change_a_new_issue(mock_jira):
+def test_cli_edit__can_change_a_new_issue(mock_jira, project):
     '''
     Ensure success when editing a new issue
     '''
     # add new issue fixture to Jira dict
-    mock_jira['7242cc9e-ea52-4e51-bd84-2ced250cabf0'] = Issue.deserialize(ISSUE_NEW)
+    mock_jira['7242cc9e-ea52-4e51-bd84-2ced250cabf0'] = Issue.deserialize(ISSUE_NEW, project)
 
     runner = CliRunner()
 
@@ -144,12 +144,12 @@ def test_cli_edit__can_change_a_new_issue(mock_jira):
     assert mock_jira.write_issues.called
 
 
-def test_cli_delete__can_delete_an_issue(mock_jira):
+def test_cli_delete__can_delete_an_issue(mock_jira, project):
     '''
     Ensure success when deleting a new issue
     '''
     # Add fixture to Jira dict
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
     runner = CliRunner()
 

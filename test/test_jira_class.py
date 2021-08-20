@@ -21,7 +21,7 @@ def test_jira__mutablemapping__get_item__(mock_jira_core, project):
     Ensure that __get_item__ returns a valid Issue object from the underlying dataframe
     '''
     # Setup the Jira DataFrame
-    issue_1 = Issue.deserialize(ISSUE_1, project=project)
+    issue_1 = Issue.deserialize(ISSUE_1, project)
     mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
 
     # retrieve the issue via __get_item__
@@ -35,14 +35,14 @@ def test_jira__mutablemapping__set_item__new(mock_jira_core, project):
     Ensure that __set_item__ adds a valid new Issue to the underlying dataframe
     '''
     # Setup the Jira DataFrame
-    issue_1 = Issue.deserialize(ISSUE_1, project=project)
+    issue_1 = Issue.deserialize(ISSUE_1, project)
     mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
 
     assert len(mock_jira_core._df) == 1
 
     # create another Issue fixture
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
-        issue_2 = Issue.deserialize(ISSUE_1, project=project)
+        issue_2 = Issue.deserialize(ISSUE_1, project)
 
     # add the issue via __set_item__
     mock_jira_core['TEST-72'] = issue_2
@@ -57,7 +57,7 @@ def test_jira__mutablemapping__set_item__overwrite(mock_jira_core, project):
     Ensure that __set_item__ overwrites an existing Issue to the underlying dataframe
     '''
     # Setup the Jira DataFrame
-    issue_1 = Issue.deserialize(ISSUE_1, project=project)
+    issue_1 = Issue.deserialize(ISSUE_1, project)
     mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
 
     assert len(mock_jira_core._df) == 1
@@ -74,7 +74,7 @@ def test_jira__mutablemapping__del_item__(mock_jira_core, project):
     '''
     Ensure that __del_item__ deletes an issue from the underlying dataframe
     '''
-    issue_1 = Issue.deserialize(ISSUE_1, project=project)
+    issue_1 = Issue.deserialize(ISSUE_1, project)
 
     # Setup the Jira DataFrame
     mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
@@ -91,7 +91,7 @@ def test_jira__mutablemapping__in_operator(mock_jira_core, project):
     '''
     Ensure that one can use the "in" operator with the Jira dict
     '''
-    issue_1 = Issue.deserialize(ISSUE_1, project=project)
+    issue_1 = Issue.deserialize(ISSUE_1, project)
 
     # Setup the Jira DataFrame
     mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
@@ -105,10 +105,10 @@ def test_jira__mutablemapping__in_operator_with_new_issue(mock_jira_core, projec
     Ensure that one can use the "in" operator with the Jira dict
     '''
     # Setup the Jira DataFrame
-    issue_1 = Issue.deserialize(ISSUE_1, project=project)
+    issue_1 = Issue.deserialize(ISSUE_1, project)
     mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
 
-    mock_jira_core['7242cc9e-ea52-4e51-bd84-2ced250cabf0'] = Issue.deserialize(ISSUE_NEW)
+    mock_jira_core['7242cc9e-ea52-4e51-bd84-2ced250cabf0'] = Issue.deserialize(ISSUE_NEW, project)
 
     # simply assert the key is in the dict
     assert '7242cc9e-ea52-4e51-bd84-2ced250cabf0' in mock_jira_core
@@ -121,7 +121,7 @@ def test_jira__mutablemapping__roundtrip(mock_jira, project, issue_fixture):
     Parameterized with the various different types of Issue fixtures.
     '''
     # add to dataframe (via __set_item__)
-    mock_jira[issue_fixture['key']] = issue_1 = Issue.deserialize(issue_fixture, project=project)
+    mock_jira[issue_fixture['key']] = issue_1 = Issue.deserialize(issue_fixture, project)
 
     # extract back out of dataframe (via __get_item__)
     issue_2 = mock_jira[issue_fixture['key']]
@@ -135,7 +135,7 @@ def test_jira__mutablemapping__roundtrip_with_mod(mock_jira, project):
     Ensure an issue can be set into the Jira object, and be recreated and then modified
     '''
     # add to dataframe (via __set_item__)
-    mock_jira['TEST-71'] = issue_1 = Issue.deserialize(ISSUE_1, project=project)
+    mock_jira['TEST-71'] = issue_1 = Issue.deserialize(ISSUE_1, project)
 
     # extract back out of dataframe (via __get_item__)
     issue_2 = mock_jira['TEST-71']
@@ -216,7 +216,7 @@ def test_jira__write_issues_load_issues__roundtrip(mock_os, mock_jira_core, proj
     mock_os.stat.return_value.st_size = 1
 
     # Setup the Jira DataFrame
-    issue = Issue.deserialize(issue_fixture, project=project)
+    issue = Issue.deserialize(issue_fixture, project)
     mock_jira_core._df = setup_jira_dataframe_helper([issue])
 
     key = issue_fixture['key']
@@ -685,14 +685,14 @@ def test_jira__new_issue__calls_write_issues_on_success(mock_api_post, mock_jira
     Ensure a successful new issue API request causes call to write_issues and returns the new Issue
     '''
     # Setup the the Jira DataFrame
-    issue_new = Issue.deserialize(ISSUE_NEW, project=project)
+    issue_new = Issue.deserialize(ISSUE_NEW, project)
     mock_jira_core._df = setup_jira_dataframe_helper([issue_new])
 
     # Don't write to disk during tests
     mock_jira_core.write_issues = mock.Mock()
 
     # Mock the return from fetch_issue() which happens after a successful new_issue() call
-    issue_1 = Issue.deserialize(ISSUE_1, project=project)
+    issue_1 = Issue.deserialize(ISSUE_1, project)
     mock_jira_core.fetch_issue = mock.Mock(return_value=issue_1)
 
     updated_issue = mock_jira_core.new_issue(
@@ -716,7 +716,7 @@ def test_jira__new_issue__does_not_call_write_issues_on_failure(mock_api_post, m
     Ensure a failed new issue API request does not cause call to write_issues
     '''
     # Setup the the Jira DataFrame
-    issue_new = Issue.deserialize(ISSUE_NEW, project=project)
+    issue_new = Issue.deserialize(ISSUE_NEW, project)
     mock_jira_core._df = setup_jira_dataframe_helper([issue_new])
 
     # Don't write to disk during tests
@@ -750,14 +750,14 @@ def test_jira__new_issue__removes_temp_key_when_new_post_successful(mock_api_pos
     Ensure a successful new Issue creation deletes the old temp UUID key
     '''
     # Setup the the Jira DataFrame
-    issue_new = Issue.deserialize(ISSUE_NEW, project=project)
+    issue_new = Issue.deserialize(ISSUE_NEW, project)
     mock_jira_core._df = setup_jira_dataframe_helper([issue_new])
 
     # Don't write to disk during tests
     mock_jira_core.write_issues = mock.Mock()
 
     # Mock the return from fetch_issue() which happens after a successful new_issue() call
-    issue_1 = Issue.deserialize(ISSUE_1, project=project)
+    issue_1 = Issue.deserialize(ISSUE_1, project)
     mock_jira_core.fetch_issue = mock.Mock(return_value=issue_1)
 
     mock_jira_core.new_issue(
@@ -787,16 +787,16 @@ def test_jira__new_issue__link_is_updated_after_post(mock_api_post, mock_jira_co
     '''
     # Setup the the Jira DataFrame: a new issue linking to a new epic
     with mock.patch.dict(ISSUE_NEW, {link_name: EPIC_NEW['key']}):
-        issue_new = Issue.deserialize(ISSUE_NEW, project=project)
+        issue_new = Issue.deserialize(ISSUE_NEW, project)
 
-    epic_new = Issue.deserialize(EPIC_NEW, project=project)
+    epic_new = Issue.deserialize(EPIC_NEW, project)
     mock_jira_core._df = setup_jira_dataframe_helper([issue_new, epic_new])
 
     # Don't write to disk during tests
     mock_jira_core.write_issues = mock.Mock()
 
     # Mock the return from fetch_issue() which happens after a successful new_issue() call
-    epic_1 = Issue.deserialize(EPIC_1, project=project)
+    epic_1 = Issue.deserialize(EPIC_1, project)
     mock_jira_core.fetch_issue = mock.Mock(return_value=epic_1)
 
     # Validate the link value before the call to new_issue
@@ -828,7 +828,7 @@ def test_jira__update_issue__successful_put_results_in_get(
     Ensure a successful PUT of an Issue is followed by a GET
     '''
     # Setup the the Jira DataFrame
-    issue_1 = Issue.deserialize(ISSUE_1, project=project)
+    issue_1 = Issue.deserialize(ISSUE_1, project)
     mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
 
     # Don't write to disk during tests
@@ -855,7 +855,7 @@ def test_jira__update_issue__failed_put_raises_exception(
     Ensure a failed PUT of an Issue causes an exception
     '''
     # Setup the the Jira DataFrame
-    issue_1 = Issue.deserialize(ISSUE_1, project=project)
+    issue_1 = Issue.deserialize(ISSUE_1, project)
     mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
 
     # Don't write to disk during tests
@@ -977,7 +977,7 @@ def test_jira__update__merge_new_issues_into_existing_dataframe(mock_jira, proje
     '''
     Ensure list of Issues can be appended without error when issues are already in the cache
     '''
-    issue_1 = Issue.deserialize(ISSUE_1, project=project)
+    issue_1 = Issue.deserialize(ISSUE_1, project)
 
     # Setup the Jira DataFrame
     mock_jira._df = setup_jira_dataframe_helper([issue_1])
@@ -1003,7 +1003,7 @@ def test_jira__update__merge_existing_issues_into_existing_dataframe(mock_jira, 
     '''
     Ensure list of Issues can be updated in-place without error when the issues already in the cache
     '''
-    issue_1 = Issue.deserialize(ISSUE_1, project=project)
+    issue_1 = Issue.deserialize(ISSUE_1, project)
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
         issue_2 = Issue.deserialize(ISSUE_1, project)
 

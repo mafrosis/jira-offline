@@ -33,12 +33,12 @@ def test_cli__global_options__debug_flag_sets_logger_to_debug_level(mock_jira):
     assert logging.getLogger('jira').level == logging.DEBUG
 
 
-def test_cli__filter_options__filter_flag_sets_jira_object_filter(mock_jira):
+def test_cli__filter_options__filter_flag_sets_jira_object_filter(mock_jira, project):
     '''
     Ensure the --filter flag is set into jira.filter
     '''
     # add a single lonely fixture to the Jira store
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
     runner = CliRunner()
 

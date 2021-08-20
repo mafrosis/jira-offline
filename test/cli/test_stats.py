@@ -16,13 +16,13 @@ STATS_SUBCOMMANDS = [
 
 
 @pytest.mark.parametrize('subcommand', STATS_SUBCOMMANDS)
-def test_stats_smoketest(mock_jira, subcommand):
+def test_stats_smoketest(mock_jira, project, subcommand):
     '''
     Dumb smoke test function to check for errors via CLI - when the jira-offline issue cache has a
     single issue
     '''
     # add fixture to Jira dict
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
     runner = CliRunner()
 
@@ -50,13 +50,13 @@ def test_stats_smoketest_empty(mock_jira, subcommand):
 
 
 @mock.patch('jira_offline.cli.stats.print_table')
-def test_cli_stats__no_errors_when_no_subcommand_passed(mock_print_table, mock_jira):
+def test_cli_stats__no_errors_when_no_subcommand_passed(mock_print_table, mock_jira, project):
     '''
     Ensure no exceptions arise from the stats subcommands when no subcommand passed, and print table
     is called three times (as there are three subcommands to be invoked)
     '''
     # add fixture to Jira dict
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
     runner = CliRunner()
 

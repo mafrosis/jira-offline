@@ -25,7 +25,7 @@ def test_create__create_issue__does_not_load_issues_when_cache_full(mock_jira, p
     Ensure create_issue() NOT calls load_issues() when the cache is full
     '''
     # add an Issue fixture to the Jira dict
-    mock_jira['TEST-72'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-72'] = Issue.deserialize(ISSUE_1, project)
 
     with mock.patch('jira_offline.create.jira', mock_jira):
         create_issue(project, 'Story', 'This is a summary')
@@ -79,7 +79,7 @@ def test_create__create_issue__kwargs_are_set_in_new_issue(mock_jira, project):
     Ensure create_issue() sets the extra fields passed as kwargs (not args)
     '''
     # Add an Epic fixture to the Jira dict
-    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
+    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1, project)
 
     with mock.patch('jira_offline.create.jira', mock_jira):
         offline_issue = create_issue(project, 'Story', 'This is a summary', epic_link='TEST-1')
@@ -98,7 +98,7 @@ def test_create__create_issue__kwargs_are_set_in_new_issue_extended(mock_jira, p
     project.customfields.extended = {'arbitrary_key': 'customfield_10111'}
 
     # Add an Epic fixture to the Jira dict
-    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
+    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1, project)
 
     with mock.patch('jira_offline.create.jira', mock_jira):
         offline_issue = create_issue(project, 'Story', 'This is a summary', arbitrary_key='arbitrary_value')
@@ -115,7 +115,7 @@ def test_create__create_issue__raises_exception_when_passed_an_unknown_epic_link
     existing epic on either summary OR epic_name
     '''
     # add an Epic fixture to the Jira dict
-    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
+    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1, project)
 
     with mock.patch('jira_offline.create.jira', mock_jira):
         with pytest.raises(EpicNotFound):
@@ -132,7 +132,7 @@ def test_create__create_issue__issue_is_mapped_to_existing_epic_summary(mock_jir
     epic's summary OR epic_name
     '''
     # add an Epic fixture to the Jira dict
-    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
+    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1, project)
 
     with mock.patch('jira_offline.create.jira', mock_jira), mock.patch('jira_offline.jira.jira', mock_jira):
         new_issue = create_issue(project, 'Story', 'This is summary', epic_link=epic_link_value)
@@ -141,12 +141,12 @@ def test_create__create_issue__issue_is_mapped_to_existing_epic_summary(mock_jir
     assert new_issue.epic_link == mock_jira['TEST-1'].key
 
 
-def test_create__find_epic_by_reference__match_by_key(mock_jira):
+def test_create__find_epic_by_reference__match_by_key(mock_jira, project):
     '''
     Ensure find_epic_by_reference() returns an Issue of epic type when passed the Issue key
     '''
     # add an Epic fixture to the Jira dict
-    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
+    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1, project)
 
     with mock.patch('jira_offline.create.jira', mock_jira):
         epic = find_epic_by_reference('TEST-1')
@@ -154,12 +154,12 @@ def test_create__find_epic_by_reference__match_by_key(mock_jira):
     assert epic == mock_jira['TEST-1']
 
 
-def test_create__find_epic_by_reference__match_by_summary(mock_jira):
+def test_create__find_epic_by_reference__match_by_summary(mock_jira, project):
     '''
     Ensure find_epic_by_reference() returns an Issue of epic type when passed a summary
     '''
     # add an Epic fixture to the Jira dict
-    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
+    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1, project)
 
     with mock.patch('jira_offline.create.jira', mock_jira), mock.patch('jira_offline.jira.jira', mock_jira):
         epic = find_epic_by_reference('This is an epic')
@@ -167,12 +167,12 @@ def test_create__find_epic_by_reference__match_by_summary(mock_jira):
     assert epic == mock_jira['TEST-1']
 
 
-def test_create__find_epic_by_reference__match_by_epic_name(mock_jira):
+def test_create__find_epic_by_reference__match_by_epic_name(mock_jira, project):
     '''
     Ensure find_epic_by_reference() returns an Issue of epic type when passed an epic_name
     '''
     # add an Epic fixture to the Jira dict
-    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
+    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1, project)
 
     with mock.patch('jira_offline.create.jira', mock_jira), mock.patch('jira_offline.jira.jira', mock_jira):
         epic = find_epic_by_reference('0.1: Epic about a thing')
@@ -180,7 +180,7 @@ def test_create__find_epic_by_reference__match_by_epic_name(mock_jira):
     assert epic == mock_jira['TEST-1']
 
 
-def test_create__find_epic_by_reference__raise_on_failed_to_match(mock_jira):
+def test_create__find_epic_by_reference__raise_on_failed_to_match(mock_jira, project):
     '''
     Ensure exception raised when epic not found
     '''
@@ -189,15 +189,15 @@ def test_create__find_epic_by_reference__raise_on_failed_to_match(mock_jira):
             find_epic_by_reference('fake epic reference')
 
 
-def test_create__find_epic_by_reference__raise_on_duplicate_ref_string(mock_jira):
+def test_create__find_epic_by_reference__raise_on_duplicate_ref_string(mock_jira, project):
     '''
     Ensure exception raised when there are two epics matching the search string
     '''
     # Setup two epic fixtures
-    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1)
+    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1, project)
 
     with mock.patch.dict(EPIC_1, {'key': 'TEST-2'}):
-        mock_jira['TEST-2'] = Issue.deserialize(EPIC_1)
+        mock_jira['TEST-2'] = Issue.deserialize(EPIC_1, project)
 
     with mock.patch('jira_offline.create.jira', mock_jira), mock.patch('jira_offline.jira.jira', mock_jira):
         with pytest.raises(EpicSearchStrUsedMoreThanOnce):
@@ -228,7 +228,7 @@ def test_create__import_issue__calls_import_updated_when_obj_has_key(mock_import
     assert is_new is False
 
 
-def test_create__import_modified_issue__merges_writable_fields(mock_jira):
+def test_create__import_modified_issue__merges_writable_fields(mock_jira, project):
     '''
     Ensure _import_modified_issue() merges imported data onto writable fields
 
@@ -236,7 +236,7 @@ def test_create__import_modified_issue__merges_writable_fields(mock_jira):
     problems in functions down the callstack
     '''
     # add an Issue fixture to the Jira dict
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
     # import some modified fields for Issue key=issue1
     import_dict = {
@@ -255,7 +255,7 @@ def test_create__import_modified_issue__merges_writable_fields(mock_jira):
     assert imported_issue.description == 'bacon'
 
 
-def test_create__import_modified_issue__doesnt_merge_readonly_fields(mock_jira):
+def test_create__import_modified_issue__doesnt_merge_readonly_fields(mock_jira, project):
     '''
     Ensure _import_modified_issue() doesnt merge imported data onto readonly fields
 
@@ -263,7 +263,7 @@ def test_create__import_modified_issue__doesnt_merge_readonly_fields(mock_jira):
     problems in functions down the callstack
     '''
     # add an Issue fixture to the Jira dict
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
     # import a readonly field against TEST-71
     import_dict = {'key': 'TEST-71', 'project_id': 'hoganp'}
@@ -275,7 +275,7 @@ def test_create__import_modified_issue__doesnt_merge_readonly_fields(mock_jira):
     assert imported_issue.project_id == '99fd9182cfc4c701a8a662f6293f4136201791b4'
 
 
-def test_create__import_modified_issue__produces_issue_with_diff(mock_jira):
+def test_create__import_modified_issue__produces_issue_with_diff(mock_jira, project):
     '''
     Ensure _import_modified_issue() produces an Issue with a diff
 
@@ -283,7 +283,7 @@ def test_create__import_modified_issue__produces_issue_with_diff(mock_jira):
     problems in functions down the callstack
     '''
     # add an Issue fixture to the Jira dict
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
     import_dict = {'key': 'TEST-71', 'assignee': 'hoganp'}
 
@@ -295,7 +295,7 @@ def test_create__import_modified_issue__produces_issue_with_diff(mock_jira):
     assert imported_issue.diff() == [('change', 'assignee', ('hoganp', 'danil1'))]
 
 
-def test_create__import_modified_issue__idempotent(mock_jira):
+def test_create__import_modified_issue__idempotent(mock_jira, project):
     '''
     Ensure an issue can be imported twice without breaking the diff behaviour
 
@@ -303,7 +303,7 @@ def test_create__import_modified_issue__idempotent(mock_jira):
     problems in functions down the callstack
     '''
     # add an Issue fixture to the Jira dict
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1)
+    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
     import_dict = {'key': 'TEST-71', 'assignee': 'hoganp'}
 
@@ -359,11 +359,11 @@ def test_create__import_new_issue__raises_on_key_missing(mock_jira, keys):
             _import_new_issue({k[0]:1 for k in zip(keys)})
 
 
-def test_create__patch_issue_from_dict__set_string_to_value(mock_jira):
+def test_create__patch_issue_from_dict__set_string_to_value(mock_jira, project):
     '''
     Ensure an Issue can have attributes set to a string
     '''
-    issue = Issue.deserialize(ISSUE_1)
+    issue = Issue.deserialize(ISSUE_1, project)
 
     with mock.patch('jira_offline.create.jira', mock_jira):
         patch_issue_from_dict(issue, {'assignee': 'eggs'})
@@ -371,11 +371,11 @@ def test_create__patch_issue_from_dict__set_string_to_value(mock_jira):
     assert issue.assignee == 'eggs'
 
 
-def test_create__patch_issue_from_dict__set_string_to_blank(mock_jira):
+def test_create__patch_issue_from_dict__set_string_to_blank(mock_jira, project):
     '''
     Ensure an Issue can have attributes set to an empty string and it will result in None
     '''
-    issue = Issue.deserialize(ISSUE_1)
+    issue = Issue.deserialize(ISSUE_1, project)
 
     with mock.patch('jira_offline.create.jira', mock_jira):
         patch_issue_from_dict(issue, {'assignee': ''})
@@ -383,11 +383,11 @@ def test_create__patch_issue_from_dict__set_string_to_blank(mock_jira):
     assert issue.assignee is None
 
 
-def test_create__patch_issue_from_dict__set_priority(mock_jira):
+def test_create__patch_issue_from_dict__set_priority(mock_jira, project):
     '''
     Ensure an Issue.priority can be set
     '''
-    issue = Issue.deserialize(ISSUE_1)
+    issue = Issue.deserialize(ISSUE_1, project)
 
     with mock.patch('jira_offline.create.jira', mock_jira):
         patch_issue_from_dict(issue, {'priority': 'Bacon'})
@@ -395,11 +395,11 @@ def test_create__patch_issue_from_dict__set_priority(mock_jira):
     assert issue.priority == 'Bacon'
 
 
-def test_create__patch_issue_from_dict__set_extended_customfield(mock_jira):
+def test_create__patch_issue_from_dict__set_extended_customfield(mock_jira, project):
     '''
     Ensure user-defined customfield "arbitrary-user-defined-field" can be set
     '''
-    issue = Issue.deserialize(ISSUE_1)
+    issue = Issue.deserialize(ISSUE_1, project)
 
     with mock.patch('jira_offline.create.jira', mock_jira):
         patch_issue_from_dict(issue, {'arbitrary-user-defined-field': 'eggs'})
@@ -407,12 +407,12 @@ def test_create__patch_issue_from_dict__set_extended_customfield(mock_jira):
     assert issue.extended['arbitrary-user-defined-field'] == 'eggs'
 
 
-def test_create__patch_issue_from_dict__set_extended_customfield_extended(mock_jira):
+def test_create__patch_issue_from_dict__set_extended_customfield_extended(mock_jira, project):
     '''
     Ensure user-defined customfield "extended.arbitrary-user-defined-field" can be set, using the
     extended prefix
     '''
-    issue = Issue.deserialize(ISSUE_1)
+    issue = Issue.deserialize(ISSUE_1, project)
 
     with mock.patch('jira_offline.create.jira', mock_jira):
         patch_issue_from_dict(issue, {'extended.arbitrary-user-defined-field': 'eggs'})

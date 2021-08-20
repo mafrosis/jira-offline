@@ -66,7 +66,7 @@ def test_jiraapi_object_to_issue__handles_customfields_extended(mock_jira):
     assert issue.extended['arbitrary_key'] == 'arbitrary_value'
 
 
-def test_issue_to_jiraapi_update__handles_customfields(mock_jira):
+def test_issue_to_jiraapi_update__handles_customfields(mock_jira, project):
     '''
     Ensure issue_to_jiraapi_update converts Issue customfield attributes into the Jira API update format
     '''
@@ -78,7 +78,7 @@ def test_issue_to_jiraapi_update__handles_customfields(mock_jira):
     )
     project = ProjectMeta(key='TEST', customfields=customfields)
 
-    issue_fixture = Issue.deserialize(ISSUE_1)
+    issue_fixture = Issue.deserialize(ISSUE_1, project)
     issue_fixture.story_points = decimal.Decimal('1.234')
 
     update_dict = issue_to_jiraapi_update(project, issue_fixture, {'story_points'})
@@ -86,7 +86,7 @@ def test_issue_to_jiraapi_update__handles_customfields(mock_jira):
     assert update_dict['customfield_10400'] == '1.234'
 
 
-def test_issue_to_jiraapi_update__handles_customfields_extended(mock_jira):
+def test_issue_to_jiraapi_update__handles_customfields_extended(mock_jira, project):
     '''
     Ensure issue_to_jiraapi_update converts Issue customfield extended attributes into the Jira API update format
     '''
@@ -100,7 +100,7 @@ def test_issue_to_jiraapi_update__handles_customfields_extended(mock_jira):
     )
     project = ProjectMeta(key='TEST', customfields=customfields)
 
-    issue_fixture = Issue.deserialize(ISSUE_1)
+    issue_fixture = Issue.deserialize(ISSUE_1, project)
     issue_fixture.extended['arbitrary_key'] = 'arbitrary_value'
 
     update_dict = issue_to_jiraapi_update(project, issue_fixture, {'extended.arbitrary_key'})
@@ -112,13 +112,13 @@ def test_issue_to_jiraapi_update__handles_customfields_extended(mock_jira):
     {'assignee'},
     {'fix_versions', 'summary'},
 ])
-def test_issue_to_jiraapi_update__returns_only_fields_passed_in_modified(mock_jira, modified):
+def test_issue_to_jiraapi_update__returns_only_fields_passed_in_modified(mock_jira, project, modified):
     '''
     Ensure issue_to_jiraapi_update returns only set of fields passed in modified parameter
     '''
     project = ProjectMeta(key='TEST')
 
-    issue_dict = issue_to_jiraapi_update(project, Issue.deserialize(ISSUE_1), modified)
+    issue_dict = issue_to_jiraapi_update(project, Issue.deserialize(ISSUE_1, project), modified)
     assert issue_dict.keys() == modified
 
 
@@ -128,27 +128,27 @@ def test_issue_to_jiraapi_update__returns_only_fields_passed_in_modified(mock_ji
     {'reporter'},
     {'priority'},
 ])
-def test_issue_to_jiraapi_update__fields_are_formatted_correctly(mock_jira, modified):
+def test_issue_to_jiraapi_update__fields_are_formatted_correctly(mock_jira, project, modified):
     '''
     Ensure issue_to_jiraapi_update formats some fields correctly
     '''
     project = ProjectMeta(key='TEST')
 
-    issue_dict = issue_to_jiraapi_update(project, Issue.deserialize(ISSUE_1), modified)
+    issue_dict = issue_to_jiraapi_update(project, Issue.deserialize(ISSUE_1, project), modified)
     assert 'name' in issue_dict[next(iter(modified))]
 
 
-def test_issue_to_jiraapi_update__handles_class_property(mock_jira):
+def test_issue_to_jiraapi_update__handles_class_property(mock_jira, project):
     '''
     Ensure issue_to_jiraapi_update handles @property fields on Issue class
     '''
     project = ProjectMeta(key='TEST')
 
-    issue_dict = issue_to_jiraapi_update(project, Issue.deserialize(ISSUE_1), {'priority'})
+    issue_dict = issue_to_jiraapi_update(project, Issue.deserialize(ISSUE_1, project), {'priority'})
     assert issue_dict.keys() == {'priority'}
 
 
-def test_issue_to_jiraapi_update__core_mandatory_fields_returned_for_new_issue(mock_jira):
+def test_issue_to_jiraapi_update__core_mandatory_fields_returned_for_new_issue(mock_jira, project):
     '''
     Ensure issue_to_jiraapi_update returns all mandatory and new fields for a new Issue
     '''
@@ -162,7 +162,7 @@ def test_issue_to_jiraapi_update__core_mandatory_fields_returned_for_new_issue(m
 
     # Create a plain & simple new issue with no extra pre-set fields
     with mock.patch.dict(ISSUE_NEW, {'fix_versions': set(), 'epic_link': None, 'reporter': None}):
-        new_issue = Issue.deserialize(ISSUE_NEW)
+        new_issue = Issue.deserialize(ISSUE_NEW, project)
 
     issue_dict = issue_to_jiraapi_update(
         project, new_issue, {'project_id', 'issuetype', 'summary', 'key'}
@@ -175,7 +175,7 @@ def test_issue_to_jiraapi_update__core_mandatory_fields_returned_for_new_issue(m
     }
 
 
-def test_issue_to_jiraapi_update__customfields_and_extended_customfields_returned_for_new_issue(mock_jira):
+def test_issue_to_jiraapi_update__customfields_and_extended_customfields_returned_for_new_issue(mock_jira, project):
     '''
     Ensure issue_to_jiraapi_update returns customfields and extended customfields for a new Issue
     '''
@@ -197,7 +197,7 @@ def test_issue_to_jiraapi_update__customfields_and_extended_customfields_returne
             'reporter': None,
             'extended': {'arbitrary_key': 'arbitrary_value'}
         }):
-        new_issue = Issue.deserialize(ISSUE_NEW)
+        new_issue = Issue.deserialize(ISSUE_NEW, project)
 
     issue_dict = issue_to_jiraapi_update(
         project, new_issue, {'project_id', 'issuetype', 'summary', 'key', 'description', 'epic_link', 'extended.arbitrary_key'}

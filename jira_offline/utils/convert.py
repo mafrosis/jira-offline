@@ -63,7 +63,7 @@ def jiraapi_object_to_issue(project: 'ProjectMeta', issue: dict) -> 'Issue':
 
     # Late import to avoid circular dependency
     from jira_offline.models import Issue  # pylint: disable=import-outside-toplevel, cyclic-import
-    return Issue.deserialize(jiraapi_object, project=project)
+    return Issue.deserialize(jiraapi_object, project)
 
 
 def issue_to_jiraapi_update(project: 'ProjectMeta', issue: 'Issue', modified: set) -> dict:

@@ -11,11 +11,11 @@ from jira_offline.sync import (merge_issues, ConflictResolutionFailed,
 
 @mock.patch('jira_offline.sync.manual_conflict_resolution')
 @mock.patch('jira_offline.sync.build_update')
-def test_merge_issues__doesnt_call_conflict_resolution_on_NO_conflict(mock_build_update, mock_manual_conflict_resolution):
+def test_merge_issues__doesnt_call_conflict_resolution_on_NO_conflict(mock_build_update, mock_manual_conflict_resolution, project):
     '''
     Ensure that merge_issues does NOT call manual_conflict_resolution when no conflicts found
     '''
-    issue_1 = Issue.deserialize(ISSUE_1)
+    issue_1 = Issue.deserialize(ISSUE_1, project)
 
     # mock build_update to return NO conflicts
     mock_build_update.return_value = IssueUpdate(merged_issue=issue_1)
@@ -28,15 +28,15 @@ def test_merge_issues__doesnt_call_conflict_resolution_on_NO_conflict(mock_build
     assert mock_manual_conflict_resolution.called is False
 
 
-def test_merge_issues__merged_issue_has_original_property_updated_to_match_upstream_issue():
+def test_merge_issues__merged_issue_has_original_property_updated_to_match_upstream_issue(project):
     '''
     Ensure the Issue returned from merge_issues has an original property set to the serialized upstream
     Issue returned by the Jira server
     '''
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-71'}):
-        local_issue = Issue.deserialize(ISSUE_1)
+        local_issue = Issue.deserialize(ISSUE_1, project)
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
-        updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='hoganp')
+        updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='hoganp')
 
     update_obj = merge_issues(local_issue, updated_issue, is_upstream_merge=True)
 
@@ -48,14 +48,14 @@ def test_merge_issues__merged_issue_has_original_property_updated_to_match_upstr
     assert update_obj.merged_issue.original == serialized_upstream_issue
 
 
-def test_merge_issues__merged_issue_has_diff_to_original():
+def test_merge_issues__merged_issue_has_diff_to_original(project):
     '''
     Ensure the Issue returned from merge_issues has a diff_to_original attribute
     '''
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-71'}):
-        local_issue = Issue.deserialize(ISSUE_1)
+        local_issue = Issue.deserialize(ISSUE_1, project)
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-72', 'assignee': 'hoganp'}):
-        updated_issue = Issue.deserialize(ISSUE_1)
+        updated_issue = Issue.deserialize(ISSUE_1, project)
 
     update_obj = merge_issues(local_issue, updated_issue, is_upstream_merge=True)
 
@@ -63,15 +63,15 @@ def test_merge_issues__merged_issue_has_diff_to_original():
 
 
 @mock.patch('jira_offline.sync.build_update')
-def test_merge_issues__is_upstream_merge_equals_true__merged_issue_original_equals_updated_issue(mock_build_update):
+def test_merge_issues__is_upstream_merge_equals_true__merged_issue_original_equals_updated_issue(mock_build_update, project):
     '''
-    Ensure the Issue returned from merge_issues has Issue.set_original() called,
+    Ensure the Issue returned from merge_issues has Issue.set_original(project) called,
     when is_upstream_merge=True
     '''
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-71'}):
-        local_issue = Issue.deserialize(ISSUE_1)
+        local_issue = Issue.deserialize(ISSUE_1, project)
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
-        updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='hoganp')
+        updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='hoganp')
 
     # mock build_update to return a valid IssueUpdate object
     update_obj = IssueUpdate(
@@ -94,15 +94,15 @@ def test_merge_issues__is_upstream_merge_equals_true__merged_issue_original_equa
 
 
 @mock.patch('jira_offline.sync.build_update')
-def test_merge_issues__is_upstream_merge_equals_false__merged_issue_original_DOES_NOT_equal_updated_issue(mock_build_update):
+def test_merge_issues__is_upstream_merge_equals_false__merged_issue_original_DOES_NOT_equal_updated_issue(mock_build_update, project):
     '''
-    Ensure the Issue returned from merge_issues does not have Issue.set_original() called,
+    Ensure the Issue returned from merge_issues does not have Issue.set_original(project) called,
     when is_upstream_merge=False
     '''
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-71'}):
-        local_issue = Issue.deserialize(ISSUE_1)
+        local_issue = Issue.deserialize(ISSUE_1, project)
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-72', 'assignee': 'hoganp'}):
-        updated_issue = Issue.deserialize(ISSUE_1)
+        updated_issue = Issue.deserialize(ISSUE_1, project)
 
     # mock build_update to return a valid IssueUpdate object
     update_obj = IssueUpdate(
@@ -122,14 +122,14 @@ def test_merge_issues__is_upstream_merge_equals_false__merged_issue_original_DOE
 
 @mock.patch('jira_offline.sync.manual_conflict_resolution')
 @mock.patch('jira_offline.sync.build_update')
-def test_merge_issues__calls_manual_conflict_resolution(mock_build_update, mock_manual_conflict_resolution):
+def test_merge_issues__calls_manual_conflict_resolution(mock_build_update, mock_manual_conflict_resolution, project):
     '''
     Ensure that manual_conflict_resolution is invoked when there are conflicts
     '''
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-71'}):
-        local_issue = Issue.deserialize(ISSUE_1)
+        local_issue = Issue.deserialize(ISSUE_1, project)
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-72', 'assignee': 'hoganp'}):
-        updated_issue = Issue.deserialize(ISSUE_1)
+        updated_issue = Issue.deserialize(ISSUE_1, project)
 
     # mock build_update to return conflicts
     update_obj = IssueUpdate(
@@ -148,12 +148,12 @@ def test_merge_issues__calls_manual_conflict_resolution(mock_build_update, mock_
 
 @mock.patch('jira_offline.sync.click')
 @mock.patch('jira_offline.sync.parse_editor_result')
-def test_manual_conflict_resolution__retries_three_times_on_none_return(mock_parse_editor_result, mock_click):
+def test_manual_conflict_resolution__retries_three_times_on_none_return(mock_parse_editor_result, mock_click, project):
     '''
-    A return of None from click.edit() should result in three retries
+    A return of None from click.edit(project) should result in three retries
     '''
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-72', 'assignee': 'hoganp'}):
-        issue = Issue.deserialize(ISSUE_1)
+        issue = Issue.deserialize(ISSUE_1, project)
 
     update_obj = IssueUpdate(
         merged_issue=issue,
@@ -173,12 +173,12 @@ def test_manual_conflict_resolution__retries_three_times_on_none_return(mock_par
 
 @mock.patch('jira_offline.sync.click')
 @mock.patch('jira_offline.sync.parse_editor_result')
-def test_manual_conflict_resolution__retries_three_times_on_blank_return(mock_parse_editor_result, mock_click):
+def test_manual_conflict_resolution__retries_three_times_on_blank_return(mock_parse_editor_result, mock_click, project):
     '''
-    A return of blank from click.edit() should result in three retries
+    A return of blank from click.edit(project) should result in three retries
     '''
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-72', 'assignee': 'hoganp'}):
-        issue = Issue.deserialize(ISSUE_1)
+        issue = Issue.deserialize(ISSUE_1, project)
 
     update_obj = IssueUpdate(
         merged_issue=issue,
@@ -198,13 +198,13 @@ def test_manual_conflict_resolution__retries_three_times_on_blank_return(mock_pa
 
 @mock.patch('jira_offline.sync.click')
 @mock.patch('jira_offline.sync.parse_editor_result')
-def test_manual_conflict_resolution__handles_three_error_strings_in_editor_return(mock_parse_editor_result, mock_click):
+def test_manual_conflict_resolution__handles_three_error_strings_in_editor_return(mock_parse_editor_result, mock_click, project):
     '''
     There are three strings which indicate failure in a conflict resolution string edit
     Ensure they all raise correctly
     '''
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-72', 'assignee': 'hoganp'}):
-        issue = Issue.deserialize(ISSUE_1)
+        issue = Issue.deserialize(ISSUE_1, project)
 
     update_obj = IssueUpdate(
         merged_issue=issue,

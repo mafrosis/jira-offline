@@ -9,7 +9,7 @@ from jira_offline.models import Issue
 from jira_offline.utils.cli import parse_editor_result
 
 
-def test_parse_editor_result__handles_str_change():
+def test_parse_editor_result__handles_str_change(project):
     '''
     Ensure editor parser handles a simple changed string
     '''
@@ -34,13 +34,13 @@ def test_parse_editor_result__handles_str_change():
     ]
 
     patch_dict = parse_editor_result(
-        Issue.deserialize(ISSUE_1),
+        Issue.deserialize(ISSUE_1, project),
         '\n'.join(editor_result_raw),
     )
     assert patch_dict['assignee'] == 'mafro'
 
 
-def test_parse_editor_result__handles_str_change_over_100_chars():
+def test_parse_editor_result__handles_str_change_over_100_chars(project):
     '''
     Ensure editor parser handles strings over 100 chars, as they are textwrapped for the editor
     '''
@@ -65,13 +65,13 @@ def test_parse_editor_result__handles_str_change_over_100_chars():
     ]
 
     patch_dict = parse_editor_result(
-        Issue.deserialize(ISSUE_1),
+        Issue.deserialize(ISSUE_1, project),
         '\n'.join(editor_result_raw),
     )
     assert patch_dict['description'] == str('This is a story or issue '*5).strip()
 
 
-def test_parse_editor_result__parses_summary_str():
+def test_parse_editor_result__parses_summary_str(project):
     '''
     Ensure editor parser handles unique summary string formatting
     '''
@@ -96,13 +96,13 @@ def test_parse_editor_result__parses_summary_str():
     ]
 
     patch_dict = parse_editor_result(
-        Issue.deserialize(ISSUE_1),
+        Issue.deserialize(ISSUE_1, project),
         '\n'.join(editor_result_raw),
     )
     assert patch_dict['summary'] == 'This is the story summary'
 
 
-def test_parse_editor_result__handles_extended_customfield():
+def test_parse_editor_result__handles_extended_customfield(project):
     '''
     Ensure editor parser handles an extended customfield on an Issue
     '''
@@ -130,14 +130,14 @@ def test_parse_editor_result__handles_extended_customfield():
     # Set an extended customfield on the issue
     with mock.patch.dict(ISSUE_1, {'extended': {'arbitrary_key': 'arbitrary_value'}}):
         patch_dict = parse_editor_result(
-            Issue.deserialize(ISSUE_1),
+            Issue.deserialize(ISSUE_1, project),
             '\n'.join(editor_result_raw),
         )
 
     assert patch_dict['extended.arbitrary_key'] == 'arbitrary_updated'
 
 
-def test_parse_editor_result__handles_add_to_set():
+def test_parse_editor_result__handles_add_to_set(project):
     '''
     Ensure editor parser handles adding items to a set
     '''
@@ -164,13 +164,13 @@ def test_parse_editor_result__handles_add_to_set():
     ]
 
     patch_dict = parse_editor_result(
-        Issue.deserialize(ISSUE_1),
+        Issue.deserialize(ISSUE_1, project),
         '\n'.join(editor_result_raw),
     )
     assert patch_dict['fix_versions'] == {'0.1', '0.3', 'DAVE'}
 
 
-def test_parse_editor_result__handles_remove_from_set():
+def test_parse_editor_result__handles_remove_from_set(project):
     '''
     Ensure editor parser handles removing items from a set
     '''
@@ -196,13 +196,13 @@ def test_parse_editor_result__handles_remove_from_set():
 
     with mock.patch.dict(ISSUE_1, {'labels': ['egg', 'bacon']}):
         patch_dict = parse_editor_result(
-            Issue.deserialize(ISSUE_1),
+            Issue.deserialize(ISSUE_1, project),
             '\n'.join(editor_result_raw),
         )
     assert patch_dict['labels'] == {'bacon'}
 
 
-def test_parse_editor_result__set_empty_items_ignored():
+def test_parse_editor_result__set_empty_items_ignored(project):
     '''
     Ensure editor parser handles bad input set set types
     '''
@@ -228,14 +228,14 @@ def test_parse_editor_result__set_empty_items_ignored():
     ]
 
     patch_dict = parse_editor_result(
-        Issue.deserialize(ISSUE_1),
+        Issue.deserialize(ISSUE_1, project),
         '\n'.join(editor_result_raw),
     )
     assert patch_dict['fix_versions'] == {'0.1'}
 
 
 @pytest.mark.parametrize('story_points', [99, 1.5])
-def test_parse_editor_result__handles_decimal_type(story_points):
+def test_parse_editor_result__handles_decimal_type(story_points, project):
     '''
     Ensure editor parser handles decimal type
     '''
@@ -260,13 +260,13 @@ def test_parse_editor_result__handles_decimal_type(story_points):
     ]
 
     patch_dict = parse_editor_result(
-        Issue.deserialize(ISSUE_1),
+        Issue.deserialize(ISSUE_1, project),
         '\n'.join(editor_result_raw),
     )
     assert patch_dict['story_points'] == str(story_points)
 
 
-def test_parse_editor_result__raises_if_single_field_returned_twice():
+def test_parse_editor_result__raises_if_single_field_returned_twice(project):
     '''
     Ensure editor parser raises if a single field is returned twice from the editor
     '''
@@ -293,7 +293,7 @@ def test_parse_editor_result__raises_if_single_field_returned_twice():
 
     with pytest.raises(EditorRepeatFieldFound):
         parse_editor_result(
-            Issue.deserialize(ISSUE_1),
+            Issue.deserialize(ISSUE_1, project),
             '\n'.join(editor_result_raw),
         )
 
@@ -303,7 +303,7 @@ def test_parse_editor_result__raises_if_single_field_returned_twice():
     ' ',
     'Summ',
 ])
-def test_parse_editor_result__skips_lines_before_a_valid_field(prefix):
+def test_parse_editor_result__skips_lines_before_a_valid_field(prefix, project):
     '''
     Ensure editor parser skips any lines before a valid field name is found
     '''
@@ -329,13 +329,13 @@ def test_parse_editor_result__skips_lines_before_a_valid_field(prefix):
     ]
 
     patch_dict = parse_editor_result(
-        Issue.deserialize(ISSUE_1),
+        Issue.deserialize(ISSUE_1, project),
         '\n'.join(editor_result_raw),
     )
     assert patch_dict['assignee'] == 'mafro'
 
 
-def test_parse_editor_result__conflict__returns_only_changes_named_in_conflicts():
+def test_parse_editor_result__conflict__returns_only_changes_named_in_conflicts(project):
     '''
     Ensure editor parser in conflict mode returns only the changes made to conflicting fields
     '''
@@ -362,7 +362,7 @@ def test_parse_editor_result__conflict__returns_only_changes_named_in_conflicts(
     ]
 
     patch_dict = parse_editor_result(
-        Issue.deserialize(ISSUE_1),
+        Issue.deserialize(ISSUE_1, project),
         '\n'.join(editor_result_raw),
         conflicts={'assignee'},
     )
@@ -378,7 +378,7 @@ def test_parse_editor_result__conflict__returns_only_changes_named_in_conflicts(
     '==',
     ' ==',
 ])
-def test_parse_editor_result__conflict__handles_bad_conflict_strings(bad_conflict):
+def test_parse_editor_result__conflict__handles_bad_conflict_strings(bad_conflict, project):
     '''
     Ensure editor parser in conflict mode handles dodgy output from the editor
     '''
@@ -406,7 +406,7 @@ def test_parse_editor_result__conflict__handles_bad_conflict_strings(bad_conflic
 
     with not_raises(EditorFieldParseFailed):
         parse_editor_result(
-            Issue.deserialize(ISSUE_1),
+            Issue.deserialize(ISSUE_1, project),
             '\n'.join(editor_result_raw),
             conflicts={'assignee'},
         )

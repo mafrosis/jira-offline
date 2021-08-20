@@ -9,15 +9,15 @@ from jira_offline.models import Issue
 from jira_offline.sync import Conflict, build_update
 
 
-def test_build_update__ignores_readonly_fields():
+def test_build_update__ignores_readonly_fields(project):
     '''
     Modified readonly fields must be ignored during build_update
     '''
     # Create a modified base issue fixture
-    base_issue = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='hoganp')
+    base_issue = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='hoganp')
 
     # Create a modified issue where only a readonly field is modified
-    updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1), updated=datetime.datetime.now())
+    updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1, project), updated=datetime.datetime.now())
 
     update_obj = build_update(base_issue, updated_issue)
 
@@ -27,17 +27,17 @@ def test_build_update__ignores_readonly_fields():
     assert update_obj.merged_issue.updated == base_issue.updated
 
 
-def test_build_update__base_unmodified_and_updated_modified():
+def test_build_update__base_unmodified_and_updated_modified(project):
     '''
     Ensure NO conflict when:
       - base NOT changed
       - updated changed to field B=1
     '''
     # Create an unmodified base issue fixture
-    base_issue = Issue.deserialize(ISSUE_1)
+    base_issue = Issue.deserialize(ISSUE_1, project)
 
     # Create a modified upstream issue fixture
-    updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='hoganp')
+    updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='hoganp')
 
     update_obj = build_update(base_issue, updated_issue)
 
@@ -46,17 +46,17 @@ def test_build_update__base_unmodified_and_updated_modified():
     assert update_obj.merged_issue.assignee == 'hoganp'
 
 
-def test_build_update__base_modified_and_updated_unmodified():
+def test_build_update__base_modified_and_updated_unmodified(project):
     '''
     Ensure NO conflict when:
       - base changed to field A=1
       - updated NOT changed
     '''
     # Create a modified base issue fixture
-    base_issue = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='hoganp')
+    base_issue = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='hoganp')
 
     # Create an unmodified upstream issue fixture
-    updated_issue = Issue.deserialize(ISSUE_1)
+    updated_issue = Issue.deserialize(ISSUE_1, project)
 
     update_obj = build_update(base_issue, updated_issue)
 
@@ -65,17 +65,17 @@ def test_build_update__base_modified_and_updated_unmodified():
     assert update_obj.merged_issue.assignee == 'hoganp'
 
 
-def test_build_update__base_modified_and_updated_modified_on_conflicting_str():
+def test_build_update__base_modified_and_updated_modified_on_conflicting_str(project):
     '''
     Ensure conflict when (for str type):
       - base changed to field A="1"
       - updated changed to field A="2"
     '''
     # Create a modified base issue fixture
-    base_issue = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='hoganp')
+    base_issue = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='hoganp')
 
     # Create a conflicting modified issue fixture
-    updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='murphye')
+    updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='murphye')
 
     update_obj = build_update(base_issue, updated_issue)
 
@@ -86,7 +86,7 @@ def test_build_update__base_modified_and_updated_modified_on_conflicting_str():
     assert isinstance(update_obj.merged_issue.assignee, Conflict)
 
 
-def test_build_update__base_modified_and_updated_modified_on_conflicting_str_extended():
+def test_build_update__base_modified_and_updated_modified_on_conflicting_str_extended(project):
     '''
     Ensure conflict when (for str type):
       - base changed to field A="1"
@@ -96,14 +96,14 @@ def test_build_update__base_modified_and_updated_modified_on_conflicting_str_ext
     '''
     # Create a base issue fixture with a extended customfield
     with mock.patch.dict(ISSUE_1, {'extended': {'arbitrary_key': 'arbitrary_original'}}):
-        base_issue = Issue.deserialize(ISSUE_1)
+        base_issue = Issue.deserialize(ISSUE_1, project)
 
     # Modify the extended field
     base_issue.extended['arbitrary_key'] = 'arbitrary_base'
 
     # Create a conflicting modified issue fixture
     with mock.patch.dict(ISSUE_1, {'extended': {'arbitrary_key': 'arbitrary_updated'}}):
-        updated_issue = Issue.deserialize(ISSUE_1)
+        updated_issue = Issue.deserialize(ISSUE_1, project)
 
     update_obj = build_update(base_issue, updated_issue)
 
@@ -116,17 +116,17 @@ def test_build_update__base_modified_and_updated_modified_on_conflicting_str_ext
     assert isinstance(update_obj.merged_issue.extended['arbitrary_key'], Conflict)
 
 
-def test_build_update__base_modified_and_updated_modified_on_conflicting_set():
+def test_build_update__base_modified_and_updated_modified_on_conflicting_set(project):
     '''
     Ensure conflict when (for set type):
       - base changed to field A={1,2}
       - updated changed to field A={1,3}
     '''
     # Create a modified base issue fixture
-    base_issue = modified_issue_helper(Issue.deserialize(ISSUE_1), fix_versions={'0.1', '0.2'})
+    base_issue = modified_issue_helper(Issue.deserialize(ISSUE_1, project), fix_versions={'0.1', '0.2'})
 
     # Create a conflicting modified issue fixture
-    updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1), fix_versions={'0.1', '0.3'})
+    updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1, project), fix_versions={'0.1', '0.3'})
 
     update_obj = build_update(base_issue, updated_issue)
 
@@ -137,7 +137,7 @@ def test_build_update__base_modified_and_updated_modified_on_conflicting_set():
     assert isinstance(update_obj.merged_issue.fix_versions, Conflict)
 
 
-def test_build_update__base_nonconflict_changes_returned_in_merged_issue():
+def test_build_update__base_nonconflict_changes_returned_in_merged_issue(project):
     '''
     Ensure base changes returned in merged output, along with a conflict when:
       - base changed to field A=1 and B=1
@@ -145,11 +145,11 @@ def test_build_update__base_nonconflict_changes_returned_in_merged_issue():
     '''
     # Create a modified base issue fixture
     base_issue = modified_issue_helper(
-        Issue.deserialize(ISSUE_1), summary='This is modified', assignee='hoganp'
+        Issue.deserialize(ISSUE_1, project), summary='This is modified', assignee='hoganp'
     )
 
     # Create a conflicting modified issue fixture, which conflicts on a different field
-    updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='murphye')
+    updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='murphye')
 
     update_obj = build_update(base_issue, updated_issue)
 
@@ -161,18 +161,18 @@ def test_build_update__base_nonconflict_changes_returned_in_merged_issue():
     assert update_obj.merged_issue.summary == 'This is modified'
 
 
-def test_build_update__updated_nonconflict_changes_returned_in_merged_issue():
+def test_build_update__updated_nonconflict_changes_returned_in_merged_issue(project):
     '''
     Ensure updated changes returned in merged output, along with a conflict when:
       - base changed to field A=2
       - updated changed to field A=1 and B=1
     '''
     # Create a modified base issue fixture
-    base_issue = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='murphye')
+    base_issue = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='murphye')
 
     # Create a conflicting modified issue fixture, which conflicts on a different field
     updated_issue = modified_issue_helper(
-        Issue.deserialize(ISSUE_1), summary='This is modified', assignee='hoganp'
+        Issue.deserialize(ISSUE_1, project), summary='This is modified', assignee='hoganp'
     )
 
     update_obj = build_update(base_issue, updated_issue)
@@ -185,17 +185,17 @@ def test_build_update__updated_nonconflict_changes_returned_in_merged_issue():
     assert update_obj.merged_issue.summary == 'This is modified'
 
 
-def test_build_update__base_modified_and_updated_modified_on_different_fields():
+def test_build_update__base_modified_and_updated_modified_on_different_fields(project):
     '''
     Ensure NO conflict when:
       - base changed to field A=1
       - updated changed to field B=1
     '''
     # Create a modified base issue fixture
-    base_issue = modified_issue_helper(Issue.deserialize(ISSUE_1), fix_versions={'0.1', '0.2'})
+    base_issue = modified_issue_helper(Issue.deserialize(ISSUE_1, project), fix_versions={'0.1', '0.2'})
 
     # Create a modified issue fixture, modifying a different field
-    updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='hoganp')
+    updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='hoganp')
 
     update_obj = build_update(base_issue, updated_issue)
 
@@ -205,17 +205,17 @@ def test_build_update__base_modified_and_updated_modified_on_different_fields():
     assert update_obj.merged_issue.assignee == 'hoganp'
 
 
-def test_build_update__base_modified_and_updated_modified_on_same_fields_with_same_value():
+def test_build_update__base_modified_and_updated_modified_on_same_fields_with_same_value(project):
     '''
     Ensure NO conflict when:
       - base changed to field A=1
       - updated changed to field A=1
     '''
     # Create a modified base issue fixture
-    base_issue = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='hoganp')
+    base_issue = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='hoganp')
 
     # Create a modified issue fixture, with precisely same change as the base_issue
-    updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='hoganp')
+    updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='hoganp')
 
     update_obj = build_update(base_issue, updated_issue)
 
@@ -224,17 +224,17 @@ def test_build_update__base_modified_and_updated_modified_on_same_fields_with_sa
     assert update_obj.merged_issue.assignee == 'hoganp'
 
 
-def test_build_update__base_modified_on_multiple_fields_and_updated_modified_on_single_with_same_values():
+def test_build_update__base_modified_on_multiple_fields_and_updated_modified_on_single_with_same_values(project):
     '''
     Ensure NO conflict when:
       - base changed to field A=1 and B=2
       - updated changed to field A=1
     '''
     # Create a modified base issue fixture (modified on two fields)
-    base_issue = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='hoganp', summary='This is modified')
+    base_issue = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='hoganp', summary='This is modified')
 
     # Create a modified issue fixture, with same change on assignee as the base_issue
-    updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='hoganp')
+    updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='hoganp')
 
     update_obj = build_update(base_issue, updated_issue)
 
@@ -244,17 +244,17 @@ def test_build_update__base_modified_on_multiple_fields_and_updated_modified_on_
     assert update_obj.merged_issue.assignee == 'hoganp'
 
 
-def test_build_update__base_modified_on_single_field_and_updated_modified_on_multiple_with_same_values():
+def test_build_update__base_modified_on_single_field_and_updated_modified_on_multiple_with_same_values(project):
     '''
     Ensure NO conflict when:
       - base changed to field A=1
       - updated changed to field A=1 and B=2
     '''
     # Create a modified base issue fixture (modified on two fields)
-    base_issue = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='hoganp')
+    base_issue = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='hoganp')
 
     # Create a modified issue fixture, with same change on assignee as the base_issue
-    updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='hoganp', summary='This is modified')
+    updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='hoganp', summary='This is modified')
 
     update_obj = build_update(base_issue, updated_issue)
 
@@ -264,12 +264,12 @@ def test_build_update__base_modified_on_single_field_and_updated_modified_on_mul
     assert update_obj.merged_issue.assignee == 'hoganp'
 
 
-def test_build_update__new_issue():
+def test_build_update__new_issue(project):
     '''
     Validate build_update with NEW issue
     '''
     # Create a new issue fixture
-    new_issue = Issue.deserialize(ISSUE_NEW)
+    new_issue = Issue.deserialize(ISSUE_NEW, project)
 
     # for new Issues created offline, the updated_issue is None
     update_obj = build_update(new_issue, None)
@@ -290,13 +290,13 @@ def test_build_update__new_issue():
     assert new_issue.summary == update_obj.merged_issue.summary
 
 
-def test_build_update__new_issue_with_extended_customfield():
+def test_build_update__new_issue_with_extended_customfield(project):
     '''
     Validate build_update with NEW issue that has extended customfields
     '''
     # Create a new issue fixture
     with mock.patch.dict(ISSUE_NEW, {'extended': {'arbitrary_key': 'arbitrary_original'}}):
-        new_issue = Issue.deserialize(ISSUE_NEW)
+        new_issue = Issue.deserialize(ISSUE_NEW, project)
         new_issue.fix_versions = set()
         new_issue.epic_link = None
 
@@ -323,15 +323,15 @@ def test_build_update__new_issue_with_extended_customfield():
     '',
     None,
 ])
-def test_build_update__base_unmodified_and_updated_modified_to_empty_string(val):
+def test_build_update__base_unmodified_and_updated_modified_to_empty_string(project, val):
     '''
     Ensure an unmodified Issue can have a field set to empty string
     '''
     # Create a unmodified base issue fixture
-    base_issue = Issue.deserialize(ISSUE_1)
+    base_issue = Issue.deserialize(ISSUE_1, project)
 
     # Create a modified issue fixture, with an empty assignee
-    updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee=val)
+    updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee=val)
 
     update_obj = build_update(base_issue, updated_issue)
 
@@ -344,15 +344,15 @@ def test_build_update__base_unmodified_and_updated_modified_to_empty_string(val)
     '',
     None,
 ])
-def test_build_update__base_modified_and_updated_modified_to_empty_string(val):
+def test_build_update__base_modified_and_updated_modified_to_empty_string(project, val):
     '''
     Ensure a modified Issue can have a field set to empty string
     '''
     # Create a modified base issue fixture
-    base_issue = modified_issue_helper(Issue.deserialize(ISSUE_1), fix_versions={'0.1', '0.2'})
+    base_issue = modified_issue_helper(Issue.deserialize(ISSUE_1, project), fix_versions={'0.1', '0.2'})
 
     # Create a modified issue fixture, with an empty assignee
-    updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee=val)
+    updated_issue = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee=val)
 
     update_obj = build_update(base_issue, updated_issue)
 
@@ -363,7 +363,7 @@ def test_build_update__base_modified_and_updated_modified_to_empty_string(val):
 
 
 @pytest.mark.parametrize('value_to_append', [0, 2])
-def test_build_update__base_unmodified_and_updated_modified_to_append_to_set(value_to_append):
+def test_build_update__base_unmodified_and_updated_modified_to_append_to_set(project, value_to_append):
     '''
     Ensure an unmodified Issue can have a set field appended when it already has a value.
 
@@ -374,8 +374,8 @@ def test_build_update__base_unmodified_and_updated_modified_to_append_to_set(val
     '''
     # Create test fixtures with starting Issue.fix_version == set(1)
     with mock.patch.dict(ISSUE_1, {'fix_versions': {1}}):
-        base_issue = Issue.deserialize(ISSUE_1)
-        updated_issue = Issue.deserialize(ISSUE_1)
+        base_issue = Issue.deserialize(ISSUE_1, project)
+        updated_issue = Issue.deserialize(ISSUE_1, project)
 
     # Modify the upstream fixture
     updated_issue.fix_versions.add(value_to_append)
@@ -388,7 +388,7 @@ def test_build_update__base_unmodified_and_updated_modified_to_append_to_set(val
 
 
 @pytest.mark.parametrize('value_to_append', [0, 2])
-def test_build_update__base_modified_and_updated_modified_to_append_to_set(value_to_append):
+def test_build_update__base_modified_and_updated_modified_to_append_to_set(project, value_to_append):
     '''
     Ensure an unmodified Issue can have a set field appended when it already has a value.
 
@@ -399,8 +399,8 @@ def test_build_update__base_modified_and_updated_modified_to_append_to_set(value
     '''
     # Create test fixtures with starting Issue.fix_version == set(1)
     with mock.patch.dict(ISSUE_1, {'fix_versions': {1}}):
-        base_issue = Issue.deserialize(ISSUE_1)
-        updated_issue = Issue.deserialize(ISSUE_1)
+        base_issue = Issue.deserialize(ISSUE_1, project)
+        updated_issue = Issue.deserialize(ISSUE_1, project)
 
     # Modify the upstream fixture
     updated_issue.fix_versions.add(value_to_append)

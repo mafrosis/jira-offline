@@ -14,20 +14,20 @@ from jira_offline.sync import IssueUpdate, push_issues
 @mock.patch('jira_offline.sync.merge_issues')
 @mock.patch('jira_offline.sync.issue_to_jiraapi_update')
 def test_push_issues__calls_fetch_and_check_resolve_once_per_issue(
-        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira
+        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira, project
     ):
     '''
     Ensure fetch_issue(), merge_issues() and issue_to_jiraapi_update() are called
     once per modified issue
     '''
     # Create an unchanged issue fixture
-    issue_1 = Issue.deserialize(ISSUE_1)
+    issue_1 = Issue.deserialize(ISSUE_1, project)
 
     # Create two modified issue fixtures
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
-        issue_2 = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='hoganp')
+        issue_2 = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='hoganp')
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-73'}):
-        issue_3 = modified_issue_helper(Issue.deserialize(ISSUE_1), fix_versions={'0.1', '0.2'})
+        issue_3 = modified_issue_helper(Issue.deserialize(ISSUE_1, project), fix_versions={'0.1', '0.2'})
 
     # Setup the Jira DataFrame
     mock_jira._df = setup_jira_dataframe_helper([issue_1, issue_2, issue_3])
@@ -44,14 +44,14 @@ def test_push_issues__calls_fetch_and_check_resolve_once_per_issue(
 @mock.patch('jira_offline.sync.merge_issues')
 @mock.patch('jira_offline.sync.issue_to_jiraapi_update')
 def test_push_issues__calls_update_issue_when_issue_has_an_id(
-        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira
+        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira, project
     ):
     '''
     When Issue.id is set, ensure update_issue() is called, and new_issue() is NOT called
     '''
     # Create a modified issue fixture
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-71'}):
-        issue_1 = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='hoganp')
+        issue_1 = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='hoganp')
 
     # Setup the Jira DataFrame
     mock_jira._df = setup_jira_dataframe_helper([issue_1])
@@ -70,12 +70,12 @@ def test_push_issues__calls_update_issue_when_issue_has_an_id(
 @mock.patch('jira_offline.sync.merge_issues')
 @mock.patch('jira_offline.sync.issue_to_jiraapi_update')
 def test_push_issues__calls_new_issue_when_issue_doesnt_have_an_id(
-        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira
+        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira, project
     ):
     '''
     When Issue.id is NOT set, ensure new_issue() is called, and update_issue() is NOT called
     '''
-    issue_1 = Issue.deserialize(ISSUE_NEW)
+    issue_1 = Issue.deserialize(ISSUE_NEW, project)
 
     # Setup the Jira DataFrame
     mock_jira._df = setup_jira_dataframe_helper([issue_1])
@@ -94,16 +94,16 @@ def test_push_issues__calls_new_issue_when_issue_doesnt_have_an_id(
 @mock.patch('jira_offline.sync.merge_issues')
 @mock.patch('jira_offline.sync.issue_to_jiraapi_update')
 def test_push_issues__count_only_successful_new_issue_calls(
-        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira
+        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira, project
     ):
     '''
     Ensure that count reflects the total successful new_issue calls
     '''
-    issue_1 = Issue.deserialize(ISSUE_NEW)
+    issue_1 = Issue.deserialize(ISSUE_NEW, project)
 
     issue_key = uuid.uuid4()
     with mock.patch.dict(ISSUE_NEW, {'key': issue_key}):
-        issue_2 = Issue.deserialize(ISSUE_NEW)
+        issue_2 = Issue.deserialize(ISSUE_NEW, project)
 
     # Setup the Jira DataFrame
     mock_jira._df = setup_jira_dataframe_helper([issue_1, issue_2])
@@ -125,17 +125,17 @@ def test_push_issues__count_only_successful_new_issue_calls(
 @mock.patch('jira_offline.sync.merge_issues')
 @mock.patch('jira_offline.sync.issue_to_jiraapi_update')
 def test_push_issues__count_only_successful_new_issue_calls_when_one_fails(
-        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira
+        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira, project
     ):
     '''
     Ensure that count reflects the total successful updates
     '''
     # Create two new issue fixtures
-    issue_1 = Issue.deserialize(ISSUE_NEW)
+    issue_1 = Issue.deserialize(ISSUE_NEW, project)
 
     issue_key = uuid.uuid4()
     with mock.patch.dict(ISSUE_NEW, {'key': issue_key}):
-        issue_2 = Issue.deserialize(ISSUE_NEW)
+        issue_2 = Issue.deserialize(ISSUE_NEW, project)
 
     # Setup the Jira DataFrame
     mock_jira._df = setup_jira_dataframe_helper([issue_1, issue_2])
@@ -160,16 +160,16 @@ def test_push_issues__count_only_successful_new_issue_calls_when_one_fails(
 @mock.patch('jira_offline.sync.merge_issues')
 @mock.patch('jira_offline.sync.issue_to_jiraapi_update')
 def test_push_issues__count_only_successful_update_issue_calls(
-        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira
+        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira, project
     ):
     '''
     Ensure that count reflects the total successful updates
     '''
     # Create two modified issue fixtures
-    issue_1 = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='hoganp')
+    issue_1 = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='hoganp')
 
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
-        issue_2 = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='hoganp')
+        issue_2 = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='hoganp')
 
     # Setup the Jira DataFrame
     mock_jira._df = setup_jira_dataframe_helper([issue_1, issue_2])
@@ -191,16 +191,16 @@ def test_push_issues__count_only_successful_update_issue_calls(
 @mock.patch('jira_offline.sync.merge_issues')
 @mock.patch('jira_offline.sync.issue_to_jiraapi_update')
 def test_push_issues__count_only_successful_update_issue_calls_when_one_fails(
-        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira
+        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira, project
     ):
     '''
     Ensure that count reflects the total successful updates
     '''
     # Create two modified issue fixtures
-    issue_1 = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='hoganp')
+    issue_1 = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='hoganp')
 
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
-        issue_2 = modified_issue_helper(Issue.deserialize(ISSUE_1), assignee='hoganp')
+        issue_2 = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='hoganp')
 
     # Setup the Jira DataFrame
     mock_jira._df = setup_jira_dataframe_helper([issue_1, issue_2])

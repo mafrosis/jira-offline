@@ -123,7 +123,7 @@ def print_diff(issue: Issue):
     from jira_offline.sync import build_update  # pylint: disable=import-outside-toplevel, cyclic-import
 
     # run build_update to diff between the remote version of the Issue, and the locally modified one
-    update_obj = build_update(Issue.deserialize(issue.original), issue)
+    update_obj = build_update(Issue.deserialize(issue.original, issue.project), issue)
 
     # print a handsome table
     click.echo(tabulate(issue.render(modified_fields=update_obj.modified)))
