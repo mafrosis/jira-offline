@@ -3,9 +3,6 @@
 __pycache__
 .coverage
 
-# config and issues cache file
-config/
-
 # pycov report
 cov_html
 

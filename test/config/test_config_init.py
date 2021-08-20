@@ -6,13 +6,13 @@ from unittest import mock
 
 import pytest
 
-from jira_offline.config import (_load_user_config, get_default_user_config_filepath, load_config,
-                                 upgrade_schema, write_default_user_config)
+from jira_offline.config import get_default_user_config_filepath, load_config, upgrade_schema
+from jira_offline.config.user_config import load_user_config, write_default_user_config
 from jira_offline.models import AppConfig
 from jira_offline.utils.serializer import DataclassSerializer
 
 
-@mock.patch('jira_offline.config._load_user_config')
+@mock.patch('jira_offline.config.load_user_config')
 @mock.patch('jira_offline.config.AppConfig')
 @mock.patch('jira_offline.config.os')
 @mock.patch('jira_offline.config.click')
@@ -30,7 +30,7 @@ def test_load_config__app_config_created_when_no_config_file_exists(mock_click, 
     assert mock_appconfig_class.called  # class instantiated
 
 
-@mock.patch('jira_offline.config._load_user_config')
+@mock.patch('jira_offline.config.load_user_config')
 @mock.patch('jira_offline.config.AppConfig')
 @mock.patch('jira_offline.config.os')
 @mock.patch('jira_offline.config.click')
@@ -67,7 +67,7 @@ def test_get_default_user_config_filepath_2():
     assert path == '/root/.config/jira-offline/jira-offline.ini'
 
 
-@mock.patch('jira_offline.config._load_user_config')
+@mock.patch('jira_offline.config.load_user_config')
 @mock.patch('jira_offline.config.upgrade_schema')
 @mock.patch('jira_offline.config.AppConfig', autospec=AppConfig)
 @mock.patch('jira_offline.config.json')
@@ -119,7 +119,7 @@ def test_load_user_config__handles_comma_separated_list(mock_os):
     config = AppConfig()
 
     with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
-        _load_user_config(config)
+        load_user_config(config)
 
     assert config.display.ls_fields == ['status', 'summary']
 
@@ -141,7 +141,7 @@ def test_load_user_config__sync_handles_integer_page_size(mock_os):
     config = AppConfig()
 
     with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
-        _load_user_config(config)
+        load_user_config(config)
 
     assert config.sync.page_size == 99
 
@@ -162,7 +162,7 @@ def test_load_user_config__sync_ignores_non_integer_page_size(mock_os):
     config = AppConfig()
 
     with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
-        _load_user_config(config)
+        load_user_config(config)
 
     assert config.sync.page_size == 25
 
@@ -189,7 +189,7 @@ def test_load_user_config__customfields_handles_firstclass_issue_attributes(mock
 
     # Mock return from open() to return the config.ini fixture
     with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
-        _load_user_config(config)
+        load_user_config(config)
 
     assert config.customfields['*'][customfield_name.replace('-', '_')] == 'customfield_10102'
 
@@ -211,7 +211,7 @@ def test_load_user_config__customfields_ignore_reserved_keyword(mock_os):
 
     # Mock return from open() to return the config.ini fixture
     with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
-        _load_user_config(config)
+        load_user_config(config)
 
     assert 'priority' not in config.customfields
 
@@ -239,7 +239,7 @@ def test_load_user_config__customfields_ignore_invalid(mock_os, customfield_valu
 
     # Mock return from open() to return the config.ini fixture
     with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
-        _load_user_config(config)
+        load_user_config(config)
 
     assert 'story_points' not in config.customfields
 
@@ -264,14 +264,14 @@ def test_load_user_config__customfields_handles_general_and_host_specific(mock_o
 
     # Mock return from open() to return the config.ini fixture
     with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
-        _load_user_config(config)
+        load_user_config(config)
 
     assert 'arbitrary' not in config.customfields
     assert config.customfields['*']['arbitrary'] == 'customfield_10144'
     assert config.customfields['jira.example.com']['arbitrary'] == 'customfield_10155'
 
 
-@mock.patch('jira_offline.config.config_upgrade_1_to_2')
+@mock.patch('jira_offline.config.upgrade.config_upgrade_1_to_2')
 def test_upgrade_schema__calls_correct_upgrade_func(mock_upgrade_func):
     '''
     Ensure the correct upgrade function is called based on the versions

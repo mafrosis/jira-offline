@@ -16,7 +16,8 @@ from tabulate import tabulate
 from jira_offline.auth import authenticate
 from jira_offline.cli.params import filter_option, global_options
 from jira_offline.cli.project import cli_project_list
-from jira_offline.config import get_default_user_config_filepath, write_default_user_config
+from jira_offline.config import get_default_user_config_filepath
+from jira_offline.config.user_config import write_default_user_config
 from jira_offline.create import create_issue, import_issue, patch_issue_from_dict
 from jira_offline.exceptions import (BadProjectMetaUri, EditorFieldParseFailed, EditorNoChanges,
                                      FailedPullingProjectMeta, ImportFailed, JiraApiError)
