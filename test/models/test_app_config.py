@@ -15,3 +15,22 @@ def test_app_config_model__iter_customfield_names_includes_core():
 
     config = AppConfig()
     assert config.iter_customfield_names() == core_customfields
+
+
+def test_app_config_model__iter_customfield_names_includes_user_defined():
+    '''
+    Validate user-defined customfields are in the return from AppConfig.iter_customfields()
+    '''
+    config = AppConfig()
+
+    config.customfields = {
+        '*': {
+            'arbitrary-1': 'customfield_10400'
+        },
+        'jira.example.com': {
+            'arbitrary-2': 'customfield_10400'
+        },
+    }
+
+    assert 'arbitrary-1' in config.iter_customfield_names()
+    assert 'arbitrary-2' in config.iter_customfield_names()
