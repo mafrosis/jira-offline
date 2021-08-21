@@ -62,7 +62,6 @@ def test_click_customfieldsasoptions__configured_customfields_become_options(moc
     assert mock_ValidCustomfield.called_once_with(['--epic-name'], '')
     assert mock_ValidCustomfield.called_once_with(['--sprint'], '')
     assert mock_ValidCustomfield.called_once_with(['--arbitrary-user-defined-field'], '')
-    assert len(kwargs['params']) == 7  # 3 hard-coded customfields, plus 1 dynamic
 
 
 @mock.patch('jira_offline.utils.cli.ValidCustomfield._get_project')

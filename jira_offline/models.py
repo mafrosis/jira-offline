@@ -271,7 +271,11 @@ class AppConfig(DataclassSerializer):
         Return unique set of customfields defined across all Jiras.
         Hard-coded items are the mandatory customfields specified by Jira server.
         '''
-        return {'epic_link', 'epic_name', 'sprint'}.union(*self.customfields.values())
+        return {
+            'epic_link', 'epic_name', 'sprint', 'story_points', 'parent_link'
+        }.union(
+            *self.customfields.values()
+        )
 
 
 @dataclass

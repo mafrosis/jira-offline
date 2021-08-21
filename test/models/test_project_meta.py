@@ -1,3 +1,6 @@
+'''
+Tests for the ProjectMeta class
+'''
 from unittest import mock
 
 import pytest
