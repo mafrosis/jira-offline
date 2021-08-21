@@ -83,7 +83,7 @@ def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pro
         df.fix_versions = df.fix_versions.apply(lambda x: '' if x is None else ','.join(x))
 
     # Rename all extended customfield columns, removing the "extended." prefix
-    df.rename(columns={f'extended.{f}': f for f in jira.config.iter_customfields()}, inplace=True)
+    df.rename(columns={f'extended.{f}': f for f in jira.config.iter_customfield_names()}, inplace=True)
 
     try:
         print_table(df[fields])
@@ -298,7 +298,7 @@ class ValidCustomfield(click.Option):
             raise BadParamsPassedToValidCustomfield
 
         # Iterate all configured customfields
-        for customfield_name in jira.config.iter_customfields():
+        for customfield_name in jira.config.iter_customfield_names():
             # If one was passed as a CLI parameter..
             if opts.get(customfield_name):
                 try:
@@ -327,7 +327,7 @@ class CustomfieldsAsOptions(click.Command):
     Add configured customfields as optional CLI parameters
     '''
     def __init__(self, *args, **kwargs):
-        for customfield_name in jira.config.iter_customfields():
+        for customfield_name in jira.config.iter_customfield_names():
             try:
                 # Extract help text if defined on Customfields class
                 f = get_field_by_name(CustomFields, customfield_name)

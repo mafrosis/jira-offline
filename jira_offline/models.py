@@ -266,9 +266,9 @@ class AppConfig(DataclassSerializer):
             json.dump(self.serialize(), f)
             f.write('\n')
 
-    def iter_customfields(self) -> set:
+    def iter_customfield_names(self) -> set:
         '''
-        Return unique set of customfields defined across all Jiras.
+        Return unique set of customfield names defined across all Jiras.
         Hard-coded items are the mandatory customfields specified by Jira server.
         '''
         return {

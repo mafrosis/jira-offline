@@ -6,7 +6,7 @@ import dataclasses
 from jira_offline.models import AppConfig, CustomFields
 
 
-def test_app_config_model__iter_customfields_includes_core():
+def test_app_config_model__iter_customfield_names_includes_core():
     '''
     Validate core customfields are in the return from AppConfig.iter_customfields()
     '''
@@ -14,4 +14,4 @@ def test_app_config_model__iter_customfields_includes_core():
     core_customfields = {f.name for f in dataclasses.fields(CustomFields) if f.name != 'extended'}
 
     config = AppConfig()
-    assert config.iter_customfields() == core_customfields
+    assert config.iter_customfield_names() == core_customfields
