@@ -3,7 +3,7 @@ Tests for the AppConfig class
 '''
 import dataclasses
 
-from jira_offline.models import AppConfig, CustomFields
+from jira_offline.models import AppConfig, CustomFields, UserConfig
 
 
 def test_app_config_model__iter_customfield_names_includes_core():
@@ -14,6 +14,8 @@ def test_app_config_model__iter_customfield_names_includes_core():
     core_customfields = {f.name for f in dataclasses.fields(CustomFields) if f.name != 'extended'}
 
     config = AppConfig()
+    config.user_config = UserConfig()
+
     assert config.iter_customfield_names() == core_customfields
 
 
@@ -22,8 +24,8 @@ def test_app_config_model__iter_customfield_names_includes_user_defined():
     Validate user-defined customfields are in the return from AppConfig.iter_customfields()
     '''
     config = AppConfig()
-
-    config.customfields = {
+    config.user_config = UserConfig()
+    config.user_config.customfields = {
         '*': {
             'arbitrary-1': 'customfield_10400'
         },

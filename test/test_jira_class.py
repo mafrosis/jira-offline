@@ -554,7 +554,7 @@ def test_jira__load_customfields__predefined_customfield(mock_jira_core, customf
     }]
 
     # Setup app config as extracted from jira-offline.ini
-    mock_jira_core.config.customfields = {
+    mock_jira_core.config.user_config.customfields = {
         '*': {customfield_id: customfield_value},
     }
 
@@ -588,7 +588,7 @@ def test_jira__load_customfields__user_defined_customfield_for_all_projects(mock
     }]
 
     # Setup app config as extracted from jira-offline.ini
-    mock_jira_core.config.customfields = {
+    mock_jira_core.config.user_config.customfields = {
         '*': {'arbitrary-user-defined-field': 'customfield_10400'},
     }
 
@@ -624,7 +624,7 @@ def test_jira__load_customfields__user_defined_customfield_for_projects_on_host(
     }]
 
     # Setup app config as extracted from jira-offline.ini
-    mock_jira_core.config.customfields = {
+    mock_jira_core.config.user_config.customfields = {
         'jira.example.com': {'arbitrary-user-defined-field': 'customfield_10400'},
     }
 
@@ -664,7 +664,7 @@ def test_jira__load_customfields__project_specific_customfield_overrides_all_pro
     }]
 
     # Setup app config as extracted from jira-offline.ini
-    mock_jira_core.config.customfields = {
+    mock_jira_core.config.user_config.customfields = {
         '*': {'custom1': 'customfield_10400'},
         'jira.example.com': {'custom1': 'customfield_10999'},
     }

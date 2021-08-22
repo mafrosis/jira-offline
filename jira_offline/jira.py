@@ -365,7 +365,7 @@ class Jira(collections.abc.MutableMapping):
                     project.customfields.extended[name] = value
 
         # Iterate customfields defined in user config
-        for jira_host, customfield_mapping in self.config.customfields.items():
+        for jira_host, customfield_mapping in self.config.user_config.customfields.items():
             # Only apply config set for this Jira host. Matching is either all Jiras with
             # asterisk, or by Jira server with hostname match
             if jira_host in ('*', project.hostname):

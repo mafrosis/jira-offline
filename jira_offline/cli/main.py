@@ -71,7 +71,7 @@ def cli_ls(ctx: click.core.Context, as_json: bool=False):
 
     if not jira.filter.is_set:
         # Default filter from user configuration
-        jira.filter.set(jira.config.display.ls_default_filter)
+        jira.filter.set(jira.config.user_config.display.ls_default_filter)
 
     if as_json:
         for issue in jira.values():
@@ -228,7 +228,7 @@ def cli_clone(ctx: click.core.Context, project_uri: str, username: str=None, pas
     # and finally pull all the project's issues
     click.echo('Pulling issues..')
     pull_single_project(
-        project, force=False, verbose=ctx.obj.verbose, page_size=jira.config.sync.page_size
+        project, force=False, verbose=ctx.obj.verbose, page_size=jira.config.user_config.sync.page_size
     )
 
 

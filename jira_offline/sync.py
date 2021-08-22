@@ -84,7 +84,7 @@ def pull_issues(projects: Optional[Set[str]]=None, force: bool=False, verbose: b
             finally:
                 retry += 1
 
-            pull_single_project(project, force=force, verbose=verbose, page_size=jira.config.sync.page_size)
+            pull_single_project(project, force=force, verbose=verbose, page_size=jira.config.user_config.sync.page_size)
             break
 
 

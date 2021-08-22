@@ -27,8 +27,7 @@ def test_load_user_config__handles_comma_separated_list(mock_os):
     with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
         load_user_config(config)
 
-    assert config.display.ls_fields == ['status', 'summary']
-
+    assert config.user_config.display.ls_fields == ['status', 'summary']
 
 
 @mock.patch('jira_offline.config.user_config.os')
@@ -49,7 +48,7 @@ def test_load_user_config__sync_handles_integer_page_size(mock_os):
     with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
         load_user_config(config)
 
-    assert config.sync.page_size == 99
+    assert config.user_config.sync.page_size == 99
 
 
 @mock.patch('jira_offline.config.user_config.os')
@@ -70,7 +69,7 @@ def test_load_user_config__sync_ignores_non_integer_page_size(mock_os):
     with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
         load_user_config(config)
 
-    assert config.sync.page_size == 25
+    assert config.user_config.sync.page_size == 25
 
 
 @pytest.mark.parametrize('customfield_name', [
@@ -97,7 +96,7 @@ def test_load_user_config__customfields_handles_firstclass_issue_attributes(mock
     with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
         load_user_config(config)
 
-    assert config.customfields['*'][customfield_name.replace('-', '_')] == 'customfield_10102'
+    assert config.user_config.customfields['*'][customfield_name.replace('-', '_')] == 'customfield_10102'
 
 
 @mock.patch('jira_offline.config.user_config.os')
@@ -119,7 +118,7 @@ def test_load_user_config__customfields_ignore_reserved_keyword(mock_os):
     with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
         load_user_config(config)
 
-    assert 'priority' not in config.customfields
+    assert 'priority' not in config.user_config.customfields
 
 
 @pytest.mark.parametrize('customfield_value', [
@@ -147,7 +146,7 @@ def test_load_user_config__customfields_ignore_invalid(mock_os, customfield_valu
     with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
         load_user_config(config)
 
-    assert 'story_points' not in config.customfields
+    assert 'story_points' not in config.user_config.customfields
 
 
 @mock.patch('jira_offline.config.user_config.os')
@@ -172,6 +171,6 @@ def test_load_user_config__customfields_handles_general_and_host_specific(mock_o
     with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
         load_user_config(config)
 
-    assert 'arbitrary' not in config.customfields
-    assert config.customfields['*']['arbitrary'] == 'customfield_10144'
-    assert config.customfields['jira.example.com']['arbitrary'] == 'customfield_10155'
+    assert 'arbitrary' not in config.user_config.customfields
+    assert config.user_config.customfields['*']['arbitrary'] == 'customfield_10144'
+    assert config.user_config.customfields['jira.example.com']['arbitrary'] == 'customfield_10155'

@@ -8,7 +8,7 @@ import pathlib
 
 from jira_offline import __title__
 from jira_offline.exceptions import UserConfigAlreadyExists
-from jira_offline.models import AppConfig, Issue
+from jira_offline.models import AppConfig, Issue, UserConfig
 from jira_offline.utils import get_field_by_name
 
 
@@ -44,14 +44,14 @@ def load_user_config(config: AppConfig):
 
         for section in cfg.sections():
             if section == 'display':
-                handle_display_section(config, cfg.items(section))
+                handle_display_section(config.user_config, cfg.items(section))
 
             elif section == 'sync':
-                handle_sync_section(config, cfg.items(section))
+                handle_sync_section(config.user_config, cfg.items(section))
 
             elif section == 'customfields':
                 # Handle the generic all-Jiras customfields section
-                handle_customfield_section(config, '*', cfg.items(section))
+                handle_customfield_section(config.user_config, '*', cfg.items(section))
 
             elif section.startswith('customfields'):
                 # Handle the Jira-specific customfields section
@@ -63,10 +63,10 @@ def load_user_config(config: AppConfig):
                     logger.warning('Customfields section header "%s" is invalid. Ignoring.', section)
                     continue
 
-                handle_customfield_section(config, jira_host, cfg.items(section))
+                handle_customfield_section(config.user_config, jira_host, cfg.items(section))
 
 
-def handle_display_section(config: AppConfig, items):
+def handle_display_section(config: UserConfig, items):
     for key, value in items:
         if key == 'ls':
             config.display.ls_fields = _parse_list(value)
@@ -75,7 +75,7 @@ def handle_display_section(config: AppConfig, items):
         elif key == 'ls-default-filter':
             config.display.ls_default_filter = value
 
-def handle_sync_section(config: AppConfig, items):
+def handle_sync_section(config: UserConfig, items):
     for key, value in items:
         if key == 'page-size':
             try:
@@ -83,7 +83,7 @@ def handle_sync_section(config: AppConfig, items):
             except ValueError:
                 logger.warning('Config option sync.page-size must be supplied as an integer. Ignoring.')
 
-def handle_customfield_section(config: AppConfig, jira_host: str, items):
+def handle_customfield_section(config: UserConfig, jira_host: str, items):
     for key, value in items:
         if not _validate_customfield(value):
             logger.warning('Invalid customfield "%s" supplied. Ignoring.', value)
@@ -131,12 +131,12 @@ def write_default_user_config(config_filepath: str):
     default_config = AppConfig()
 
     cfg.add_section('display')
-    cfg.set('display', '# ls', ','.join(default_config.display.ls_fields))
-    cfg.set('display', '# ls-verbose', ','.join(default_config.display.ls_fields_verbose))
-    cfg.set('display', '# ls-default-filter', default_config.display.ls_default_filter)
+    cfg.set('display', '# ls', ','.join(default_config.user_config.display.ls_fields))
+    cfg.set('display', '# ls-verbose', ','.join(default_config.user_config.display.ls_fields_verbose))
+    cfg.set('display', '# ls-default-filter', default_config.user_config.display.ls_default_filter)
 
     cfg.add_section('sync')
-    cfg.set('sync', '# page-size', str(default_config.sync.page_size))
+    cfg.set('sync', '# page-size', str(default_config.user_config.sync.page_size))
 
     cfg.add_section('customfields')
     cfg.set('customfields', '# story-points', '')

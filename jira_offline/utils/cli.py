@@ -46,9 +46,9 @@ def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pro
         fields = []
 
     if not verbose:
-        fields += jira.config.display.ls_fields
+        fields += jira.config.user_config.display.ls_fields
     else:
-        fields += jira.config.display.ls_fields_verbose
+        fields += jira.config.user_config.display.ls_fields_verbose
         width = 200
 
     def format_datetime(raw):

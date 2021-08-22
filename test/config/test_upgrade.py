@@ -86,12 +86,7 @@ class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-att
     config: Optional['AppConfig']
 
 @dataclass
-class AppConfig_v3(DataclassSerializer):
-    schema_version: int
-    user_config_filepath: str
-    projects: Dict[str, ProjectMeta]
-    customfields: Dict[str, dict]
-
+class UserConfig(DataclassSerializer):
     @dataclass
     class Sync:
         page_size: int
@@ -103,6 +98,15 @@ class AppConfig_v3(DataclassSerializer):
         ls_fields_verbose: List[str]
         ls_default_filter: str
     display: Display
+
+    customfields: Dict[str, dict]
+
+@dataclass
+class AppConfig_v3(DataclassSerializer):
+    schema_version: int
+    projects: Dict[str, ProjectMeta]
+    user_config_filepath: str
+    user_config: UserConfig
 
 #################
 

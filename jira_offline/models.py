@@ -220,16 +220,12 @@ class ProjectMeta(DataclassSerializer):
 
 
 @dataclass
-class AppConfig(DataclassSerializer):
-    schema_version: int = field(default=3)
-    user_config_filepath: str = field(default='')
-    projects: Dict[str, ProjectMeta] = field(default_factory=dict)
-
+class UserConfig(DataclassSerializer):
     @dataclass
     class Sync:
-        page_size: int = field(default=25)
+        page_size: int
 
-    sync: Sync = field(init=False, metadata={'serialize': False})
+    sync: Sync = field(init=False)
 
     @dataclass
     class Display:
@@ -237,23 +233,46 @@ class AppConfig(DataclassSerializer):
         ls_fields_verbose: List[str]
         ls_default_filter: str
 
-    display: Display = field(init=False, metadata={'serialize': False})
+    display: Display = field(init=False)
 
-    customfields: Dict[str, dict] = field(init=False, metadata={'serialize': False})
+    # Customfield mappings as parsed from config file. These are Jira/project specific and are mapped
+    # onto ProjectMeta instances during `jira.get_project_meta`
+    customfields: Dict[str, dict] = field(init=False)
+
+
+    def __post_init__(self):
+        '''
+        Define config file defaults in __post_init__.  List are mutable and so cannot be used in class
+        attribute definitions.
+        '''
+        self.sync = UserConfig.Sync(page_size=25)
+        self.display = UserConfig.Display(
+            ls_fields=['issuetype', 'epic_link', 'summary', 'status', 'assignee', 'updated'],
+            ls_fields_verbose=['issuetype', 'epic_link', 'epic_name', 'summary', 'status', 'assignee', 'fix_versions', 'updated'],
+            ls_default_filter='status not in ("Done", "Story Done", "Epic Done", "Closed")'
+        )
+        self.customfields = dict()
+
+
+@dataclass
+class AppConfig(DataclassSerializer):
+    schema_version: int = field(default=3)
+
+    # Mapping of ProjectMeta.id to the project configuration
+    projects: Dict[str, ProjectMeta] = field(default_factory=dict)
+
+    # User-defined configuration
+    user_config_filepath: str = field(default='')
+
+    # Object created by parsing the user config. This attribute is not serialized to app.json, as the
+    # datasource for this data is the file at `user_config_filepath`
+    user_config: UserConfig = field(default_factory=UserConfig, metadata={'serialize': False})
 
 
     def __post_init__(self):
         # Late import to avoid circular dependency
         from jira_offline.config import get_default_user_config_filepath  # pylint: disable=import-outside-toplevel, cyclic-import
         self.user_config_filepath = get_default_user_config_filepath()
-
-        self.display = AppConfig.Display(
-            ls_fields = ['issuetype', 'epic_link', 'summary', 'status', 'assignee', 'updated'],
-            ls_fields_verbose = ['issuetype', 'epic_link', 'epic_name', 'summary', 'status', 'assignee', 'fix_versions', 'updated'],
-            ls_default_filter = 'status not in ("Done", "Story Done", "Epic Done", "Closed")'
-        )
-        self.sync = AppConfig.Sync()
-        self.customfields = dict()
 
 
     def write_to_disk(self):
@@ -274,7 +293,7 @@ class AppConfig(DataclassSerializer):
         return {
             'epic_link', 'epic_name', 'sprint', 'story_points', 'parent_link'
         }.union(
-            *self.customfields.values()
+            *self.user_config.customfields.values()
         )
 
 
