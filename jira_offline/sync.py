@@ -74,7 +74,7 @@ def pull_issues(projects: Optional[Set[str]]=None, force: bool=False, verbose: b
                 # Update project settings/metadata on every pull
                 jira.get_project_meta(project)
 
-            except JiraUnavailable as e:
+            except JiraUnavailable:
                 backoff = retry * retry
                 logger.error('Jira %s is unavailable. Retry in %s seconds (%s/3)', project.project_uri, backoff, retry)
                 time.sleep(backoff)
@@ -165,7 +165,7 @@ def pull_single_project(project: ProjectMeta, force: bool, verbose: bool, page_s
             with tqdm(total=data['total'], unit=' issues') as pbar:
                 issues = _run(jql, pbar)
 
-    except JiraApiError as e:
+    except JiraApiError:
         raise FailedPullingIssues
 
     if not force:

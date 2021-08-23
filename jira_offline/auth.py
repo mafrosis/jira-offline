@@ -33,7 +33,7 @@ def authenticate(project: ProjectMeta, username: Optional[str]=None, password: O
         oauth_private_key_path:  Path to the oAuth1 private key file
     '''
     if oauth_consumer_key and oauth_private_key_path:
-        with open(oauth_private_key_path) as f:
+        with open(oauth_private_key_path, encoding='utf8') as f:
             # do the oAuth1 dance
             oauth_dance(project, oauth_consumer_key, f.read())
 
@@ -108,7 +108,7 @@ def oauth_dance(project: ProjectMeta, consumer_key: str, key_cert_data: str, ver
     )
     try:
         token_data = oauth_session.fetch_request_token(f'{jira_url}/plugins/servlet/oauth/request-token')
-    except requests.exceptions.ConnectionError as e:
+    except requests.exceptions.ConnectionError:
         raise JiraUnavailable
     except (TokenRequestDenied, ValueError) as e:
         raise FailedAuthError(e)

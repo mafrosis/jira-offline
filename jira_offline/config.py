@@ -28,7 +28,7 @@ def load_config():
 
     if os.path.exists(config_filepath):
         try:
-            with open(config_filepath) as f:
+            with open(config_filepath, encoding='utf8') as f:
                 config_json = json.load(f)
         except IsADirectoryError:
             raise UnreadableConfig(f'There is already a directory at {config_filepath}')
@@ -140,7 +140,7 @@ def _load_user_config(config: AppConfig):
     if os.path.exists(config.user_config_filepath):  # pylint: disable=too-many-nested-blocks
         cfg = configparser.ConfigParser(inline_comment_prefixes='#')
 
-        with open(config.user_config_filepath) as f:
+        with open(config.user_config_filepath, encoding='utf8') as f:
             cfg.read_string(f.read())
 
         for section in cfg.sections():
@@ -193,7 +193,7 @@ def write_default_user_config(config_filepath: str):
     # Ensure config path exists
     pathlib.Path(config_filepath).parent.mkdir(parents=True, exist_ok=True)
 
-    with open(config_filepath, 'w') as f:
+    with open(config_filepath, 'w', encoding='utf8') as f:
         cfg.write(f)
 
 
