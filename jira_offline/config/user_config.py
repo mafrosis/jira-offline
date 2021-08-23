@@ -35,7 +35,18 @@ def load_user_config(config: AppConfig):
     Load user configuration from local INI file.
     Override fields on AppConfig with any fields set in user configuration, validating supplied
     values.
+
+    Params:
+        config:  Global application config object, an attribute of the jira_offline.jira.Jira singleton
     '''
+    GLOBAL_SECTIONS = {
+        'display': handle_display_section,
+        'sync': handle_sync_section,
+    }
+    PER_PROJECT_SECTIONS = {
+        'customfields': handle_customfield_section,
+    }
+
     if os.path.exists(config.user_config_filepath):  # pylint: disable=too-many-nested-blocks
         cfg = configparser.ConfigParser(inline_comment_prefixes='#')
 
@@ -43,30 +54,44 @@ def load_user_config(config: AppConfig):
             cfg.read_string(f.read())
 
         for section in cfg.sections():
-            if section == 'display':
-                handle_display_section(config.user_config, cfg.items(section))
+            parts = section.split(' ')
+            section_name = parts[0]
 
-            elif section == 'sync':
-                handle_sync_section(config.user_config, cfg.items(section))
+            handler_args: tuple
 
-            elif section == 'customfields':
-                # Handle the generic all-Jiras customfields section
-                handle_customfield_section(config.user_config, '*', cfg.items(section))
-
-            elif section.startswith('customfields'):
-                # Handle the Jira-specific customfields section
-
-                try:
-                    jira_host = section.split(' ')[1]
-                except (IndexError, ValueError):
-                    # Invalid section title; skip
-                    logger.warning('Customfields section header "%s" is invalid. Ignoring.', section)
+            if section_name in GLOBAL_SECTIONS:
+                if len(parts) > 1:
+                    logger.warning('Config option "%s" applies globally not per-Jira. Ignoring.', section_name)
                     continue
 
-                handle_customfield_section(config.user_config, jira_host, cfg.items(section))
+                # Parsed config block applies globally
+                handler_args = (cfg.items(section),)
+
+            elif section_name in PER_PROJECT_SECTIONS:
+                if len(parts) > 1:
+                    # Parsed config block applies to a specific Jira host or project
+                    handler_args = (cfg.items(section), parts[1])
+                else:
+                    # Parsed config block applies to all projects
+                    handler_args = (cfg.items(section), '*')
+
+            else:
+                logger.warning('Invalid section "%s" supplied in config. Ignoring.', section_name)
+                continue
+
+            func = {**GLOBAL_SECTIONS, **PER_PROJECT_SECTIONS}.get(section_name)  # type: ignore[arg-type]
+            if callable(func):
+                func(config.user_config, *handler_args)
 
 
 def handle_display_section(config: UserConfig, items):
+    '''
+    Handler for the [display] section of user config file.
+
+    Params:
+        config:  UserConfig instance attached to global jira.config
+        items:   Iterable object from ConfigParser.sections()
+    '''
     for key, value in items:
         if key == 'ls':
             config.display.ls_fields = _parse_list(value)
@@ -76,26 +101,41 @@ def handle_display_section(config: UserConfig, items):
             config.display.ls_default_filter = value
 
 def handle_sync_section(config: UserConfig, items):
+    '''
+    Handler for the [sync] section of user config file.
+
+    Params:
+        config:  UserConfig instance attached to global jira.config
+        items:   Iterable object from ConfigParser.sections()
+    '''
     for key, value in items:
         if key == 'page-size':
             try:
                 config.sync.page_size = int(value)
             except ValueError:
-                logger.warning('Config option sync.page-size must be supplied as an integer. Ignoring.')
+                logger.warning('Config option sync.page-size must be an integer. Ignoring.')
 
-def handle_customfield_section(config: UserConfig, jira_host: str, items):
+def handle_customfield_section(config: UserConfig, items, target: str):
+    '''
+    Handler for the [customfield] section of user config file.
+
+    Params:
+        config:  UserConfig instance attached to global jira.config
+        items:   Iterable object from ConfigParser.sections()
+        target:  A string mapping to a Jira hostname, or a Jira project key
+    '''
     for key, value in items:
         if not _validate_customfield(value):
-            logger.warning('Invalid customfield "%s" supplied. Ignoring.', value)
+            logger.warning('Invalid customfield "%s" supplied in config. Ignoring.', value)
             continue
 
         # Handle customfields which are defined first-class on the Issue model
         for customfield_name in ('story_points', 'parent_link'):
             if key in (customfield_name, customfield_name.replace('_', '-')):
-                if not jira_host in config.customfields:
-                    config.customfields[jira_host] = {}
+                if not target in config.customfields:
+                    config.customfields[target] = {}
 
-                config.customfields[jira_host][customfield_name] = value
+                config.customfields[target][customfield_name] = value
                 continue
 
         # Replace field name dashes with underscores
@@ -112,10 +152,10 @@ def handle_customfield_section(config: UserConfig, jira_host: str, items):
 
         except ValueError:
             # Customfield name is good, add to configuration
-            if not jira_host in config.customfields:
-                config.customfields[jira_host] = {}
+            if not target in config.customfields:
+                config.customfields[target] = {}
 
-            config.customfields[jira_host][key] = value
+            config.customfields[target][key] = value
 
 
 def write_default_user_config(config_filepath: str):
