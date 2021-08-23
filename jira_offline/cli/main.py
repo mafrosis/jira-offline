@@ -435,7 +435,7 @@ def cli_import(_, file: io.TextIOWrapper):
                 else:
                     logger.info('Issue %s updated', issue.key)
 
-            except json.decoder.JSONDecodeError as e:
+            except json.decoder.JSONDecodeError:
                 logger.error('Failed parsing line %s', i+1)
             except ImportFailed as e:
                 logger.error(e)
@@ -500,7 +500,7 @@ def cli_completion(_, shell: str, stdout: bool=False):
     else:
         path = os.path.join(os.path.dirname(get_default_user_config_filepath()), f'jira-offline.{shell}')
 
-    with open(path, 'w') as f:
+    with open(path, 'w', encoding='utf8') as f:
         f.write(autocomplete_txt)
 
     if shell == 'fish':

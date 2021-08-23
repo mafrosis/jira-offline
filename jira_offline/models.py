@@ -262,7 +262,7 @@ class AppConfig(DataclassSerializer):
 
         # Late import to avoid circular dependency
         from jira_offline.config import get_app_config_filepath  # pylint: disable=import-outside-toplevel, cyclic-import
-        with open(get_app_config_filepath(), 'w') as f:
+        with open(get_app_config_filepath(), 'w', encoding='utf8') as f:
             json.dump(self.serialize(), f)
             f.write('\n')
 

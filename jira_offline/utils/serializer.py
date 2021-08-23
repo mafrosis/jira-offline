@@ -427,7 +427,7 @@ class DataclassSerializer(metaclass=SchemaClass):
                 # pull value from dataclass field name, or by property name, if defined on the dataclass.field
                 raw_value = attrs[f.name]
 
-            except KeyError as e:
+            except KeyError:
                 # handle key missing from passed dict
                 if ignore_missing is False:
                     # if the missing key's type is non-optional, raise an exception

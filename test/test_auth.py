@@ -17,7 +17,7 @@ def test_authenticate__calls_oauth_dance_when_oauth_params_passed(mock_open, moc
 
     authenticate(project_meta, oauth_consumer_key='egg', oauth_private_key_path='pky')
 
-    mock_open.assert_called_with('pky')
+    mock_open.assert_called_with('pky', encoding='utf8')
     mock_oauth_dance.assert_called_with(project_meta, 'egg', mock_open.return_value.__enter__.return_value.read.return_value)
     assert not mock_get_user_creds.called
 
