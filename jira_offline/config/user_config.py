@@ -8,7 +8,7 @@ import pathlib
 
 from jira_offline import __title__
 from jira_offline.exceptions import UserConfigAlreadyExists
-from jira_offline.models import AppConfig, Issue, UserConfig
+from jira_offline.models import AppConfig, Issue, ProjectMeta, UserConfig
 from jira_offline.utils import get_field_by_name
 
 
@@ -44,6 +44,7 @@ def load_user_config(config: AppConfig):
         'sync': handle_sync_section,
     }
     PER_PROJECT_SECTIONS = {
+        'issue': handle_issue_section,
         'customfields': handle_customfield_section,
     }
 
@@ -114,6 +115,19 @@ def handle_sync_section(config: UserConfig, items):
                 config.sync.page_size = int(value)
             except ValueError:
                 logger.warning('Config option sync.page-size must be an integer. Ignoring.')
+
+def handle_issue_section(config: UserConfig, items, target: str):
+    '''
+    Handler for the [issue] section of user config file.
+
+    Params:
+        config:  UserConfig instance attached to global jira.config
+        items:   Iterable object from ConfigParser.sections()
+        target:  A string mapping to a Jira hostname, or a Jira project key
+    '''
+    for key, value in items:
+        if key == 'default-reporter':
+            config.issue.default_reporter[target] = value
 
 def handle_customfield_section(config: UserConfig, items, target: str):
     '''
@@ -186,3 +200,23 @@ def write_default_user_config(config_filepath: str):
 
     with open(config_filepath, 'w', encoding='utf8') as f:
         cfg.write(f)
+
+
+def apply_default_reporter(config: AppConfig, project: ProjectMeta):
+    '''
+    Apply default-reporter configuration to the project. The config option issue.default_reporter
+    provides a default Issue.reporter for new issues.
+
+    Params:
+        config:   Global application config object, an attribute of the jira_offline.jira.Jira singleton
+        project:  Project to apply config to
+    '''
+    # First, apply global configurion to this project (if set)
+    if '*' in config.user_config.issue.default_reporter:
+        project.default_reporter = config.user_config.issue.default_reporter['*']
+
+    # Second, apply per-Jira host and per-project customfield mappings to this project, in order
+    for match in ('hostname', 'key'):
+        for target, reporter in config.user_config.issue.default_reporter.items():
+            if target == getattr(project, match):
+                project.default_reporter = reporter

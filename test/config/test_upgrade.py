@@ -84,6 +84,7 @@ class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-att
     timezone: datetime.tzinfo
     jira_id: Optional[str]
     config: Optional['AppConfig']
+    default_reporter: Optional[str]
 
 @dataclass
 class UserConfig(DataclassSerializer):
@@ -98,6 +99,11 @@ class UserConfig(DataclassSerializer):
         ls_fields_verbose: List[str]
         ls_default_filter: str
     display: Display
+
+    @dataclass
+    class Issue:
+        default_reporter: Dict[str, str]
+    issue: Issue
 
     customfields: Dict[str, dict]
 

@@ -150,19 +150,22 @@ def test_load_user_config__customfields_ignore_invalid(mock_os, customfield_valu
 
 
 @mock.patch('jira_offline.config.user_config.os')
-def test_load_user_config__customfields_handles_general_and_host_specific(mock_os):
+def test_load_user_config__per_project_section__handles_global_and_specific(mock_os):
     '''
-    Ensure overriding user-defined customfield set per-Jira host is loaded correctly
+    Ensure overriding user-defined customfield set per-Jira host and per-project is loaded correctly
     '''
     # Config file exists
     mock_os.path.exists.return_value = True
 
     user_config_fixture = '''
-    [customfields]
-    arbitrary = customfield_10144
+    [issue]
+    default-reporter = dave
 
-    [customfields jira.example.com]
-    arbitrary = customfield_10155
+    [issue jira.example.com]
+    default-reporter = bob
+
+    [issue EGG]
+    default-reporter = sue
     '''
 
     config = AppConfig()
@@ -171,6 +174,6 @@ def test_load_user_config__customfields_handles_general_and_host_specific(mock_o
     with mock.patch('builtins.open', mock.mock_open(read_data=user_config_fixture)):
         load_user_config(config)
 
-    assert 'arbitrary' not in config.user_config.customfields
-    assert config.user_config.customfields['*']['arbitrary'] == 'customfield_10144'
-    assert config.user_config.customfields['jira.example.com']['arbitrary'] == 'customfield_10155'
+    assert config.user_config.issue.default_reporter['*'] == 'dave'
+    assert config.user_config.issue.default_reporter['jira.example.com'] == 'bob'
+    assert config.user_config.issue.default_reporter['EGG'] == 'sue'

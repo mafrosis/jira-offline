@@ -133,6 +133,7 @@ class ProjectMeta(DataclassSerializer):
     ca_cert: Optional[str] = field(default=None)
     timezone: datetime.tzinfo = field(default=get_localzone())
     jira_id: Optional[str] = field(default=None)
+    default_reporter: Optional[str] = field(default=None)
 
     # reference to parent AppConfig class
     config: Optional['AppConfig'] = field(default=None, metadata={'serialize': False})
@@ -235,6 +236,12 @@ class UserConfig(DataclassSerializer):
 
     display: Display = field(init=False)
 
+    @dataclass
+    class Issue:
+        default_reporter: Dict[str, str]
+
+    issue: Issue = field(init=False)
+
     # Customfield mappings as parsed from config file. These are Jira/project specific and are mapped
     # onto ProjectMeta instances during `jira.get_project_meta`
     customfields: Dict[str, dict] = field(init=False)
@@ -251,6 +258,7 @@ class UserConfig(DataclassSerializer):
             ls_fields_verbose=['issuetype', 'epic_link', 'epic_name', 'summary', 'status', 'assignee', 'fix_versions', 'updated'],
             ls_default_filter='status not in ("Done", "Story Done", "Epic Done", "Closed")'
         )
+        self.issue = UserConfig.Issue(default_reporter=dict())
         self.customfields = dict()
 
 
