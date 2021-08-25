@@ -3,6 +3,7 @@ Functions for reading and writing internal application config
 '''
 import configparser
 import copy
+import hashlib
 import json
 import logging
 import os
@@ -13,10 +14,10 @@ import click
 
 from jira_offline import __title__
 from jira_offline.config.upgrade import upgrade_schema
-from jira_offline.config.user_config import load_user_config
+from jira_offline.config.user_config import apply_default_reporter, load_user_config
 from jira_offline.exceptions import (DeserializeError, FailedConfigUpgrade, UnreadableConfig,
                                      UserConfigAlreadyExists)
-from jira_offline.models import AppConfig, Issue
+from jira_offline.models import AppConfig, Issue, ProjectMeta
 from jira_offline.utils import get_field_by_name
 
 
@@ -67,6 +68,9 @@ def load_config():
     # Load settings from the user config file
     load_user_config(config)
 
+    # Config changes which affect projects must be applied on each load
+    apply_user_config_to_projects(config)
+
     return config
 
 
@@ -87,3 +91,23 @@ def get_app_config_filepath() -> str:
 def get_cache_filepath() -> str:
     '''Return the path to jira-offline issues cache file'''
     return os.path.join(click.get_app_dir(__title__), 'issue_cache.feather')
+
+
+def apply_user_config_to_projects(config: AppConfig):
+    '''
+    Apply any relevant user-defined configuration to the configured projects. As some user-defined
+    config is project specific (eg. default_reporter) it needs to be mapped to each project on load.
+
+    Params:
+        config:  The freshly loaded app configuration
+    '''
+    if not config.user_config_filepath or not os.path.exists(config.user_config_filepath):
+        return
+
+    with open(config.user_config_filepath, 'rb') as f:
+        current_user_config_hash = hashlib.sha1(f.read()).hexdigest()
+
+    if current_user_config_hash != config.user_config_hash:
+        for project in config.projects.values():
+            # Apply default reporter config to specified project
+            apply_default_reporter(config, project)

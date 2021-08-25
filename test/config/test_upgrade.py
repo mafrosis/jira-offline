@@ -112,6 +112,7 @@ class AppConfig_v3(DataclassSerializer):
     schema_version: int
     projects: Dict[str, ProjectMeta]
     user_config_filepath: str
+    user_config_hash: str
     user_config: UserConfig
 
 #################

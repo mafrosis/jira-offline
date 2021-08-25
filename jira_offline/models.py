@@ -264,13 +264,14 @@ class UserConfig(DataclassSerializer):
 
 @dataclass
 class AppConfig(DataclassSerializer):
-    schema_version: int = field(default=3)
+    schema_version: int = field(default=4)
 
     # Mapping of ProjectMeta.id to the project configuration
     projects: Dict[str, ProjectMeta] = field(default_factory=dict)
 
     # User-defined configuration
     user_config_filepath: str = field(default='')
+    user_config_hash: str = field(default='')
 
     # Object created by parsing the user config. This attribute is not serialized to app.json, as the
     # datasource for this data is the file at `user_config_filepath`
