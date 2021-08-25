@@ -2,7 +2,9 @@
 Schema upgrades for internal config
 '''
 import copy
+import hashlib
 import logging
+import os
 
 from jira_offline import __title__
 from jira_offline.exceptions import FailedConfigUpgrade
@@ -60,3 +62,13 @@ def config_upgrade_2_to_3(config_json: dict):
 
         if not 'extended' in project_dict['customfields']:
             project_dict['customfields']['extended'] = dict()
+
+
+def config_upgrade_3_to_4(config_json: dict):
+    '''
+    In version 4,
+    - AppConfig.user_config_hash was added
+    '''
+    if config_json.get('user_config_filepath') and os.path.exists(config_json['user_config_filepath']):
+        with open(config_json['user_config_filepath'], 'rb') as f:
+            config_json['user_config_hash'] = hashlib.sha1(f.read()).hexdigest()

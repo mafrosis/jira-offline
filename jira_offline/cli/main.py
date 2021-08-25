@@ -292,10 +292,10 @@ def cli_new(_, projectkey: str, issuetype: str, summary: str, as_json: bool=Fals
         click.echo('You should pass only a single project key')
         raise click.Abort
 
-    # retrieve the project configuration
+    # Retrieve the project configuration
     project = find_project(jira, projectkey)
 
-    # validate epic parameters
+    # Validate epic parameters
     if issuetype == 'Epic':
         if kwargs.get('epic_link'):
             click.echo('You cannot pass --epic-link when creating an Epic!')
@@ -307,16 +307,20 @@ def cli_new(_, projectkey: str, issuetype: str, summary: str, as_json: bool=Fals
         if kwargs.get('epic_name'):
             click.echo('Parameter --epic-name is ignored for anything other than an Epic')
 
-    # parse fix_versions and labels
+    # Parse fix_versions and labels
     if kwargs.get('fix_versions'):
         kwargs['fix_versions'] = set(kwargs['fix_versions'].split(','))
     if kwargs.get('labels'):
         kwargs['labels'] = set(kwargs['labels'].split(','))
 
-    # create an Issue offline, it is sync'd on push
+    # Set a default reporter if defined for this project
+    if not kwargs.get('reporter') and project.default_reporter:
+        kwargs['reporter'] = project.default_reporter
+
+    # Create an Issue offline, it is sync'd on push
     new_issue = create_issue(project, issuetype, summary, **kwargs)
 
-    # display the new issue
+    # Display the new issue
     if as_json:
         output = new_issue.as_json()
     else:
