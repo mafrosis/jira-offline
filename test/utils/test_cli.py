@@ -18,7 +18,7 @@ def test_print_list__display_ls_fields_config_rendered_in_listing(mock_jira, pro
     # add fixture to Jira dict
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
-    mock_jira.config.display.ls_fields = {'summary'}
+    mock_jira.config.user_config.display.ls_fields = {'summary'}
 
     with mock.patch('jira_offline.utils.cli.jira', mock_jira), \
         mock.patch('jira_offline.jira.jira', mock_jira):
@@ -47,7 +47,7 @@ def test_click_customfieldsasoptions__configured_customfields_become_options(moc
     '''
     Ensure ValidCustomfield click.Command instances are created for configured customfields
     '''
-    mock_jira.config.customfields = {'*': {'arbitrary-user-defined-field': 'customfield_10400'}}
+    mock_jira.config.user_config.customfields = {'*': {'arbitrary-user-defined-field': 'customfield_10400'}}
 
     # Fixture for a click CLI command
     # Key "params" is set of global options defined in `jira_offline.cli.global_options`
@@ -62,7 +62,6 @@ def test_click_customfieldsasoptions__configured_customfields_become_options(moc
     assert mock_ValidCustomfield.called_once_with(['--epic-name'], '')
     assert mock_ValidCustomfield.called_once_with(['--sprint'], '')
     assert mock_ValidCustomfield.called_once_with(['--arbitrary-user-defined-field'], '')
-    assert len(kwargs['params']) == 7  # 3 hard-coded customfields, plus 1 dynamic
 
 
 @mock.patch('jira_offline.utils.cli.ValidCustomfield._get_project')
@@ -140,7 +139,7 @@ def test_validcustomfield__raises_error_on_customfield_supplied_but_not_mapped_t
     exist on the specified project
     '''
     # Setup the app config with a customfield.. which is not mapped to project TEST
-    mock_jira.config.customfields = {'*': {'arbitrary-user-defined-field': 'customfield_10400'}}
+    mock_jira.config.user_config.customfields = {'*': {'arbitrary-user-defined-field': 'customfield_10400'}}
 
     # CLI options
     opts = {
@@ -165,7 +164,7 @@ def test_validcustomfield__succeeds_on_customfield_supplied_and_mapped_to_projec
     exists on the specified project
     '''
     # Setup the app config with a customfield..
-    mock_jira.config.customfields = {'*': {'arbitrary-user-defined-field': 'customfield_10400'}}
+    mock_jira.config.user_config.customfields = {'*': {'arbitrary-user-defined-field': 'customfield_10400'}}
     # .. Add that customfield to project TEST
     project.customfields.extended = {'arbitrary-user-defined-field': 'customfield_10400'}
 

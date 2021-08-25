@@ -364,13 +364,18 @@ class Jira(collections.abc.MutableMapping):
                 else:
                     project.customfields.extended[name] = value
 
-        # Iterate customfields defined in user config
-        for jira_host, customfield_mapping in self.config.customfields.items():
-            # Only apply config set for this Jira host. Matching is either all Jiras with
-            # asterisk, or by Jira server with hostname match
-            if jira_host in ('*', project.hostname):
-                for name, value in customfield_mapping.items():
-                    apply_customfield_config(name, value)
+        # First, apply global customfield mappings to this project (if set)
+        if '*' in self.config.user_config.customfields:
+            customfield_mapping = self.config.user_config.customfields['*']
+            for name, value in customfield_mapping.items():
+                apply_customfield_config(name, value)
+
+        # Second, apply per-Jira host and per-project customfield mappings to this project, in order
+        for match in ('hostname', 'key'):
+            for target, customfield_mapping in self.config.user_config.customfields.items():
+                if target == getattr(project, match):
+                    for name, value in customfield_mapping.items():
+                        apply_customfield_config(name, value)
 
 
     def _get_user_timezone(self, project: ProjectMeta) -> Optional[str]:  # pylint: disable=no-self-use
