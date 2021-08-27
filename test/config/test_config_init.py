@@ -1,18 +1,49 @@
+import json
 import os
 from unittest import mock
 
+from conftest import not_raises
 from jira_offline.config import (apply_user_config_to_projects, get_default_user_config_filepath,
                                  load_config)
 from jira_offline.models import AppConfig, ProjectMeta
+from jira_offline.exceptions import UnreadableConfig
+
+
+@mock.patch('jira_offline.config.apply_user_config_to_projects')
+@mock.patch('jira_offline.config.load_user_config')
+@mock.patch('jira_offline.config.os')
+@mock.patch('jira_offline.config.click')
+def test_load_config__handles_config_initialisation(
+        mock_click, mock_os, mock_load_user_config, mock_apply_user_config_to_projects, project
+    ):
+    '''
+    Test that when no app config file exists, a valid config is created for the next invocation of
+    jira-offline.
+    '''
+    # App config file does not exist on first call to load_config, and does exist on second call
+    mock_os.path.exists.side_effect = [False, True]
+
+    config = load_config()
+
+    # Set the expected fields on the new config object
+    config.user_config_filepath = '/tmp/test.json'
+    config.projects[project.id] = project
+
+    # Create fixture containing JSON respresentation of a default AppConfig object
+    app_config_fixture = json.dumps(config.serialize())
+
+    with not_raises(UnreadableConfig):
+        with mock.patch('builtins.open', mock.mock_open(read_data=app_config_fixture)):
+            load_config()
 
 
 @mock.patch('jira_offline.config.load_user_config')
 @mock.patch('jira_offline.config.AppConfig')
 @mock.patch('jira_offline.config.os')
 @mock.patch('jira_offline.config.click')
-def test_load_config__app_config_created_when_no_config_file_exists(mock_click, mock_os,
-                                                                    mock_appconfig_class,
-                                                                    mock_load_user_config):
+def test_load_config__app_config_created_when_no_config_file_exists(
+        mock_click, mock_os, mock_appconfig_class, mock_load_user_config
+    ):
     '''
     Test that when no app config file exists, an AppConfig object is created
     '''
@@ -29,8 +60,10 @@ def test_load_config__app_config_created_when_no_config_file_exists(mock_click, 
 @mock.patch('jira_offline.config.AppConfig')
 @mock.patch('jira_offline.config.os')
 @mock.patch('jira_offline.config.click')
-def test_load_config__calls_load_user_config(mock_click, mock_os, mock_appconfig_class,
-                                             mock_load_user_config, mock_apply_user_config_to_projects):
+def test_load_config__calls_load_user_config(
+        mock_click, mock_os, mock_appconfig_class, mock_load_user_config,
+        mock_apply_user_config_to_projects
+    ):
     '''
     Test load_config does indeed call load_user_config and apply_user_config_to_projects
     '''

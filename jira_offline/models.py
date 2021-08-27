@@ -271,7 +271,7 @@ class AppConfig(DataclassSerializer):
 
     # User-defined configuration
     user_config_filepath: str = field(default='')
-    user_config_hash: str = field(default='')
+    user_config_hash: Optional[str] = field(default=None)
 
     # Object created by parsing the user config. This attribute is not serialized to app.json, as the
     # datasource for this data is the file at `user_config_filepath`
