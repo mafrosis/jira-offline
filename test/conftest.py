@@ -133,7 +133,7 @@ def jira_project(request, run_in_docker):
         },
     )
     if resp.status_code > 205:
-        raise Exception('{} {}'.format(resp.status_code, resp.text))
+        raise Exception(f'{resp.status_code} {resp.text}')
 
     # fetch screens for this new project
     resp = requests.get(
@@ -226,4 +226,4 @@ def not_raises(exception):
     try:
         yield
     except exception as e:
-        raise pytest.fail("DID RAISE {0}".format(exception)) from e
+        raise pytest.fail("DID RAISE {exception}") from e
