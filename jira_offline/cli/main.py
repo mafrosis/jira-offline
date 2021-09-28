@@ -7,7 +7,7 @@ import io
 import logging
 import os
 from pathlib import Path
-from typing import Optional, Set
+from typing import Optional, Set, Union
 
 import click
 from click.shell_completion import shell_complete  # pylint: disable=no-name-in-module
@@ -18,9 +18,9 @@ from jira_offline.cli.params import filter_option, global_options
 from jira_offline.cli.project import cli_project_list
 from jira_offline.config import get_default_user_config_filepath
 from jira_offline.config.user_config import write_default_user_config
-from jira_offline.create import create_issue, import_issue, patch_issue_from_dict
+from jira_offline.create import create_issue, import_jsonlines, patch_issue_from_dict
 from jira_offline.exceptions import (BadProjectMetaUri, EditorFieldParseFailed, EditorNoChanges,
-                                     FailedPullingProjectMeta, ImportFailed, JiraApiError)
+                                     FailedPullingProjectMeta, JiraApiError, NoInputDuringImport)
 from jira_offline.jira import jira
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.sync import pull_issues, pull_single_project, push_issues
@@ -417,48 +417,33 @@ def cli_edit(_, key: str, as_json: bool=False, editor: bool=False, **kwargs):
 
 
 @click.command(name='import', no_args_is_help=True)
-@click.argument('file', type=click.File('r'))
+@click.argument('filepath', type=click.Path(exists=True, dir_okay=False, allow_dash=True))
 @click.pass_context
 @global_options
-def cli_import(_, file: io.TextIOWrapper):
+def cli_import(_, filepath: Union[str, int]):
     '''
     Import issues from stdin, or from a filepath
 
-    FILE  Jsonlines format file from which to import issues
+    FILEPATH  JSONlines or CSV format file to import from. To read JSONlines from STDIN, pass a dash.
     '''
     jira.load_issues()
-
-    no_input = True
-    write = False
 
     # verbose logging by default during import
     logger.setLevel(logging.INFO)
 
-    for i, line in enumerate(file.readlines()):
-        if line:
-            no_input = False
+    # Interpret dash to mean read STDIN
+    if filepath == '-':
+        filepath = 0
 
-            try:
-                issue, is_new = import_issue(json.loads(line), lineno=i+1)
-                write = True
+    try:
+        with open(filepath, encoding='utf8') as f:
+            imported_issues = import_jsonlines(f)
 
-                if is_new:
-                    logger.info('New issue created: %s', issue.summary)
-                else:
-                    logger.info('Issue %s updated', issue.key)
-
-            except json.decoder.JSONDecodeError:
-                logger.error('Failed parsing line %s', i+1)
-            except ImportFailed as e:
-                logger.error(e)
-        else:
-            break
-
-    if no_input:
+    except NoInputDuringImport:
         click.echo('No data read on stdin or in passed file', err=True)
         raise click.Abort
 
-    if write:
+    if imported_issues:
         jira.write_issues()
 
 

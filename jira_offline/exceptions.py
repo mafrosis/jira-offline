@@ -251,6 +251,10 @@ class ImportFailed(DynamicBaseAppException):
         return msg
 
 
+class NoInputDuringImport(BaseAppException):
+    'No data was found in supplied file or STDIN during the import'
+
+
 # Raised by Jira.update when a sync returns Issues with a different timezone to those already present
 class MultipleTimezoneError(Exception):
     '''A change Jira of timezone is unsupported, please run:

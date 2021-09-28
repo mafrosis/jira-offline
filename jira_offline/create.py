@@ -1,13 +1,14 @@
 '''
 Module for functions related to Issue creation, editing and bulk import.
 '''
+import json
 import logging
-from typing import cast, Hashable, Optional, Tuple
+from typing import cast, Hashable, IO, List, Optional, Tuple
 import uuid
 
 from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce,
                                      FieldNotOnModelClass, ImportFailed, InvalidIssueType,
-                                     ProjectNotConfigured)
+                                     NoInputDuringImport, ProjectNotConfigured)
 from jira_offline.jira import jira
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.utils import deserialize_single_issue_field, find_project, get_field_by_name
@@ -92,6 +93,42 @@ def create_issue(project: ProjectMeta, issuetype: str, summary: str, **kwargs) -
     return new_issue
 
 
+def import_jsonlines(file: IO) -> List[Issue]:
+    '''
+    Import new/modified issues from JSONlines format file.
+
+    Params:
+        file:  Open file pointer to read from
+    '''
+    no_input = True
+    issues = []
+
+    for i, line in enumerate(file.readlines()):
+        if line:
+            no_input = False
+
+            try:
+                issue, is_new = import_issue(json.loads(line), lineno=i+1)
+                issues.append(issue)
+
+                if is_new:
+                    logger.info('New issue created: %s', issue.summary)
+                else:
+                    logger.info('Issue %s updated', issue.key)
+
+            except json.decoder.JSONDecodeError:
+                logger.error('Failed parsing line %s', i+1)
+            except ImportFailed as e:
+                logger.error(e)
+        else:
+            break
+
+    if no_input:
+        raise NoInputDuringImport
+
+    return issues
+
+
 def import_issue(attrs: dict, lineno: int=None) -> Tuple[Issue, bool]:
     '''
     Import a single issue's fields from the passed dict. The issue could be new, or this could be an
@@ -101,21 +138,28 @@ def import_issue(attrs: dict, lineno: int=None) -> Tuple[Issue, bool]:
         attrs:   Dictionary containing issue fields
         lineno:  Line number from the import file
     Returns:
-        Tuple of imported Issue and flag which is true if import is new object
+        Tuple[
+            The imported Issue,
+            Flag indicating if the issue is new,
+        ]
     '''
-    if 'key' in attrs:
-        # assume this object is an update to an existing Issue
-        return _import_modified_issue(attrs, lineno), False
-    else:
-        # assume this object is a new issue
-        return _import_new_issue(attrs, lineno), True
+    try:
+        if 'key' in attrs:
+            # Assume this object is an update to an existing Issue
+            return _import_modified_issue(attrs), False
+        else:
+            # Assume this object is a new issue
+            return _import_new_issue(attrs), True
+
+    except ImportFailed as e:
+        raise ImportFailed(e.message, lineno)
 
 
-def _import_modified_issue(attrs: dict, lineno: int=None) -> Issue:
+def _import_modified_issue(attrs: dict) -> Issue:
     '''
-    Import an UPDATED issue's fields from the passed dict.
+    Update a modified issue's fields from the passed dict.
 
-    An update to an existing issue requires:
+    An update to an existing issue must have the following fields:
         project:  Jira project key
         key:      Jira issue key
 
@@ -128,19 +172,19 @@ def _import_modified_issue(attrs: dict, lineno: int=None) -> Issue:
 
     except KeyError:
         if attrs.get('key'):
-            raise ImportFailed(f'Unknown issue key {attrs["key"]}', lineno)
-        raise ImportFailed('Unknown issue key', lineno)
+            raise ImportFailed(f'Unknown issue key {attrs["key"]}')
+        raise ImportFailed('Unknown issue key')
 
     patch_issue_from_dict(issue, attrs)
 
     return issue
 
 
-def _import_new_issue(attrs: dict, lineno: int=None) -> Issue:
+def _import_new_issue(attrs: dict) -> Issue:
     '''
-    Import a NEW issue's fields from the passed dict.
+    Create a new issue from the fields in the passed dict.
 
-    New issues have the required fields as in `create_issue` above:
+    New issues must have the required fields as in `create_issue` above:
         project:    Jira project key
         issuetype:  Jira issue issuetype
         summary:    Issue summary string
@@ -164,7 +208,7 @@ def _import_new_issue(attrs: dict, lineno: int=None) -> Issue:
         return create_issue(project, issuetype, summary, **attrs)
 
     except ProjectNotConfigured:
-        raise ImportFailed(f'Unknown project ref {attrs["project"]} for new issue', lineno)
+        raise ImportFailed(f'Unknown project ref {attrs["project"]} for new issue')
 
 
 def patch_issue_from_dict(issue: Issue, attrs: dict):
