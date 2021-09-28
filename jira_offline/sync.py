@@ -376,7 +376,7 @@ def manual_conflict_resolution(update_obj: IssueUpdate):
             # Display interactively in $EDITOR
             editor_result_raw = click.edit(
                 '\n'.join([
-                    '# Conflict(s) on Issue {}'.format(update_obj.merged_issue.key), '',
+                    f'# Conflict(s) on Issue {update_obj.merged_issue.key}', '',
                     editor_conflict_text
                 ])
             )

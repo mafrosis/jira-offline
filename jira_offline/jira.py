@@ -355,7 +355,7 @@ class Jira(collections.abc.MutableMapping):
             user's configuration.
             '''
             # Check to ensure the user-defined customfield is in use on this project
-            if value in project_customfields.keys():
+            if value in project_customfields:
                 # Replace field name dashes with underscores
                 name = name.replace('-', '_')
 
