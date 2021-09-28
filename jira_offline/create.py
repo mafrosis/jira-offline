@@ -6,12 +6,15 @@ import logging
 from typing import cast, Hashable, IO, List, Optional, Tuple
 import uuid
 
+from tqdm import tqdm
+
 from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce,
                                      FieldNotOnModelClass, ImportFailed, InvalidIssueType,
                                      NoInputDuringImport, ProjectNotConfigured)
 from jira_offline.jira import jira
 from jira_offline.models import Issue, ProjectMeta
-from jira_offline.utils import deserialize_single_issue_field, find_project, get_field_by_name
+from jira_offline.utils import (critical_logger, deserialize_single_issue_field, find_project,
+                                get_field_by_name)
 from jira_offline.utils.serializer import istype
 
 
@@ -93,38 +96,58 @@ def create_issue(project: ProjectMeta, issuetype: str, summary: str, **kwargs) -
     return new_issue
 
 
-def import_jsonlines(file: IO) -> List[Issue]:
+def import_jsonlines(file: IO, verbose: bool=False) -> List[Issue]:
     '''
     Import new/modified issues from JSONlines format file.
 
     Params:
-        file:  Open file pointer to read from
+        file:     Open file pointer to read from
+        verbose:  If False display progress bar, else print status on each import/create
     '''
-    no_input = True
-    issues = []
+    def _run(pbar=None) -> List[Issue]:
+        no_input = True
+        issues = []
 
-    for i, line in enumerate(file.readlines()):
-        if line:
-            no_input = False
+        for i, line in enumerate(file.readlines()):
+            if line:
+                no_input = False
 
-            try:
-                issue, is_new = import_issue(json.loads(line), lineno=i+1)
-                issues.append(issue)
+                try:
+                    issue, is_new = import_issue(json.loads(line), lineno=i+1)
+                    issues.append(issue)
 
-                if is_new:
-                    logger.info('New issue created: %s', issue.summary)
-                else:
-                    logger.info('Issue %s updated', issue.key)
+                    if is_new:
+                        logger.info('New issue created: %s', issue.summary)
+                    else:
+                        logger.info('Issue %s updated', issue.key)
 
-            except json.decoder.JSONDecodeError:
-                logger.error('Failed parsing line %s', i+1)
-            except ImportFailed as e:
-                logger.error(e)
-        else:
-            break
+                except json.decoder.JSONDecodeError:
+                    logger.error('Failed parsing line %s', i+1)
+                except ImportFailed as e:
+                    logger.error(e)
+            else:
+                break
 
-    if no_input:
-        raise NoInputDuringImport
+            if pbar:
+                # Update progress
+                pbar.update(1)
+
+        if no_input:
+            raise NoInputDuringImport
+
+        return issues
+
+    if verbose:
+        issues = _run()
+    else:
+        with critical_logger(logger):
+            # Count number of records in the import
+            total = sum(1 for line in file)
+            file.seek(0)
+
+            # Show progress bar
+            with tqdm(total=total, unit=' issues') as pbar:
+                issues = _run(pbar)
 
     return issues
 

@@ -420,7 +420,7 @@ def cli_edit(_, key: str, as_json: bool=False, editor: bool=False, **kwargs):
 @click.argument('filepath', type=click.Path(exists=True, dir_okay=False, allow_dash=True))
 @click.pass_context
 @global_options
-def cli_import(_, filepath: Union[str, int]):
+def cli_import(ctx: click.core.Context, filepath: Union[str, int]):
     '''
     Import issues from stdin, or from a filepath
 
@@ -428,16 +428,13 @@ def cli_import(_, filepath: Union[str, int]):
     '''
     jira.load_issues()
 
-    # verbose logging by default during import
-    logger.setLevel(logging.INFO)
-
     # Interpret dash to mean read STDIN
     if filepath == '-':
         filepath = 0
 
     try:
         with open(filepath, encoding='utf8') as f:
-            imported_issues = import_jsonlines(f)
+            imported_issues = import_jsonlines(f, verbose=ctx.obj.verbose)
 
     except NoInputDuringImport:
         click.echo('No data read on stdin or in passed file', err=True)
