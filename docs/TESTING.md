@@ -34,3 +34,50 @@ Unit tests with pytest
 Integration tests in docker
 ---------------------------
 
+Integration tests are completed via invocations of the `jira-offline` application in managed docker
+containers, which connect to a live instance of Jira on `localhost`.
+
+
+### Setting up the test Jira instance
+
+
+### Note on the pytest fixtures
+
+`jira_project` does setup via API calls
+
+`run_in_docker` fires up a single docker image running `jira-offline`, with the passed CLI string.
+For example:
+
+```
+run_in_docker(   ......
+```
+
+
+### Writing integration tests
+
+The tests are written as normal `pytest` tests, in the directory `test/integration`. Add the following
+decorator to ensure they are included in the integration test run, and skipped in the unit test run.
+
+```
+@pytest.mark.integration
+```
+
+
+### How to debug a failing integration test
+
+A [remote debugger](https://github.com/ionelmc/python-remote-pdb) is included to enable you to
+interactively debug a failing integration test. Drop the following line into the appropriate spot:
+
+```
+breakpoint()
+```
+
+Now, you can run the following in another shell window to attach to a PDB prompt in the executing
+test run.
+
+
+```
+docker exec -it $(docker ps | grep jira-offline-integration-wrapper | cut -d\  -f 1) telnet localhost 4444
+```
+
+You can change the port via environment variable `REMOTE_PDB_PORT` in `docker-compose.yml`
