@@ -10,7 +10,7 @@ from conftest import not_raises
 from fixtures import ISSUE_1, ISSUE_NEW
 from helpers import compare_issue_helper, modified_issue_helper
 from jira_offline.exceptions import CannotSetIssueOriginalDirectly
-from jira_offline.models import Issue
+from jira_offline.models import Issue, ProjectMeta
 
 
 def test_issue_model__modified_is_false_after_constructor(project):
@@ -32,11 +32,11 @@ def test_issue_model__modified_is_true_after_attribute_set(project):
     assert issue.modified is True
 
 
-def test_issue_model__blank_returns_valid_issue(project):
+def test_issue_model__blank_returns_valid_issue():
     '''
     Ensure Issue.blank returns a valid Issue with working methods
     '''
-    issue = Issue.deserialize(ISSUE_1, project)
+    issue = Issue.deserialize(ISSUE_1, project=ProjectMeta.factory('http://example.com/TEST'))
 
     with not_raises(Exception):
         issue.diff()
@@ -434,3 +434,16 @@ def test_issue_model__render_returns_modified_field_changed_extended(project):
     # Rendered output is in colour, one line with a "-" prefix and another with a "+" prefix
     assert output[9] == ('\x1b[31m-Arbitrary Key\x1b[0m', '\x1b[31marbitrary_value\x1b[0m')
     assert output[10] == ('\x1b[32m+Arbitrary Key\x1b[0m', '\x1b[32mupdated_value\x1b[0m')
+
+
+def test_issue_model__render_as_json(project):
+    '''
+    Validate Issue.as_json does not include internal model fields
+    '''
+    output = Issue.deserialize(ISSUE_1, project=project).as_json()
+
+    assert 'project_id' not in output
+    assert 'diff_to_original' not in output
+    assert 'original' not in output
+    assert '_active' not in output
+    assert 'modified' not in output

@@ -615,9 +615,14 @@ class Issue(DataclassSerializer):
 
     def as_json(self) -> str:
         '''
-        Render issue as JSON
+        Render issue as JSON, removing internal Issue attributes
         '''
-        return json.dumps(self.serialize())
+        issue_dict = self.serialize()
+        issue_dict['project'] = self.project.key
+        for prop in ('project_id', 'diff_to_original'):
+            if prop in issue_dict:
+                del issue_dict[prop]
+        return json.dumps(issue_dict)
 
 
     def to_series(self) -> pd.Series:
