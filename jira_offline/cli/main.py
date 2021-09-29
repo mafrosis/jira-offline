@@ -110,9 +110,9 @@ def cli_diff(_, key: str=None):
         print_diff(jira[key])
 
     else:
-        for issue in jira.values():
-            if issue.diff_to_original and issue.exists:
-                print_diff(issue)
+        # Iterate all Jira-created issues which are currently modified
+        for issue_key in jira.df.loc[(jira.df.id > 0) & jira.df.modified, 'key'].tolist():
+            print_diff(jira[issue_key])
 
 
 @click.command(name='reset', no_args_is_help=True)
