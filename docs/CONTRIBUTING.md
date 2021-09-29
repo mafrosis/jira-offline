@@ -51,6 +51,9 @@ defined in `docker-compose.yml`.
 |`INT_USER`|`jirauser`|Jira test user login username|
 |`INT_PASS`|`logmein`|Jira test user login password|
 
+For further details on the internals of testing (mostly for developers), see
+[the testing guide](./TESTING.md#integration-tests-in-docker).
+
 
 ## Debugging
 
