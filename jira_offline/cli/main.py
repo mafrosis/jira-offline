@@ -38,9 +38,9 @@ logger = logging.getLogger('jira')
 @global_options
 def cli_show(_, key: str, as_json: bool=False):
     '''
-    Pretty print an Issue on the CLI
+    Pretty print an Issue on the CLI.
 
-    KEY - Jira issue key
+    KEY  Jira issue key
     '''
     jira.load_issues()
 
@@ -62,7 +62,7 @@ def cli_show(_, key: str, as_json: bool=False):
 @global_options
 @filter_option
 def cli_ls(ctx: click.core.Context, as_json: bool=False):
-    '''List Issues on the CLI'''
+    '''List Issues on the CLI.'''
     jira.load_issues()
 
     if len(jira) == 0:
@@ -92,7 +92,9 @@ def cli_ls(ctx: click.core.Context, as_json: bool=False):
 @global_options
 def cli_diff(_, key: str=None):
     '''
-    Show the diff between changes made locally and the remote issues on Jira
+    Show the diff between changes made locally and the remote issues on Jira.
+
+    KEY  Jira issue key, if specified display diff for this issue only
     '''
     jira.load_issues()
 
@@ -119,7 +121,9 @@ def cli_diff(_, key: str=None):
 @global_options
 def cli_reset(_, key: str):
     '''
-    Reset an issue back to the last-seen Jira version, dropping any changes made locally
+    Reset an issue back to the last seen Jira version, dropping any changes made locally.
+
+    KEY  Jira issue key
     '''
     jira.load_issues()
 
@@ -140,7 +144,7 @@ def cli_reset(_, key: str):
 @click.pass_context
 @global_options
 def cli_push(ctx: click.core.Context):
-    '''Synchronise changes back to Jira server'''
+    '''Synchronise changes back to Jira server.'''
     jira.load_issues()
 
     if not jira:
@@ -154,7 +158,7 @@ def cli_push(ctx: click.core.Context):
 @click.pass_context
 @global_options
 def cli_project_list_shortcut(ctx: click.core.Context):
-    '''View currently cloned projects'''
+    '''View currently cloned projects.'''
     # Shortcut to the `jira project list` subcommmand.
     ctx.forward(cli_project_list)
 
@@ -163,9 +167,9 @@ def cli_project_list_shortcut(ctx: click.core.Context):
 @click.option('--config', '-c', type=click.Path(), help='Write default configuration to PATH')
 def cli_config(config: Optional[str]=None):
     '''
-    Output a default config file into ~/.config/jira-offline/jira-offline.ini
+    Output a default config file into ~/.config/jira-offline/jira-offline.ini.
 
-    Set a custom path with the --config option
+    Set a custom path with the --config option.
     '''
     if config is None:
         config = get_default_user_config_filepath()
@@ -187,9 +191,9 @@ def cli_config(config: Optional[str]=None):
 def cli_clone(ctx: click.core.Context, project_uri: str, username: str=None, password: str=None, oauth_app: str=None,
               oauth_private_key: str=None, ca_cert: str=None, tz: str=None):
     '''
-    Clone a Jira project to offline
+    Clone a Jira project to use offline.
 
-    PROJECT_URI - Jira project URI to setup and pull issues from, for example: https://jira.atlassian.com:8080/PROJ
+    PROJECT_URI  Jira project URI to setup and pull issues from, for example: https://jira.atlassian.com:8080/PROJ
     '''
     if username and oauth_private_key:
         click.echo('You cannot supply both username and oauth params together')
@@ -239,7 +243,7 @@ def cli_clone(ctx: click.core.Context, project_uri: str, username: str=None, pas
 @click.pass_context
 @global_options
 def cli_pull(ctx: click.core.Context, projects: str=None, reset: bool=False, no_retry: bool=False):
-    '''Fetch and cache all Jira issues'''
+    '''Fetch and cache all Jira issues.'''
 
     projects_set: Optional[Set[str]] = None
     if projects:
@@ -280,12 +284,11 @@ def cli_pull(ctx: click.core.Context, projects: str=None, reset: bool=False, no_
 @global_options
 def cli_new(_, projectkey: str, issuetype: str, summary: str, as_json: bool=False, **kwargs):
     '''
-    Create a new issue on a project
+    Create a new issue on a project.
 
-    PROJECTKEY  Jira project on which to create the issue
-
+    \b
+    PROJECTKEY  Jira project key
     ISSUETYPE   A valid issue type for the specified project
-
     SUMMARY     Mandatory free text one-liner
     '''
     if ',' in projectkey:
@@ -345,9 +348,9 @@ def cli_new(_, projectkey: str, issuetype: str, summary: str, as_json: bool=Fals
 @global_options
 def cli_edit(_, key: str, as_json: bool=False, editor: bool=False, **kwargs):
     '''
-    Edit one or more fields on an issue
+    Edit one or more fields on issue KEY.
 
-    KEY - Jira issue key
+    KEY  Jira issue key
     '''
     jira.load_issues()
 
@@ -455,13 +458,15 @@ def cli_import(_, file: io.TextIOWrapper):
         jira.write_issues()
 
 
-@click.command(name='delete')
+@click.command(name='delete', no_args_is_help=True)
 @click.argument('key')
 @click.pass_context
 @global_options
 def cli_delete_issue(_, key: str):
     '''
-    Delete an issue
+    Delete an issue.
+
+    KEY  Jira issue key
     '''
     jira.load_issues()
 
