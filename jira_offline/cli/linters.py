@@ -27,8 +27,11 @@ def cli_lint(ctx: click.core.Context, fix: bool=False):
     # load issues here for all subcommands in the group
     jira.load_issues()
 
-    if jira.df.empty:
+    if not jira:
         click.echo('No issues in the cache')
+        raise click.Abort
+    if jira.df.empty:
+        click.echo('All issues removed by filter')
         raise click.Abort
 
 
