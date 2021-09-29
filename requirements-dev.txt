@@ -8,6 +8,7 @@ pytest-mypy
 pytest-sugar
 pytest-xdist
 pyfakefs
+remote-pdb
 types-click
 types-dataclasses; python_version<='3.6'
 types-python-dateutil

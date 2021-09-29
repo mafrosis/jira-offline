@@ -198,7 +198,9 @@ def run_in_docker(request):
     def wrapped(project_key: str, cmd: str):
         try:
             stdout = client.containers.run(
-                'mafrosis/jira-offline',
+                'mafrosis/jira-offline-test',
+                name='jira-offline-integration-wrapper',
+                entrypoint='jira',
                 command=cmd,
                 network='jira-offline_default',  # Connect to the compose network where Jira should be running on 8080
                 remove=True,
@@ -207,6 +209,11 @@ def run_in_docker(request):
                     docker.types.Mount(type='bind', source=f'{cwd}/jira_offline', target='/app/jira_offline', read_only=True),
                     docker.types.Mount(type='bind', source=tmpdir.name, target='/root/.config/jira-offline'),
                 ],
+                environment={
+                    'PYTHONBREAKPOINT': 'remote_pdb.set_trace',
+                    'REMOTE_PDB_HOST': '127.0.0.1',
+                    'REMOTE_PDB_PORT': '4444',
+                },
             )
             # containers.run returns bytes, so encode, print and return
             ret = stdout.decode('utf8')

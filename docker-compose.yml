@@ -21,6 +21,7 @@ services:
       - INT_HOST
       - INT_USER
       - INT_PASS
+      - PYTHONBREAKPOINT=ipdb.set_trace
     volumes:
       - ./jira_offline:/app/jira_offline
       - ./test:/app/test

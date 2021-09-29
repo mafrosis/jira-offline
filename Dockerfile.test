@@ -8,4 +8,7 @@ RUN pip install -r requirements-dev.txt
 ENV TZ=Australia/Melbourne
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
+# install telnet to use Python remote debugger
+RUN apt-get install -y telnet
+
 ENTRYPOINT ["pytest"]
