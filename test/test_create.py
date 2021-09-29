@@ -7,7 +7,7 @@ from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce
                                      InvalidIssueType)
 from jira_offline.create import (create_issue, find_epic_by_reference, import_issue, _import_new_issue,
                                  _import_modified_issue, patch_issue_from_dict)
-from jira_offline.models import Issue
+from jira_offline.models import CustomFields, Issue, ProjectMeta
 
 
 def test_create__create_issue__loads_issues_when_cache_empty(mock_jira, project):
@@ -395,26 +395,40 @@ def test_create__patch_issue_from_dict__set_priority(mock_jira, project):
     assert issue.priority == 'Bacon'
 
 
-def test_create__patch_issue_from_dict__set_extended_customfield(mock_jira, project):
+@pytest.mark.parametrize('customfield_name', [
+    ('arbitrary-user-defined-field'),
+    ('extended.arbitrary-user-defined-field'),
+])
+def test_create__patch_issue_from_dict__set_extended_customfield(mock_jira, customfield_name):
     '''
     Ensure user-defined customfield "arbitrary-user-defined-field" can be set
     '''
+    customfields = CustomFields(
+        extended={'arbitrary-user-defined-field': 'customfield_10111'}
+    )
+    project = ProjectMeta(key='TEST', customfields=customfields)
+
+    issue = Issue.deserialize(ISSUE_1, project)
+
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        patch_issue_from_dict(issue, {customfield_name: 'eggs'})
+
+    assert issue.extended['arbitrary-user-defined-field'] == 'eggs'
+
+
+def test_create__patch_issue_from_dict__ignore_undefined_customfield(mock_jira):
+    '''
+    Ensure arbitrary k:v mappings passed into `patch_issue_from_dict` are only applied as extended
+    customfields if they are user-defined in config.
+    '''
+    customfields = CustomFields(
+        extended={}
+    )
+    project = ProjectMeta(key='TEST', customfields=customfields)
+
     issue = Issue.deserialize(ISSUE_1, project)
 
     with mock.patch('jira_offline.create.jira', mock_jira):
         patch_issue_from_dict(issue, {'arbitrary-user-defined-field': 'eggs'})
 
-    assert issue.extended['arbitrary-user-defined-field'] == 'eggs'
-
-
-def test_create__patch_issue_from_dict__set_extended_customfield_extended(mock_jira, project):
-    '''
-    Ensure user-defined customfield "extended.arbitrary-user-defined-field" can be set, using the
-    extended prefix
-    '''
-    issue = Issue.deserialize(ISSUE_1, project)
-
-    with mock.patch('jira_offline.create.jira', mock_jira):
-        patch_issue_from_dict(issue, {'extended.arbitrary-user-defined-field': 'eggs'})
-
-    assert issue.extended['arbitrary-user-defined-field'] == 'eggs'
+    assert issue.extended == {}

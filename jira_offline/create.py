@@ -205,13 +205,20 @@ def patch_issue_from_dict(issue: Issue, attrs: dict):
             setattr(issue, field_name, value)
 
         except ValueError:
+            # ValueError is raised by `get_field_by_name` and means this attrib is not a core Issue
+            # field; possibly it is an extended customfield.
+            if field_name.startswith('extended.'):
+                field_name = field_name[9:]
+
+            # Verify this is really a configured customfield before continuing
+            if issue.project.customfields and issue.project.customfields.extended is not None:
+                if field_name not in issue.project.customfields.extended:
+                    continue
+
             # Dynamic user-defined customfields are stored in issue.extended dict and are always
             # str, so no type conversion is necessary.
             if not issue.extended:
                 issue.extended = dict()
-
-            if field_name.startswith('extended.'):
-                field_name = field_name[9:]
 
             issue.extended[field_name] = value
 
