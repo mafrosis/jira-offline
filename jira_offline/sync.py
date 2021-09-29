@@ -73,6 +73,7 @@ def pull_issues(projects: Optional[Set[str]]=None, force: bool=False, verbose: b
             try:
                 # Update project settings/metadata on every pull
                 jira.get_project_meta(project)
+                #jira.config.write_to_disk()
 
             except JiraUnavailable:
                 backoff = retry * retry

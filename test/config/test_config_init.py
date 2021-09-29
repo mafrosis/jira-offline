@@ -29,12 +29,14 @@ def test_load_config__handles_config_initialisation(
     config.user_config_filepath = '/tmp/test.json'
     config.projects[project.id] = project
 
-    # Create fixture containing JSON respresentation of a default AppConfig object
+    # Create fixture containing JSON representation of a default AppConfig object
     app_config_fixture = json.dumps(config.serialize())
 
     with not_raises(UnreadableConfig):
         with mock.patch('builtins.open', mock.mock_open(read_data=app_config_fixture)):
             load_config()
+
+    assert config.user_config_hash is not None
 
 
 @mock.patch('jira_offline.config.load_user_config')

@@ -2,6 +2,7 @@
 Functions for reading and writng user-editable config
 '''
 import configparser
+import hashlib
 import logging
 import os
 import pathlib
@@ -51,8 +52,15 @@ def load_user_config(config: AppConfig):
     if os.path.exists(config.user_config_filepath):  # pylint: disable=too-many-nested-blocks
         cfg = configparser.ConfigParser(inline_comment_prefixes='#')
 
-        with open(config.user_config_filepath, encoding='utf8') as f:
-            cfg.read_string(f.read())
+        # Read user config as binary, so the binary data can be hashed
+        with open(config.user_config_filepath, 'rb') as f:
+            user_config_raw = f.read()
+
+            # Assume UTF8 encoding
+            cfg.read_string(user_config_raw.decode('utf8'))
+
+        # Generate a hash of the user-config, which is used to track changes
+        config.user_config_hash = hashlib.sha1(user_config_raw).hexdigest()
 
         for section in cfg.sections():
             parts = section.split(' ')

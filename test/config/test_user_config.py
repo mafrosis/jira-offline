@@ -17,7 +17,7 @@ def test_load_user_config__handles_comma_separated_list(mock_os):
     # config file exists
     mock_os.path.exists.return_value = True
 
-    user_config_fixture = '''
+    user_config_fixture = b'''
     [display]
     ls = status,summary
     '''
@@ -38,7 +38,7 @@ def test_load_user_config__sync_handles_integer_page_size(mock_os):
     # config file exists
     mock_os.path.exists.return_value = True
 
-    user_config_fixture = '''
+    user_config_fixture = b'''
     [sync]
     page-size = 99
     '''
@@ -59,7 +59,7 @@ def test_load_user_config__sync_ignores_non_integer_page_size(mock_os):
     # config file exists
     mock_os.path.exists.return_value = True
 
-    user_config_fixture = '''
+    user_config_fixture = b'''
     [sync]
     page-size = abc
     '''
@@ -88,7 +88,7 @@ def test_load_user_config__customfields_handles_firstclass_issue_attributes(mock
     user_config_fixture = f'''
     [customfields]
     {customfield_name} = customfield_10102
-    '''
+    '''.encode()
 
     config = AppConfig()
 
@@ -107,7 +107,7 @@ def test_load_user_config__customfields_ignore_reserved_keyword(mock_os):
     # Config file exists
     mock_os.path.exists.return_value = True
 
-    user_config_fixture = '''
+    user_config_fixture = b'''
     [customfields]
     priority = customfield_10101
     '''
@@ -138,7 +138,7 @@ def test_load_user_config__customfields_ignore_invalid(mock_os, customfield_valu
     user_config_fixture = f'''
     [customfields]
     story-points = {customfield_value}
-    '''
+    '''.encode()
 
     config = AppConfig()
 
@@ -157,7 +157,7 @@ def test_load_user_config__per_project_section__handles_global_and_specific(mock
     # Config file exists
     mock_os.path.exists.return_value = True
 
-    user_config_fixture = '''
+    user_config_fixture = b'''
     [issue]
     default-reporter = dave
 
