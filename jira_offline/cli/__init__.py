@@ -29,13 +29,32 @@ logger.setLevel(logging.WARNING)
 
 
 @click.group()
+@click.option("--profile", is_flag=True)
 @click.version_option(__version__, prog_name=__title__)
 @click.pass_context
 @global_options
-def cli(_):
+def cli(_, profile: bool):
     '''
     Git-like CLI for using Jira offline
     '''
+    if profile:
+        import cProfile
+        import pstats
+        import io
+        import atexit
+
+        print("Profiling...")
+        pr = cProfile.Profile()
+        pr.enable()
+
+        def exitz():
+            pr.disable()
+            print("Profiling completed")
+            s = io.StringIO()
+            pstats.Stats(pr, stream=s).sort_stats("cumulative").print_stats()
+            print(s.getvalue())
+
+        atexit.register(exitz)
     # The interesting work is actually done in the `global_options` decorator.
 
 
