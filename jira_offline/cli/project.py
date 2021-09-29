@@ -16,7 +16,7 @@ from jira_offline.utils import find_project
 @global_options
 def cli_projects(_):
     '''
-    Subcommand for project operations
+    Subcommand for project operations.
     '''
 
 @cli_projects.command(name='list')
@@ -24,7 +24,7 @@ def cli_projects(_):
 @global_options
 def cli_project_list(ctx: click.core.Context):
     '''
-    View currently cloned projects
+    View currently cloned projects.
     '''
     if ctx.obj.verbose:
         for p in jira.config.projects.values():
@@ -37,7 +37,7 @@ def cli_project_list(ctx: click.core.Context):
         ))
 
 
-@cli_projects.command(name='update-auth')
+@cli_projects.command(name='update-auth', no_args_is_help=True)
 @click.argument('projectkey')
 @click.option('--username', help='Basic auth username to authenicate with')
 @click.option('--password', help='Basic auth password (use with caution!)')
@@ -50,7 +50,9 @@ def cli_project_update_auth(ctx: click.core.Context, projectkey: str, username: 
                             password: str=None, oauth_app: str=None, oauth_private_key: str=None,
                             ca_cert: str=None):
     '''
-    Update the authentication on a project
+    Update the authentication on a project.
+
+    PROJECTKEY  Jira project key
     '''
     if username and oauth_private_key:
         click.echo('You cannot supply both username and oauth params together', err=True)
@@ -80,7 +82,9 @@ def cli_project_update_auth(ctx: click.core.Context, projectkey: str, username: 
 @global_options
 def cli_project_delete(ctx: click.core.Context, projectkey: str):
     '''
-    Delete a cloned project from local storage
+    Delete a cloned project from local storage.
+
+    PROJECTKEY  Jira project key
     '''
     try:
         project = find_project(jira, projectkey)
