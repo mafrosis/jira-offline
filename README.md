@@ -114,6 +114,12 @@ setup of an [`Application Link` on the Jira server](https://github.com/mafrosis/
     jira clone --oauth-private-key=applink.pem https://jira.atlassian.com/PROJ
 
 
+Shell Autocomplete
+------------------
+
+Generate an autocomplete file into any location, and then source that in your `.zshrc`, `.bashrc` or
+
+
 Comparison to other Jira CLIs
 -----------------------------
 
