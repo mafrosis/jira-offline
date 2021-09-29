@@ -27,13 +27,15 @@ def _request(method: str, project: ProjectMeta, path: str, params: Optional[Dict
         params:   Key/value of parameters to send in request URL
         data:     Key/value of parameters to send as JSON in request body
     '''
+    # TODO suppress warning on --insecure
+    # TODO try macbook username
     try:
         resp = requests.request(
             method, f'{project.jira_server}/rest/api/2/{path}',
             json=data,
             params=params,
             auth=project.auth,
-            verify=project.ca_cert if project.ca_cert else True,
+            verify=False,
         )
         # log the entire HTTP request for debug mode
         logger.debug(30 * '-')

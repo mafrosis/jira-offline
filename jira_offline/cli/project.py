@@ -97,5 +97,7 @@ def cli_project_delete(ctx: click.core.Context, projectkey: str):
     if len(df[(df.project_key == projectkey) & (df.id > 0) & df.modified]):
         click.confirm('You have local modified changes which will be lost. Continue?', abort=True)
 
+    # TODO test the issues are being deleted too
+
     del jira.config.projects[project.id]
     jira.config.write_to_disk()

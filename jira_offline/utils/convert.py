@@ -33,7 +33,7 @@ def jiraapi_object_to_issue(project: 'ProjectMeta', issue: dict) -> 'Issue':
         'issuetype': issue['fields']['issuetype']['name'],
         'key': issue['key'],
         'labels': issue['fields']['labels'],
-        'priority': issue['fields']['priority']['name'] if issue['fields']['priority'] else '',
+        'priority': issue['fields']['priority']['name'] if 'priority' in issue['fields'] else '',
         'project_id': project.id,
         'status': issue['fields']['status']['name'],
         'summary': issue['fields']['summary'],
