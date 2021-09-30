@@ -115,6 +115,25 @@ def cli_diff(_, key: str=None):
             print_diff(jira[issue_key])
 
 
+@click.command(name='status')
+@click.pass_context
+@global_options
+def cli_status(ctx: click.core.Context):
+    '''
+    Show locally modified issues.
+    '''
+    jira.load_issues()
+
+    for issue in jira.values():
+        if issue.exists is False:
+            if ctx.obj.verbose:
+                print(f'new issue:   {issue.key}')
+            else:
+                print(f'new issue:   {issue.key[0:8]}')
+        elif issue.modified:
+            print(f'modified:    {issue.key}')
+
+
 @click.command(name='reset', no_args_is_help=True)
 @click.argument('key')
 @click.pass_context
