@@ -44,6 +44,7 @@ def test_cli__filter_options__filter_flag_sets_jira_object_filter(mock_jira, pro
 
     with mock.patch('jira_offline.cli.main.jira', mock_jira), \
             mock.patch('jira_offline.cli.params.jira', mock_jira), \
+            mock.patch('jira_offline.utils.cli.jira', mock_jira), \
             mock.patch('jira_offline.jira.jira', mock_jira):
 
         result = runner.invoke(cli, ['ls', '--filter', "project == TEST"])
