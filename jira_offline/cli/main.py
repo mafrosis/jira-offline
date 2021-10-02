@@ -14,7 +14,7 @@ from click.shell_completion import shell_complete  # pylint: disable=no-name-in-
 from tabulate import tabulate
 
 from jira_offline.auth import authenticate
-from jira_offline.cli.params import filter_option, global_options
+from jira_offline.cli.params import filter_option, force_option, global_options
 from jira_offline.cli.project import cli_project_list
 from jira_offline.config import get_default_user_config_filepath
 from jira_offline.config.user_config import write_default_user_config
@@ -262,7 +262,8 @@ def cli_clone(_, project_uri: str, username: str=None, password: str=None, oauth
 @click.option('--no-retry', is_flag=True, help='Do not retry a Jira server which is unavailable')
 @click.pass_context
 @global_options
-def cli_pull(_, projects: str=None, reset: bool=False, no_retry: bool=False):
+@force_option
+def cli_pull(ctx: click.core.Context, projects: str=None, reset: bool=False, no_retry: bool=False):
     '''Fetch and cache all Jira issues.'''
 
     projects_set: Optional[Set[str]] = None
@@ -280,7 +281,8 @@ def cli_pull(_, projects: str=None, reset: bool=False, no_retry: bool=False):
         else:
             reset_warning = '\n'.join([p.key for p in jira.config.projects.values()])
 
-        if reset_warning:
+        # Display warning if more than one project is configured, and force is False
+        if reset_warning and not ctx.obj.force:
             click.confirm(
                 f'Warning! This will destroy any local changes for project(s)\n\n{reset_warning}\n\nContinue?',
                 abort=True
