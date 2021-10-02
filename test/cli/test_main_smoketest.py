@@ -26,6 +26,7 @@ CLI_COMMAND_MAPPING = [
     (('show',), ('TEST-71',), 1),
     (('diff',), ('TEST-71',), 1),
     (('reset',), ('TEST-71',), 1),
+    (('reset',), ('all', '--force'), 0),
     (('clone',), ('https://jira.atlassian.com/TEST1',), 0),
     (('new',), ('TEST', 'Story', 'Summary'), 1),
     (('pull',), tuple(), 0),

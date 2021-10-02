@@ -7,7 +7,7 @@ import io
 import logging
 import os
 from pathlib import Path
-from typing import Optional, Set, Union
+from typing import cast, Optional, Set, Tuple, Union
 
 import click
 from click.shell_completion import shell_complete  # pylint: disable=no-name-in-module
@@ -139,25 +139,53 @@ def cli_status(ctx: click.core.Context):
 @click.argument('key')
 @click.pass_context
 @global_options
-def cli_reset(_, key: str):
+@force_option
+def cli_reset(ctx: click.core.Context, key: str):
     '''
     Reset an issue back to the last seen Jira version, dropping any changes made locally.
 
-    KEY  Jira issue key
+    Passing the string "all" will reset ALL locally modified issues, and delete any new issues
+    created offline.
+
+    KEY  Jira issue key, or "all"
     '''
     jira.load_issues()
 
-    if key not in jira:
-        click.echo('Unknown issue key', err=True)
-        raise click.Abort
+    issues: Tuple[Issue, ...]
 
-    issue = jira[key]
+    if key != 'all':
+        if key not in jira:
+            click.echo('Unknown issue key', err=True)
+            raise click.Abort
 
-    # Overwrite local changes with the original issue from Jira
-    jira[key] = Issue.deserialize(issue.original, issue.project)
+        issues = (cast(Issue, jira[key]),)
+    else:
+        if not ctx.obj.force:
+            click.confirm(
+                'Warning! This will destroy any local changes for all projects!\n\nContinue?',
+                abort=True
+            )
+
+        # Retrieve all new or modified Jira issues
+        issues = tuple(
+            cast(Issue, jira[k])
+            for k in jira.df.loc[jira.is_new() | jira.is_modified(), 'key']
+        )
+
+    for issue in issues:
+        if not issue.exists:
+            # Delete new, local-only issues
+            del jira[issue.key]
+        else:
+            # Overwrite local changes with the original issue from Jira
+            jira[issue.key] = Issue.deserialize(issue.original, issue.project)
+
     jira.write_issues()
 
-    click.echo(f'Reset issue {key}')
+    if key != 'all':
+        click.echo(f'Reset issue {key}')
+    else:
+        click.echo('Done')
 
 
 @click.command(name='push')
