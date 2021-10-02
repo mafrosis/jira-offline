@@ -38,6 +38,7 @@ class CliParams:
     @debug.setter
     def debug(self, val: bool):
         self._debug = val
+        self._verbose = True
         logger.setLevel(logging.DEBUG)
         logger.handlers[0].setFormatter(logging.Formatter('%(levelname)s: %(module)s:%(lineno)s - %(message)s'))
 
