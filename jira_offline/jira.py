@@ -128,7 +128,7 @@ class Jira(collections.abc.MutableMapping):
         self._df.update(df)
 
         # Customfields are stored as a dict in the extended column of the DataFrame
-        self._df = self._expand_customfields()
+        self._df = self._expand_customfields(self._df)
 
         # Let Pandas pick the best datatypes
         self._df = self._df.convert_dtypes()
@@ -177,20 +177,50 @@ class Jira(collections.abc.MutableMapping):
         return Jira.ValuesView(self, self.filter)
 
 
-    def _expand_customfields(self) -> pd.DataFrame:
+    def _expand_customfields(self, df: pd.DataFrame) -> pd.DataFrame:  # pylint: disable=no-self-use
         '''
-        Customfields are stored as a dict in the extended column of the DataFrame. Expand the
-        key-value pairs from the dict into columns.
+        Customfields are stored as a dict in the extended column of the DataFrame.
+
+        Expand the key-value pairs from the dict into columns.
         '''
         # Drop all extended columns, previously created via this method
-        df1 = self._df.drop(self._df.columns[self._df.columns.str.startswith('extended.')], axis=1)
+        df1 = df.drop(columns=df.columns[df.columns.str.startswith('extended.')])
 
         # Expand extended dict into columns in a new DataFrame
         # Prefix each field with "extended."
-        df2 = self._df['extended'].apply(pd.Series).add_prefix('extended.')
+        df2 = df['extended'].apply(pd.Series).add_prefix('extended.').fillna('')
 
         # Merge the customfields columns onto the core DataFrame
         return pd.merge(df1, df2, left_index=True, right_index=True)
+
+
+    def _contract_customfields(self, df: pd.DataFrame) -> pd.DataFrame:  # pylint: disable=no-self-use
+        '''
+        Customfields are stored as a dict in the extended column of the DataFrame.
+
+        Drop DataFrame columns created in `_expand_customfields`, and cleanup the data where
+        an extended customfield is None for every issue.
+        '''
+        # Drop the extended columns, which were created via `self._expand_customfields`
+        df = df.drop(columns=df.columns[df.columns.str.startswith('extended.')])
+
+        # Expand the "extended" column into a new Series
+        df_extended = df['extended'].apply(pd.Series)
+
+        # Nothing more to do, if there are no extended fields with values
+        if df_extended.empty:
+            return df
+
+        # Drop columns which are None for every row
+        df_extended.drop(columns=df_extended.loc[:, df_extended.isnull().all(axis=0)].columns, inplace=True)
+
+        # Combine back into a dict and update the "extended" column
+        if df_extended.empty:
+            df['extended'] = ''
+        else:
+            df['extended'] = df_extended.to_dict('records')
+
+        return df
 
 
     def load_issues(self) -> None:
@@ -210,7 +240,7 @@ class Jira(collections.abc.MutableMapping):
             self._df['original'] = ''
 
             # Customfields are stored as a dict in the extended column of the DataFrame
-            self._df = self._expand_customfields()
+            self._df = self._expand_customfields(self._df)
 
         else:
             # Handle the case where an empty project has been cloned, which results in no Feather
@@ -232,8 +262,8 @@ class Jira(collections.abc.MutableMapping):
         # Don't write out the original field as it can be recreated from Issue.diff_to_original
         df = self._df.drop(columns=['original'])
 
-        # Drop the extended columns, which were created via `self._expand_customfields`
-        df.drop(df.columns[df.columns.str.startswith('extended.')], axis=1, inplace=True)
+        # Cleanup extended customfields columns
+        df = self._contract_customfields(df)
 
         # PyArrow does not like sets
         for col in ('components', 'fix_versions', 'labels'):
