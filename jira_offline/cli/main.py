@@ -139,7 +139,7 @@ def cli_reset(_, key: str):
 @click.command(name='push')
 @click.pass_context
 @global_options
-def cli_push(ctx: click.core.Context):
+def cli_push(_):
     '''Synchronise changes back to Jira server'''
     jira.load_issues()
 
@@ -147,7 +147,7 @@ def cli_push(ctx: click.core.Context):
         click.echo('No issues in the cache')
         raise click.Abort
 
-    push_issues(verbose=ctx.obj.verbose)
+    push_issues()
 
 
 @click.command(name='projects')
@@ -184,7 +184,7 @@ def cli_config(config: Optional[str]=None):
 @click.option('--tz', help='Set the timezone for this Jira project (default: local system timezone)')
 @click.pass_context
 @global_options
-def cli_clone(ctx: click.core.Context, project_uri: str, username: str=None, password: str=None, oauth_app: str=None,
+def cli_clone(_, project_uri: str, username: str=None, password: str=None, oauth_app: str=None,
               oauth_private_key: str=None, ca_cert: str=None, tz: str=None):
     '''
     Clone a Jira project to offline
@@ -228,7 +228,7 @@ def cli_clone(ctx: click.core.Context, project_uri: str, username: str=None, pas
     # and finally pull all the project's issues
     click.echo('Pulling issues..')
     pull_single_project(
-        project, force=False, verbose=ctx.obj.verbose, page_size=jira.config.user_config.sync.page_size
+        project, force=False, page_size=jira.config.user_config.sync.page_size
     )
 
 
@@ -238,7 +238,7 @@ def cli_clone(ctx: click.core.Context, project_uri: str, username: str=None, pas
 @click.option('--no-retry', is_flag=True, help='Do not retry a Jira server which is unavailable')
 @click.pass_context
 @global_options
-def cli_pull(ctx: click.core.Context, projects: str=None, reset: bool=False, no_retry: bool=False):
+def cli_pull(_, projects: str=None, reset: bool=False, no_retry: bool=False):
     '''Fetch and cache all Jira issues'''
 
     projects_set: Optional[Set[str]] = None
@@ -262,7 +262,7 @@ def cli_pull(ctx: click.core.Context, projects: str=None, reset: bool=False, no_
                 abort=True
             )
 
-    pull_issues(projects=projects_set, force=reset, verbose=ctx.obj.verbose, no_retry=no_retry)
+    pull_issues(projects=projects_set, force=reset, no_retry=no_retry)
 
 
 @click.command(name='new', cls=CustomfieldsAsOptions, no_args_is_help=True)

@@ -65,7 +65,7 @@ def test_cli_lint__fix_versions__echo(mock_lint_fix_versions, mock_jira, project
 
     assert result.exit_code == 0, result.stdout
     assert mock_lint_fix_versions.called
-    assert result.output.endswith(' issues missing the fix_versions field\n')
+    assert 'issues missing the fix_versions field' in result.output
 
 
 @mock.patch('jira_offline.cli.linters.lint_fix_versions')
@@ -83,7 +83,7 @@ def test_cli_lint__fix_versions__fix_requires_words(mock_lint_fix_versions, mock
         result = runner.invoke(cli, ['lint', '--fix', 'fix-versions'])
 
     assert result.exit_code != 0, result.stdout
-    assert result.output.endswith('You must pass --value with --fix\n')
+    assert 'You must pass --value with --fix' in result.output
 
 
 @mock.patch('jira_offline.cli.linters.lint_fix_versions')
@@ -120,7 +120,7 @@ def test_cli_lint__issues_missing_epic__echo(mock_lint_issues_missing_epic, mock
 
     assert result.exit_code == 0, result.stdout
     assert mock_lint_issues_missing_epic.called
-    assert result.output.endswith(' issues missing an epic\n')
+    assert 'issues missing an epic' in result.output
 
 
 @mock.patch('jira_offline.cli.linters.lint_issues_missing_epic')
