@@ -13,7 +13,7 @@ import click
 import pandas as pd
 from tabulate import tabulate
 
-from jira_offline.exceptions import DeserializeError, ProjectNotConfigured
+from jira_offline.exceptions import DeserializeError, FieldNotOnModelClass, ProjectNotConfigured
 from jira_offline.utils.serializer import deserialize_value, get_enum, get_base_type, istype
 
 if TYPE_CHECKING:
@@ -35,7 +35,7 @@ def get_field_by_name(cls: type, field_name: str) -> dataclasses.Field:
     for f in dataclasses.fields(cls):
         if f.name == field_name:
             return f
-    raise ValueError(f'{cls}.{field_name} does not exist!')
+    raise FieldNotOnModelClass(f'{cls}.{field_name}')
 
 
 @functools.lru_cache()
@@ -87,8 +87,8 @@ def friendly_title(cls: type, field_name: str) -> str:
     try:
         f = get_field_by_name(cls, field_name)
         title = f.metadata.get('friendly', field_name)
-    except ValueError:
-        # Field does not exist on cls
+
+    except FieldNotOnModelClass:
         if field_name.startswith('extended.'):
             # Trim the 'extended.' prefix from Issue class extended customfields
             title = field_name[9:]
@@ -125,7 +125,7 @@ def render_field(cls: type, field_name: str, value: Any, title_prefix: str=None,
         # Format value as type specified by dataclass.field
         value = render_value(value, type_)
 
-    except ValueError:
+    except FieldNotOnModelClass:
         # Assume string type if `field_name` does not exist as a field on the dataclass
         value = render_value(value, str)
 

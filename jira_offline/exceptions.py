@@ -332,3 +332,14 @@ class InvalidLsFieldInConfig(BaseAppException):
 
 class BadParamsPassedToValidCustomfield(BaseAppException):
     'ValidCustomfield constructor must be passed `key` or `projectkey`'
+
+
+class FieldNotOnModelClass(BaseAppException):
+    '{} does not exist!'
+
+    def __init__(self, field):
+        self.field = field
+        super().__init__('')
+
+    def __str__(self):
+        return self.__doc__.format(self.field)

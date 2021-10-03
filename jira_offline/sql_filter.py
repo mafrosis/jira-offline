@@ -14,9 +14,9 @@ from mo_sql_parsing import parse as mozparse
 import pandas as pd
 from tzlocal import get_localzone
 
-from jira_offline.exceptions import (FilterMozParseFailed, FilterUnknownOperatorException,
-                                     FilterUnknownFieldException, FilterQueryEscapingError,
-                                     FilterQueryParseFailed)
+from jira_offline.exceptions import (FieldNotOnModelClass, FilterMozParseFailed,
+                                     FilterUnknownOperatorException, FilterUnknownFieldException,
+                                     FilterQueryEscapingError, FilterQueryParseFailed)
 from jira_offline.models import Issue
 from jira_offline.utils import get_field_by_name
 from jira_offline.utils.serializer import istype
@@ -168,7 +168,7 @@ class IssueFilter:
                     # Cast for mypy as istype uses @functools.lru_cache
                     typ = cast(Hashable, f.type)
 
-                except ValueError:
+                except FieldNotOnModelClass:
                     # A ValueError is raised by `get_field_by_name`, when the supplied field doesn't
                     # exist on the Issue model. Validate if the field is a user-defined customfield.
                     if f'extended.{conditions[0]}' in df:

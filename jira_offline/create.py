@@ -5,8 +5,9 @@ import logging
 from typing import cast, Hashable, Optional, Tuple
 import uuid
 
-from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce, ImportFailed,
-                                     InvalidIssueType, ProjectNotConfigured)
+from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce,
+                                     FieldNotOnModelClass, ImportFailed, InvalidIssueType,
+                                     ProjectNotConfigured)
 from jira_offline.jira import jira
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.utils.serializer import get_base_type
@@ -204,9 +205,9 @@ def patch_issue_from_dict(issue: Issue, attrs: dict):
 
             setattr(issue, field_name, value)
 
-        except ValueError:
-            # ValueError is raised by `get_field_by_name` and means this attrib is not a core Issue
-            # field; possibly it is an extended customfield.
+        except FieldNotOnModelClass:
+            # FieldNotOnModelClass raised by `get_field_by_name` means this field is not a core Issue
+            # attribute; and is possibly an extended customfield.
             if field_name.startswith('extended.'):
                 field_name = field_name[9:]
 

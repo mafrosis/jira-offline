@@ -7,7 +7,7 @@ import os
 import pathlib
 
 from jira_offline import __title__
-from jira_offline.exceptions import UserConfigAlreadyExists
+from jira_offline.exceptions import FieldNotOnModelClass, UserConfigAlreadyExists
 from jira_offline.models import AppConfig, Issue, ProjectMeta, UserConfig
 from jira_offline.utils import get_field_by_name
 
@@ -164,7 +164,7 @@ def handle_customfield_section(config: UserConfig, items, target: str):
             logger.warning('Reserved keyword "%s" cannot be used as a customfield. Ignoring.', key)
             continue
 
-        except ValueError:
+        except FieldNotOnModelClass:
             # Customfield name is good, add to configuration
             if not target in config.customfields:
                 config.customfields[target] = {}
