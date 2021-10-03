@@ -35,15 +35,13 @@ class Conflict(Exception):
     pass
 
 
-def pull_issues(projects: Optional[Set[str]]=None, force: bool=False, verbose: bool=False,
-                no_retry: bool=False):
+def pull_issues(projects: Optional[Set[str]]=None, force: bool=False, no_retry: bool=False):
     '''
     Pull changed issues from upstream Jira API, and update project settings/metadata.
 
     Params:
         projects:  Project IDs to pull, if None then pull all configured projects
         force:     Force pull of all issues, not just those changed since project.last_updated
-        verbose:   Verbose print all issues as they're pulled from the API (default: show progress bar)
         no_retry:  Do not retry a Jira server which is unavailable
     '''
     projects_to_pull: List[ProjectMeta]
@@ -83,18 +81,17 @@ def pull_issues(projects: Optional[Set[str]]=None, force: bool=False, verbose: b
             finally:
                 retry += 1
 
-            pull_single_project(project, force=force, verbose=verbose, page_size=jira.config.user_config.sync.page_size)
+            pull_single_project(project, force=force, page_size=jira.config.user_config.sync.page_size)
             break
 
 
-def pull_single_project(project: ProjectMeta, force: bool, verbose: bool, page_size: int):
+def pull_single_project(project: ProjectMeta, force: bool, page_size: int):
     '''
     Pull changed issues from upstream Jira API
 
     Params:
         project:    Properties of the Jira project to pull
         force:      Force pull of all issues, not just those changed since project.last_updated
-        verbose:    Verbose print all issues as they're pulled from the API (default: show progress bar)
         page_size:  Number of issues requested in each API call to Jira
     '''
     # if the issue cache is not yet loaded, load before pull
@@ -144,6 +141,8 @@ def pull_single_project(project: ProjectMeta, force: bool, verbose: bool, page_s
 
         return issues
 
+    from jira_offline.cli.params import context  # pylint: disable=import-outside-toplevel, cyclic-import
+
     try:
         # single quick query to get total number of issues
         params: Dict[str, Any] = {'jql': jql, 'maxResults': 1, 'fields': 'key'}
@@ -151,7 +150,7 @@ def pull_single_project(project: ProjectMeta, force: bool, verbose: bool, page_s
 
         pbar = None
 
-        if verbose:
+        if context.verbose:
             issues = _run(jql)
         else:
             # show progress bar
@@ -405,12 +404,12 @@ def manual_conflict_resolution(update_obj: IssueUpdate):
     patch_issue_from_dict(update_obj.merged_issue, patch_dict)
 
 
-def push_issues(verbose: bool=False) -> int:
+def push_issues() -> int:
     '''
     Push new/changed issues back to Jira server
 
-    Params:
-        verbose:  Verbose print all issues as they're pushed to Jira server (default is progress bar)
+    Returns:
+        Total number of issues pushed
     '''
     def _run(issue_keys: List[str], pbar=None) -> int:
         count = 0
@@ -471,7 +470,9 @@ def push_issues(verbose: bool=False) -> int:
     # 2. Push modified issues
     issues_to_push += jira.df.loc[(jira.df.id > 0) & jira.df.modified, 'key'].tolist()
 
-    if verbose:
+    from jira_offline.cli.params import context  # pylint: disable=import-outside-toplevel, cyclic-import
+
+    if context.verbose:
         total = _run(issues_to_push)
     else:
         with critical_logger(logger):

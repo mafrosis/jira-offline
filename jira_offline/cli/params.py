@@ -12,11 +12,15 @@ import logging
 from typing import Optional
 
 import click
+from peak.util.proxies import LazyProxy
 
 from jira_offline.jira import jira
 
 
 logger = logging.getLogger('jira')
+
+
+context = LazyProxy(lambda: CliParams())  # pylint: disable=unnecessary-lambda
 
 
 @dataclass
@@ -65,7 +69,7 @@ def global_options(func):
 
         if ctx.obj is None:
             # Initialise the CliParams DTO on first call
-            ctx.obj = CliParams()
+            ctx.obj = context
 
         if kwargs.get('verbose') is True:
             ctx.obj.verbose = True
