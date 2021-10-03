@@ -234,6 +234,53 @@ def test_jira__write_issues_load_issues__roundtrip(mock_os, mock_jira_core, proj
         assert 'original' in mock_jira_core._df.columns
 
 
+@mock.patch('jira_offline.jira.os')
+def test_jira__expand_customfields__replaces_extended_columns(mock_os, mock_jira_core, project):
+    '''
+    Validate `_expand_customfields` removes existing extended columns and loads new ones from the
+    "extended" column in the DataFrame.
+    '''
+    # Create a test DataFrame
+    df_test = pd.DataFrame({
+        'key': [1, 2],
+        'extended': [{'a': 'x', 'b': None}, {'a': None, 'b': 'y'}],
+        'extended.rm': [3, 4],
+    }).set_index('key')
+
+    df = mock_jira_core._expand_customfields(df_test)
+
+    # Validate previous extended column was dropped
+    assert 'extended.rm' not in df.columns
+
+    # Validate "a" and "b" keys in the extended column's dict are expanded into DataFrame columns
+    assert df.loc[1, 'extended.a'] == 'x'
+    assert df.loc[1, 'extended.b'] == ''
+    assert df.loc[2, 'extended.a'] == ''
+    assert df.loc[2, 'extended.b'] == 'y'
+
+
+@mock.patch('jira_offline.jira.os')
+def test_jira__contract_customfields__cleans_extended_fields_where_all_set_to_none(mock_os, mock_jira_core, project):
+    '''
+    Validate that `_contract_customfields` removes all extended value which are None for all issues.
+    '''
+    # Create a test DataFrame
+    df_test = pd.DataFrame({
+        'key': [1, 2],
+        'extended': [{'a': 'x', 'b': None}, {'a': None, 'b': None}],
+        'extended.rm': [3, 4],
+    }).set_index('key')
+
+    df = mock_jira_core._contract_customfields(df_test)
+
+    # Validate previous extended column was dropped
+    assert 'extended.rm' not in df.columns
+
+    # Validate only "a" remains in extended column
+    assert df.loc[1, 'extended'] == {'a': 'x'}
+    assert df.loc[2, 'extended'] == {'a': None}
+
+
 @mock.patch('jira_offline.jira.api_get')
 def test_jira__get_project_meta__overrides_default_timezone_when_set(mock_api_get, mock_jira_core, timezone_project):
     '''
