@@ -27,6 +27,8 @@ def _request(method: str, project: ProjectMeta, path: str, params: Optional[Dict
         params:   Key/value of parameters to send in request URL
         data:     Key/value of parameters to send as JSON in request body
     '''
+    from jira_offline.cli.params import context  # pylint: disable=import-outside-toplevel, cyclic-import
+
     try:
         resp = requests.request(
             method, f'{project.jira_server}/rest/api/2/{path}',
@@ -35,20 +37,22 @@ def _request(method: str, project: ProjectMeta, path: str, params: Optional[Dict
             auth=project.auth,
             verify=project.ca_cert if project.ca_cert else True,
         )
-        # log the entire HTTP request for debug mode
-        logger.debug(30 * '-')
-        logger.debug('%s %s/rest/api/2/%s', method, project.jira_server, path)
-        logger.debug('\n'.join([f'{k}: {v}' for k,v in resp.request.headers.items()]))
-        logger.debug('')
-        logger.debug(json.dumps(data))
-        logger.debug('')
-        logger.debug('%s %s/rest/api/2/%s %s', method, project.jira_server, path, resp.status_code)
-        logger.debug('\n'.join([f'{k}: {v}' for k,v in resp.headers.items()]))
-        logger.debug('')
-        logger.debug(resp.text)
-        logger.debug(30 * '-')
 
-        # raise an exception for non-200 range response
+        # Log the entire HTTP request for debug mode
+        if context.debug_level > 1:
+            logger.debug(30 * '-')
+            logger.debug('%s %s/rest/api/2/%s', method, project.jira_server, path)
+            logger.debug('\n'.join([f'{k}: {v}' for k,v in resp.request.headers.items()]))
+            logger.debug('')
+            logger.debug(json.dumps(data))
+            logger.debug('')
+            logger.debug('%s %s/rest/api/2/%s %s', method, project.jira_server, path, resp.status_code)
+            logger.debug('\n'.join([f'{k}: {v}' for k,v in resp.headers.items()]))
+            logger.debug('')
+            logger.debug(resp.text)
+            logger.debug(30 * '-')
+
+        # Raise an exception for non-200 range response
         resp.raise_for_status()
 
     except requests.exceptions.HTTPError:

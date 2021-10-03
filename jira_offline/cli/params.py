@@ -32,6 +32,7 @@ class CliParams:
 
     _verbose: bool = field(default=False)
     _debug: bool = field(default=False)
+    debug_level: int = field(default=0)
 
     lint: Optional[LintParams] = field(default=None)
 
@@ -62,7 +63,7 @@ def global_options(func):
     '''
     @click.option('--config', '-c', type=click.Path(exists=True), help='Read configuration from PATH')
     @click.option('--verbose', '-v', is_flag=True, help='Display INFO level logging')
-    @click.option('--debug', '-d', is_flag=True, help='Display DEBUG level logging')
+    @click.option('--debug', '-d', count=True, help='Display DEBUG level logging')
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         ctx = args[0]
@@ -71,10 +72,11 @@ def global_options(func):
             # Initialise the CliParams DTO on first call
             ctx.obj = context
 
-        if kwargs.get('verbose') is True:
+        if kwargs.get('verbose'):
             ctx.obj.verbose = True
-        if kwargs.get('debug') is True:
+        if kwargs.get('debug'):
             ctx.obj.debug = True
+            ctx.obj.debug_level = kwargs.get('debug')
 
         if kwargs.get('config'):
             jira.config.user_config_filepath = kwargs.get('config')
