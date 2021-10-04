@@ -395,6 +395,47 @@ def test_create__patch_issue_from_dict__set_priority(mock_jira, project):
     assert issue.priority == 'Bacon'
 
 
+@pytest.mark.parametrize('param', [
+    ('bacon'),
+    (set(['egg', 'bacon'])),
+])
+def test_create__patch_issue_from_dict__set_set(mock_jira, project, param):
+    '''
+    When patching a set, if a set is passed overwrite existing value, if a str is passed append to
+    the existing set
+    '''
+    with mock.patch.dict(ISSUE_1, {'labels': set(['egg'])}):
+        issue = Issue.deserialize(ISSUE_1, project)
+
+    assert issue.labels == {'egg'}
+
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        patch_issue_from_dict(issue, {'labels': param})
+
+    assert issue.labels == {'egg', 'bacon'}
+
+
+@pytest.mark.skip(reason='Will succeed when there is a list-type field on Issue class')
+@pytest.mark.parametrize('param', [
+    ('bacon'),
+    (['egg', 'bacon']),
+])
+def test_create__patch_issue_from_dict__set_list(mock_jira, project, param):
+    '''
+    When patching a list, if a list is passed, overwrite existing value, if a str is passed append to
+    the existing list
+    '''
+    with mock.patch.dict(ISSUE_1, {'labels': ['egg']}):
+        issue = Issue.deserialize(ISSUE_1, project)
+
+    assert issue.labels == ['egg']
+
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        patch_issue_from_dict(issue, {'labels': param})
+
+    assert issue.labels == ['egg', 'bacon']
+
+
 @pytest.mark.parametrize('customfield_name', [
     ('arbitrary-user-defined-field'),
     ('extended.arbitrary-user-defined-field'),

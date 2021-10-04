@@ -10,8 +10,8 @@ from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce
                                      ProjectNotConfigured)
 from jira_offline.jira import jira
 from jira_offline.models import Issue, ProjectMeta
-from jira_offline.utils.serializer import get_base_type
 from jira_offline.utils import deserialize_single_issue_field, find_project, get_field_by_name
+from jira_offline.utils.serializer import istype
 
 
 logger = logging.getLogger('jira')
@@ -197,13 +197,24 @@ def patch_issue_from_dict(issue: Issue, attrs: dict):
                 # Do not modify readonly fields
                 continue
 
-            if get_base_type(typ) is str and value == '':
+            if istype(typ, set) and not isinstance(value, set):
+                # Special case where a string is passed for a set field
+                if getattr(issue, field_name) is None:
+                    setattr(issue, field_name, set())
+                getattr(issue, field_name).add(value)
+
+            elif istype(typ, list) and not isinstance(value, list):
+                # Special case where a string is passed for a list field
+                if getattr(issue, field_name) is None:
+                    setattr(issue, field_name, [])
+                getattr(issue, field_name).append(value)
+
+            elif istype(typ, str) and value == '':
                 # When setting an Issue attribute to empty string, map it to None
-                value = None
+                setattr(issue, field_name, None)
             else:
                 value = deserialize_single_issue_field(field_name, value)
-
-            setattr(issue, field_name, value)
+                setattr(issue, field_name, value)
 
         except FieldNotOnModelClass:
             # FieldNotOnModelClass raised by `get_field_by_name` means this field is not a core Issue
