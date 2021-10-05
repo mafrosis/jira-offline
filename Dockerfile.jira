@@ -1,8 +1,0 @@
-FROM atlassian/jira-software
-
-ARG USER_ID=1000
-ARG GROUP_ID=1000
-
-RUN userdel -f jira && \
-	groupadd -g ${GROUP_ID} jira && \
-    useradd -l -u ${USER_ID} -g jira jira
