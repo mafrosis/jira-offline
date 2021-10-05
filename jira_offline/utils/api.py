@@ -31,7 +31,7 @@ def _request(method: str, project: ProjectMeta, path: str, params: Optional[Dict
 
     try:
         resp = requests.request(
-            method, f'{project.jira_server}/rest/api/2/{path}',
+            method, f'{project.jira_server}{path}',
             json=data,
             params=params,
             auth=project.auth,
@@ -41,12 +41,12 @@ def _request(method: str, project: ProjectMeta, path: str, params: Optional[Dict
         # Log the entire HTTP request for debug mode
         if context.debug_level > 1:
             logger.debug(30 * '-')
-            logger.debug('%s %s/rest/api/2/%s', method, project.jira_server, path)
+            logger.debug('%s %s%s', method, project.jira_server, path)
             logger.debug('\n'.join([f'{k}: {v}' for k,v in resp.request.headers.items()]))
             logger.debug('')
             logger.debug(json.dumps(data))
             logger.debug('')
-            logger.debug('%s %s/rest/api/2/%s %s', method, project.jira_server, path, resp.status_code)
+            logger.debug('%s %s%s %s', method, project.jira_server, path, resp.status_code)
             logger.debug('\n'.join([f'{k}: {v}' for k,v in resp.headers.items()]))
             logger.debug('')
             logger.debug(resp.text)

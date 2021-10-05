@@ -967,9 +967,9 @@ def test_jira__update_issue__successful_put_results_in_get(
     )
 
     mock_api_put.assert_called_with(
-        project, f'issue/{issue_1.key}', data={'fields': {'priority': {'name': 'Normal'}}}
+        project, f'/rest/api/2/issue/{issue_1.key}', data={'fields': {'priority': {'name': 'Normal'}}}
     )
-    mock_api_get.assert_called_with(project, f'issue/{issue_1.key}')
+    mock_api_get.assert_called_with(project, f'/rest/api/2/issue/{issue_1.key}')
     assert mock_jira_core.write_issues.called
 
 
@@ -1011,7 +1011,7 @@ def test_jira__fetch_issue__returns_output_from_jiraapi_object_to_issue(
     ret = mock_jira_core.fetch_issue(project, ISSUE_1['key'])
     assert ret == 1
 
-    mock_api_get.assert_called_with(project, f'issue/{ISSUE_1["key"]}')
+    mock_api_get.assert_called_with(project, f'/rest/api/2/issue/{ISSUE_1["key"]}')
     assert mock_jiraapi_object_to_issue.called
 
 
