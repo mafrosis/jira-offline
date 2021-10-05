@@ -31,13 +31,8 @@ services:
       - ./mypy.ini:/app/mypy.ini:ro
 
   jira:
-    image: mafrosis/jira
-    build:
-      context: .
-      dockerfile: Dockerfile.jira
-      args:
-        USER_ID: 1000
-        GROUP_ID: 1004
+    image: atlassian/jira-software
+    user: 2001:2001
     environment:
       - ATL_DB_DRIVER=org.postgresql.Driver
       - ATL_JDBC_USER=postgres
