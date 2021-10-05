@@ -504,7 +504,7 @@ class Jira(collections.abc.MutableMapping):
         api_put(project, f'issue/{issue.key}', data={'fields': fields})
 
         # Jira is now updated to match local; synchronise offline issue to the server version
-        issue_data = api_get(project, 'issue/EGG-1')
+        issue_data = api_get(project, f'issue/{issue.key}')
         self[issue.key] = jiraapi_object_to_issue(project, issue_data)
 
         # Write changes to disk
@@ -521,5 +521,5 @@ class Jira(collections.abc.MutableMapping):
         Returns:
             Issue dataclass instance
         '''
-        data = api_get(project, f'issue/{key}')
-        return jiraapi_object_to_issue(project, data)
+        issue_data = api_get(project, f'issue/{key}')
+        return jiraapi_object_to_issue(project, issue_data)
