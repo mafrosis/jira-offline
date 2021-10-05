@@ -286,7 +286,7 @@ class Jira(collections.abc.MutableMapping):
         '''
         try:
             params = {'projectKeys': project.key, 'expand': 'projects.issuetypes.fields'}
-            data = api_get(project, 'issue/createmeta', params=params)
+            data = api_get(project, '/rest/api/2/issue/createmeta', params=params)
             if not data.get('projects'):
                 raise ProjectDoesntExist(project.key)
 
@@ -415,7 +415,7 @@ class Jira(collections.abc.MutableMapping):
         Params:
             project:  The project mapped to the Jira to query for timezone info
         '''
-        data = api_get(project, 'myself')
+        data = api_get(project, '/rest/api/2/myself')
         return data.get('timeZone')
 
 
@@ -426,7 +426,7 @@ class Jira(collections.abc.MutableMapping):
         Params:
             project:  Jira project to query
         '''
-        data = api_get(project, f'project/{project.key}/statuses')
+        data = api_get(project, f'/rest/api/2/project/{project.key}/statuses')
 
         for obj in data:
             try:
@@ -443,7 +443,7 @@ class Jira(collections.abc.MutableMapping):
         Params:
             project:  Jira project to query
         '''
-        data = api_get(project, f'project/{project.key}/components')
+        data = api_get(project, f'/rest/api/2/project/{project.key}/components')
         project.components = {x['name'] for x in data}
 
 
@@ -461,7 +461,7 @@ class Jira(collections.abc.MutableMapping):
             The new Issue, including the Jira-generated key field
         '''
         # Create new issue in Jira
-        data = api_post(project, 'issue', data={'fields': fields})
+        data = api_post(project, '/rest/api/2/issue', data={'fields': fields})
 
         # Retrieve the freshly minted Jira issue
         new_issue: Issue = self.fetch_issue(project, data['key'])
@@ -501,10 +501,10 @@ class Jira(collections.abc.MutableMapping):
             issue:    Issue object to update
             fields:   K/V pairs for the issue; output from `utils.convert.issue_to_jiraapi_update`
         '''
-        api_put(project, f'issue/{issue.key}', data={'fields': fields})
+        api_put(project, f'/rest/api/2/issue/{issue.key}', data={'fields': fields})
 
         # Jira is now updated to match local; synchronise offline issue to the server version
-        issue_data = api_get(project, f'issue/{issue.key}')
+        issue_data = api_get(project, f'/rest/api/2/issue/{issue.key}')
         self[issue.key] = jiraapi_object_to_issue(project, issue_data)
 
         # Write changes to disk
@@ -521,5 +521,5 @@ class Jira(collections.abc.MutableMapping):
         Returns:
             Issue dataclass instance
         '''
-        issue_data = api_get(project, f'issue/{key}')
+        issue_data = api_get(project, f'/rest/api/2/issue/{key}')
         return jiraapi_object_to_issue(project, issue_data)

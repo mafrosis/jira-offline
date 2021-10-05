@@ -119,7 +119,7 @@ def pull_single_project(project: ProjectMeta, force: bool, page_size: int):
             startAt = page * page_size
 
             params = {'jql': jql, 'startAt': startAt, 'maxResults': page_size}
-            data = api_get(project, 'search', params=params)
+            data = api_get(project, '/rest/api/2/search', params=params)
 
             api_issues = data.get('issues', [])
             if len(api_issues) == 0:
@@ -146,7 +146,7 @@ def pull_single_project(project: ProjectMeta, force: bool, page_size: int):
     try:
         # single quick query to get total number of issues
         params: Dict[str, Any] = {'jql': jql, 'maxResults': 1, 'fields': 'key'}
-        data = api_get(project, 'search', params=params)
+        data = api_get(project, '/rest/api/2/search', params=params)
 
         pbar = None
 

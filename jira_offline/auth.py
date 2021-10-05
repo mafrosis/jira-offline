@@ -83,7 +83,7 @@ def _test_jira_connect(project: ProjectMeta):
     Params:
         project:  Properties of the project we're authenticating against
     '''
-    api_get(project, 'mypermissions', params={'permissions': 'BROWSE_PROJECTS'})
+    api_get(project, '/rest/api/2/mypermissions', params={'permissions': 'BROWSE_PROJECTS'})
 
 
 def oauth_dance(project: ProjectMeta, consumer_key: str, key_cert_data: str, verify: Optional[bool]=None):

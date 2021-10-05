@@ -30,7 +30,7 @@ class JiraApiError(Exception):
 
     def __str__(self):
         if self.status_code:
-            return f'{self.status_code} returned from {self.method} /rest/api/2/{self.path}\n\n{self.message}'
+            return f'{self.status_code} returned from {self.method} {self.path}\n\n{self.message}'
         else:
             return self.message
 
