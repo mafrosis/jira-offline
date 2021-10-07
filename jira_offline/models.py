@@ -344,9 +344,9 @@ class Issue(DataclassSerializer):
     # Extended Customfields dict to capture arbitrary user-defined Customfields as strings
     extended: Optional[Dict[str, str]] = field(default_factory=dict)  # type: ignore[assignment]
 
-    # The `original` dict which represents serialized Issue last seen on Jira server
-    # this attribute is not written to cache, and is created at runtime from Issue.diff_to_original
-    original: Dict[str, Any] = field(
+    # The `original` dict is the serialized Issue, as last seen on the Jira server. This attribute
+    # is not written to disk, but is created at runtime from Issue.diff_to_original
+    original: dict = field(
         init=False, repr=False, default_factory=dict, metadata={'serialize': False}
     )
 
