@@ -149,51 +149,53 @@ def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:
         except (TypeError, ValueError):
             raise DeserializeError(f'Failed deserializing {value} to int')
 
-    elif base_type is dict and typing_inspect.is_generic_type(type_):
-        # extract key and value types for the generic Dict
-        generic_key_type, generic_value_type = type_.__args__[0], type_.__args__[1]
-
-        try:
-            # deserialize keys and values individually, constructing a new dict
-            return {
-                deserialize_value(generic_key_type, item_key, tz=tz):
-                    deserialize_value(generic_value_type, item_value, tz=tz)
-                for item_key, item_value in value.items()
-            }
-        except AttributeError:
-            raise DeserializeError(f'Failed serializing "{value}" to {base_type}')
-
     elif base_type is dict:
-        # additional error handling for non-generic dict type
-        if not isinstance(value, dict):
-            raise DeserializeError('Value passed for dict types must be dict')
+        if typing_inspect.is_generic_type(type_):
+            # extract key and value types for the generic Dict
+            generic_key_type, generic_value_type = type_.__args__[0], type_.__args__[1]
 
-        # a python dict is JSON-compatible, so no additional conversion necessary
+            try:
+                # deserialize keys and values individually, constructing a new dict
+                return {
+                    deserialize_value(generic_key_type, item_key, tz=tz):
+                        deserialize_value(generic_value_type, item_value, tz=tz)
+                    for item_key, item_value in value.items()
+                }
+            except AttributeError:
+                raise DeserializeError(f'Failed serializing "{value}" to {base_type}')
 
-    elif base_type is list and typing_inspect.is_generic_type(type_):
-        if not isinstance(value, list):
-            # additional error handling is required here as python will iterate a string as though its
-            # a list; causing subsequent code to produce incorrect results when a string is fed to
-            # the deserializer
-            raise DeserializeError('Value passed for list types must be list')
+        else:
+            # additional error handling for non-generic dict type
+            if not isinstance(value, dict):
+                raise DeserializeError('Value passed for dict types must be dict')
 
-        # extract value type for the generic List
-        generic_type = type_.__args__[0]
-
-        try:
-            # deserialize values individually into a new list
-            return [
-                deserialize_value(generic_type, v, tz=tz) for v in value
-            ]
-        except (AttributeError, TypeError):
-            raise DeserializeError(f'Failed serializing "{value}" to {type_}')
+            # a python dict is JSON-compatible, so no additional conversion necessary
 
     elif base_type is list:
-        # additional error handling for non-generic list type
-        if not isinstance(value, list):
-            raise DeserializeError('Value passed for list types must be list')
+        if typing_inspect.is_generic_type(type_):
+            # additional error handling is required here as python will iterate a string as though
+            # it's a list; causing subsequent code to produce incorrect results when a string is fed
+            # to the deserializer
+            if not isinstance(value, list):
+                raise DeserializeError('Value passed for list types must be list')
 
-        return list(value)
+            # extract value type for the generic List
+            generic_type = type_.__args__[0]
+
+            try:
+                # deserialize values individually into a new list
+                return [
+                    deserialize_value(generic_type, v, tz=tz) for v in value
+                ]
+            except (AttributeError, TypeError):
+                raise DeserializeError(f'Failed serializing "{value}" to {type_}')
+
+        else:
+            # additional error handling for non-generic list type
+            if not isinstance(value, list):
+                raise DeserializeError('Value passed for list types must be list')
+
+            return list(value)
 
     else:
         # handle enum
