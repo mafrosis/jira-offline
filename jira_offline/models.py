@@ -134,6 +134,7 @@ class ProjectMeta(DataclassSerializer):
     timezone: datetime.tzinfo = field(default=get_localzone())
     jira_id: Optional[str] = field(default=None)
     default_reporter: Optional[str] = field(default=None)
+    board_id: Optional[str] = field(default=None)
 
     # reference to parent AppConfig class
     config: Optional['AppConfig'] = field(default=None, metadata={'serialize': False})
@@ -238,7 +239,8 @@ class UserConfig(DataclassSerializer):
 
     @dataclass
     class Issue:
-        default_reporter: Dict[str, str]
+        board_id: Dict[str, str] = field(metadata={'project_config': True})
+        default_reporter: Dict[str, str] = field(metadata={'project_config': True})
 
     issue: Issue = field(init=False)
 
@@ -258,7 +260,7 @@ class UserConfig(DataclassSerializer):
             ls_fields_verbose=['issuetype', 'epic_link', 'epic_name', 'summary', 'status', 'assignee', 'fix_versions', 'updated'],
             ls_default_filter='status not in ("Done", "Story Done", "Epic Done", "Closed")'
         )
-        self.issue = UserConfig.Issue(default_reporter=dict())
+        self.issue = UserConfig.Issue(default_reporter=dict(), board_id=dict())
         self.customfields = dict()
 
 

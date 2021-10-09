@@ -133,6 +133,8 @@ def handle_issue_section(config: UserConfig, items, target: str):
     for key, value in items:
         if key == 'default-reporter':
             config.issue.default_reporter[target] = value
+        elif key == 'board-id':
+            config.issue.board_id[target] = value
 
 def handle_customfield_section(config: UserConfig, items, target: str):
     '''
@@ -196,6 +198,10 @@ def write_default_user_config(config_filepath: str):
 
     cfg.add_section('sync')
     cfg.set('sync', '# page-size', str(default_config.user_config.sync.page_size))
+
+    cfg.add_section('issue')
+    cfg.set('issue', '# board-id', '123')
+    cfg.set('issue', '# default-reporter', 'bob')
 
     cfg.add_section('customfields')
     cfg.set('customfields', '# story-points', '')
