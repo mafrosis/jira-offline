@@ -2,6 +2,8 @@
 Functions for reading and writng user-editable config
 '''
 import configparser
+import dataclasses
+import hashlib
 import logging
 import os
 import pathlib
@@ -83,6 +85,9 @@ def load_user_config(config: AppConfig):
             func = {**GLOBAL_SECTIONS, **PER_PROJECT_SECTIONS}.get(section_name)  # type: ignore[arg-type]
             if callable(func):
                 func(config.user_config, *handler_args)
+
+    # Some user-defined config applies to specific projects
+    _apply_user_config(config)
 
 
 def handle_display_section(config: UserConfig, items):
@@ -202,21 +207,50 @@ def write_default_user_config(config_filepath: str):
         cfg.write(f)
 
 
-def apply_default_reporter(config: AppConfig, project: ProjectMeta):
+def _apply_user_config(config: AppConfig):
     '''
-    Apply default-reporter configuration to the project. The config option issue.default_reporter
-    provides a default Issue.reporter for new issues.
+    Apply any relevant user-defined configuration to the configured projects. As some user-defined
+    config is project specific (eg. default_reporter) it needs to be mapped to each project on load.
+
+    Params:
+        config:  The freshly loaded app configuration
+    '''
+    if not config.user_config_filepath or not os.path.exists(config.user_config_filepath):
+        return
+
+    with open(config.user_config_filepath, 'rb') as f:
+        current_user_config_hash = hashlib.sha1(f.read()).hexdigest()
+
+    if current_user_config_hash != config.user_config_hash:
+        for project in config.projects.values():
+            apply_user_config_to_project(config, project)
+
+
+def apply_user_config_to_project(config: AppConfig, project: ProjectMeta):
+    '''
+    Apply user-defined configuration to the project. Some user-defined config options apply to all
+    projects, or just to specific ones by hostname or project key. These must be applied at run-time
+    to ensure changes are picked up and merged into the ProjectMeta objects.
 
     Params:
         config:   Global application config object, an attribute of the jira_offline.jira.Jira singleton
         project:  Project to apply config to
     '''
-    # First, apply global configurion to this project (if set)
-    if '*' in config.user_config.issue.default_reporter:
-        project.default_reporter = config.user_config.issue.default_reporter['*']
+    def iter_project_user_config_fields(obj):
+        '''Iterate k/v user config pairs, which are configured as applying to projects'''
+        for f in dataclasses.fields(obj):
+            if dataclasses.is_dataclass(f.type):
+                yield from iter_project_user_config_fields(getattr(obj, f.name))
+            elif f.metadata.get('project_config'):
+                yield (f.name, getattr(obj, f.name))
 
-    # Second, apply per-Jira host and per-project customfield mappings to this project, in order
-    for match in ('hostname', 'key'):
-        for target, reporter in config.user_config.issue.default_reporter.items():
-            if target == getattr(project, match):
-                project.default_reporter = reporter
+    for field_name, field_config in iter_project_user_config_fields(config.user_config):
+        # First, apply settings which apply to all projects
+        if '*' in field_config:
+            setattr(project, field_name, field_config['*'])
+
+        # Second, apply per-Jira host and per-project customfield mappings to this project, in order
+        for match in ('hostname', 'key'):
+            for target, value in field_config.items():
+                if target == getattr(project, match):
+                    setattr(project, field_name, value)
