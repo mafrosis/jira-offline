@@ -13,6 +13,7 @@ from peak.util.proxies import LazyProxy
 import pytz
 
 from jira_offline.config import get_cache_filepath, load_config
+from jira_offline.config.user_config import apply_user_config_to_project
 from jira_offline.exceptions import JiraApiError, MultipleTimezoneError, ProjectDoesntExist
 from jira_offline.models import AppConfig, CustomFields, Issue, IssueType, ProjectMeta
 from jira_offline.sql_filter import IssueFilter
@@ -284,6 +285,10 @@ class Jira(collections.abc.MutableMapping):
         Params:
             project:  Jira project object into which we should load additional metadata
         '''
+        # Some user-defined config applies to specific projects; ensure that this project is
+        # configured correctly
+        apply_user_config_to_project(self.config, project)
+
         try:
             params = {'projectKeys': project.key, 'expand': 'projects.issuetypes.fields'}
             data = api_get(project, '/rest/api/2/issue/createmeta', params=params)

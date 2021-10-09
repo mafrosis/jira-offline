@@ -281,6 +281,33 @@ def test_jira__contract_customfields__cleans_extended_fields_where_all_set_to_no
     assert df.loc[2, 'extended'] == {'a': None}
 
 
+@mock.patch('jira_offline.jira.apply_user_config_to_project')
+@mock.patch('jira_offline.jira.api_get')
+def test_jira__get_project_meta__calls_apply_user_config(
+        mock_api_get, mock_apply_user_config_to_project, mock_jira_core, project
+    ):
+    '''
+    Ensure get_project_meta() method calls apply_user_config_to_project()
+    '''
+    # mock out call to _get_project_issue_statuses and _get_project_components
+    mock_jira_core._get_project_issue_statuses = mock.Mock()
+    mock_jira_core._get_project_components = mock.Mock()
+
+    # mock return from Jira createmeta API call
+    mock_api_get.return_value = {
+        'projects': [{
+            'id': '56120',
+            'key': 'EGG',
+            'name': 'Project EGG',
+            'issuetypes': []
+        }]
+    }
+
+    mock_jira_core.get_project_meta(project)
+
+    assert mock_apply_user_config_to_project.called
+
+
 @mock.patch('jira_offline.jira.api_get')
 def test_jira__get_project_meta__overrides_default_timezone_when_set(mock_api_get, mock_jira_core, timezone_project):
     '''
