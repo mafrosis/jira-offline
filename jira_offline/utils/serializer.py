@@ -212,6 +212,11 @@ def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:
 
             return set(value)
 
+    elif base_type is bool:
+        # error handling for anything other than bool passed as bool
+        if not isinstance(value, bool):
+            raise DeserializeError('Only booleans can be deserialized to boolean type')
+
     else:
         # handle enum
         enum_type = get_enum(base_type)
@@ -483,7 +488,9 @@ class DataclassSerializer(metaclass=SchemaClass):
                 continue
 
             serialized_value = serialize_value(f.type, getattr(self, f.name))
-            if serialized_value:
+
+            # Only serialize fields that have a truthy value, with the exception of boolean
+            if serialized_value or f.type is bool:
                 data[f.name] = serialized_value
 
         return data
