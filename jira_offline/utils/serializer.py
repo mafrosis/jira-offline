@@ -281,7 +281,11 @@ def serialize_value(type_, value: Any) -> Any:
             # recursively serialize to the relevant generic type
             return [serialize_value(generic_type, v) for v in value]
         else:
-            return list(value)
+            if base_type is set:
+                # Ensure deterministic order in output lists created from sets
+                return sorted(list(value))
+            else:
+                return list(value)
 
     elif base_type is int:
         return int(value)
