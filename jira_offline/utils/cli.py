@@ -14,7 +14,7 @@ from tabulate import tabulate
 import typing_inspect
 
 from jira_offline.exceptions import (BadParamsPassedToValidCustomfield, EditorRepeatFieldFound,
-                                     InvalidLsFieldInConfig)
+                                     FieldNotOnModelClass, InvalidLsFieldInConfig)
 from jira_offline.jira import jira
 from jira_offline.models import CustomFields, Issue, ProjectMeta
 from jira_offline.utils import find_project, friendly_title, get_field_by_name
@@ -168,7 +168,7 @@ def parse_editor_result(issue: Issue, editor_result_raw: str, conflicts: Optiona
             # cast for mypy as istype uses @functools.lru_cache
             typ = cast(Hashable, field.type)
 
-        except ValueError:
+        except FieldNotOnModelClass:
             # ValueError means this field_name must be an extended customfield
             is_extended = True
             typ = str
@@ -241,7 +241,8 @@ def parse_editor_result(issue: Issue, editor_result_raw: str, conflicts: Optiona
                     skip_readonly = False
                     if get_field_by_name(Issue, previous_field).metadata.get('readonly', False):
                         skip_readonly = True
-                except ValueError:
+
+                except FieldNotOnModelClass:
                     pass
 
                 # If processing Issue conflicts in the editor, skip any fields which aren't in conflict
@@ -332,7 +333,8 @@ class CustomfieldsAsOptions(click.Command):
                 # Extract help text if defined on Customfields class
                 f = get_field_by_name(CustomFields, customfield_name)
                 help_text = f.metadata['cli_help']
-            except ValueError:
+
+            except FieldNotOnModelClass:
                 # Dynamic user-defined customfields have no help text
                 help_text = ''
 

@@ -65,6 +65,11 @@ def mock_jira_core(mock_load_config, project):
     project.config = jira.config
     # Never write to disk during tests
     jira.config.write_to_disk = mock.Mock()
+
+    # Always set verbose to true during tests
+    from jira_offline.cli.params import context  # pylint: disable=import-outside-toplevel, cyclic-import
+    context.verbose = True  # pylint: disable=assigning-non-slot
+
     return jira
 
 
@@ -133,7 +138,7 @@ def jira_project(request, run_in_docker):
         },
     )
     if resp.status_code > 205:
-        raise Exception('{} {}'.format(resp.status_code, resp.text))
+        raise Exception(f'{resp.status_code} {resp.text}')
 
     # fetch screens for this new project
     resp = requests.get(
@@ -226,4 +231,4 @@ def not_raises(exception):
     try:
         yield
     except exception as e:
-        raise pytest.fail("DID RAISE {0}".format(exception)) from e
+        raise pytest.fail("DID RAISE {exception}") from e

@@ -128,7 +128,7 @@ class Jira(collections.abc.MutableMapping):
         self._df.update(df)
 
         # Customfields are stored as a dict in the extended column of the DataFrame
-        self._df = self._expand_customfields()
+        self._df = self._expand_customfields(self._df)
 
         # Let Pandas pick the best datatypes
         self._df = self._df.convert_dtypes()
@@ -177,20 +177,50 @@ class Jira(collections.abc.MutableMapping):
         return Jira.ValuesView(self, self.filter)
 
 
-    def _expand_customfields(self) -> pd.DataFrame:
+    def _expand_customfields(self, df: pd.DataFrame) -> pd.DataFrame:  # pylint: disable=no-self-use
         '''
-        Customfields are stored as a dict in the extended column of the DataFrame. Expand the
-        key-value pairs from the dict into columns.
+        Customfields are stored as a dict in the extended column of the DataFrame.
+
+        Expand the key-value pairs from the dict into columns.
         '''
         # Drop all extended columns, previously created via this method
-        df1 = self._df.drop(self._df.columns[self._df.columns.str.startswith('extended.')], axis=1)
+        df1 = df.drop(columns=df.columns[df.columns.str.startswith('extended.')])
 
         # Expand extended dict into columns in a new DataFrame
         # Prefix each field with "extended."
-        df2 = self._df['extended'].apply(pd.Series).add_prefix('extended.')
+        df2 = df['extended'].apply(pd.Series).add_prefix('extended.').fillna('')
 
         # Merge the customfields columns onto the core DataFrame
         return pd.merge(df1, df2, left_index=True, right_index=True)
+
+
+    def _contract_customfields(self, df: pd.DataFrame) -> pd.DataFrame:  # pylint: disable=no-self-use
+        '''
+        Customfields are stored as a dict in the extended column of the DataFrame.
+
+        Drop DataFrame columns created in `_expand_customfields`, and cleanup the data where
+        an extended customfield is None for every issue.
+        '''
+        # Drop the extended columns, which were created via `self._expand_customfields`
+        df = df.drop(columns=df.columns[df.columns.str.startswith('extended.')])
+
+        # Expand the "extended" column into a new Series
+        df_extended = df['extended'].apply(pd.Series)
+
+        # Nothing more to do, if there are no extended fields with values
+        if df_extended.empty:
+            return df
+
+        # Drop columns which are None for every row
+        df_extended.drop(columns=df_extended.loc[:, df_extended.isnull().all(axis=0)].columns, inplace=True)
+
+        # Combine back into a dict and update the "extended" column
+        if df_extended.empty:
+            df['extended'] = ''
+        else:
+            df['extended'] = df_extended.to_dict('records')
+
+        return df
 
 
     def load_issues(self) -> None:
@@ -210,7 +240,7 @@ class Jira(collections.abc.MutableMapping):
             self._df['original'] = ''
 
             # Customfields are stored as a dict in the extended column of the DataFrame
-            self._df = self._expand_customfields()
+            self._df = self._expand_customfields(self._df)
 
         else:
             # Handle the case where an empty project has been cloned, which results in no Feather
@@ -232,8 +262,8 @@ class Jira(collections.abc.MutableMapping):
         # Don't write out the original field as it can be recreated from Issue.diff_to_original
         df = self._df.drop(columns=['original'])
 
-        # Drop the extended columns, which were created via `self._expand_customfields`
-        df.drop(df.columns[df.columns.str.startswith('extended.')], axis=1, inplace=True)
+        # Cleanup extended customfields columns
+        df = self._contract_customfields(df)
 
         # PyArrow does not like sets
         for col in ('components', 'fix_versions', 'labels'):
@@ -256,7 +286,7 @@ class Jira(collections.abc.MutableMapping):
         '''
         try:
             params = {'projectKeys': project.key, 'expand': 'projects.issuetypes.fields'}
-            data = api_get(project, 'issue/createmeta', params=params)
+            data = api_get(project, '/rest/api/2/issue/createmeta', params=params)
             if not data.get('projects'):
                 raise ProjectDoesntExist(project.key)
 
@@ -355,7 +385,7 @@ class Jira(collections.abc.MutableMapping):
             user's configuration.
             '''
             # Check to ensure the user-defined customfield is in use on this project
-            if value in project_customfields.keys():
+            if value in project_customfields:
                 # Replace field name dashes with underscores
                 name = name.replace('-', '_')
 
@@ -385,7 +415,7 @@ class Jira(collections.abc.MutableMapping):
         Params:
             project:  The project mapped to the Jira to query for timezone info
         '''
-        data = api_get(project, 'myself')
+        data = api_get(project, '/rest/api/2/myself')
         return data.get('timeZone')
 
 
@@ -396,7 +426,7 @@ class Jira(collections.abc.MutableMapping):
         Params:
             project:  Jira project to query
         '''
-        data = api_get(project, f'project/{project.key}/statuses')
+        data = api_get(project, f'/rest/api/2/project/{project.key}/statuses')
 
         for obj in data:
             try:
@@ -413,7 +443,7 @@ class Jira(collections.abc.MutableMapping):
         Params:
             project:  Jira project to query
         '''
-        data = api_get(project, f'project/{project.key}/components')
+        data = api_get(project, f'/rest/api/2/project/{project.key}/components')
         project.components = {x['name'] for x in data}
 
 
@@ -431,7 +461,7 @@ class Jira(collections.abc.MutableMapping):
             The new Issue, including the Jira-generated key field
         '''
         # Create new issue in Jira
-        data = api_post(project, 'issue', data={'fields': fields})
+        data = api_post(project, '/rest/api/2/issue', data={'fields': fields})
 
         # Retrieve the freshly minted Jira issue
         new_issue: Issue = self.fetch_issue(project, data['key'])
@@ -471,10 +501,10 @@ class Jira(collections.abc.MutableMapping):
             issue:    Issue object to update
             fields:   K/V pairs for the issue; output from `utils.convert.issue_to_jiraapi_update`
         '''
-        api_put(project, f'issue/{issue.key}', data={'fields': fields})
+        api_put(project, f'/rest/api/2/issue/{issue.key}', data={'fields': fields})
 
         # Jira is now updated to match local; synchronise offline issue to the server version
-        issue_data = api_get(project, 'issue/EGG-1')
+        issue_data = api_get(project, f'/rest/api/2/issue/{issue.key}')
         self[issue.key] = jiraapi_object_to_issue(project, issue_data)
 
         # Write changes to disk
@@ -491,5 +521,5 @@ class Jira(collections.abc.MutableMapping):
         Returns:
             Issue dataclass instance
         '''
-        data = api_get(project, f'issue/{key}')
-        return jiraapi_object_to_issue(project, data)
+        issue_data = api_get(project, f'/rest/api/2/issue/{key}')
+        return jiraapi_object_to_issue(project, issue_data)

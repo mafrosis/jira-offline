@@ -12,11 +12,15 @@ import logging
 from typing import Optional
 
 import click
+from peak.util.proxies import LazyProxy
 
 from jira_offline.jira import jira
 
 
 logger = logging.getLogger('jira')
+
+
+context = LazyProxy(lambda: CliParams())  # pylint: disable=unnecessary-lambda
 
 
 @dataclass
@@ -28,6 +32,7 @@ class CliParams:
 
     _verbose: bool = field(default=False)
     _debug: bool = field(default=False)
+    debug_level: int = field(default=0)
 
     lint: Optional[LintParams] = field(default=None)
 
@@ -38,6 +43,7 @@ class CliParams:
     @debug.setter
     def debug(self, val: bool):
         self._debug = val
+        self._verbose = True
         logger.setLevel(logging.DEBUG)
         logger.handlers[0].setFormatter(logging.Formatter('%(levelname)s: %(module)s:%(lineno)s - %(message)s'))
 
@@ -57,19 +63,20 @@ def global_options(func):
     '''
     @click.option('--config', '-c', type=click.Path(exists=True), help='Read configuration from PATH')
     @click.option('--verbose', '-v', is_flag=True, help='Display INFO level logging')
-    @click.option('--debug', '-d', is_flag=True, help='Display DEBUG level logging')
+    @click.option('--debug', '-d', count=True, help='Display DEBUG level logging')
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         ctx = args[0]
 
         if ctx.obj is None:
             # Initialise the CliParams DTO on first call
-            ctx.obj = CliParams()
+            ctx.obj = context
 
-        if kwargs.get('verbose') is True:
+        if kwargs.get('verbose'):
             ctx.obj.verbose = True
-        if kwargs.get('debug') is True:
+        if kwargs.get('debug'):
             ctx.obj.debug = True
+            ctx.obj.debug_level = kwargs.get('debug')
 
         if kwargs.get('config'):
             jira.config.user_config_filepath = kwargs.get('config')

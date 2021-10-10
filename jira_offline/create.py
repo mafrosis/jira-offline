@@ -5,8 +5,9 @@ import logging
 from typing import cast, Hashable, Optional, Tuple
 import uuid
 
-from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce, ImportFailed,
-                                     InvalidIssueType, ProjectNotConfigured)
+from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce,
+                                     FieldNotOnModelClass, ImportFailed, InvalidIssueType,
+                                     ProjectNotConfigured)
 from jira_offline.jira import jira
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.utils.serializer import get_base_type
@@ -204,14 +205,21 @@ def patch_issue_from_dict(issue: Issue, attrs: dict):
 
             setattr(issue, field_name, value)
 
-        except ValueError:
+        except FieldNotOnModelClass:
+            # FieldNotOnModelClass raised by `get_field_by_name` means this field is not a core Issue
+            # attribute; and is possibly an extended customfield.
+            if field_name.startswith('extended.'):
+                field_name = field_name[9:]
+
+            # Verify this is really a configured customfield before continuing
+            if issue.project.customfields and issue.project.customfields.extended is not None:
+                if field_name not in issue.project.customfields.extended:
+                    continue
+
             # Dynamic user-defined customfields are stored in issue.extended dict and are always
             # str, so no type conversion is necessary.
             if not issue.extended:
                 issue.extended = dict()
-
-            if field_name.startswith('extended.'):
-                field_name = field_name[9:]
 
             issue.extended[field_name] = value
 

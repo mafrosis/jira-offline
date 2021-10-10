@@ -13,7 +13,6 @@ import click
 import dictdiffer
 from dictdiffer.merge import Merger
 from dictdiffer.resolve import UnresolvedConflictsException
-import pandas as pd
 from tabulate import tabulate
 from tqdm import tqdm
 
@@ -24,7 +23,7 @@ from jira_offline.create import patch_issue_from_dict
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.utils import critical_logger
 from jira_offline.utils.api import get as api_get
-from jira_offline.utils.cli import parse_editor_result, print_list
+from jira_offline.utils.cli import parse_editor_result
 from jira_offline.utils.convert import jiraapi_object_to_issue, issue_to_jiraapi_update
 from jira_offline.utils.serializer import DeserializeError
 
@@ -36,15 +35,13 @@ class Conflict(Exception):
     pass
 
 
-def pull_issues(projects: Optional[Set[str]]=None, force: bool=False, verbose: bool=False,
-                no_retry: bool=False):
+def pull_issues(projects: Optional[Set[str]]=None, force: bool=False, no_retry: bool=False):
     '''
     Pull changed issues from upstream Jira API, and update project settings/metadata.
 
     Params:
         projects:  Project IDs to pull, if None then pull all configured projects
         force:     Force pull of all issues, not just those changed since project.last_updated
-        verbose:   Verbose print all issues as they're pulled from the API (default: show progress bar)
         no_retry:  Do not retry a Jira server which is unavailable
     '''
     projects_to_pull: List[ProjectMeta]
@@ -84,18 +81,17 @@ def pull_issues(projects: Optional[Set[str]]=None, force: bool=False, verbose: b
             finally:
                 retry += 1
 
-            pull_single_project(project, force=force, verbose=verbose, page_size=jira.config.user_config.sync.page_size)
+            pull_single_project(project, force=force, page_size=jira.config.user_config.sync.page_size)
             break
 
 
-def pull_single_project(project: ProjectMeta, force: bool, verbose: bool, page_size: int):
+def pull_single_project(project: ProjectMeta, force: bool, page_size: int):
     '''
     Pull changed issues from upstream Jira API
 
     Params:
         project:    Properties of the Jira project to pull
         force:      Force pull of all issues, not just those changed since project.last_updated
-        verbose:    Verbose print all issues as they're pulled from the API (default: show progress bar)
         page_size:  Number of issues requested in each API call to Jira
     '''
     # if the issue cache is not yet loaded, load before pull
@@ -123,7 +119,7 @@ def pull_single_project(project: ProjectMeta, force: bool, verbose: bool, page_s
             startAt = page * page_size
 
             params = {'jql': jql, 'startAt': startAt, 'maxResults': page_size}
-            data = api_get(project, 'search', params=params)
+            data = api_get(project, '/rest/api/2/search', params=params)
 
             api_issues = data.get('issues', [])
             if len(api_issues) == 0:
@@ -140,25 +136,21 @@ def pull_single_project(project: ProjectMeta, force: bool, verbose: bool, page_s
                 pbar.update(len(api_issues))
             else:
                 logger.info('Page number %s', page)
-                df = pd.DataFrame.from_dict(
-                    {
-                        issue['key']: jiraapi_object_to_issue(project, issue).serialize()
-                        for issue in api_issues
-                    },
-                    orient='index'
-                )
-                print_list(df)
+                for issue in issues:
+                    print(f'[{issue.key}] {issue.summary}')
 
         return issues
+
+    from jira_offline.cli.params import context  # pylint: disable=import-outside-toplevel, cyclic-import
 
     try:
         # single quick query to get total number of issues
         params: Dict[str, Any] = {'jql': jql, 'maxResults': 1, 'fields': 'key'}
-        data = api_get(project, 'search', params=params)
+        data = api_get(project, '/rest/api/2/search', params=params)
 
         pbar = None
 
-        if verbose:
+        if context.verbose:
             issues = _run(jql)
         else:
             # show progress bar
@@ -376,7 +368,7 @@ def manual_conflict_resolution(update_obj: IssueUpdate):
             # Display interactively in $EDITOR
             editor_result_raw = click.edit(
                 '\n'.join([
-                    '# Conflict(s) on Issue {}'.format(update_obj.merged_issue.key), '',
+                    f'# Conflict(s) on Issue {update_obj.merged_issue.key}', '',
                     editor_conflict_text
                 ])
             )
@@ -412,12 +404,12 @@ def manual_conflict_resolution(update_obj: IssueUpdate):
     patch_issue_from_dict(update_obj.merged_issue, patch_dict)
 
 
-def push_issues(verbose: bool=False) -> int:
+def push_issues() -> int:
     '''
     Push new/changed issues back to Jira server
 
-    Params:
-        verbose:  Verbose print all issues as they're pushed to Jira server (default is progress bar)
+    Returns:
+        Total number of issues pushed
     '''
     def _run(issue_keys: List[str], pbar=None) -> int:
         count = 0
@@ -478,7 +470,9 @@ def push_issues(verbose: bool=False) -> int:
     # 2. Push modified issues
     issues_to_push += jira.df.loc[(jira.df.id > 0) & jira.df.modified, 'key'].tolist()
 
-    if verbose:
+    from jira_offline.cli.params import context  # pylint: disable=import-outside-toplevel, cyclic-import
+
+    if context.verbose:
         total = _run(issues_to_push)
     else:
         with critical_logger(logger):
