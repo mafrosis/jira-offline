@@ -6,13 +6,19 @@ import pytest
 from jira_offline.utils.serializer import DeserializeError, DataclassSerializer
 
 
+# `unsafe_hash` is required as a set requires hashable objects. The `Nested` object is mutable, hence
+# the reason it's "unsafe" to hash.
+@dataclass(unsafe_hash=True, order=True)
+class Nested(DataclassSerializer):
+    x: str
+
 @dataclass
 class Test(DataclassSerializer):
-    s: Set[str]
+    s: Set[Nested]
 
 @dataclass
 class TestWithDefaults(DataclassSerializer):
-    s: Optional[Set[str]] = field(default_factory=set)
+    s: Optional[Set[Nested]] = field(default_factory=set)
 
 
 FIXTURES=[Test, TestWithDefaults]
@@ -21,49 +27,51 @@ FIXTURES=[Test, TestWithDefaults]
 @pytest.mark.parametrize('class_', FIXTURES)
 def test_typed_set_deserialize(class_):
     """
-    Test typing.set deserializes
+    Test typing.Set deserializes
     """
     obj = class_.deserialize({
-        's': ['abc', 'def']
+        's': [{'x': 'abc'}, {'x': 'def'}]
     })
     assert isinstance(obj.s, set)
-    assert obj.s == {'abc', 'def'}
+    assert obj.s == {Nested(x='abc'), Nested(x='def')}
 
 
 @pytest.mark.parametrize('class_', FIXTURES)
 def test_typed_set_deserialize_roundrip(class_):
     """
-    Test typing.set deserializes/serializes in a loss-less roundrip
+    Test typing.Set deserializes/serializes in a loss-less roundrip
     """
     json = class_.deserialize({
-        's': ['abc', 'def']
+        's': [{'x': 'abc'}, {'x': 'def'}]
     }).serialize()
-    assert json['s'] == ['abc', 'def']
+    assert {'x': 'abc'} in json['s']
+    assert {'x': 'def'} in json['s']
 
 
 @pytest.mark.parametrize('class_', FIXTURES)
 def test_typed_set_serialize(class_):
     """
-    Test typing.set serializes
+    Test typing.Set serializes
     """
     json = class_(
-        s={'abc', 'def'}
+        s={Nested(x='abc'), Nested(x='def')}
     ).serialize()
-    assert json['s'] == ['abc', 'def']
+    assert {'x': 'abc'} in json['s']
+    assert {'x': 'def'} in json['s']
 
 
 @pytest.mark.parametrize('class_', FIXTURES)
 def test_typed_set_serialize_roundrip(class_):
     """
-    Test typing.set serializes/deserializes in a loss-less roundrip
+    Test typing.Set serializes/deserializes in a loss-less roundrip
     """
     obj = class_.deserialize(
         class_(
-            s={'abc', 'def'}
+            s={Nested(x='abc'), Nested(x='def')}
         ).serialize()
     )
     assert isinstance(obj.s, set)
-    assert obj.s == {'abc', 'def'}
+    assert obj.s == {Nested(x='abc'), Nested(x='def')}
 
 
 BAD_INPUT = [
@@ -77,7 +85,7 @@ BAD_INPUT = [
 ])
 def test_typed_set_bad_deserialize(class_, bad_input):
     '''
-    Test bad typing.set deserialize raises exception (exception raised when passed value is not a list)
+    Test bad typing.Set deserialize raises exception (exception raised when passed value is not a list)
     '''
     with pytest.raises(DeserializeError):
         class_.deserialize(bad_input)

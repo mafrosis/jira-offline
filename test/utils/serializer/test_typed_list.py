@@ -7,12 +7,16 @@ from jira_offline.utils.serializer import DeserializeError, DataclassSerializer
 
 
 @dataclass
+class Nested(DataclassSerializer):
+    x: str
+
+@dataclass
 class Test(DataclassSerializer):
-    l: List[str]
+    l: List[Nested]
 
 @dataclass
 class TestWithDefaults(DataclassSerializer):
-    l: Optional[List[str]] = field(default_factory=list)
+    l: Optional[List[Nested]] = field(default_factory=list)
 
 
 FIXTURES=[Test, TestWithDefaults]
@@ -24,10 +28,10 @@ def test_typed_list_deserialize(class_):
     Test typing.List deserializes
     """
     obj = class_.deserialize({
-        'l': ['abc', 'def']
+        'l': [{'x': 'abc'}, {'x': 'def'}]
     })
     assert isinstance(obj.l, list)
-    assert obj.l == ['abc', 'def']
+    assert obj.l == [Nested(x='abc'), Nested(x='def')]
 
 
 @pytest.mark.parametrize('class_', FIXTURES)
@@ -36,9 +40,9 @@ def test_typed_list_deserialize_roundrip(class_):
     Test typing.List deserializes/serializes in a loss-less roundrip
     """
     json = class_.deserialize({
-        'l': ['abc', 'def']
+        'l': [{'x': 'abc'}, {'x': 'def'}]
     }).serialize()
-    assert json['l'] == ['abc', 'def']
+    assert json['l'] == [{'x': 'abc'}, {'x': 'def'}]
 
 
 @pytest.mark.parametrize('class_', FIXTURES)
@@ -47,9 +51,9 @@ def test_typed_list_serialize(class_):
     Test typing.List serializes
     """
     json = class_(
-        l=['abc', 'def']
+        l=[Nested(x='abc'), Nested(x='def')]
     ).serialize()
-    assert json['l'] == ['abc', 'def']
+    assert json['l'] == [{'x': 'abc'}, {'x': 'def'}]
 
 
 @pytest.mark.parametrize('class_', FIXTURES)
@@ -59,11 +63,11 @@ def test_typed_list_serialize_roundrip(class_):
     """
     obj = class_.deserialize(
         class_(
-            l=['abc', 'def']
+            l=[Nested(x='abc'), Nested(x='def')]
         ).serialize()
     )
     assert isinstance(obj.l, list)
-    assert obj.l == ['abc', 'def']
+    assert obj.l == [Nested(x='abc'), Nested(x='def')]
 
 
 BAD_INPUT = [
