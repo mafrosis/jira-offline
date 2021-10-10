@@ -138,11 +138,6 @@ def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:
     elif base_type is datetime.tzinfo:
         return pytz.timezone(value)
 
-    elif base_type is set:
-        if not isinstance(value, (set, list, tuple)):
-            raise DeserializeError('Value passed to set type must be set, list or tuple')
-        return set(value)
-
     elif base_type is int:
         try:
             return int(value)
@@ -197,6 +192,26 @@ def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:
 
             return list(value)
 
+    elif base_type is set:
+        if typing_inspect.is_generic_type(type_):
+            # extract value type for the generic Set
+            generic_type = type_.__args__[0]
+
+            try:
+                # deserialize values individually into a new set
+                return {
+                    deserialize_value(generic_type, v, tz=tz) for v in value
+                }
+            except (AttributeError, TypeError):
+                raise DeserializeError(f'Failed serializing "{value}" to {type_}')
+
+        else:
+            # additional error handling for non-generic list type
+            if not isinstance(value, (set, list, tuple)):
+                raise DeserializeError('Value passed to set type must be set, list or tuple')
+
+            return set(value)
+
     else:
         # handle enum
         enum_type = get_enum(base_type)
@@ -242,9 +257,6 @@ def serialize_value(type_, value: Any) -> Any:
     elif base_type is datetime.tzinfo:
         return str(value)
 
-    elif base_type is set:
-        return sorted(list(value))
-
     elif base_type is dict and typing_inspect.is_generic_type(type_):
         # extract key and value types for the generic Dict
         generic_key_type, generic_value_type = type_.__args__[0], type_.__args__[1]
@@ -256,16 +268,14 @@ def serialize_value(type_, value: Any) -> Any:
             for item_key, item_value in value.items()
         }
 
-    elif base_type is list:
+    elif base_type in (list, set):
         if typing_inspect.is_generic_type(type_):
-            # extract value type for the generic List
+            # extract value type for the generic List/Set
             generic_type = type_.__args__[0]
 
             # recursively serialize to the relevant generic type
             return [serialize_value(generic_type, v) for v in value]
-
-        elif base_type is list:
-            # non-generic lists could contain a variety of different datatypes, so no recursion here
+        else:
             return list(value)
 
     elif base_type is int:
