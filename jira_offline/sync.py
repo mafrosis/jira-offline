@@ -13,7 +13,6 @@ import click
 import dictdiffer
 from dictdiffer.merge import Merger
 from dictdiffer.resolve import UnresolvedConflictsException
-import pandas as pd
 from tabulate import tabulate
 from tqdm import tqdm
 
@@ -24,7 +23,7 @@ from jira_offline.create import patch_issue_from_dict
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.utils import critical_logger
 from jira_offline.utils.api import get as api_get
-from jira_offline.utils.cli import parse_editor_result, print_list
+from jira_offline.utils.cli import parse_editor_result
 from jira_offline.utils.convert import jiraapi_object_to_issue, issue_to_jiraapi_update
 from jira_offline.utils.serializer import DeserializeError
 
@@ -140,14 +139,8 @@ def pull_single_project(project: ProjectMeta, force: bool, verbose: bool, page_s
                 pbar.update(len(api_issues))
             else:
                 logger.info('Page number %s', page)
-                df = pd.DataFrame.from_dict(
-                    {
-                        issue['key']: jiraapi_object_to_issue(project, issue).serialize()
-                        for issue in api_issues
-                    },
-                    orient='index'
-                )
-                print_list(df)
+                for issue in issues:
+                    print(f'[{issue.key}] {issue.summary}')
 
         return issues
 
