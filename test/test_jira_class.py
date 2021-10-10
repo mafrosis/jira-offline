@@ -16,24 +16,44 @@ from jira_offline.models import Issue, IssueType, ProjectMeta
 from jira_offline.utils.convert import issue_to_jiraapi_update
 
 
-def test_jira__mutablemapping__get_item__(mock_jira_core, project):
+def test_jira__mutablemapping__getitem__(mock_jira_core, project):
     '''
-    Ensure that __get_item__ returns a valid Issue object from the underlying dataframe
+    Ensure that __getitem__ returns a valid Issue object from the underlying DataFrame
     '''
     # Setup the Jira DataFrame
     with mock.patch('jira_offline.jira.jira', mock_jira_core):
         issue_1 = Issue.deserialize(ISSUE_1, project)
         issue_1.commit()
 
-    # retrieve the issue via __get_item__
+    # Retrieve the issue via __getitem__
     retrieved_issue = mock_jira_core['TEST-71']
 
     compare_issue_helper(issue_1, retrieved_issue)
 
 
-def test_jira__mutablemapping__set_item__new(mock_jira_core, project):
+@pytest.mark.parametrize('key', [
+    '7242cc9e-ea52-4e51-bd84-2ced250cabf0',
+    '7242cc9e',
+])
+def test_jira__mutablemapping__getitem__handles_abbrev_key(mock_jira_core, project, key):
     '''
-    Ensure that __set_item__ adds a valid new Issue to the underlying dataframe
+    Ensure that __getitem__ returns a valid Issue object from the underlying DataFrame, when passed
+    an abbreviated UUID key from a new Issue
+    '''
+    # Setup the Jira DataFrame
+    with mock.patch('jira_offline.jira.jira', mock_jira_core):
+        issue_new = Issue.deserialize(ISSUE_NEW, project)
+        issue_new.commit()
+
+    # Retrieve the issue via __getitem__
+    retrieved_issue = mock_jira_core[key]
+
+    compare_issue_helper(issue_new, retrieved_issue)
+
+
+def test_jira__mutablemapping__setitem__new(mock_jira_core, project):
+    '''
+    Ensure that __setitem__ adds a valid new Issue to the underlying DataFrame
     '''
     # Setup the Jira DataFrame
     with mock.patch('jira_offline.jira.jira', mock_jira_core):
@@ -46,7 +66,7 @@ def test_jira__mutablemapping__set_item__new(mock_jira_core, project):
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
         issue_2 = Issue.deserialize(ISSUE_1, project)
 
-    # add the issue via __set_item__
+    # add the issue via __setitem__
     mock_jira_core['TEST-72'] = issue_2
 
     assert len(mock_jira_core._df) == 2
@@ -54,9 +74,9 @@ def test_jira__mutablemapping__set_item__new(mock_jira_core, project):
     compare_issue_helper(issue_2, mock_jira_core['TEST-72'])
 
 
-def test_jira__mutablemapping__set_item__overwrite(mock_jira_core, project):
+def test_jira__mutablemapping__setitem__overwrite(mock_jira_core, project):
     '''
-    Ensure that __set_item__ overwrites an existing Issue in the underlying dataframe
+    Ensure that __setitem__ overwrites an existing Issue in the underlying DataFrame
     '''
     # Setup the Jira DataFrame
     with mock.patch('jira_offline.jira.jira', mock_jira_core):
@@ -65,7 +85,7 @@ def test_jira__mutablemapping__set_item__overwrite(mock_jira_core, project):
 
     assert len(mock_jira_core._df) == 1
 
-    # add the issue via __set_item__
+    # add the issue via __setitem__
     mock_jira_core['TEST-71'] = issue_1
 
     assert len(mock_jira_core._df) == 1
@@ -73,9 +93,9 @@ def test_jira__mutablemapping__set_item__overwrite(mock_jira_core, project):
     compare_issue_helper(issue_1, mock_jira_core['TEST-71'])
 
 
-def test_jira__mutablemapping__del_item__(mock_jira_core, project):
+def test_jira__mutablemapping__delitem__(mock_jira_core, project):
     '''
-    Ensure that __del_item__ deletes an issue from the underlying dataframe
+    Ensure that __delitem__ deletes an issue from the underlying DataFrame
     '''
     # Setup the Jira DataFrame
     with mock.patch('jira_offline.jira.jira', mock_jira_core):
@@ -84,10 +104,27 @@ def test_jira__mutablemapping__del_item__(mock_jira_core, project):
 
     assert len(mock_jira_core._df) == 1
 
-    # delete the issue via __del_item__
+    # delete the issue via __delitem__
     del mock_jira_core['TEST-71']
 
     assert len(mock_jira_core._df) == 0
+
+
+@pytest.mark.parametrize('key', [
+    '7242cc9e-ea52-4e51-bd84-2ced250cabf0',
+    '7242cc9e',
+])
+def test_jira__mutablemapping__contains__handles_abbrev_key(mock_jira_core, project, key):
+    '''
+    Ensure that __contains__ returns True when passed a valid abbreviated UUID key from a new Issue
+    '''
+    # Setup the Jira DataFrame
+    with mock.patch('jira_offline.jira.jira', mock_jira_core):
+        issue_new = Issue.deserialize(ISSUE_NEW, project)
+        issue_new.commit()
+
+    # Check dictionary __contains__
+    assert key in mock_jira_core
 
 
 def test_jira__mutablemapping__in_operator(mock_jira_core, project):
@@ -129,7 +166,7 @@ def test_jira__mutablemapping__roundtrip(mock_jira, project, issue_fixture):
 
     Parameterized with the various different types of Issue fixtures.
     '''
-    # add to dataframe (via __set_item__)
+    # add to dataframe (via __setitem__)
     mock_jira[issue_fixture['key']] = issue_1 = Issue.deserialize(issue_fixture, project)
 
     # extract back out of dataframe (via __get_item__)

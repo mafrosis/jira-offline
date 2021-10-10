@@ -49,6 +49,13 @@ def timezone_project(request, project):
     return project
 
 
+@pytest.fixture(autouse=True)
+def verbose_default():
+    'Always set verbose to true during tests'
+    from jira_offline.cli.params import context  # pylint: disable=import-outside-toplevel, cyclic-import
+    context.verbose = True  # pylint: disable=assigning-non-slot
+
+
 @pytest.fixture
 @mock.patch('jira_offline.jira.load_config')
 def mock_jira_core(mock_load_config, project):
@@ -66,10 +73,6 @@ def mock_jira_core(mock_load_config, project):
     project.config = jira.config
     # Never write to disk during tests
     jira.config.write_to_disk = mock.Mock()
-
-    # Always set verbose to true during tests
-    from jira_offline.cli.params import context  # pylint: disable=import-outside-toplevel, cyclic-import
-    context.verbose = True  # pylint: disable=assigning-non-slot
 
     jira._df = pd.DataFrame(columns=[
         'project_id', 'issuetype', 'summary', 'key', 'assignee', 'created',

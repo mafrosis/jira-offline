@@ -181,6 +181,32 @@ def test_issue_model__render_returns_core_fields(project):
     assert output[10] == ('Creator', 'danil1')
 
 
+def test_issue_model__render_abbrev_key_for_new_issues(project):
+    '''
+    Validate Issue.render returns abbreviated UUID for new issues when verbose=False
+    '''
+    issue = Issue.deserialize(ISSUE_NEW, project)
+
+    from jira_offline.cli.params import context  # pylint: disable=import-outside-toplevel, cyclic-import
+    context.verbose = False  # pylint: disable=assigning-non-slot
+
+    output = issue.render()
+    assert output[0] == ('Summary', '[7242cc9e] This is the story summary')
+
+
+def test_issue_model__render_long_key_for_new_issues_when_verbose(project):
+    '''
+    Validate Issue.render returns long UUID for new issues when verbose=True
+    '''
+    issue = Issue.deserialize(ISSUE_NEW, project)
+
+    from jira_offline.cli.params import context  # pylint: disable=import-outside-toplevel, cyclic-import
+    context.verbose = True  # pylint: disable=assigning-non-slot
+
+    output = issue.render()
+    assert output[0] == ('Summary', '[7242cc9e-ea52-4e51-bd84-2ced250cabf0] This is the story summary')
+
+
 def test_issue_model__render_returns_core_does_not_include_space_prefix(project):
     '''
     Validate Issue.render DOES NOT return each row with a special spacer char as prefix, when not

@@ -617,8 +617,16 @@ class Issue(DataclassSerializer):
             for field_name in ('reporter', 'creator', 'created', 'updated'):
                 yield from iter_fields(field_name, None)
 
+        from jira_offline.cli.params import context  # pylint: disable=import-outside-toplevel, cyclic-import
+
+        # Abbreviate UUID issue key, if verbose is False
+        if len(self.key) == 36 and not context.verbose:
+            key = self.key[0:8]
+        else:
+            key = self.key
+
         fields = [
-            *fmt('summary', prefix=f'[{self.key}] '),
+            *fmt('summary', prefix=f'[{key}] '),
             *fmt('issuetype'),
             *epicdetails,
             *fmt('status'),

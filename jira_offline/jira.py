@@ -54,6 +54,12 @@ class Jira(collections.abc.MutableMapping):
 
 
     def __getitem__(self, key: str) -> Issue:
+        # If key is an abbreviated UUID, load full key from the DataFrame
+        full_key = self._df.index[(self._df.key.str.len() == 36) & self._df.index.str.startswith(key)].any()
+
+        if full_key:
+            key = full_key
+
         series = self._df.loc[key]
         return Issue.from_series(
             series,
@@ -74,6 +80,10 @@ class Jira(collections.abc.MutableMapping):
         return len(self._df)
 
     def __contains__(self, key):
+        # Check if key is an abbreviated UUID
+        if self._df.index[(self._df.key.str.len() == 36) & self._df.index.str.startswith(key)].any():
+            return True
+
         return key in self._df.index
 
 
