@@ -26,8 +26,8 @@ from tzlocal import get_localzone
 from jira_offline import __title__
 from jira_offline.exceptions import (BadProjectMetaUri, CannotSetIssueOriginalDirectly,
                                      UnableToCopyCustomCACert, NoAuthenticationMethod)
-from jira_offline.utils import (get_dataclass_defaults_for_pandas, get_field_by_name, render_field,
-                                render_value)
+from jira_offline.utils import (get_dataclass_defaults_for_pandas, get_field_by_name,
+                                render_dataclass_field, render_issue_field, render_value)
 from jira_offline.utils.convert import preprocess_sprint
 from jira_offline.utils.serializer import DataclassSerializer, get_base_type
 
@@ -194,8 +194,8 @@ class ProjectMeta(DataclassSerializer):
         '''Render object as a raw list of tuples'''
 
         def fmt(field_name: str) -> Tuple[str, str]:
-            '''Helper simply wrapping `render_field` for this class'''
-            return render_field(ProjectMeta, field_name, getattr(self, field_name))
+            '''Convenience helper wrapping the render util for this class'''
+            return render_dataclass_field(ProjectMeta, field_name, getattr(self, field_name))
 
         if self.oauth:
             auth = f'oauth_key={self.oauth.consumer_key}'
@@ -520,9 +520,9 @@ class Issue(DataclassSerializer):
             if conflicts and field_name in conflicts:
                 return (
                     ('<<<<<<< base', ''),
-                    render_field(Issue, field_name, conflicts[field_name]['base'], value_prefix=prefix),
+                    render_issue_field(self, field_name, conflicts[field_name]['base'], value_prefix=prefix),
                     ('=======', ''),
-                    render_field(Issue, field_name, conflicts[field_name]['updated'], value_prefix=prefix),
+                    render_issue_field(self, field_name, conflicts[field_name]['updated'], value_prefix=prefix),
                     ('>>>>>>> updated', ''),
                 )
 
@@ -541,13 +541,15 @@ class Issue(DataclassSerializer):
 
                 if removed_value:
                     # Render a removed field in red with a minus
-                    removed_field = render_field(Issue, field_name, removed_value, title_prefix='-',
-                                                 value_prefix=prefix, color='red')
+                    removed_field = render_issue_field(
+                        self, field_name, removed_value, title_prefix='-', value_prefix=prefix, color='red'
+                    )
 
                 if added_value:
                     # Render an added field in green with a plus
-                    added_field = render_field(Issue, field_name, added_value, title_prefix='+',
-                                               value_prefix=prefix, color='green')
+                    added_field = render_issue_field(
+                        self, field_name, added_value, title_prefix='+', value_prefix=prefix, color='green'
+                    )
 
                 if removed_value and added_value:
                     return (removed_field, added_field)
@@ -571,8 +573,7 @@ class Issue(DataclassSerializer):
                 else:
                     value = getattr(self, field_name)
 
-                return (render_field(Issue, field_name, value, title_prefix=title_prefix,
-                                     value_prefix=prefix),)
+                return (render_issue_field(self, field_name, value, title_prefix=title_prefix, value_prefix=prefix),)
 
         if self.issuetype == 'Epic':
             epicdetails = fmt('epic_name')
