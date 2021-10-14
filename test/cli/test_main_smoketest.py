@@ -52,7 +52,7 @@ def test_main_smoketest(mock_write_config, mock_auth1, mock_auth2, mock_push_iss
     # add fixture to Jira dict
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
-    runner = CliRunner()
+    runner = CliRunner(mix_stderr=False)
 
     with mock.patch('jira_offline.cli.main.jira', mock_jira), \
             mock.patch('jira_offline.cli.project.jira', mock_jira), \
@@ -61,7 +61,7 @@ def test_main_smoketest(mock_write_config, mock_auth1, mock_auth2, mock_push_iss
         result = runner.invoke(cli, [*command, *params])
 
     # CLI should always exit zero
-    assert result.exit_code == 0, result.stdout
+    assert result.exit_code == 0, result.output
 
 
 @pytest.mark.parametrize('command,params,exit_code', CLI_COMMAND_MAPPING)
@@ -78,7 +78,7 @@ def test_main_smoketest_empty(mock_write_config, mock_auth1, mock_auth2, mock_pu
     '''
     Test when the jira-offline issue cache is empty
     '''
-    runner = CliRunner()
+    runner = CliRunner(mix_stderr=False)
 
     with mock.patch('jira_offline.cli.main.jira', mock_jira), \
             mock.patch('jira_offline.cli.project.jira', mock_jira):

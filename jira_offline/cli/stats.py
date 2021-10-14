@@ -18,7 +18,7 @@ def cli_stats(ctx: click.core.Context):
     jira.load_issues()
 
     if jira.df.empty:
-        click.echo('No issues in the cache')
+        click.echo('No issues in the cache', err=True)
         raise click.Abort
 
     if ctx.invoked_subcommand is None:

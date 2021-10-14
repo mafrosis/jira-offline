@@ -45,7 +45,7 @@ def cli_show(_, key: str, as_json: bool=False):
     jira.load_issues()
 
     if key not in jira:
-        click.echo('Unknown issue key')
+        click.echo('Unknown issue key', err=True)
         raise click.Abort
 
     if as_json:
@@ -66,7 +66,7 @@ def cli_ls(ctx: click.core.Context, as_json: bool=False):
     jira.load_issues()
 
     if len(jira) == 0:
-        click.echo('No issues in the cache')
+        click.echo('No issues in the cache', err=True)
         raise click.Abort
 
     if not jira.filter.is_set:
@@ -98,11 +98,11 @@ def cli_diff(_, key: str=None):
 
     if key:
         if key not in jira:
-            click.echo('Unknown issue key')
+            click.echo('Unknown issue key', err=True)
             raise click.Abort
 
         if not jira[key].exists:
-            click.echo('This issue is new, so no diff is available')
+            click.echo('This issue is new, so no diff is available', err=True)
             raise click.Abort
 
         print_diff(jira[key])
@@ -124,7 +124,7 @@ def cli_reset(_, key: str):
     jira.load_issues()
 
     if key not in jira:
-        click.echo('Unknown issue key')
+        click.echo('Unknown issue key', err=True)
         raise click.Abort
 
     issue = jira[key]
@@ -144,7 +144,7 @@ def cli_push(_):
     jira.load_issues()
 
     if not jira:
-        click.echo('No issues in the cache')
+        click.echo('No issues in the cache', err=True)
         raise click.Abort
 
     push_issues()
@@ -192,7 +192,7 @@ def cli_clone(_, project_uri: str, username: str=None, password: str=None, oauth
     PROJECT_URI - Jira project URI to setup and pull issues from, for example: https://jira.atlassian.com:8080/PROJ
     '''
     if username and oauth_private_key:
-        click.echo('You cannot supply both username and oauth params together')
+        click.echo('You cannot supply both username and oauth params together', err=True)
         raise click.Abort
 
     try:
@@ -206,7 +206,7 @@ def cli_clone(_, project_uri: str, username: str=None, password: str=None, oauth
         project.set_ca_cert(ca_cert)
 
     if project.id in jira.config.projects:
-        click.echo(f'Already cloned {project.project_uri}')
+        click.echo(f'Already cloned {project.project_uri}', err=True)
         raise click.Abort
 
     click.echo(f'Cloning project {project.key} from {project.jira_server}')
@@ -289,7 +289,7 @@ def cli_new(_, projectkey: str, issuetype: str, summary: str, as_json: bool=Fals
     SUMMARY     Mandatory free text one-liner
     '''
     if ',' in projectkey:
-        click.echo('You should pass only a single project key')
+        click.echo('You should pass only a single project key', err=True)
         raise click.Abort
 
     # Retrieve the project configuration
@@ -298,14 +298,14 @@ def cli_new(_, projectkey: str, issuetype: str, summary: str, as_json: bool=Fals
     # Validate epic parameters
     if issuetype == 'Epic':
         if kwargs.get('epic_link'):
-            click.echo('You cannot pass --epic-link when creating an Epic!')
+            click.echo('You cannot pass --epic-link when creating an Epic!', err=True)
             raise click.Abort
         if not kwargs.get('epic_name'):
-            click.echo('You must pass --epic-name when creating an Epic!')
+            click.echo('You must pass --epic-name when creating an Epic!', err=True)
             raise click.Abort
     else:
         if kwargs.get('epic_name'):
-            click.echo('Parameter --epic-name is ignored for anything other than an Epic')
+            click.echo('Parameter --epic-name is ignored for anything other than an Epic', err=True)
 
     # Parse fix_versions and labels
     if kwargs.get('fix_versions'):
@@ -352,7 +352,7 @@ def cli_edit(_, key: str, as_json: bool=False, editor: bool=False, **kwargs):
     jira.load_issues()
 
     if key not in jira:
-        click.echo('Unknown issue key')
+        click.echo('Unknown issue key', err=True)
         raise click.Abort
 
     issue = jira[key]
@@ -381,11 +381,11 @@ def cli_edit(_, key: str, as_json: bool=False, editor: bool=False, **kwargs):
         # Validate epic parameters
         if issue.issuetype == 'Epic':
             if kwargs.get('epic_link'):
-                click.echo('Parameter --epic-link is ignored when modifing an Epic')
+                click.echo('Parameter --epic-link is ignored when modifing an Epic', err=True)
                 del kwargs['epic_link']
         else:
             if kwargs.get('epic_name'):
-                click.echo('Parameter --epic-name is ignored for anything other than an Epic')
+                click.echo('Parameter --epic-name is ignored for anything other than an Epic', err=True)
 
         # Parse fix_versions and labels
         if kwargs.get('fix_versions'):
@@ -448,7 +448,7 @@ def cli_import(_, file: io.TextIOWrapper):
             break
 
     if no_input:
-        click.echo('No data read on stdin or in passed file')
+        click.echo('No data read on stdin or in passed file', err=True)
         raise click.Abort
 
     if write:
@@ -466,7 +466,7 @@ def cli_delete_issue(_, key: str):
     jira.load_issues()
 
     if key not in jira:
-        click.echo('Unknown issue key')
+        click.echo('Unknown issue key', err=True)
         raise click.Abort
 
     del jira[key]
