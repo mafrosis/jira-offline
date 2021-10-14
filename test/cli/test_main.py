@@ -23,6 +23,22 @@ def test_cli_show__invalid_issue_key(mock_jira):
     assert result.stderr == 'Unknown issue key\nAborted!\n'
 
 
+def test_cli_diff__error_on_new_issue(mock_jira, project):
+    '''
+    Ensure diff command errors when diffing a new issue
+    '''
+    # add new issue fixture to Jira
+    mock_jira['7242cc9e-ea52-4e51-bd84-2ced250cabf0'] = Issue.deserialize(ISSUE_NEW, project)
+
+    runner = CliRunner(mix_stderr=False)
+
+    with mock.patch('jira_offline.cli.main.jira', mock_jira):
+        result = runner.invoke(cli, ['diff', '7242cc9e-ea52-4e51-bd84-2ced250cabf0'])
+
+    assert result.exit_code == 1, result.output
+    assert result.stderr == 'This issue is new, so no diff is available\nAborted!\n'
+
+
 @pytest.mark.parametrize('command,params', [
     ('show', ('--json', 'TEST-71')),
     ('new', ('--json', 'TEST', 'Story', 'Summary of issue')),
