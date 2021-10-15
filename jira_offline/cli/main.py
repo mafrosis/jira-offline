@@ -393,6 +393,11 @@ def cli_edit(_, key: str, as_json: bool=False, editor: bool=False, **kwargs):
         if kwargs.get('labels'):
             kwargs['labels'] = set(kwargs['labels'].split(','))
 
+        # Validate sprint field is valid for the project
+        if 'sprint' in kwargs and not issue.project.sprints:
+            click.echo(f'Project {issue.project.key} has no sprints, ignoring --sprint parameter', err=True)
+            del kwargs['sprint']
+
         patch_dict = kwargs
 
     # Patch the issue with fields from the CLI or editor

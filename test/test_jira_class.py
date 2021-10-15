@@ -316,9 +316,12 @@ def test_jira__get_project_meta__overrides_default_timezone_when_set(mock_api_ge
 
     The default is the end-user's local system timezone, set in ProjectMeta.factory()
     '''
-    # mock out call to _get_project_issue_statuses and _get_project_components
+    # mock out calls to helpers which hit Jira API
     mock_jira_core._get_project_issue_statuses = mock.Mock()
     mock_jira_core._get_project_components = mock.Mock()
+    mock_jira_core._get_sprints = mock.Mock()
+
+    # Mock a specific timezone
     mock_jira_core._get_user_timezone = mock.Mock(return_value='America/New_York')
 
     # mock return from Jira createmeta API call
@@ -352,9 +355,10 @@ def test_jira__get_project_meta__extracts_priorities(mock_api_get, mock_jira_cor
     '''
     Ensure get_project_meta() method extracts project priorities from a project
     '''
-    # mock out call to _get_project_issue_statuses and _get_project_components
+    # mock out calls to helpers which hit Jira API
     mock_jira_core._get_project_issue_statuses = mock.Mock()
     mock_jira_core._get_project_components = mock.Mock()
+    mock_jira_core._get_sprints = mock.Mock()
 
     # mock return from Jira createmeta API call
     mock_api_get.return_value = {
@@ -386,9 +390,10 @@ def test_jira__get_project_meta__extracts_issuetypes(mock_api_get, mock_jira_cor
     '''
     Ensure get_project_meta() method parses the issuetypes for a project
     '''
-    # mock out call to _get_project_issue_statuses and _get_project_components
+    # mock out calls to helpers which hit Jira API
     mock_jira_core._get_project_issue_statuses = mock.Mock()
     mock_jira_core._get_project_components = mock.Mock()
+    mock_jira_core._get_sprints = mock.Mock()
 
     # mock return from Jira createmeta API call
     mock_api_get.return_value = {
@@ -434,9 +439,10 @@ def test_jira__get_project_meta__handles_removal_of_issuetype(mock_api_get, mock
 
     The project fixture includes the Story issuetype, this should be removed if not in the API result
     '''
-    # mock out call to _get_project_issue_statuses and _get_project_components
+    # mock out calls to helpers which hit Jira API
     mock_jira_core._get_project_issue_statuses = mock.Mock()
     mock_jira_core._get_project_components = mock.Mock()
+    mock_jira_core._get_sprints = mock.Mock()
 
     # mock return from Jira createmeta API call
     mock_api_get.return_value = {
@@ -474,9 +480,10 @@ def test_jira__get_project_meta__extracts_locked_customfield(mock_api_get, mock_
     The parameterization covers the scenario where Jira Cloud uses the fieldname "key", but Jira
     Server uses "fieldId"
     '''
-    # mock out call to _get_project_issue_statuses and _get_project_components
+    # mock out calls to helpers which hit Jira API
     mock_jira_core._get_project_issue_statuses = mock.Mock()
     mock_jira_core._get_project_components = mock.Mock()
+    mock_jira_core._get_sprints = mock.Mock()
 
     # mock return from Jira createmeta API call
     mock_api_get.return_value = {
@@ -513,9 +520,10 @@ def test_jira__get_project_meta__auth_retry_decorator(mock_api_request, mock_get
     '''
     Ensure a password prompt is shown when we have an API authentication failure
     '''
-    # mock out call to _get_project_issue_statuses and _get_project_components
+    # mock out calls to helpers which hit Jira API
     mock_jira_core._get_project_issue_statuses = mock.Mock()
     mock_jira_core._get_project_components = mock.Mock()
+    mock_jira_core._get_sprints = mock.Mock()
 
     # swallow the second FailedAuthError, the first one _should_ trigger a call to `get_user_creds`
     with pytest.raises(FailedAuthError):

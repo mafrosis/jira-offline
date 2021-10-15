@@ -67,6 +67,15 @@ def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pro
     # Shorten the summary field for printing
     df['summary'] = df.summary.str.slice(0, width)
 
+    # Reduce list of sprint IDs to name of the most recent sprint
+    if 'sprint' in fields:
+        def get_latest_sprint(project_id, sprints):
+            '''Return the name of the sprint with the highest ID'''
+            if sprints.any() and jira.config.projects[project_id].sprints:
+                return max(sprints, key=lambda x: x['id'])['name']
+
+        df['sprint'] = df.apply(lambda row: get_latest_sprint(row.project_id, row.sprint), axis=1)
+
     def abbrev_key(key):
         if key is None:
             return ''

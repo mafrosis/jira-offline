@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 
 import click
 import dictdiffer
+import numpy
 from oauthlib.oauth1 import SIGNATURE_RSA
 import pandas as pd
 import pytz
@@ -29,7 +30,8 @@ from jira_offline.exceptions import (BadProjectMetaUri, CannotSetIssueOriginalDi
 from jira_offline.utils import (deserialize_single_issue_field, get_dataclass_defaults_for_pandas,
                                 get_field_by_name,
                                 render_dataclass_field, render_issue_field, render_value)
-from jira_offline.utils.convert import preprocess_sprint
+from jira_offline.utils.convert import (parse_sprint, sprint_objects_to_names,
+                                        sprint_name_to_sprint_object)
 from jira_offline.utils.serializer import DataclassSerializer, get_base_type
 
 # pylint: disable=too-many-instance-attributes
@@ -53,7 +55,7 @@ class CustomFields(DataclassSerializer):
         default='', metadata={'cli_help': 'Short epic name'}
     )
     sprint: Optional[str] = field(
-        default='', metadata={'cli_help': 'Sprint number', 'parse_func': preprocess_sprint}
+        default='', metadata={'cli_help': 'Sprint number', 'parse_func': parse_sprint}
     )
 
     # Additional special-case customfields defined in this application
@@ -117,6 +119,21 @@ class OAuth(DataclassSerializer):
         )
 
 
+@dataclass(unsafe_hash=True, order=True)
+class Sprint(DataclassSerializer):
+    id: int
+    name: str
+    active: bool
+
+    def render(self) -> Tuple[str, str]:
+        'Render object as a raw list of tuples'
+        return (self.name, 'ACTIVE' if self.active else '')
+
+    def __str__(self) -> str:
+        'Render object to friendly string'
+        return '\t'.join(self.render())
+
+
 @dataclass
 class ProjectMeta(DataclassSerializer):
     key: str
@@ -137,7 +154,10 @@ class ProjectMeta(DataclassSerializer):
     default_reporter: Optional[str] = field(default=None)
     board_id: Optional[str] = field(default=None)
 
-    # reference to parent AppConfig class
+    # Sprints available for use on this project
+    sprints: Optional[Dict[int, Sprint]] = field(default=None)
+
+    # Reference to parent AppConfig class
     config: Optional['AppConfig'] = field(default=None, metadata={'serialize': False})
 
     @property
@@ -211,6 +231,10 @@ class ProjectMeta(DataclassSerializer):
             ('Issue Types', render_value(list(self.issuetypes.keys()))),
             ('Priorities', render_value(self.priorities)),
             ('Customfields', str(self.customfields)),
+        ]
+        if self.sprints:
+            attrs.append(('Sprints', tabulate((s.render() for s in self.sprints.values()), tablefmt='plain')))
+        attrs += [
             fmt('components'),
             fmt('timezone'),
             fmt('last_updated'),
@@ -220,6 +244,13 @@ class ProjectMeta(DataclassSerializer):
     def __str__(self) -> str:
         '''Render project to friendly string'''
         return tabulate(self.render())
+
+    def __hash__(self) -> int:
+        '''
+        Custom __hash__ method makes this dataclass hashable, and thus able to used as a parameter
+        to functions which use @functools.lru_cache
+        '''
+        return hash(self.id)
 
 
 @dataclass
@@ -336,7 +367,15 @@ class Issue(DataclassSerializer):
     # work well with multiple inheritance
     epic_link: Optional[str] = field(default=None)
     epic_name: Optional[str] = field(default=None, metadata={'friendly': 'Epic Short Name'})
-    sprint: Optional[str] = field(default=None)
+    sprint: Optional[Set[Sprint]] = field(
+        default=None,
+        metadata={
+            'parse_func': sprint_name_to_sprint_object,
+            'prerender_func': sprint_objects_to_names,
+            'reset_before_edit': True,
+            'sort_key': 'id',
+        },
+    )
 
     # Story points special-case Customfield using decimal type
     story_points: Optional[decimal.Decimal] = field(default=None)
@@ -641,6 +680,10 @@ class Issue(DataclassSerializer):
         if attrs['story_points']:
             attrs['story_points'] = str(attrs['story_points'])
 
+        # Special treatment for Issue.sprint; which is a Sprint object, not a primitive python type
+        if attrs['sprint']:
+            attrs['sprint'] = [s.serialize() for s in attrs['sprint']]
+
         # Create Series and fill blanks with pandas-compatible defaults
         series = pd.Series(attrs).fillna(value=get_dataclass_defaults_for_pandas(Issue))
 
@@ -679,6 +722,11 @@ class Issue(DataclassSerializer):
             # Special case for Issue.diff_to_original, as it's a list stored as a JSON string
             if key == 'diff_to_original' and value:
                 return json.loads(attrs['diff_to_original'])
+
+            # Special treatment for Sprint, which is an object not a primitive type
+            if key == 'sprint':
+                if isinstance(value, numpy.ndarray) and value.any() or value:
+                    return {Sprint(**s) for s in value}
 
             # Process the Pandas array types to python primitives
             if typ_ is list:

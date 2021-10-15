@@ -346,3 +346,19 @@ class FieldNotOnModelClass(BaseAppException):
 
     def __str__(self):
         return self.__doc__.format(self.field)
+
+
+class UnknownSprintError(BaseAppException):
+    'Sprint "{}" is not valid. It could be closed, or it could not exist on {}.'
+
+    def __init__(self, project_key, sprint):
+        self.project_key = project_key
+        self.sprint = sprint
+        super().__init__('')
+
+    def __str__(self):
+        return self.__doc__.format(self.sprint, self.project_key)
+
+
+class ProjectHasNoSprints(BaseAppException):
+    'Raised by some sprint helpers for projects which do not use sprints'

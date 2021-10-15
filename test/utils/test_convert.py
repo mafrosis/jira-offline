@@ -7,8 +7,8 @@ from unittest import mock
 import pytest
 
 from fixtures import ISSUE_1, ISSUE_NEW, JIRAAPI_OBJECT
-from jira_offline.models import CustomFields, Issue, ProjectMeta
-from jira_offline.utils.convert import issue_to_jiraapi_update, jiraapi_object_to_issue, preprocess_sprint
+from jira_offline.models import CustomFields, Issue, ProjectMeta, Sprint
+from jira_offline.utils.convert import issue_to_jiraapi_update, jiraapi_object_to_issue, parse_sprint
 
 
 def test_jiraapi_object_to_issue__handles_customfields(mock_jira):
@@ -64,6 +64,13 @@ def test_jiraapi_object_to_issue__handles_customfields_extended(mock_jira):
 
     assert issue.epic_link == 'TEST-1'
     assert issue.extended['arbitrary_key'] == 'arbitrary_value'
+
+
+def test_jiraapi_object_to_issue__handles_sprint(mock_jira):
+    '''
+    Ensure jiraapi_object_to_issue uses the "parse_func" defined on Issue.sprint field's metadata to
+    process the response from the API
+    '''
 
 
 def test_issue_to_jiraapi_update__handles_customfields(mock_jira, project):
@@ -214,13 +221,99 @@ def test_issue_to_jiraapi_update__customfields_and_extended_customfields_returne
     }
 
 
+def test_issue_to_jiraapi_update__outputs_sprint_as_string(mock_jira, project):
+    '''
+    Ensure issue_to_jiraapi_update converts the sprint set into a string
+    '''
+    # Setup the project configuration with sprint customfield
+    project = ProjectMeta(
+        key='TEST',
+        jira_id='10000',
+        customfields=CustomFields(sprint='customfield_10300'),
+        sprints={
+            1: Sprint(id=1, name='Sprint 1', active=True),
+        },
+    )
+
+    # Create an issue fixture and add it to a sprint
+    issue = Issue.deserialize(ISSUE_1, project)
+    issue.sprint = {Sprint(id=1, name='Sprint 1', active=True)}
+
+    issue_dict = issue_to_jiraapi_update(project, issue, {'sprint'})
+
+    # Assert customfield key maps to an int (not the set type)
+    assert issue_dict == {
+        'customfield_10300': 1,
+    }
+
+
+def test_issue_to_jiraapi_update__outputs_only_sprint_diff(mock_jira, project):
+    '''
+    Ensure issue_to_jiraapi_update outputs only the new item in a sprint set
+    '''
+    # Setup the project configuration with sprint customfield
+    project = ProjectMeta(
+        key='TEST',
+        jira_id='10000',
+        customfields=CustomFields(sprint='customfield_10300'),
+        sprints={
+            1: Sprint(id=1, name='Sprint 1', active=True),
+            2: Sprint(id=2, name='Sprint 2', active=False),
+        },
+    )
+
+    # Create an issue which already exists in a sprint
+    with mock.patch.dict(ISSUE_1, {'sprint': [{'id': 1, 'name': 'Sprint 1', 'active': True}]}):
+        issue = Issue.deserialize(ISSUE_1, project)
+
+    # Add the issue to another sprint
+    issue.sprint.add(Sprint(id=2, name='Sprint 2', active=False))
+
+    issue_dict = issue_to_jiraapi_update(project, issue, {'sprint'})
+
+    # Assert customfield key maps to an int (not the set type)
+    # The int will be for new sprint, not the older sprint
+    assert issue_dict == {
+        'customfield_10300': 2,
+    }
+
+
 @pytest.mark.parametrize('sprint', [
-    [{'id': 123, 'name': 'SCRUM Sprint 2', 'state': 'active', 'boardId': 99, 'goal': 'Fix Things', 'startDate': '2020-01-01T00:00:00.000Z', 'endDate': '2020-01-14T00:00:00.000Z'}],
-    ['com.atlassian.greenhopper.service.sprint.Sprint@64cd2ea7[id=2,rapidViewId=3,state=FUTURE,name=SCRUM Sprint 2,startDate=<null>,endDate=<null>,completeDate=<null>,activatedDate=<null>,sequence=2,goal=<null>]'],
+    [
+        {'id': 123, 'name': 'SCRUM Sprint 2', 'state': 'active', 'boardId': 99, 'goal': 'Fix Things', 'startDate': '2020-01-01T00:00:00.000Z', 'endDate': '2020-01-14T00:00:00.000Z'}
+    ],
+    [
+        'com.atlassian.greenhopper.service.sprint.Sprint@64cd2ea7[id=123,rapidViewId=99,state=ACTIVE,name=SCRUM Sprint 2,startDate=<null>,endDate=<null>,completeDate=<null>,activatedDate=<null>,sequence=2,goal=<null>]'
+    ],
 ])
 def test_preprocess_sprint__returns_sprint_name(sprint):
     '''
-    Ensure the API conversion util function `preprocess_sprint` parses the sprint name from the API
-    returns from different Jiras.
+    Ensure the API conversion util function `preprocess_sprint` parses the sprint from the API response.
+
+    Handle the case where an issue is in a single sprint.
     '''
-    assert preprocess_sprint(sprint) == 'SCRUM Sprint 2'
+    assert parse_sprint(sprint) == [
+        {'id': 123, 'name': 'SCRUM Sprint 2', 'active': True},
+    ]
+
+
+@pytest.mark.parametrize('sprint', [
+    [
+        {'id': 123, 'name': 'SCRUM Sprint 2', 'state': 'active', 'boardId': 99, 'goal': 'Fix Things', 'startDate': '2020-01-01T00:00:00.000Z', 'endDate': '2020-01-14T00:00:00.000Z'},
+        {'id': 234, 'name': 'SCRUM Sprint 3', 'state': 'future', 'boardId': 99, 'goal': 'Fix Things', 'startDate': '2020-02-01T00:00:00.000Z', 'endDate': '2020-02-14T00:00:00.000Z'},
+    ],
+    [
+        'com.atlassian.greenhopper.service.sprint.Sprint@64cd2ea7[id=123,rapidViewId=99,state=ACTIVE,name=SCRUM Sprint 2,startDate=<null>,endDate=<null>,completeDate=<null>,activatedDate=<null>,sequence=2,goal=<null>]',
+        'com.atlassian.greenhopper.service.sprint.Sprint@64cd2ea7[id=234,rapidViewId=99,state=FUTURE,name=SCRUM Sprint 3,startDate=<null>,endDate=<null>,completeDate=<null>,activatedDate=<null>,sequence=3,goal=<null>]',
+    ],
+])
+def test_preprocess_sprint__returns_sprint_name_multiple(sprint):
+    '''
+    Ensure the API conversion util function `preprocess_sprint` parses the sprint from the API response.
+
+    Handle the case where an issue is in multiple sprints.
+    '''
+    assert parse_sprint(sprint) == [
+        {'id': 123, 'name': 'SCRUM Sprint 2', 'active': True},
+        {'id': 234, 'name': 'SCRUM Sprint 3', 'active': False},
+    ]

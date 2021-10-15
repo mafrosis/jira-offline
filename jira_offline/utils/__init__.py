@@ -5,7 +5,7 @@ import decimal
 import functools
 import logging
 import textwrap
-from typing import Any, cast, Dict, Hashable, Optional, Tuple, TYPE_CHECKING
+from typing import Any, cast, Dict, Generator, Hashable, Optional, Tuple, TYPE_CHECKING
 from tzlocal import get_localzone
 
 import arrow
@@ -24,11 +24,11 @@ if TYPE_CHECKING:
 @functools.lru_cache()
 def get_field_by_name(cls: type, field_name: str) -> dataclasses.Field:
     '''
-    Retrieve a field from the supplied dataclass by name
+    Lookup a field by name from the passed dataclass
 
     Params:
-        cls:         The class which has `field_name` as an attrib
-        field_name:  Dataclass field name to find
+        cls:         The dataclass type on which to search
+        field_name:  Filter for fields by this name
     Returns:
         Dataclass field
     '''
@@ -146,6 +146,18 @@ def render_issue_field(
     Returns:
         Pretty field title, formatted value
     '''
+    try:
+        f = get_field_by_name(cast(Hashable, type(issue)), field_name)
+
+        # Execute a pre-render util function on the field value, if one is defined
+        prerender_func = f.metadata.get('prerender_func')
+        if callable(prerender_func):
+            value = prerender_func(value)
+
+    except FieldNotOnModelClass:
+        # Extended fields do not have an attribute on the Issue dataclass; see `render_dataclass_field`
+        pass
+
     title, value = render_dataclass_field(type(issue), field_name, value)
 
     if title_prefix:
@@ -213,7 +225,7 @@ def deserialize_single_issue_field(field_name: str, value: Optional[Any],
         return deserialize_value(get_field_by_name(Issue, field_name).type, value, tz)
 
     except DeserializeError as e:
-        raise DeserializeError(f'Failed parsing {field_name} with value {value} ({e})')
+        raise DeserializeError(f'Failed parsing "{field_name}" with value "{value}" ({e})')
 
 
 @contextlib.contextmanager
