@@ -15,6 +15,7 @@ from tzlocal import get_localzone
 
 from jira_offline.jira import Jira
 from jira_offline.models import AppConfig, CustomFields, IssueType, ProjectMeta
+from jira_offline.utils.cli import _get_issue, _get_project
 
 
 @pytest.fixture
@@ -102,6 +103,13 @@ def pytest_addoption(parser):
     parser.addoption('--username', action='store')
     parser.addoption('--password', action='store')
     parser.addoption('--cwd', action='store')
+
+
+@pytest.fixture(autouse=True)
+def lrucache_clear():
+    'Ensure the lru_cache on `_get_project` and `_get_issue` is clear'
+    _get_issue.cache_clear()
+    _get_project.cache_clear()
 
 
 @pytest.fixture

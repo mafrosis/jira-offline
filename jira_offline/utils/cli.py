@@ -4,6 +4,7 @@ Click library extension classes
 '''
 import dataclasses
 import decimal
+import functools
 import logging
 from typing import Any, cast, Dict, Hashable, List, Optional, Set
 
@@ -288,12 +289,12 @@ class ValidCustomfield(click.Option):
         if 'key' in opts:
             # Load ProjectMeta instance via Issue.key
             jira.load_issues()
-            issue = self._get_issue(opts['key'])
+            issue = _get_issue(opts['key'])
             project = issue.project
 
         elif 'projectkey' in opts:
             # Load ProjectMeta instance by ProjectMeta.key
-            project = self._get_project(opts['projectkey'])
+            project = _get_project(opts['projectkey'])
 
         else:
             raise BadParamsPassedToValidCustomfield
@@ -312,15 +313,18 @@ class ValidCustomfield(click.Option):
 
         return super().handle_parse_result(ctx, opts, args)
 
-    def _get_issue(self, key: str) -> Issue:  # pylint: disable=no-self-use
-        if key not in jira:
-            click.echo('Unknown issue key')
-            raise click.Abort
 
-        return cast(Issue, jira[key])
+@functools.lru_cache()
+def _get_issue(key: str) -> Issue:
+    if key not in jira:
+        click.echo('Unknown issue key')
+        raise click.Abort
 
-    def _get_project(self, projectkey: str) -> ProjectMeta:  # pylint: disable=no-self-use
-        return find_project(jira, projectkey)
+    return cast(Issue, jira[key])
+
+@functools.lru_cache()
+def _get_project(projectkey: str) -> ProjectMeta:
+    return find_project(jira, projectkey)
 
 
 class CustomfieldsAsOptions(click.Command):

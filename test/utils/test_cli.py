@@ -64,11 +64,11 @@ def test_click_customfieldsasoptions__configured_customfields_become_options(moc
     assert mock_ValidCustomfield.called_once_with(['--arbitrary-user-defined-field'], '')
 
 
-@mock.patch('jira_offline.utils.cli.ValidCustomfield._get_project')
-@mock.patch('jira_offline.utils.cli.ValidCustomfield._get_issue')
-def test_validcustomfield__calls_load_issues_and_get_issues_when_key_supplied(mock_validcustomfield_get_issue, mock_validcustomfield_get_project, mock_jira):
+@mock.patch('jira_offline.utils.cli._get_project')
+@mock.patch('jira_offline.utils.cli._get_issue')
+def test_validcustomfield__calls_get_issue_when_key_supplied(mock_validcustomfield_get_issue, mock_validcustomfield_get_project, mock_jira):
     '''
-    Ensure `ValidCustomfield.handle_parse_result` calls `jira.load_issues` & `ValidCustomfield._get_issue`
+    Ensure `ValidCustomfield.handle_parse_result` calls `_get_issue`, when an issue key is supplied
     '''
     # CLI options
     opts = {
@@ -89,11 +89,11 @@ def test_validcustomfield__calls_load_issues_and_get_issues_when_key_supplied(mo
     assert not mock_validcustomfield_get_project.called
 
 
-@mock.patch('jira_offline.utils.cli.ValidCustomfield._get_project')
-@mock.patch('jira_offline.utils.cli.ValidCustomfield._get_issue')
+@mock.patch('jira_offline.utils.cli._get_project')
+@mock.patch('jira_offline.utils.cli._get_issue')
 def test_validcustomfield_calls__get_project_when_projectkey_supplied(mock_validcustomfield_get_issue, mock_validcustomfield_get_project, mock_jira):
     '''
-    Ensure `ValidCustomfield.handle_parse_result` calls `jira.load_issues` & `ValidCustomfield._get_issue`
+    Ensure `ValidCustomfield.handle_parse_result` calls `_get_project`, when a project key is supplied
     '''
     # CLI options
     opts = {
