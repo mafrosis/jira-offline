@@ -46,7 +46,7 @@ def get_dataclass_defaults_for_pandas(cls: type) -> Dict[str, str]:
     attrs = dict()
     for f in dataclasses.fields(cls):
         if f.default != dataclasses.MISSING:
-            # cast for mypy as get_base_type uses @functools.lru_cache
+            # Cast for mypy as get_base_type uses @functools.lru_cache
             typ_ = get_base_type(cast(Hashable, f.type))
 
             if istype(typ_, datetime.datetime):
@@ -189,14 +189,14 @@ def render_value(value: Any, type_: Optional[type]=None) -> str:
         return str(value)
 
 
-def deserialize_single_issue_field(field_name: str, value: Optional[str],
+def deserialize_single_issue_field(field_name: str, value: Optional[Any],
                                    tz: Optional[datetime.tzinfo]=None) -> Any:
     '''
     Use DataclassSerializer.deserialize_value to convert from string to the correct type.
 
     Params:
         field_name:  Name of the field Issue dataclass
-        value:       String representation of the value to be set
+        value:       Value to deserialize to field_name's type
         tz:          Timezone to apply to dates/datetimes in `value`
     '''
     if value is None:

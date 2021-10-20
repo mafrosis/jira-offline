@@ -26,7 +26,8 @@ from tzlocal import get_localzone
 from jira_offline import __title__
 from jira_offline.exceptions import (BadProjectMetaUri, CannotSetIssueOriginalDirectly,
                                      UnableToCopyCustomCACert, NoAuthenticationMethod)
-from jira_offline.utils import (get_dataclass_defaults_for_pandas, get_field_by_name,
+from jira_offline.utils import (deserialize_single_issue_field, get_dataclass_defaults_for_pandas,
+                                get_field_by_name,
                                 render_dataclass_field, render_issue_field, render_value)
 from jira_offline.utils.convert import preprocess_sprint
 from jira_offline.utils.serializer import DataclassSerializer, get_base_type
@@ -363,7 +364,7 @@ class Issue(DataclassSerializer):
         '''
         Special dataclass dunder method called automatically after Issue.__init__
         '''
-        # apply the diff_to_original patch to the serialized version of the issue, which
+        # Apply the diff_to_original patch to the serialized version of the issue, which
         # recreates the issue dict as last seen on the Jira server
         self.set_original(
             dictdiffer.patch(self.diff_to_original if self.diff_to_original else [], self.serialize())
@@ -536,7 +537,9 @@ class Issue(DataclassSerializer):
                         removed_value = self.original['extended'][field_name]
                     added_value = self.extended[field_name]
                 else:
-                    removed_value = self.original.get(field_name)
+                    # Issue.original is a serialized copy of the Issue object, so a deserialize must
+                    # happen if we're extracting a value from it.
+                    removed_value = deserialize_single_issue_field(field_name, self.original.get(field_name))
                     added_value = getattr(self, field_name)
 
                 if removed_value:
