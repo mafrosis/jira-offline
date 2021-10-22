@@ -16,6 +16,9 @@ logger = logging.getLogger('jira')
 class DeserializeError(ValueError):
     pass
 
+class SerializeError(ValueError):
+    pass
+
 
 class JiraApiError(Exception):
     '''
