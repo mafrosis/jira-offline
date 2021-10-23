@@ -189,9 +189,10 @@ def cli_reset(ctx: click.core.Context, key: str):
 
 
 @click.command(name='push')
+@click.option('--dry-run', '-n', is_flag=True, help='Simulate a push, logging the data that would be sent to Jira API')
 @click.pass_context
 @global_options
-def cli_push(_):
+def cli_push(_, dry_run: bool=False):
     '''Synchronise changes back to Jira server.'''
     jira.load_issues()
 
@@ -199,7 +200,7 @@ def cli_push(_):
         click.echo('No issues in the cache', err=True)
         raise click.Abort
 
-    push_issues()
+    push_issues(dry_run)
 
 
 @click.command(name='projects')

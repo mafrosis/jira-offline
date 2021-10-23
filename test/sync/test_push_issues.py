@@ -227,3 +227,34 @@ def test_push_issues__count_only_successful_update_issue_calls_when_one_fails(
 
     assert mock_jira.update_issue.call_count == 2
     assert count == 1
+
+
+@mock.patch('jira_offline.sync.merge_issues')
+@mock.patch('jira_offline.sync.issue_to_jiraapi_update')
+def test_push_issues__new_and_update_are_not_called_when_dry_run(
+        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira, project
+    ):
+    '''
+    Ensure that `new_issue` and `update_issue` are not called when dry_run param is True
+    '''
+    # Create both a new and an updated issue
+    issue_1 = Issue.deserialize(ISSUE_NEW, project)
+    issue_2 = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='hoganp')
+
+    # Setup the Jira DataFrame
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        issue_1.commit()
+        issue_2.commit()
+
+    # Mock `sync.merge_issues` to return valid issues
+    mock_merge_issues.side_effect = [
+        IssueUpdate(merged_issue=issue_1),
+        IssueUpdate(merged_issue=issue_2),
+    ]
+
+    with mock.patch('jira_offline.sync.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
+        push_issues(dry_run=True)
+
+    assert not mock_jira.update_issue.called
+    assert not mock_jira.new_issue.called
