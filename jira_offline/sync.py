@@ -23,7 +23,7 @@ from jira_offline.create import patch_issue_from_dict
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.utils import critical_logger
 from jira_offline.utils.api import get as api_get
-from jira_offline.utils.cli import parse_editor_result
+from jira_offline.utils.cli import parse_editor_result, print_diff
 from jira_offline.utils.convert import jiraapi_object_to_issue, issue_to_jiraapi_update
 from jira_offline.utils.serializer import DeserializeError
 
@@ -402,12 +402,13 @@ def manual_conflict_resolution(update_obj: IssueUpdate):
     patch_issue_from_dict(update_obj.merged_issue, patch_dict)
 
 
-def push_issues(dry_run: bool=False) -> int:
+def push_issues(dry_run: bool=False, interactive: bool=False) -> int:
     '''
     Push new/changed issues back to Jira server
 
     Params:
-        dry_run:  Simulate a push, logging the data that would be sent to Jira API
+        dry_run:      Simulate a push, logging the data that would be sent to Jira API
+        interactive:  Display a diff for each issue, and prompt to push or skip
     Returns:
         Total number of issues pushed
     '''
@@ -417,7 +418,7 @@ def push_issues(dry_run: bool=False) -> int:
         for key in issue_keys:
             local_issue = jira[key]
 
-            # skip issues which belong to unconfigured projects
+            # Skip issues which belong to unconfigured projects
             if local_issue.project_id not in jira.config.projects:
                 logger.warning('Skipped issue for unconfigured project: %s', local_issue.summary)
                 if pbar:
@@ -425,10 +426,10 @@ def push_issues(dry_run: bool=False) -> int:
                     pbar.update(1)
                 continue
 
-            # extract issue's project object into local variable
+            # Extract issue's project object into local variable
             project: ProjectMeta = jira.config.projects[local_issue.project_id]
 
-            # retrieve the upstream issue
+            # Retrieve the upstream issue
             remote_issue: Issue
             if local_issue.exists:
                 logger.debug('Fetching %s', local_issue.key)
@@ -436,7 +437,7 @@ def push_issues(dry_run: bool=False) -> int:
             else:
                 remote_issue = Issue.blank()
 
-            # resolve any conflicts with upstream
+            # Resolve any conflicts with upstream
             update_obj: IssueUpdate = merge_issues(local_issue, remote_issue, is_upstream_merge=True)
 
             update_dict: dict = issue_to_jiraapi_update(
@@ -444,6 +445,13 @@ def push_issues(dry_run: bool=False) -> int:
             )
 
             try:
+                if interactive:
+                    # Display a diff, and then prompt user for push
+                    print_diff(update_obj.merged_issue)
+
+                    if not click.confirm('Push (Y) or skip (n)?', default=True):
+                        continue
+
                 if update_obj.merged_issue.exists:
                     logger.info(
                         'Updating %s %s with %s', update_obj.merged_issue.issuetype,
@@ -469,7 +477,7 @@ def push_issues(dry_run: bool=False) -> int:
                 logger.error('Failed pushing %s with error "%s"', update_obj.merged_issue.key, e.message)
 
             if pbar:
-                # update progress
+                # Update progress
                 pbar.update(1)
 
         return count
@@ -487,7 +495,7 @@ def push_issues(dry_run: bool=False) -> int:
     if dry_run:
         context.verbose = True  # pylint: disable=assigning-non-slot
 
-    if context.verbose:
+    if context.verbose or interactive:
         total = _run(issues_to_push)
     else:
         with critical_logger(logger):
