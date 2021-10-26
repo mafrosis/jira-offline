@@ -109,7 +109,7 @@ def cli_diff(_, key: str=None):
 
     else:
         for issue in jira.values():
-            if issue.diff_to_original and issue.exists:
+            if issue.modified and issue.exists:
                 print_diff(issue)
 
 

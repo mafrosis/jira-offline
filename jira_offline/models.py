@@ -387,23 +387,23 @@ class Issue(DataclassSerializer):
     extended: Optional[Dict[str, str]] = field(default_factory=dict)  # type: ignore[assignment]
 
     # The `original` dict is the serialized Issue, as last seen on the Jira server. This attribute
-    # is not written to disk, but is created at runtime from Issue.diff_to_original
+    # is not written to disk, but is created at runtime from Issue.modified
     original: dict = field(
         init=False, repr=False, default_factory=dict, metadata={'serialize': False}
     )
 
     # patch of current Issue to dict last seen on Jira server
-    diff_to_original: Optional[list] = field(default_factory=list)
+    modified: Optional[list] = field(default_factory=list)
 
 
     def __post_init__(self):
         '''
         Special dataclass dunder method called automatically after Issue.__init__
         '''
-        # Apply the diff_to_original patch to the serialized version of the issue, which
+        # Apply the modified patch to the serialized version of the issue, which
         # recreates the issue dict as last seen on the Jira server
         self.set_original(
-            dictdiffer.patch(self.diff_to_original if self.diff_to_original else [], self.serialize())
+            dictdiffer.patch(self.modified if self.modified else [], self.serialize())
         )
 
 
@@ -415,8 +415,9 @@ class Issue(DataclassSerializer):
         if not self.exists:
             return
 
-        if 'diff_to_original' in value:
-            del value['diff_to_original']
+        # Remove the diff before setting the original field
+        if 'modified' in value:
+            del value['modified']
 
         self.original = value
 
@@ -426,7 +427,7 @@ class Issue(DataclassSerializer):
         Commit this Issue's changes back into the central Jira class storage. Using this method
         ensures the Issue's diff is correctly persisted along with any edits.
         '''
-        # Refresh the Issue.diff_to_original property before the commit
+        # Refresh the Issue.modified property before the commit
         self.diff()
 
         from jira_offline.jira import jira  # pylint: disable=import-outside-toplevel, cyclic-import
@@ -454,11 +455,6 @@ class Issue(DataclassSerializer):
         'Return True if Issue exists on Jira, or False if it\'s local only'
         return bool(self.id)
 
-    @property
-    def modified(self) -> bool:
-        'Return True if Issue has been locally modified'
-        return bool(self.diff_to_original)
-
     def diff(self) -> list:
         '''
         If this Issue object has the original property set, render the diff between self and
@@ -467,7 +463,7 @@ class Issue(DataclassSerializer):
         Params:
             data:  Serialized dict of self (can be passed to avoid double-call to serialize)
         Returns:
-            Return from dictdiffer.diff to be stored in Issue.diff_to_original property
+            Return from dictdiffer.diff to be stored in Issue.modified property
         '''
         if not self.exists:
             return []
@@ -475,27 +471,27 @@ class Issue(DataclassSerializer):
         if not self.original:
             raise Exception
 
-        self.diff_to_original = list(
+        self.modified = list(
             dictdiffer.diff(
                 self.serialize(),
                 self.original,
-                ignore=set(['diff_to_original'])
+                ignore=set(['modified'])
             )
         )
-        return self.diff_to_original or []
+        return self.modified or []
 
     @classmethod
     def deserialize(cls, attrs: dict, project: ProjectMeta, ignore_missing: bool=False) -> 'Issue':  # type: ignore[override] # pylint: disable=arguments-differ
         '''
         Deserialize a dict into an Issue object. Inflate the _original_ version of the object from the
-        Issue.diff_to_original field which is written to the cache.
+        Issue.modified field which is written to the cache.
 
         Params:
             attrs:           Dict to deserialize into an Issue
             project:         Reference to Jira project this Issue belongs to
             ignore_missing:  Ignore missing mandatory fields during deserialisation
         Returns:
-            List from dictdiffer.diff for Issue.diff_to_original property
+            List from dictdiffer.diff for Issue.modified property
         '''
         # deserialize supplied dict into an Issue object
         # use `cast` to cover the mypy typecheck errors the arise from polymorphism
@@ -639,11 +635,11 @@ class Issue(DataclassSerializer):
         attrs = {k:v for k,v in self.__dict__.items() if k not in ('project', '_active')}
         attrs['project_key'] = self.project.key if self.project else None
 
-        # Render Issue.diff_to_original a JSON string in the DataFrame, or None
-        if attrs['diff_to_original']:
-            attrs['diff_to_original'] = json.dumps(attrs['diff_to_original'])
+        # Render Issue.modified a JSON string in the DataFrame, or None
+        if attrs['modified']:
+            attrs['modified'] = json.dumps(attrs['modified'])
         else:
-            attrs['diff_to_original'] = False
+            attrs['modified'] = False
 
         # Render Issue.original as a JSON string in the DataFrame
         attrs['original'] = json.dumps(attrs['original'])
@@ -689,12 +685,12 @@ class Issue(DataclassSerializer):
             f = get_field_by_name(Issue, key)
             typ_ = get_base_type(f.type)
 
-            # Special case for Issue.diff_to_original, as it's a list stored as a JSON string
-            if key == 'diff_to_original':
+            # Special case for Issue.modified, as it's a list stored as a JSON string
+            if key == 'modified':
                 if bool(value) is False:
                     return []
                 else:
-                    return json.loads(attrs['diff_to_original'])
+                    return json.loads(attrs['modified'])
 
             # Special treatment for Sprint, which is an object not a primitive type
             if key == 'sprint':

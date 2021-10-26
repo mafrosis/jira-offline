@@ -15,7 +15,7 @@ def test_issue_model__modified_is_false_after_constructor(project):
     Ensure Issue.modified is False after the object constructed
     '''
     issue = Issue.deserialize(ISSUE_1, project)
-    assert issue.modified is False
+    assert bool(issue.modified) is False
 
 
 def test_issue_model__blank_returns_valid_issue(project):
@@ -66,9 +66,9 @@ def test_issue_model__original_is_set_after_constructor(project):
     assert issue.original is not None
 
 
-def test_issue_model__diff_sets_issue_diff_to_original(project):
+def test_issue_model__diff_sets_issue_modified(project):
     '''
-    Ensure Issue.diff sets Issue.diff_to_original
+    Ensure Issue.diff sets Issue.modified
     '''
     issue = Issue.deserialize(ISSUE_1, project)
 
@@ -76,7 +76,7 @@ def test_issue_model__diff_sets_issue_diff_to_original(project):
     issue.assignee = 'eggbert'
     issue.diff()
 
-    assert issue.diff_to_original == [('change', 'assignee', ('eggbert', 'danil1'))]
+    assert issue.modified == [('change', 'assignee', ('eggbert', 'danil1'))]
 
 
 def test_issue_model__set_original_doesnt_set_modified_true(project):
@@ -87,21 +87,21 @@ def test_issue_model__set_original_doesnt_set_modified_true(project):
 
     issue.set_original(issue.serialize())
 
-    assert issue.modified is False
+    assert bool(issue.modified) is False
 
 
-def test_issue_model__set_original_removes_diff_to_original_field(project):
+def test_issue_model__set_original_removes_modified_field(project):
     '''
-    Ensure Issue.set_original does not retain the Issue.diff_to_original field created by Issue.diff
+    Ensure Issue.set_original does not retain the Issue.modified field created by Issue.diff
     '''
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
         issue = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='hoganp')
 
-    assert bool(issue.diff_to_original)
+    assert bool(issue.modified)
 
     issue.set_original(issue.serialize())
 
-    assert 'diff_to_original' not in issue.original
+    assert 'modified' not in issue.original
 
 
 def test_issue_model__original_not_updated_during_attribute_set(project):
@@ -140,13 +140,13 @@ def test_issue_model__commit__produces_issue_with_diff(mock_jira, project):
 
     issue.assignee = 'hoganp'
 
-    assert issue.modified is False
+    assert bool(issue.modified) is False
 
     with mock.patch('jira_offline.jira.jira', mock_jira):
         issue.commit()
 
     assert issue.assignee == 'hoganp'
-    assert issue.modified is True
+    assert bool(issue.modified) is True
     assert issue.diff() == [('change', 'assignee', ('hoganp', 'danil1'))]
 
     assert mock_jira['TEST-71'].assignee == 'hoganp'

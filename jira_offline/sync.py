@@ -224,7 +224,7 @@ def merge_issues(base_issue: Issue, updated_issue: Issue, is_upstream_merge: boo
         # this ensures the correct diff is written to disk
         update_obj.merged_issue.set_original(updated_issue.serialize())
 
-    # Refresh merged Issue's diff_to_original field
+    # Refresh merged Issue's modified field
     update_obj.merged_issue.diff()
 
     return update_obj
@@ -271,7 +271,7 @@ def build_update(base_issue: Issue, updated_issue: Optional[Issue]) -> IssueUpda
     updated_issue_dict: dict = updated_issue.serialize()
 
     # fields to ignore during dictdiffer.diff
-    ignore_fields = set(['diff_to_original', 'modified'])
+    ignore_fields = set(['modified', 'modified'])
 
     if updated_issue != Issue.blank():
         # ignore readonly fields when diffing new Issues
@@ -466,7 +466,7 @@ def push_issues() -> int:
     # 1. Push new issues; those created offline
     issues_to_push = jira.df.loc[jira.df.id == 0, 'key'].tolist()
     # 2. Push modified issues
-    issues_to_push += jira.df.loc[(jira.df.id > 0) & jira.df.diff_to_original, 'key'].tolist()
+    issues_to_push += jira.df.loc[(jira.df.id > 0) & jira.df.modified, 'key'].tolist()
 
     from jira_offline.cli.params import context  # pylint: disable=import-outside-toplevel, cyclic-import
 
