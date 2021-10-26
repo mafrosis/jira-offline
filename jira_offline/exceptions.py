@@ -251,11 +251,6 @@ class ImportFailed(DynamicBaseAppException):
         return msg
 
 
-# Raised by Issue.__set_attr__ when setting issue.original with direct assignment
-class CannotSetIssueOriginalDirectly(Exception):
-    'This attribute must not be set directly, use the set_original() helper'
-
-
 # Raised by Jira.update when a sync returns Issues with a different timezone to those already present
 class MultipleTimezoneError(Exception):
     '''A change Jira of timezone is unsupported, please run:

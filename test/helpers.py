@@ -51,7 +51,7 @@ def setup_jira_dataframe_helper(issues: List[Issue]):
         keys=[i.key for i in issues]
     ).T
 
-    df = df.fillna('').convert_dtypes()
+    df = df.convert_dtypes()
 
     # convert all datetimes to UTC, where they are non-null (this is all non-new issues)
     for col in ('created', 'updated'):

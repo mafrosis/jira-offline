@@ -25,8 +25,8 @@ from tabulate import tabulate
 from tzlocal import get_localzone
 
 from jira_offline import __title__
-from jira_offline.exceptions import (BadProjectMetaUri, CannotSetIssueOriginalDirectly,
-                                     UnableToCopyCustomCACert, NoAuthenticationMethod)
+from jira_offline.exceptions import (BadProjectMetaUri, UnableToCopyCustomCACert,
+                                     NoAuthenticationMethod)
 from jira_offline.utils import (deserialize_single_issue_field, get_dataclass_defaults_for_pandas,
                                 get_field_by_name,
                                 render_dataclass_field, render_issue_field, render_value)
@@ -395,9 +395,6 @@ class Issue(DataclassSerializer):
     # patch of current Issue to dict last seen on Jira server
     diff_to_original: Optional[list] = field(default_factory=list)
 
-    _active: bool = field(init=False, repr=False, default=False, metadata={'serialize': False})
-    modified: Optional[bool] = field(default=False)
-
 
     def __post_init__(self):
         '''
@@ -408,29 +405,6 @@ class Issue(DataclassSerializer):
         self.set_original(
             dictdiffer.patch(self.diff_to_original if self.diff_to_original else [], self.serialize())
         )
-
-        # Mark this Issue as active, which means that any subsequent modifications to the Issue object
-        # attributes will result in the modified flag being set (see __setattr__).
-        self.__dict__['_active'] = True
-
-
-    def __setattr__(self, name, value):
-        '''
-        Override __setattr__ dunder method to ensure Issue.modified is set on change.
-
-        Using Issue._active is necessary as __setattr__ is called repeatedly during object creation.
-        The modified flag must track changes made _after_ the Issue object has been created.
-
-        Issue.modified is not relevant for _new_ issues, which have not yet been sync'd to Jira.
-        '''
-        if self._active:
-            if name == 'original':
-                raise CannotSetIssueOriginalDirectly
-
-            # modified is only set to true if this issue exists on the Jira server
-            self.__dict__['modified'] = bool(self.exists)
-
-        self.__dict__[name] = value
 
 
     def set_original(self, value: Dict[str, Any]):
@@ -443,11 +417,8 @@ class Issue(DataclassSerializer):
 
         if 'diff_to_original' in value:
             del value['diff_to_original']
-        if 'modified' in value:
-            del value['modified']
 
-        # write self.original without setting the modified flag
-        self.__dict__['original'] = value
+        self.original = value
 
 
     def commit(self):
@@ -480,10 +451,13 @@ class Issue(DataclassSerializer):
 
     @property
     def exists(self) -> bool:
-        '''
-        Return True if Issue exists on Jira, or False if it's local only
-        '''
+        'Return True if Issue exists on Jira, or False if it\'s local only'
         return bool(self.id)
+
+    @property
+    def modified(self) -> bool:
+        'Return True if Issue has been locally modified'
+        return bool(self.diff_to_original)
 
     def diff(self) -> list:
         '''
@@ -501,16 +475,13 @@ class Issue(DataclassSerializer):
         if not self.original:
             raise Exception
 
-        diff = list(
+        self.diff_to_original = list(
             dictdiffer.diff(
                 self.serialize(),
                 self.original,
-                ignore=set(['diff_to_original', 'modified'])
+                ignore=set(['diff_to_original'])
             )
         )
-        # Write self.diff_to_original without setting the modified flag
-        self.__dict__['diff_to_original'] = diff
-
         return self.diff_to_original or []
 
     @classmethod
@@ -659,22 +630,23 @@ class Issue(DataclassSerializer):
 
 
     def as_json(self) -> str:
-        '''
-        Render issue as JSON
-        '''
+        'Render issue as JSON'
         return json.dumps(self.serialize())
 
 
     def to_series(self) -> pd.Series:
-        '''
-        Render issue as a Pandas Series object
-        '''
+        'Render issue as a Pandas Series object'
         attrs = {k:v for k,v in self.__dict__.items() if k not in ('project', '_active')}
         attrs['project_key'] = self.project.key if self.project else None
 
-        # Render diff_to_original and original as strings when stored in a DataFrame
-        for col in ('diff_to_original', 'original'):
-            attrs[col] = json.dumps(attrs[col])
+        # Render Issue.diff_to_original a JSON string in the DataFrame, or None
+        if attrs['diff_to_original']:
+            attrs['diff_to_original'] = json.dumps(attrs['diff_to_original'])
+        else:
+            attrs['diff_to_original'] = False
+
+        # Render Issue.original as a JSON string in the DataFrame
+        attrs['original'] = json.dumps(attrs['original'])
 
         # Convert Issue.story_points from Decimal to str for pandas
         if attrs['story_points']:
@@ -696,9 +668,7 @@ class Issue(DataclassSerializer):
 
     @classmethod
     def from_series(cls, series: pd.Series, project: Optional[ProjectMeta]=None) -> 'Issue':
-        '''
-        Convert Pandas Series object into an Issue
-        '''
+        'Convert Pandas Series object into an Issue'
         attrs = series.to_dict()
 
         # Set the project attribute, and drop the project_key field from the dataframe
@@ -720,8 +690,11 @@ class Issue(DataclassSerializer):
             typ_ = get_base_type(f.type)
 
             # Special case for Issue.diff_to_original, as it's a list stored as a JSON string
-            if key == 'diff_to_original' and value:
-                return json.loads(attrs['diff_to_original'])
+            if key == 'diff_to_original':
+                if bool(value) is False:
+                    return []
+                else:
+                    return json.loads(attrs['diff_to_original'])
 
             # Special treatment for Sprint, which is an object not a primitive type
             if key == 'sprint':
@@ -755,7 +728,5 @@ class Issue(DataclassSerializer):
 
 
     def __str__(self) -> str:
-        '''
-        Render issue to friendly string
-        '''
+        'Render issue to friendly string'
         return tabulate(self.render())

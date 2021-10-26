@@ -4,12 +4,9 @@ Tests for methods on the Issue model
 import copy
 from unittest import mock
 
-import pytest
-
 from conftest import not_raises
-from fixtures import ISSUE_1, ISSUE_NEW
+from fixtures import ISSUE_1
 from helpers import compare_issue_helper, modified_issue_helper
-from jira_offline.exceptions import CannotSetIssueOriginalDirectly
 from jira_offline.models import Issue, ProjectMeta, Sprint
 
 
@@ -19,17 +16,6 @@ def test_issue_model__modified_is_false_after_constructor(project):
     '''
     issue = Issue.deserialize(ISSUE_1, project)
     assert issue.modified is False
-
-
-def test_issue_model__modified_is_true_after_attribute_set(project):
-    '''
-    Ensure Issue.modified is set True when an attribute is set
-    '''
-    issue = Issue.deserialize(ISSUE_1, project)
-    assert issue.modified is False
-
-    issue.assignee = 'eggbert'
-    assert issue.modified is True
 
 
 def test_issue_model__blank_returns_valid_issue(project):
@@ -118,36 +104,6 @@ def test_issue_model__set_original_removes_diff_to_original_field(project):
     assert 'diff_to_original' not in issue.original
 
 
-def test_issue_model__setting_the_original_attribute_directly_raises_exception(project):
-    '''
-    Ensure setting Issue.original raises an exception
-    '''
-    issue = Issue.deserialize(ISSUE_1, project)
-
-    with pytest.raises(CannotSetIssueOriginalDirectly):
-        issue.original = issue.serialize()
-
-
-def test_issue_model__existing_issue_modified_set_true_during_attribute_set(project):
-    '''
-    Ensure Issue.modified is set to true by an attribute value change, if the Issue exists on Jira
-    '''
-    issue_1 = Issue.deserialize(ISSUE_1, project)
-    setattr(issue_1, 'summary', 'egg')
-
-    assert issue_1.modified is True
-
-
-def test_issue_model__new_issue_modified_set_false_during_attribute_set(project):
-    '''
-    Ensure Issue.modified is set to true by an attribute value change, if the Issue exists on Jira
-    '''
-    issue_new = Issue.deserialize(ISSUE_NEW, project)
-    setattr(issue_new, 'summary', 'egg')
-
-    assert issue_new.modified is False
-
-
 def test_issue_model__original_not_updated_during_attribute_set(project):
     '''
     Ensure Issue.original does not get modified by an attribute value change
@@ -184,10 +140,13 @@ def test_issue_model__commit__produces_issue_with_diff(mock_jira, project):
 
     issue.assignee = 'hoganp'
 
+    assert issue.modified is False
+
     with mock.patch('jira_offline.jira.jira', mock_jira):
         issue.commit()
 
     assert issue.assignee == 'hoganp'
+    assert issue.modified is True
     assert issue.diff() == [('change', 'assignee', ('hoganp', 'danil1'))]
 
     assert mock_jira['TEST-71'].assignee == 'hoganp'

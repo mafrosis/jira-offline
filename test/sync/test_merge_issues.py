@@ -42,7 +42,6 @@ def test_merge_issues__merged_issue_has_original_property_updated_to_match_upstr
 
     serialized_upstream_issue = updated_issue.serialize()
     del serialized_upstream_issue['diff_to_original']
-    del serialized_upstream_issue['modified']
 
     # validate Issue.original updated to match `updated_issue`
     assert update_obj.merged_issue.original == serialized_upstream_issue
@@ -87,7 +86,6 @@ def test_merge_issues__is_upstream_merge_equals_true__merged_issue_original_equa
 
     serialized_upstream_issue = updated_issue.serialize()
     del serialized_upstream_issue['diff_to_original']
-    del serialized_upstream_issue['modified']
 
     # validate Issue.original updated to match `updated_issue`
     assert update_obj.merged_issue.original == serialized_upstream_issue

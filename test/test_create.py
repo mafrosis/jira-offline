@@ -461,7 +461,8 @@ def test_create__patch_issue_from_dict__set_list(mock_jira, project, param):
 
     assert issue.labels == ['egg']
 
-    with mock.patch('jira_offline.create.jira', mock_jira):
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         patch_issue_from_dict(issue, {'labels': param})
 
     assert issue.labels == ['egg', 'bacon']

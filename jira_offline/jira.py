@@ -121,7 +121,9 @@ class Jira(collections.abc.MutableMapping):
         )
 
         # Render diff_to_original as a string for storage in the DataFrame
-        df['diff_to_original'] = df['diff_to_original'].apply(json.dumps)
+        df['diff_to_original'] = df['diff_to_original'].apply(
+            lambda x: json.dumps(x) if x else False
+        )
 
         # Add an empty column to for Issue.original
         df['original'] = ''
@@ -254,7 +256,7 @@ class Jira(collections.abc.MutableMapping):
                 'project_id', 'issuetype', 'summary', 'key', 'assignee', 'created',
                 'creator', 'description', 'fix_versions', 'components', 'id', 'labels',
                 'priority', 'reporter', 'status', 'updated', 'epic_link', 'epic_name',
-                'sprint', 'story_points', 'extended', 'diff_to_original', 'modified',
+                'sprint', 'story_points', 'extended', 'diff_to_original',
                 'project_key', 'original', 'parent_link'
             ])
 
