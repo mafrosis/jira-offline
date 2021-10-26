@@ -10,8 +10,8 @@ from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce
                                      ProjectNotConfigured)
 from jira_offline.jira import jira
 from jira_offline.models import Issue, ProjectMeta
-from jira_offline.utils.serializer import get_base_type
 from jira_offline.utils import deserialize_single_issue_field, find_project, get_field_by_name
+from jira_offline.utils.serializer import istype
 
 
 logger = logging.getLogger('jira')
@@ -66,7 +66,7 @@ def create_issue(project: ProjectMeta, issuetype: str, summary: str, **kwargs) -
         summary:    Issue.summary
         kwargs:     Issue fields as parameters
     '''
-    # Ensure issues are loaded, as write_issues called on success
+    # Ensure issues are loaded
     if not jira:
         jira.load_issues()
 
@@ -197,13 +197,36 @@ def patch_issue_from_dict(issue: Issue, attrs: dict):
                 # Do not modify readonly fields
                 continue
 
-            if get_base_type(typ) is str and value == '':
+            # Reset before edit means a field can only be modified once until it's sync'd with Jira.
+            # This setting only makes sense for sets/lists; and is primarily a hack in place for
+            # Issue.sprint which is a set, but can only be updated as a single value via the API.
+            if f.metadata.get('reset_before_edit'):
+                original_value = deserialize_single_issue_field(field_name, issue.original.get(field_name))
+                setattr(issue, field_name, original_value)
+
+            # Fields can specify a parsing function to convert input string before updating the field value
+            parse_func = f.metadata.get('parse_func')
+            if parse_func:
+                value = parse_func(issue.project, value)
+
+            if istype(typ, set) and not isinstance(value, set):
+                # Special case where a string is passed for a set field
+                if getattr(issue, field_name) is None:
+                    setattr(issue, field_name, set())
+                getattr(issue, field_name).add(value)
+
+            elif istype(typ, list) and not isinstance(value, list):
+                # Special case where a string is passed for a list field
+                if getattr(issue, field_name) is None:
+                    setattr(issue, field_name, [])
+                getattr(issue, field_name).append(value)
+
+            elif istype(typ, str) and value == '':
                 # When setting an Issue attribute to empty string, map it to None
-                value = None
+                setattr(issue, field_name, None)
             else:
                 value = deserialize_single_issue_field(field_name, value)
-
-            setattr(issue, field_name, value)
+                setattr(issue, field_name, value)
 
         except FieldNotOnModelClass:
             # FieldNotOnModelClass raised by `get_field_by_name` means this field is not a core Issue

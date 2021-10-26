@@ -10,7 +10,7 @@ from conftest import not_raises
 from fixtures import ISSUE_1, ISSUE_NEW
 from helpers import compare_issue_helper, modified_issue_helper
 from jira_offline.exceptions import CannotSetIssueOriginalDirectly
-from jira_offline.models import Issue
+from jira_offline.models import Issue, ProjectMeta, Sprint
 
 
 def test_issue_model__modified_is_false_after_constructor(project):
@@ -275,6 +275,24 @@ def test_issue_model__render_returns_optional_fields_only_when_set(project):
     assert output[5] == ('Creator', 'danil1')
 
 
+def test_issue_model__render_returns_sprint_names():
+    '''
+    Validate Issue.render returns the sprint names, and not the stored IDs
+    '''
+    project = ProjectMeta(
+        'TEST',
+        sprints={1: Sprint(id=1, name='Sprint 1', active=True)}
+    )
+    issue = Issue.deserialize(ISSUE_1, project)
+
+    # Set the sprint field on the issue
+    issue.sprint = {Sprint(id=1, name='Sprint 1', active=True)}
+
+    output = issue.render()
+
+    assert output[4] == ('Sprint', '-  Sprint 1')
+
+
 def test_issue_model__render_returns_extended_fields(project):
     '''
     Validate Issue.render includes extended customfields
@@ -384,6 +402,23 @@ def test_issue_model__render_returns_modified_field_changed(project):
     # Rendered output is in colour, one line with a "-" prefix and another with a "+" prefix
     assert output[7] == ('\x1b[31m-Description\x1b[0m', '\x1b[31mThis is a story or issue\x1b[0m')
     assert output[8] == ('\x1b[32m+Description\x1b[0m', '\x1b[32mNew description\x1b[0m')
+
+
+def test_issue_model__render_deserializes_values_in_original(project):
+    '''
+    Validate Issue.render returns added and removed rows, when a field is changed
+    '''
+    # Create an issue which exists in a sprint
+    with mock.patch.dict(ISSUE_1, {'sprint': [{'id': 1, 'name': 'Sprint 1', 'active': True}]}):
+        issue = Issue.deserialize(ISSUE_1, project)
+
+    # Remove the sprint
+    issue.sprint = None
+
+    output = issue.render(modified_fields={'sprint'})
+
+    # Rendered output is in colour, one line with a "+" prefix
+    assert output[4] == ('\x1b[31m-Sprint\x1b[0m', '\x1b[31m-  Sprint 1\x1b[0m')
 
 
 def test_issue_model__render_returns_modified_field_added_extended(project):

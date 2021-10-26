@@ -24,14 +24,14 @@ def test_stats_smoketest(mock_jira, project, subcommand):
     # add fixture to Jira dict
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
-    runner = CliRunner()
+    runner = CliRunner(mix_stderr=False)
 
     with mock.patch('jira_offline.cli.stats.jira', mock_jira), \
             mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, ['stats', subcommand])
 
     # CLI should always exit zero
-    assert result.exit_code == 0, result.stdout
+    assert result.exit_code == 0, result.output
 
 
 @pytest.mark.parametrize('subcommand', STATS_SUBCOMMANDS)
@@ -39,14 +39,14 @@ def test_stats_smoketest_empty(mock_jira, subcommand):
     '''
     Dumb smoke test function to check for errors via CLI - when the jira-offline issue cache is empty
     '''
-    runner = CliRunner()
+    runner = CliRunner(mix_stderr=False)
 
     with mock.patch('jira_offline.cli.stats.jira', mock_jira), \
             mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, ['stats', subcommand])
 
     # CLI should always exit 1
-    assert result.exit_code == 1, result.stdout
+    assert result.exit_code == 1, result.output
 
 
 @mock.patch('jira_offline.cli.stats.print_table')
@@ -58,11 +58,11 @@ def test_cli_stats__no_errors_when_no_subcommand_passed(mock_print_table, mock_j
     # add fixture to Jira dict
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
-    runner = CliRunner()
+    runner = CliRunner(mix_stderr=False)
 
     with mock.patch('jira_offline.cli.stats.jira', mock_jira), \
             mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, ['stats'])
 
-    assert result.exit_code == 0, result.stdout
+    assert result.exit_code == 0, result.output
     assert mock_print_table.call_count == 3

@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 
 import click
 import dictdiffer
+import numpy
 from oauthlib.oauth1 import SIGNATURE_RSA
 import pandas as pd
 import pytz
@@ -26,9 +27,11 @@ from tzlocal import get_localzone
 from jira_offline import __title__
 from jira_offline.exceptions import (BadProjectMetaUri, CannotSetIssueOriginalDirectly,
                                      UnableToCopyCustomCACert, NoAuthenticationMethod)
-from jira_offline.utils import (get_dataclass_defaults_for_pandas, get_field_by_name, render_field,
-                                render_value)
-from jira_offline.utils.convert import preprocess_sprint
+from jira_offline.utils import (deserialize_single_issue_field, get_dataclass_defaults_for_pandas,
+                                get_field_by_name,
+                                render_dataclass_field, render_issue_field, render_value)
+from jira_offline.utils.convert import (parse_sprint, sprint_objects_to_names,
+                                        sprint_name_to_sprint_object)
 from jira_offline.utils.serializer import DataclassSerializer, get_base_type
 
 # pylint: disable=too-many-instance-attributes
@@ -52,7 +55,7 @@ class CustomFields(DataclassSerializer):
         default='', metadata={'cli_help': 'Short epic name'}
     )
     sprint: Optional[str] = field(
-        default='', metadata={'cli_help': 'Sprint number', 'parse_func': preprocess_sprint}
+        default='', metadata={'cli_help': 'Sprint number', 'parse_func': parse_sprint}
     )
 
     # Additional special-case customfields defined in this application
@@ -116,6 +119,21 @@ class OAuth(DataclassSerializer):
         )
 
 
+@dataclass(unsafe_hash=True, order=True)
+class Sprint(DataclassSerializer):
+    id: int
+    name: str
+    active: bool
+
+    def render(self) -> Tuple[str, str]:
+        'Render object as a raw list of tuples'
+        return (self.name, 'ACTIVE' if self.active else '')
+
+    def __str__(self) -> str:
+        'Render object to friendly string'
+        return '\t'.join(self.render())
+
+
 @dataclass
 class ProjectMeta(DataclassSerializer):
     key: str
@@ -134,8 +152,12 @@ class ProjectMeta(DataclassSerializer):
     timezone: datetime.tzinfo = field(default=get_localzone())
     jira_id: Optional[str] = field(default=None)
     default_reporter: Optional[str] = field(default=None)
+    board_id: Optional[str] = field(default=None)
 
-    # reference to parent AppConfig class
+    # Sprints available for use on this project
+    sprints: Optional[Dict[int, Sprint]] = field(default=None)
+
+    # Reference to parent AppConfig class
     config: Optional['AppConfig'] = field(default=None, metadata={'serialize': False})
 
     @property
@@ -193,8 +215,8 @@ class ProjectMeta(DataclassSerializer):
         '''Render object as a raw list of tuples'''
 
         def fmt(field_name: str) -> Tuple[str, str]:
-            '''Helper simply wrapping `render_field` for this class'''
-            return render_field(ProjectMeta, field_name, getattr(self, field_name))
+            '''Convenience helper wrapping the render util for this class'''
+            return render_dataclass_field(ProjectMeta, field_name, getattr(self, field_name))
 
         if self.oauth:
             auth = f'oauth_key={self.oauth.consumer_key}'
@@ -209,6 +231,10 @@ class ProjectMeta(DataclassSerializer):
             ('Issue Types', render_value(list(self.issuetypes.keys()))),
             ('Priorities', render_value(self.priorities)),
             ('Customfields', str(self.customfields)),
+        ]
+        if self.sprints:
+            attrs.append(('Sprints', tabulate((s.render() for s in self.sprints.values()), tablefmt='plain')))
+        attrs += [
             fmt('components'),
             fmt('timezone'),
             fmt('last_updated'),
@@ -218,6 +244,13 @@ class ProjectMeta(DataclassSerializer):
     def __str__(self) -> str:
         '''Render project to friendly string'''
         return tabulate(self.render())
+
+    def __hash__(self) -> int:
+        '''
+        Custom __hash__ method makes this dataclass hashable, and thus able to used as a parameter
+        to functions which use @functools.lru_cache
+        '''
+        return hash(self.id)
 
 
 @dataclass
@@ -238,7 +271,8 @@ class UserConfig(DataclassSerializer):
 
     @dataclass
     class Issue:
-        default_reporter: Dict[str, str]
+        board_id: Dict[str, str] = field(metadata={'project_config': True})
+        default_reporter: Dict[str, str] = field(metadata={'project_config': True})
 
     issue: Issue = field(init=False)
 
@@ -258,7 +292,7 @@ class UserConfig(DataclassSerializer):
             ls_fields_verbose=['issuetype', 'epic_link', 'epic_name', 'summary', 'status', 'assignee', 'fix_versions', 'updated'],
             ls_default_filter='status not in ("Done", "Story Done", "Epic Done", "Closed")'
         )
-        self.issue = UserConfig.Issue(default_reporter=dict())
+        self.issue = UserConfig.Issue(default_reporter=dict(), board_id=dict())
         self.customfields = dict()
 
 
@@ -333,7 +367,15 @@ class Issue(DataclassSerializer):
     # work well with multiple inheritance
     epic_link: Optional[str] = field(default=None)
     epic_name: Optional[str] = field(default=None, metadata={'friendly': 'Epic Short Name'})
-    sprint: Optional[str] = field(default=None)
+    sprint: Optional[Set[Sprint]] = field(
+        default=None,
+        metadata={
+            'parse_func': sprint_name_to_sprint_object,
+            'prerender_func': sprint_objects_to_names,
+            'reset_before_edit': True,
+            'sort_key': 'id',
+        },
+    )
 
     # Story points special-case Customfield using decimal type
     story_points: Optional[decimal.Decimal] = field(default=None)
@@ -361,7 +403,7 @@ class Issue(DataclassSerializer):
         '''
         Special dataclass dunder method called automatically after Issue.__init__
         '''
-        # apply the diff_to_original patch to the serialized version of the issue, which
+        # Apply the diff_to_original patch to the serialized version of the issue, which
         # recreates the issue dict as last seen on the Jira server
         self.set_original(
             dictdiffer.patch(self.diff_to_original if self.diff_to_original else [], self.serialize())
@@ -518,9 +560,9 @@ class Issue(DataclassSerializer):
             if conflicts and field_name in conflicts:
                 return (
                     ('<<<<<<< base', ''),
-                    render_field(Issue, field_name, conflicts[field_name]['base'], value_prefix=prefix),
+                    render_issue_field(self, field_name, conflicts[field_name]['base'], value_prefix=prefix),
                     ('=======', ''),
-                    render_field(Issue, field_name, conflicts[field_name]['updated'], value_prefix=prefix),
+                    render_issue_field(self, field_name, conflicts[field_name]['updated'], value_prefix=prefix),
                     ('>>>>>>> updated', ''),
                 )
 
@@ -534,18 +576,22 @@ class Issue(DataclassSerializer):
                         removed_value = self.original['extended'][field_name]
                     added_value = self.extended[field_name]
                 else:
-                    removed_value = self.original.get(field_name)
+                    # Issue.original is a serialized copy of the Issue object, so a deserialize must
+                    # happen if we're extracting a value from it.
+                    removed_value = deserialize_single_issue_field(field_name, self.original.get(field_name))
                     added_value = getattr(self, field_name)
 
                 if removed_value:
                     # Render a removed field in red with a minus
-                    removed_field = render_field(Issue, field_name, removed_value, title_prefix='-',
-                                                 value_prefix=prefix, color='red')
+                    removed_field = render_issue_field(
+                        self, field_name, removed_value, title_prefix='-', value_prefix=prefix, color='red'
+                    )
 
                 if added_value:
                     # Render an added field in green with a plus
-                    added_field = render_field(Issue, field_name, added_value, title_prefix='+',
-                                               value_prefix=prefix, color='green')
+                    added_field = render_issue_field(
+                        self, field_name, added_value, title_prefix='+', value_prefix=prefix, color='green'
+                    )
 
                 if removed_value and added_value:
                     return (removed_field, added_field)
@@ -569,8 +615,7 @@ class Issue(DataclassSerializer):
                 else:
                     value = getattr(self, field_name)
 
-                return (render_field(Issue, field_name, value, title_prefix=title_prefix,
-                                     value_prefix=prefix),)
+                return (render_issue_field(self, field_name, value, title_prefix=title_prefix, value_prefix=prefix),)
 
         if self.issuetype == 'Epic':
             epicdetails = fmt('epic_name')
@@ -635,6 +680,10 @@ class Issue(DataclassSerializer):
         if attrs['story_points']:
             attrs['story_points'] = str(attrs['story_points'])
 
+        # Special treatment for Issue.sprint; which is a Sprint object, not a primitive python type
+        if attrs['sprint']:
+            attrs['sprint'] = [s.serialize() for s in attrs['sprint']]
+
         # Create Series and fill blanks with pandas-compatible defaults
         series = pd.Series(attrs).fillna(value=get_dataclass_defaults_for_pandas(Issue))
 
@@ -673,6 +722,11 @@ class Issue(DataclassSerializer):
             # Special case for Issue.diff_to_original, as it's a list stored as a JSON string
             if key == 'diff_to_original' and value:
                 return json.loads(attrs['diff_to_original'])
+
+            # Special treatment for Sprint, which is an object not a primitive type
+            if key == 'sprint':
+                if isinstance(value, numpy.ndarray) and value.any() or value:
+                    return {Sprint(**s) for s in value}
 
             # Process the Pandas array types to python primitives
             if typ_ is list:

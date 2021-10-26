@@ -3,6 +3,7 @@ import datetime
 import decimal
 import enum
 import functools
+from operator import itemgetter
 from typing import Any, cast, Dict, Hashable, List, Optional, Tuple, Union
 import uuid
 
@@ -11,7 +12,7 @@ import pytz
 import typing_inspect
 from tzlocal import get_localzone
 
-from jira_offline.exceptions import DeserializeError
+from jira_offline.exceptions import DeserializeError, SerializeError
 
 
 @functools.lru_cache()
@@ -231,7 +232,7 @@ def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:
     return value
 
 
-def serialize_value(type_, value: Any) -> Any:
+def serialize_value(type_, value: Any, sort_key: Optional[str]=None) -> Any:
     '''
     Utility function to serialize `value` into `type_`. Used by DataclassSerializer.
 
@@ -274,18 +275,27 @@ def serialize_value(type_, value: Any) -> Any:
         }
 
     elif base_type in (list, set):
+        generic_type = None
+
         if typing_inspect.is_generic_type(type_):
             # extract value type for the generic List/Set
             generic_type = type_.__args__[0]
 
             # recursively serialize to the relevant generic type
-            return [serialize_value(generic_type, v) for v in value]
+            lst = [serialize_value(generic_type, v) for v in value]
         else:
-            if base_type is set:
-                # Ensure deterministic order in output lists created from sets
-                return sorted(list(value))
+            lst = value
+
+        if base_type is set:
+            # Ensure deterministic order when a set is serialized to a list
+            if sort_key:
+                return sorted(lst, key=itemgetter(sort_key))
+            elif dataclasses.is_dataclass(generic_type):
+                raise SerializeError('Generic sets of DataClass types need a `sort_key` set in metadata')
             else:
-                return list(value)
+                return sorted(lst)
+        else:
+            return list(lst)
 
     elif base_type is int:
         return int(value)
@@ -486,12 +496,17 @@ class DataclassSerializer(metaclass=SchemaClass):
         data = {}
 
         for f in dataclasses.fields(self):
-            # check for metadata on the field specifying not to serialize/deserialize this field
+            # Check for metadata on the field specifying not to serialize/deserialize this field
             serialize_flag = f.metadata.get('serialize', True)
             if not serialize_flag:
                 continue
 
-            serialized_value = serialize_value(f.type, getattr(self, f.name))
+            # Set types are serialized to lists, and are sorted to ensure deterministic output. In
+            # the case where a type is a set of objects, a key for the `sorted` builtin is necessary
+            # to sort the list of dicts, created from the serialized objects.
+            sort_key = f.metadata.get('sort_key', None)
+
+            serialized_value = serialize_value(f.type, getattr(self, f.name), sort_key)
 
             # Only serialize fields that have a truthy value, with the exception of boolean
             if serialized_value or f.type is bool:

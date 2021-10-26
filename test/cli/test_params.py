@@ -13,7 +13,7 @@ def test_cli__global_options__verbose_flag_sets_logger_to_info_level(mock_jira):
     '''
     Ensure the --verbose flag correctly sets the logger level
     '''
-    runner = CliRunner()
+    runner = CliRunner(mix_stderr=False)
 
     with mock.patch('jira_offline.cli.main.jira', mock_jira):
         runner.invoke(cli, ['--verbose', 'ls'])
@@ -25,7 +25,7 @@ def test_cli__global_options__debug_flag_sets_logger_to_debug_level(mock_jira):
     '''
     Ensure the --debug flag correctly sets the logger level
     '''
-    runner = CliRunner()
+    runner = CliRunner(mix_stderr=False)
 
     with mock.patch('jira_offline.cli.main.jira', mock_jira):
         runner.invoke(cli, ['--debug', 'ls'])
@@ -40,7 +40,7 @@ def test_cli__filter_options__filter_flag_sets_jira_object_filter(mock_jira, pro
     # add a single lonely fixture to the Jira store
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
-    runner = CliRunner()
+    runner = CliRunner(mix_stderr=False)
 
     with mock.patch('jira_offline.cli.main.jira', mock_jira), \
             mock.patch('jira_offline.cli.params.jira', mock_jira), \
@@ -48,5 +48,5 @@ def test_cli__filter_options__filter_flag_sets_jira_object_filter(mock_jira, pro
 
         result = runner.invoke(cli, ['ls', '--filter', "project == TEST"])
 
-    assert result.exit_code == 0, result.stdout
+    assert result.exit_code == 0, result.output
     assert mock_jira.filter._where is not None

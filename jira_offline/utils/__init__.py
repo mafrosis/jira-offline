@@ -5,7 +5,7 @@ import decimal
 import functools
 import logging
 import textwrap
-from typing import Any, cast, Dict, Hashable, Optional, Tuple, TYPE_CHECKING
+from typing import Any, cast, Dict, Generator, Hashable, Optional, Tuple, TYPE_CHECKING
 from tzlocal import get_localzone
 
 import arrow
@@ -17,18 +17,18 @@ from jira_offline.exceptions import DeserializeError, FieldNotOnModelClass, Proj
 from jira_offline.utils.serializer import deserialize_value, get_enum, get_base_type, istype
 
 if TYPE_CHECKING:
-    from jira_offline.models import ProjectMeta  # pylint: disable=cyclic-import
+    from jira_offline.models import ProjectMeta, Issue  # pylint: disable=cyclic-import
     from jira_offline.jira import Jira  # pylint: disable=cyclic-import
 
 
 @functools.lru_cache()
 def get_field_by_name(cls: type, field_name: str) -> dataclasses.Field:
     '''
-    Retrieve a field from the supplied dataclass by name
+    Lookup a field by name from the passed dataclass
 
     Params:
-        cls:         The class which has `field_name` as an attrib
-        field_name:  Dataclass field name to find
+        cls:         The dataclass type on which to search
+        field_name:  Filter for fields by this name
     Returns:
         Dataclass field
     '''
@@ -46,7 +46,7 @@ def get_dataclass_defaults_for_pandas(cls: type) -> Dict[str, str]:
     attrs = dict()
     for f in dataclasses.fields(cls):
         if f.default != dataclasses.MISSING:
-            # cast for mypy as get_base_type uses @functools.lru_cache
+            # Cast for mypy as get_base_type uses @functools.lru_cache
             typ_ = get_base_type(cast(Hashable, f.type))
 
             if istype(typ_, datetime.datetime):
@@ -98,36 +98,70 @@ def friendly_title(cls: type, field_name: str) -> str:
     return str(title.replace('_', ' ').title())
 
 
-def render_field(cls: type, field_name: str, value: Any, title_prefix: str=None, value_prefix: str=None,
-                 color: str=None) -> Tuple[str, str]:
+def render_dataclass_field(cls: type, field_name: str, value: Any) -> Tuple[str, str]:
     '''
-    Single-field pretty formatting function supporting various types
+    A simple single-field pretty formatting function supporting various types.
 
     Params:
         cls:           The class which has `field_name` as an attrib
-        field_name:    Dataclass field to render
+        field_name:    Dataclass attribute name to render
         value:         Value to be rendered according to dataclass.field type
+    Returns:
+        Tuple of field title, formatted value
+    '''
+    title = friendly_title(cls, field_name)
+
+    try:
+        f = get_field_by_name(cls, field_name)
+
+        # Determine the origin type for this field (thus handling Optional[type])
+        type_ = get_base_type(cast(Hashable, f.type))
+
+        # Format value as type specified by dataclass.field
+        value = render_value(value, type_)
+
+    except FieldNotOnModelClass:
+        # Assume string type if `field_name` does not exist on the dataclass - likely it's an
+        # extended field
+        value = render_value(value, str)
+
+    return title, value
+
+
+def render_issue_field(
+        issue: 'Issue', field_name: str, value: Any, title_prefix: str=None, value_prefix: str=None,
+        color: str=None
+    ) -> Tuple[str, str]:
+    '''
+    A slighty more complicated single-field pretty formatting function, specifically for fields on an
+    instance of the Issue dataclass.
+
+    Params:
+        issue:         Instance of Issue class with the field to render
+        field_name:    Issue dataclass attribute name to render
+        value:         Value to be rendered, the type of the dataclass.field
         title_prefix:  Arbitrary string to be prepended to the title
         value_prefix:  Arbitrary string to be prepended to the field value
         color:         Render all output in this colour
     Returns:
         Pretty field title, formatted value
     '''
-    title = friendly_title(cls, field_name)
+    try:
+        f = get_field_by_name(cast(Hashable, type(issue)), field_name)
+
+        # Execute a pre-render util function on the field value, if one is defined
+        prerender_func = f.metadata.get('prerender_func')
+        if callable(prerender_func):
+            value = prerender_func(value)
+
+    except FieldNotOnModelClass:
+        # Extended fields do not have an attribute on the Issue dataclass; see `render_dataclass_field`
+        pass
+
+    title, value = render_dataclass_field(type(issue), field_name, value)
 
     if title_prefix:
         title = f'{title_prefix}{title}'
-
-    try:
-        # Determine the origin type for this field (thus handling Optional[type])
-        type_ = get_base_type(cast(Hashable, get_field_by_name(cls, field_name).type))
-
-        # Format value as type specified by dataclass.field
-        value = render_value(value, type_)
-
-    except FieldNotOnModelClass:
-        # Assume string type if `field_name` does not exist as a field on the dataclass
-        value = render_value(value, str)
 
     if value_prefix:
         value = f'{value_prefix}{value}'
@@ -167,14 +201,14 @@ def render_value(value: Any, type_: Optional[type]=None) -> str:
         return str(value)
 
 
-def deserialize_single_issue_field(field_name: str, value: Optional[str],
+def deserialize_single_issue_field(field_name: str, value: Optional[Any],
                                    tz: Optional[datetime.tzinfo]=None) -> Any:
     '''
     Use DataclassSerializer.deserialize_value to convert from string to the correct type.
 
     Params:
         field_name:  Name of the field Issue dataclass
-        value:       String representation of the value to be set
+        value:       Value to deserialize to field_name's type
         tz:          Timezone to apply to dates/datetimes in `value`
     '''
     if value is None:
@@ -191,7 +225,7 @@ def deserialize_single_issue_field(field_name: str, value: Optional[str],
         return deserialize_value(get_field_by_name(Issue, field_name).type, value, tz)
 
     except DeserializeError as e:
-        raise DeserializeError(f'Failed parsing {field_name} with value {value} ({e})')
+        raise DeserializeError(f'Failed parsing "{field_name}" with value "{value}" ({e})')
 
 
 @contextlib.contextmanager

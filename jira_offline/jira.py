@@ -13,8 +13,9 @@ from peak.util.proxies import LazyProxy
 import pytz
 
 from jira_offline.config import get_cache_filepath, load_config
+from jira_offline.config.user_config import apply_user_config_to_project
 from jira_offline.exceptions import JiraApiError, MultipleTimezoneError, ProjectDoesntExist
-from jira_offline.models import AppConfig, CustomFields, Issue, IssueType, ProjectMeta
+from jira_offline.models import AppConfig, CustomFields, Issue, IssueType, ProjectMeta, Sprint
 from jira_offline.sql_filter import IssueFilter
 from jira_offline.utils.api import get as api_get, post as api_post, put as api_put
 from jira_offline.utils.convert import jiraapi_object_to_issue
@@ -96,11 +97,15 @@ class Jira(collections.abc.MutableMapping):
         if not all(i.updated.tzinfo == issues[0].updated.tzinfo for i in issues):  # type: ignore[union-attr]
             raise MultipleTimezoneError
 
-        # Construct a DataFrame from the passed list of Issues, and fill any NaNs with blank
-        df = pd.DataFrame.from_dict(
-            {issue.key:issue.__dict__ for issue in issues},
-            orient='index'
-        ).fillna('')
+        # Convert list of Issues into a dict
+        data = {}
+        for issue in issues:
+            data[issue.key] = issue.__dict__
+            if data[issue.key]['sprint']:
+                data[issue.key]['sprint'] = [s.serialize() for s in data[issue.key]['sprint']]
+
+        # Construct a DataFrame from the dict, fill any NaNs with blank
+        df = pd.DataFrame.from_dict(data, orient='index').fillna('')
 
         # Convert all datetimes to UTC
         for col in ('created', 'updated'):
@@ -266,7 +271,7 @@ class Jira(collections.abc.MutableMapping):
         df = self._contract_customfields(df)
 
         # PyArrow does not like sets
-        for col in ('components', 'fix_versions', 'labels'):
+        for col in ('components', 'fix_versions', 'labels', 'sprint'):
             df[col] = df[col].apply(list)
 
         # PyArrow does not like decimals
@@ -284,6 +289,10 @@ class Jira(collections.abc.MutableMapping):
         Params:
             project:  Jira project object into which we should load additional metadata
         '''
+        # Some user-defined config applies to specific projects; ensure that this project is
+        # configured correctly
+        apply_user_config_to_project(self.config, project)
+
         try:
             params = {'projectKeys': project.key, 'expand': 'projects.issuetypes.fields'}
             data = api_get(project, '/rest/api/2/issue/createmeta', params=params)
@@ -325,6 +334,9 @@ class Jira(collections.abc.MutableMapping):
             tz = self._get_user_timezone(project)
             if tz is not None:
                 project.timezone = pytz.timezone(tz)
+
+            # Retrieve the list of available sprints on this project
+            self._get_sprints(project)
 
         except (IndexError, KeyError) as e:
             raise JiraApiError((
@@ -408,12 +420,41 @@ class Jira(collections.abc.MutableMapping):
                         apply_customfield_config(name, value)
 
 
+    def _get_sprints(self, project: ProjectMeta):  # pylint: disable=no-self-use
+        '''
+        Retrieve and parse the sprints mapped to issues on this project
+
+        Params:
+            project:  The project to query for timezone info
+        '''
+        if not project.board_id:
+            logger.info('To use the sprint field, set your board in config.issue.board_id')
+            return
+
+        sprints = {}
+
+        try:
+            sprint_data = api_get(project, f'/rest/agile/1.0/board/{project.board_id}/sprint')
+            for s in sprint_data['values']:
+                sprints[int(s['id'])] = Sprint(id=s['id'], name=s['name'], active=bool(s['state'] == 'active'))
+
+        except JiraApiError as e:
+            if 'The board does not support sprints' not in str(e):
+                logger.error('Configured board_id does not support sprints!')
+                return
+            else:
+                raise
+
+        project.sprints = sprints
+
+
     def _get_user_timezone(self, project: ProjectMeta) -> Optional[str]:  # pylint: disable=no-self-use
         '''
         Retrieve user-specific timezone setting
 
         Params:
-            project:  The project mapped to the Jira to query for timezone info
+            project:  Jira project to query. Timezone is a server setting, but in this application
+                      it's stored per-project.
         '''
         data = api_get(project, '/rest/api/2/myself')
         return data.get('timeZone')

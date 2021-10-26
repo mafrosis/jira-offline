@@ -66,6 +66,12 @@ class OAuth(DataclassSerializer):
     consumer_key: Optional[str]
     key_cert: Optional[str]
 
+@dataclass
+class Sprint(DataclassSerializer):
+    id: int
+    name: str
+    active: bool
+
 @dataclass  # pylint: disable=too-many-instance-attributes
 class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-attributes
     key: str
@@ -85,6 +91,8 @@ class ProjectMeta(DataclassSerializer):  # pylint: disable=too-many-instance-att
     jira_id: Optional[str]
     config: Optional['AppConfig']
     default_reporter: Optional[str]
+    board_id: Optional[str]
+    sprints: Optional[Dict[int, Sprint]]
 
 @dataclass
 class UserConfig(DataclassSerializer):
@@ -102,6 +110,7 @@ class UserConfig(DataclassSerializer):
 
     @dataclass
     class Issue:
+        board_id: Dict[str, str]
         default_reporter: Dict[str, str]
     issue: Issue
 

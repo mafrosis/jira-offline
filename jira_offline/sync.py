@@ -304,13 +304,11 @@ def build_update(base_issue: Issue, updated_issue: Optional[Issue]) -> IssueUpda
                         yield f'extended.{list(patch.keys())[0]}'
                     else:
                         yield fn
-            elif mode == 'change':
+            else:
                 if isinstance(field_name, str):
                     yield field_name
                 else:
                     yield field_name[0]
-            else:
-                yield field_name
 
     def conflicting_fields():
         for c in m.unresolved_conflicts:

@@ -53,13 +53,13 @@ def cli_project_update_auth(ctx: click.core.Context, projectkey: str, username: 
     Update the authentication on a project
     '''
     if username and oauth_private_key:
-        click.echo('You cannot supply both username and oauth params together')
+        click.echo('You cannot supply both username and oauth params together', err=True)
         raise click.Abort
 
     try:
         project = find_project(jira, projectkey)
     except ProjectNotConfigured:
-        click.echo('Unknown project!')
+        click.echo('Unknown project!', err=True)
         ctx.invoke(cli_project_list)
         raise click.Abort
 
@@ -85,7 +85,7 @@ def cli_project_delete(ctx: click.core.Context, projectkey: str):
     try:
         project = find_project(jira, projectkey)
     except ProjectNotConfigured:
-        click.echo('Unknown project!')
+        click.echo('Unknown project!', err=True)
         ctx.invoke(cli_project_list)
         raise click.Abort
 

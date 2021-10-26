@@ -7,7 +7,7 @@ from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce
                                      InvalidIssueType)
 from jira_offline.create import (create_issue, find_epic_by_reference, import_issue, _import_new_issue,
                                  _import_modified_issue, patch_issue_from_dict)
-from jira_offline.models import CustomFields, Issue, ProjectMeta
+from jira_offline.models import CustomFields, Issue, ProjectMeta, Sprint
 
 
 def test_create__create_issue__loads_issues_when_cache_empty(mock_jira, project):
@@ -395,6 +395,47 @@ def test_create__patch_issue_from_dict__set_priority(mock_jira, project):
     assert issue.priority == 'Bacon'
 
 
+@pytest.mark.parametrize('param', [
+    ('bacon'),
+    (set(['egg', 'bacon'])),
+])
+def test_create__patch_issue_from_dict__set_set(mock_jira, project, param):
+    '''
+    When patching a set, if a set is passed overwrite existing value, if a str is passed append to
+    the existing set
+    '''
+    with mock.patch.dict(ISSUE_1, {'labels': set(['egg'])}):
+        issue = Issue.deserialize(ISSUE_1, project)
+
+    assert issue.labels == {'egg'}
+
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        patch_issue_from_dict(issue, {'labels': param})
+
+    assert issue.labels == {'egg', 'bacon'}
+
+
+@pytest.mark.skip(reason='Will succeed when there is a list-type field on Issue class')
+@pytest.mark.parametrize('param', [
+    ('bacon'),
+    (['egg', 'bacon']),
+])
+def test_create__patch_issue_from_dict__set_list(mock_jira, project, param):
+    '''
+    When patching a list, if a list is passed, overwrite existing value, if a str is passed append to
+    the existing list
+    '''
+    with mock.patch.dict(ISSUE_1, {'labels': ['egg']}):
+        issue = Issue.deserialize(ISSUE_1, project)
+
+    assert issue.labels == ['egg']
+
+    with mock.patch('jira_offline.create.jira', mock_jira):
+        patch_issue_from_dict(issue, {'labels': param})
+
+    assert issue.labels == ['egg', 'bacon']
+
+
 @pytest.mark.parametrize('customfield_name', [
     ('arbitrary-user-defined-field'),
     ('extended.arbitrary-user-defined-field'),
@@ -432,3 +473,40 @@ def test_create__patch_issue_from_dict__ignore_undefined_customfield(mock_jira):
         patch_issue_from_dict(issue, {'arbitrary-user-defined-field': 'eggs'})
 
     assert issue.extended == {}
+
+
+def test_create__patch_issue_from_dict__uses_reset_before_edit(mock_jira):
+    '''
+    Ensure that the reset_before_edit metadata field causes a single-field reset before a patch_
+    '''
+    project = ProjectMeta(
+        key='TEST',
+        customfields=CustomFields(sprint='customfield_10300'),
+        sprints={
+            1: Sprint(id=1, name='Sprint 1', active=True),
+            2: Sprint(id=2, name='Sprint 2', active=False),
+            3: Sprint(id=3, name='Sprint 3', active=False),
+        },
+    )
+
+    # Create an issue which already exists in a sprint
+    with mock.patch.dict(ISSUE_1, {'sprint': [{'id': 1, 'name': 'Sprint 1', 'active': True}]}):
+        issue = Issue.deserialize(ISSUE_1, project)
+
+    # Add the issue to another sprint
+    issue.sprint.add(Sprint(id=2, name='Sprint 2', active=False))
+
+    assert issue.sprint == {
+        Sprint(id=1, name='Sprint 1', active=True),
+        Sprint(id=2, name='Sprint 2', active=False),
+    }
+
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
+        patch_issue_from_dict(issue, {'sprint': 'Sprint 3'})
+
+    # Ensure the modification of sprint before the patch is reset, leaving just sprint 1 & 3 on the issue
+    assert issue.sprint == {
+        Sprint(id=1, name='Sprint 1', active=True),
+        Sprint(id=3, name='Sprint 3', active=False),
+    }

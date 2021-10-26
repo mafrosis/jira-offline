@@ -14,7 +14,7 @@ def test_cli_project_delete__success(mock_jira):
     new_project = ProjectMeta.factory('http://example.com/DELETEME')
     mock_jira.config.projects[new_project.id] = new_project
 
-    runner = CliRunner()
+    runner = CliRunner(mix_stderr=False)
 
     # Validate fixture before test call
     assert new_project.id in mock_jira.config.projects
@@ -22,7 +22,7 @@ def test_cli_project_delete__success(mock_jira):
     with mock.patch('jira_offline.cli.project.jira', mock_jira):
         result = runner.invoke(cli, ['project', 'delete', 'DELETEME'])
 
-    assert result.exit_code == 0, result.stdout
+    assert result.exit_code == 0, result.output
     assert new_project.id not in mock_jira
     assert mock_jira.config.write_to_disk.called
 
@@ -38,12 +38,12 @@ def test_cli_project_update_auth__can_update_password(mock_test_jira_connect, mo
     new_project.password = 'eggs'
     mock_jira.config.projects[new_project.id] = new_project
 
-    runner = CliRunner()
+    runner = CliRunner(mix_stderr=False)
 
     with mock.patch('jira_offline.cli.project.jira', mock_jira):
         result = runner.invoke(cli, ['project', 'update-auth', 'EDITME', '--username', 'bob', '--password', 'bacon'])
 
-    assert result.exit_code == 0, result.stdout
+    assert result.exit_code == 0, result.output
     assert new_project.username == 'bob'
     assert new_project.password == 'bacon'
     assert mock_test_jira_connect.called

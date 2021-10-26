@@ -14,11 +14,11 @@ class Nested(DataclassSerializer):
 
 @dataclass
 class Test(DataclassSerializer):
-    s: Set[Nested]
+    s: Set[Nested] = field(metadata={'sort_key': 'x'})
 
 @dataclass
 class TestWithDefaults(DataclassSerializer):
-    s: Optional[Set[Nested]] = field(default_factory=set)
+    s: Optional[Set[Nested]] = field(default_factory=set, metadata={'sort_key': 'x'})
 
 
 FIXTURES=[Test, TestWithDefaults]
@@ -30,7 +30,7 @@ def test_typed_set_deserialize(class_):
     Test typing.Set deserializes
     """
     obj = class_.deserialize({
-        's': [{'x': 'abc'}, {'x': 'def'}]
+        's': [{'x': 'def'}, {'x': 'abc'}]
     })
     assert isinstance(obj.s, set)
     assert obj.s == {Nested(x='abc'), Nested(x='def')}
@@ -39,13 +39,12 @@ def test_typed_set_deserialize(class_):
 @pytest.mark.parametrize('class_', FIXTURES)
 def test_typed_set_deserialize_roundrip(class_):
     """
-    Test typing.Set deserializes/serializes in a loss-less roundrip
+    Test typing.Set deserializes/serializes in a loss-less roundrip, and order is maintained
     """
     json = class_.deserialize({
-        's': [{'x': 'abc'}, {'x': 'def'}]
+        's': [{'x': 'def'}, {'x': 'abc'}]
     }).serialize()
-    assert {'x': 'abc'} in json['s']
-    assert {'x': 'def'} in json['s']
+    assert json['s'] == [{'x': 'abc'}, {'x': 'def'}]
 
 
 @pytest.mark.parametrize('class_', FIXTURES)
