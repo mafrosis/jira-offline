@@ -14,7 +14,8 @@ def test_create__create_issue__loads_issues_when_cache_empty(mock_jira, project)
     '''
     Ensure create_issue() calls load_issues() when the cache is empty
     '''
-    with mock.patch('jira_offline.create.jira', mock_jira):
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         create_issue(project, 'Story', 'This is a summary')
 
     assert mock_jira.load_issues.called
@@ -27,7 +28,8 @@ def test_create__create_issue__does_not_load_issues_when_cache_full(mock_jira, p
     # add an Issue fixture to the Jira dict
     mock_jira['TEST-72'] = Issue.deserialize(ISSUE_1, project)
 
-    with mock.patch('jira_offline.create.jira', mock_jira):
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         create_issue(project, 'Story', 'This is a summary')
 
     assert not mock_jira.load_issues.called
@@ -37,27 +39,29 @@ def test_create__create_issue__raises_on_invalid_issuetype(mock_jira, project):
     '''
     Ensure create_issue() raises an exception on an invalid issuetype
     '''
-    with mock.patch('jira_offline.create.jira', mock_jira):
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         with pytest.raises(InvalidIssueType):
             create_issue(project, 'FakeType', 'This is a summary')
 
 
-def test_create__create_issue__adds_issue_to_self_and_calls_write_issues(mock_jira, project):
+def test_create__create_issue__adds_issue_to_dataframe(mock_jira, project):
     '''
-    Ensure create_issue() adds the new Issue to self, and writes the issue cache
+    Ensure create_issue() adds the new Issue to the DataFrame
     '''
-    with mock.patch('jira_offline.create.jira', mock_jira):
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         offline_issue = create_issue(project, 'Story', 'This is a summary')
 
     assert mock_jira[offline_issue.key]
-    assert mock_jira.write_issues.called
 
 
 def test_create__create_issue__mandatory_fields_are_set_in_new_issue(mock_jira, project):
     '''
     Ensure create_issue() sets the mandatory fields passed as args (not kwargs)
     '''
-    with mock.patch('jira_offline.create.jira', mock_jira):
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         offline_issue = create_issue(project, 'Story', 'This is a summary')
 
     assert offline_issue.project == project
@@ -81,7 +85,8 @@ def test_create__create_issue__kwargs_are_set_in_new_issue(mock_jira, project):
     # Add an Epic fixture to the Jira dict
     mock_jira['TEST-1'] = Issue.deserialize(EPIC_1, project)
 
-    with mock.patch('jira_offline.create.jira', mock_jira):
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         offline_issue = create_issue(project, 'Story', 'This is a summary', epic_link='TEST-1')
 
     assert offline_issue.epic_link == 'TEST-1'
@@ -100,7 +105,8 @@ def test_create__create_issue__kwargs_are_set_in_new_issue_extended(mock_jira, p
     # Add an Epic fixture to the Jira dict
     mock_jira['TEST-1'] = Issue.deserialize(EPIC_1, project)
 
-    with mock.patch('jira_offline.create.jira', mock_jira):
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         offline_issue = create_issue(project, 'Story', 'This is a summary', arbitrary_key='arbitrary_value')
 
     assert offline_issue.extended['arbitrary_key'] == 'arbitrary_value'
@@ -117,7 +123,8 @@ def test_create__create_issue__raises_exception_when_passed_an_unknown_epic_link
     # add an Epic fixture to the Jira dict
     mock_jira['TEST-1'] = Issue.deserialize(EPIC_1, project)
 
-    with mock.patch('jira_offline.create.jira', mock_jira):
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         with pytest.raises(EpicNotFound):
             create_issue(project, 'Story', 'This is summary', epic_link='Nothing')
 
@@ -134,7 +141,8 @@ def test_create__create_issue__issue_is_mapped_to_existing_epic_summary(mock_jir
     # add an Epic fixture to the Jira dict
     mock_jira['TEST-1'] = Issue.deserialize(EPIC_1, project)
 
-    with mock.patch('jira_offline.create.jira', mock_jira), mock.patch('jira_offline.jira.jira', mock_jira):
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         new_issue = create_issue(project, 'Story', 'This is summary', epic_link=epic_link_value)
 
     # assert new Issue to linked to the epic
@@ -148,7 +156,8 @@ def test_create__find_epic_by_reference__match_by_key(mock_jira, project):
     # add an Epic fixture to the Jira dict
     mock_jira['TEST-1'] = Issue.deserialize(EPIC_1, project)
 
-    with mock.patch('jira_offline.create.jira', mock_jira):
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         epic = find_epic_by_reference('TEST-1')
 
     assert epic == mock_jira['TEST-1']
@@ -161,7 +170,8 @@ def test_create__find_epic_by_reference__match_by_summary(mock_jira, project):
     # add an Epic fixture to the Jira dict
     mock_jira['TEST-1'] = Issue.deserialize(EPIC_1, project)
 
-    with mock.patch('jira_offline.create.jira', mock_jira), mock.patch('jira_offline.jira.jira', mock_jira):
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         epic = find_epic_by_reference('This is an epic')
 
     assert epic == mock_jira['TEST-1']
@@ -174,7 +184,8 @@ def test_create__find_epic_by_reference__match_by_epic_name(mock_jira, project):
     # add an Epic fixture to the Jira dict
     mock_jira['TEST-1'] = Issue.deserialize(EPIC_1, project)
 
-    with mock.patch('jira_offline.create.jira', mock_jira), mock.patch('jira_offline.jira.jira', mock_jira):
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         epic = find_epic_by_reference('0.1: Epic about a thing')
 
     assert epic == mock_jira['TEST-1']
@@ -184,7 +195,8 @@ def test_create__find_epic_by_reference__raise_on_failed_to_match(mock_jira, pro
     '''
     Ensure exception raised when epic not found
     '''
-    with mock.patch('jira_offline.create.jira', mock_jira), mock.patch('jira_offline.jira.jira', mock_jira):
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         with pytest.raises(EpicNotFound):
             find_epic_by_reference('fake epic reference')
 
@@ -199,7 +211,8 @@ def test_create__find_epic_by_reference__raise_on_duplicate_ref_string(mock_jira
     with mock.patch.dict(EPIC_1, {'key': 'TEST-2'}):
         mock_jira['TEST-2'] = Issue.deserialize(EPIC_1, project)
 
-    with mock.patch('jira_offline.create.jira', mock_jira), mock.patch('jira_offline.jira.jira', mock_jira):
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         with pytest.raises(EpicSearchStrUsedMoreThanOnce):
             find_epic_by_reference('This is an epic')
 
@@ -365,10 +378,14 @@ def test_create__patch_issue_from_dict__set_string_to_value(mock_jira, project):
     '''
     issue = Issue.deserialize(ISSUE_1, project)
 
-    with mock.patch('jira_offline.create.jira', mock_jira):
+    issue.commit = mock.Mock()
+
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         patch_issue_from_dict(issue, {'assignee': 'eggs'})
 
     assert issue.assignee == 'eggs'
+    assert issue.commit.called
 
 
 def test_create__patch_issue_from_dict__set_string_to_blank(mock_jira, project):
@@ -377,10 +394,14 @@ def test_create__patch_issue_from_dict__set_string_to_blank(mock_jira, project):
     '''
     issue = Issue.deserialize(ISSUE_1, project)
 
-    with mock.patch('jira_offline.create.jira', mock_jira):
+    issue.commit = mock.Mock()
+
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         patch_issue_from_dict(issue, {'assignee': ''})
 
     assert issue.assignee is None
+    assert issue.commit.called
 
 
 def test_create__patch_issue_from_dict__set_priority(mock_jira, project):
@@ -389,10 +410,14 @@ def test_create__patch_issue_from_dict__set_priority(mock_jira, project):
     '''
     issue = Issue.deserialize(ISSUE_1, project)
 
-    with mock.patch('jira_offline.create.jira', mock_jira):
+    issue.commit = mock.Mock()
+
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         patch_issue_from_dict(issue, {'priority': 'Bacon'})
 
     assert issue.priority == 'Bacon'
+    assert issue.commit.called
 
 
 @pytest.mark.parametrize('param', [
@@ -407,12 +432,16 @@ def test_create__patch_issue_from_dict__set_set(mock_jira, project, param):
     with mock.patch.dict(ISSUE_1, {'labels': set(['egg'])}):
         issue = Issue.deserialize(ISSUE_1, project)
 
+    issue.commit = mock.Mock()
+
     assert issue.labels == {'egg'}
 
-    with mock.patch('jira_offline.create.jira', mock_jira):
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         patch_issue_from_dict(issue, {'labels': param})
 
     assert issue.labels == {'egg', 'bacon'}
+    assert issue.commit.called
 
 
 @pytest.mark.skip(reason='Will succeed when there is a list-type field on Issue class')
@@ -428,12 +457,15 @@ def test_create__patch_issue_from_dict__set_list(mock_jira, project, param):
     with mock.patch.dict(ISSUE_1, {'labels': ['egg']}):
         issue = Issue.deserialize(ISSUE_1, project)
 
+    issue.commit = mock.Mock()
+
     assert issue.labels == ['egg']
 
     with mock.patch('jira_offline.create.jira', mock_jira):
         patch_issue_from_dict(issue, {'labels': param})
 
     assert issue.labels == ['egg', 'bacon']
+    assert issue.commit.called
 
 
 @pytest.mark.parametrize('customfield_name', [
@@ -451,10 +483,14 @@ def test_create__patch_issue_from_dict__set_extended_customfield(mock_jira, cust
 
     issue = Issue.deserialize(ISSUE_1, project)
 
-    with mock.patch('jira_offline.create.jira', mock_jira):
+    issue.commit = mock.Mock()
+
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         patch_issue_from_dict(issue, {customfield_name: 'eggs'})
 
     assert issue.extended['arbitrary-user-defined-field'] == 'eggs'
+    assert issue.commit.called
 
 
 def test_create__patch_issue_from_dict__ignore_undefined_customfield(mock_jira):
@@ -469,10 +505,14 @@ def test_create__patch_issue_from_dict__ignore_undefined_customfield(mock_jira):
 
     issue = Issue.deserialize(ISSUE_1, project)
 
-    with mock.patch('jira_offline.create.jira', mock_jira):
+    issue.commit = mock.Mock()
+
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
         patch_issue_from_dict(issue, {'arbitrary-user-defined-field': 'eggs'})
 
     assert issue.extended == {}
+    assert issue.commit.called
 
 
 def test_create__patch_issue_from_dict__uses_reset_before_edit(mock_jira):
@@ -493,6 +533,8 @@ def test_create__patch_issue_from_dict__uses_reset_before_edit(mock_jira):
     with mock.patch.dict(ISSUE_1, {'sprint': [{'id': 1, 'name': 'Sprint 1', 'active': True}]}):
         issue = Issue.deserialize(ISSUE_1, project)
 
+    issue.commit = mock.Mock()
+
     # Add the issue to another sprint
     issue.sprint.add(Sprint(id=2, name='Sprint 2', active=False))
 
@@ -510,3 +552,4 @@ def test_create__patch_issue_from_dict__uses_reset_before_edit(mock_jira):
         Sprint(id=1, name='Sprint 1', active=True),
         Sprint(id=3, name='Sprint 3', active=False),
     }
+    assert issue.commit.called
