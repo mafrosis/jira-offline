@@ -41,16 +41,15 @@ def test_merge_issues__merged_issue_has_original_property_updated_to_match_upstr
     update_obj = merge_issues(local_issue, updated_issue, is_upstream_merge=True)
 
     serialized_upstream_issue = updated_issue.serialize()
-    del serialized_upstream_issue['diff_to_original']
     del serialized_upstream_issue['modified']
 
     # validate Issue.original updated to match `updated_issue`
     assert update_obj.merged_issue.original == serialized_upstream_issue
 
 
-def test_merge_issues__merged_issue_has_diff_to_original(project):
+def test_merge_issues__merged_issue_has_modified(project):
     '''
-    Ensure the Issue returned from merge_issues has a diff_to_original attribute
+    Ensure the Issue returned from merge_issues has a modified attribute
     '''
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-71'}):
         local_issue = Issue.deserialize(ISSUE_1, project)
@@ -59,7 +58,7 @@ def test_merge_issues__merged_issue_has_diff_to_original(project):
 
     update_obj = merge_issues(local_issue, updated_issue, is_upstream_merge=True)
 
-    assert update_obj.merged_issue.diff_to_original != []
+    assert update_obj.merged_issue.modified != []
 
 
 @mock.patch('jira_offline.sync.build_update')
@@ -86,7 +85,6 @@ def test_merge_issues__is_upstream_merge_equals_true__merged_issue_original_equa
     update_obj = merge_issues(local_issue, updated_issue, is_upstream_merge=True)
 
     serialized_upstream_issue = updated_issue.serialize()
-    del serialized_upstream_issue['diff_to_original']
     del serialized_upstream_issue['modified']
 
     # validate Issue.original updated to match `updated_issue`

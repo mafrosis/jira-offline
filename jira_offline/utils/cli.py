@@ -158,7 +158,7 @@ def parse_editor_result(issue: Issue, editor_result_raw: str, conflicts: Optiona
     issue_fields_by_friendly: Dict[str, str] = {
         friendly_title(Issue, f.name):f.name
         for f in dataclasses.fields(Issue)
-        if f.name not in ('extended', 'original', 'diff_to_original', '_active', 'modified')
+        if f.name not in ('extended', 'original', 'modified', '_active', 'modified')
     }
 
     if issue.extended:

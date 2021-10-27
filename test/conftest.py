@@ -83,7 +83,7 @@ def mock_jira(mock_jira_core):
         'project_id', 'issuetype', 'summary', 'key', 'assignee', 'created',
         'creator', 'description', 'fix_versions', 'components', 'id', 'labels',
         'priority', 'reporter', 'status', 'updated', 'epic_link', 'epic_name',
-        'sprint', 'story_points', 'extended', 'diff_to_original', 'modified',
+        'sprint', 'story_points', 'extended', 'modified',
         'project_key', 'parent_link',
     ])
     mock_jira_core.load_issues = mock.Mock()

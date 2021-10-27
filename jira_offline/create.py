@@ -89,12 +89,6 @@ def create_issue(project: ProjectMeta, issuetype: str, summary: str, **kwargs) -
 
     patch_issue_from_dict(new_issue, kwargs)
 
-    # Set into jira dict, and the underlying DataFrame
-    jira[new_issue.key] = new_issue
-
-    # Write changes to disk
-    jira.write_issues()
-
     return new_issue
 
 
@@ -138,7 +132,6 @@ def _import_modified_issue(attrs: dict, lineno: int=None) -> Issue:
         raise ImportFailed('Unknown issue key', lineno)
 
     patch_issue_from_dict(issue, attrs)
-    issue.commit()
 
     return issue
 
@@ -250,3 +243,6 @@ def patch_issue_from_dict(issue: Issue, attrs: dict):
     if attrs.get('epic_link'):
         matched_epic = find_epic_by_reference(attrs['epic_link'])
         issue.epic_link = matched_epic.key
+
+    # Commit issue object changes back into the DataFrame
+    issue.commit()

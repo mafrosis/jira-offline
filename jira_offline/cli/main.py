@@ -109,7 +109,7 @@ def cli_diff(_, key: str=None):
 
     else:
         for issue in jira.values():
-            if issue.diff_to_original and issue.exists:
+            if issue.modified and issue.exists:
                 print_diff(issue)
 
 
@@ -320,6 +320,9 @@ def cli_new(_, projectkey: str, issuetype: str, summary: str, as_json: bool=Fals
     # Create an Issue offline, it is sync'd on push
     new_issue = create_issue(project, issuetype, summary, **kwargs)
 
+    # Write changes to disk
+    jira.write_issues()
+
     # Display the new issue
     if as_json:
         output = new_issue.as_json()
@@ -402,7 +405,6 @@ def cli_edit(_, key: str, as_json: bool=False, editor: bool=False, **kwargs):
 
     # Patch the issue with fields from the CLI or editor
     patch_issue_from_dict(issue, patch_dict)
-    issue.commit()
 
     jira.write_issues()
 

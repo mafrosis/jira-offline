@@ -120,8 +120,10 @@ class Jira(collections.abc.MutableMapping):
             inplace=True,
         )
 
-        # Render diff_to_original as a string for storage in the DataFrame
-        df['diff_to_original'] = df['diff_to_original'].apply(json.dumps)
+        # Render modified as a string for storage in the DataFrame
+        df['modified'] = df['modified'].apply(
+            lambda x: json.dumps(x) if x else False
+        )
 
         # Add an empty column to for Issue.original
         df['original'] = ''
@@ -254,7 +256,7 @@ class Jira(collections.abc.MutableMapping):
                 'project_id', 'issuetype', 'summary', 'key', 'assignee', 'created',
                 'creator', 'description', 'fix_versions', 'components', 'id', 'labels',
                 'priority', 'reporter', 'status', 'updated', 'epic_link', 'epic_name',
-                'sprint', 'story_points', 'extended', 'diff_to_original', 'modified',
+                'sprint', 'story_points', 'extended', 'modified',
                 'project_key', 'original', 'parent_link'
             ])
 
@@ -264,7 +266,7 @@ class Jira(collections.abc.MutableMapping):
         Dump issues to feather cache file.
         '''
         # Make a copy of the DataFrame, for munging before write
-        # Don't write out the original field as it can be recreated from Issue.diff_to_original
+        # Don't write out the original field as it can be recreated from Issue.modified
         df = self._df.drop(columns=['original'])
 
         # Cleanup extended customfields columns

@@ -114,10 +114,15 @@ def test_jira__mutablemapping__in_operator_with_new_issue(mock_jira_core, projec
     assert '7242cc9e-ea52-4e51-bd84-2ced250cabf0' in mock_jira_core
 
 
-@pytest.mark.parametrize('issue_fixture', [ISSUE_1, ISSUE_NEW, EPIC_1])
+@pytest.mark.parametrize('issue_fixture', [
+    ISSUE_1,
+    ISSUE_NEW,
+    EPIC_1,
+])
 def test_jira__mutablemapping__roundtrip(mock_jira, project, issue_fixture):
     '''
     Ensure an issue can be set into the Jira object and be recreated without change.
+
     Parameterized with the various different types of Issue fixtures.
     '''
     # add to dataframe (via __set_item__)
@@ -127,26 +132,6 @@ def test_jira__mutablemapping__roundtrip(mock_jira, project, issue_fixture):
     issue_2 = mock_jira[issue_fixture['key']]
 
     compare_issue_helper(issue_1, issue_2)
-    assert issue_1.original == issue_2.original
-
-
-def test_jira__mutablemapping__roundtrip_with_mod(mock_jira, project):
-    '''
-    Ensure an issue can be set into the Jira object, and be recreated and then modified
-    '''
-    # add to dataframe (via __set_item__)
-    mock_jira['TEST-71'] = issue_1 = Issue.deserialize(ISSUE_1, project)
-
-    # extract back out of dataframe (via __get_item__)
-    issue_2 = mock_jira['TEST-71']
-
-    with mock.patch('jira_offline.jira.jira', mock_jira):
-        setattr(issue_2, 'summary', 'egg')
-
-    assert issue_1.summary == 'This is the story summary'
-    assert issue_2.summary == 'egg'
-    assert issue_1.modified is False
-    assert issue_2.modified is True
     assert issue_1.original == issue_2.original
 
 
