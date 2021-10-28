@@ -5,7 +5,7 @@ import decimal
 import functools
 import logging
 import textwrap
-from typing import Any, cast, Dict, Generator, Hashable, Optional, Tuple, TYPE_CHECKING
+from typing import Any, cast, Dict, Hashable, List, Optional, Tuple, TYPE_CHECKING
 from tzlocal import get_localzone
 
 import arrow
@@ -36,6 +36,22 @@ def get_field_by_name(cls: type, field_name: str) -> dataclasses.Field:
         if f.name == field_name:
             return f
     raise FieldNotOnModelClass(f'{cls}.{field_name}')
+
+
+@functools.lru_cache()
+def iter_issue_fields_by_type(*args: type) -> List[dataclasses.Field]:
+    '''
+    Return list of Issue fields matching the passed type
+
+    Params:
+        field_type:  Filter for fields of this type
+    Returns:
+        List of dataclasses.Field objects
+    '''
+    # late import to avoid circular dependency
+    from jira_offline.models import Issue  # pylint: disable=import-outside-toplevel
+
+    return [f for f in dataclasses.fields(Issue) if istype(cast(Hashable, f.type), args)]
 
 
 @functools.lru_cache()

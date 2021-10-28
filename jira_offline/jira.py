@@ -3,10 +3,11 @@ The Jira class in this module is the primary abstraction around the Jira API.
 '''
 import collections.abc
 import dataclasses
+import decimal
 import json
 import logging
 import os
-from typing import Dict, List, Optional, Set
+from typing import cast, Dict, Hashable, List, Optional, Set
 
 import pandas as pd
 from peak.util.proxies import LazyProxy
@@ -17,9 +18,11 @@ from jira_offline.config.user_config import apply_user_config_to_project
 from jira_offline.exceptions import JiraApiError, MultipleTimezoneError, ProjectDoesntExist
 from jira_offline.models import AppConfig, CustomFields, Issue, IssueType, ProjectMeta, Sprint
 from jira_offline.sql_filter import IssueFilter
+from jira_offline.utils import iter_issue_fields_by_type
 from jira_offline.utils.api import get as api_get, post as api_post, put as api_put
 from jira_offline.utils.convert import jiraapi_object_to_issue
 from jira_offline.utils.decorators import auth_retry
+from jira_offline.utils.serializer import istype
 
 
 logger = logging.getLogger('jira')
@@ -134,11 +137,22 @@ class Jira(collections.abc.MutableMapping):
         # In-place update for modified issues
         self._df.update(df)
 
+        # Specify Pandas datatypes
+        type_mappings = {}
+        for f in iter_issue_fields_by_type(str, int):
+            # Cast for mypy as istype uses @functools.lru_cache
+            typ_ = cast(Hashable, f.type)
+
+            if istype(typ_, (decimal.Decimal, str)):
+                type_mappings[f.name] = 'string'
+            elif istype(typ_, int):
+                type_mappings[f.name] = 'Int64'
+            else:
+                type_mappings[f.name] = 'object'
+        self._df = self._df.astype(type_mappings)
+
         # Customfields are stored as a dict in the extended column of the DataFrame
         self._df = self._expand_customfields(self._df)
-
-        # Let Pandas pick the best datatypes
-        self._df = self._df.convert_dtypes()
 
         # Persist new data to disk
         self.write_issues()
@@ -241,7 +255,7 @@ class Jira(collections.abc.MutableMapping):
         if os.path.exists(cache_filepath) and os.stat(cache_filepath).st_size > 0:
             self._df = pd.read_feather(
                 cache_filepath
-            ).set_index('key', drop=False).rename_axis(None).convert_dtypes()
+            ).set_index('key', drop=False).rename_axis(None)
 
             # Add an empty column to for Issue.original
             self._df['original'] = ''
