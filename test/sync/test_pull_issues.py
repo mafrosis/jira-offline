@@ -7,7 +7,7 @@ from unittest import mock
 import pytest
 
 from fixtures import ISSUE_1
-from helpers import modified_issue_helper, setup_jira_dataframe_helper
+from helpers import modified_issue_helper
 from jira_offline.exceptions import FailedPullingIssues, JiraApiError
 from jira_offline.models import Issue
 from jira_offline.sync import IssueUpdate, pull_issues, pull_single_project
@@ -21,7 +21,8 @@ def test_pull_issues__doesnt_call_load_issues_when_self_populated(mock_pull_sing
     issue_1 = Issue.deserialize(ISSUE_1, project)
 
     # Setup the Jira DataFrame
-    mock_jira._df = setup_jira_dataframe_helper([issue_1])
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        issue_1.commit()
 
     with mock.patch('jira_offline.sync.jira', mock_jira):
         pull_issues()
@@ -250,7 +251,8 @@ def test_pull_single_project__merge_issues_called_when_local_issue_is_modified(
     issue_1 = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='hoganp')
 
     # Setup the Jira DataFrame
-    mock_jira._df = setup_jira_dataframe_helper([issue_1])
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        issue_1.commit()
 
     # mock search_issues to return single object
     mock_api_get.side_effect = [ {'total': 1}, {'issues': [ISSUE_1]}, {'issues': []} ]
@@ -281,7 +283,8 @@ def test_pull_single_project__merge_issues_NOT_called_when_local_issue_is_modifi
     issue_1 = modified_issue_helper(Issue.deserialize(ISSUE_1, project), assignee='hoganp')
 
     # Setup the Jira DataFrame
-    mock_jira._df = setup_jira_dataframe_helper([issue_1])
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        issue_1.commit()
 
     # mock search_issues to return single object
     mock_api_get.side_effect = [ {'total': 1}, {'issues': [ISSUE_1]}, {'issues': []} ]

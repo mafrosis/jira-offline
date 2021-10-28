@@ -71,6 +71,13 @@ def mock_jira_core(mock_load_config, project):
     from jira_offline.cli.params import context  # pylint: disable=import-outside-toplevel, cyclic-import
     context.verbose = True  # pylint: disable=assigning-non-slot
 
+    jira._df = pd.DataFrame(columns=[
+        'project_id', 'issuetype', 'summary', 'key', 'assignee', 'created',
+        'creator', 'description', 'fix_versions', 'components', 'id', 'labels',
+        'priority', 'reporter', 'status', 'updated', 'epic_link', 'epic_name',
+        'sprint', 'story_points', 'extended', 'modified', 'project_key',
+        'parent_link', 'original'
+    ])
     return jira
 
 
@@ -79,13 +86,6 @@ def mock_jira(mock_jira_core):
     '''
     Mock additional methods of Jira class which have side-effects (eg. disk/network access)
     '''
-    mock_jira_core._df = pd.DataFrame(columns=[
-        'project_id', 'issuetype', 'summary', 'key', 'assignee', 'created',
-        'creator', 'description', 'fix_versions', 'components', 'id', 'labels',
-        'priority', 'reporter', 'status', 'updated', 'epic_link', 'epic_name',
-        'sprint', 'story_points', 'extended', 'modified',
-        'project_key', 'parent_link',
-    ])
     mock_jira_core.load_issues = mock.Mock()
     mock_jira_core.write_issues = mock.Mock()
     mock_jira_core.update_issue = mock.Mock()
