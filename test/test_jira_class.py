@@ -56,7 +56,7 @@ def test_jira__mutablemapping__set_item__new(mock_jira_core, project):
 
 def test_jira__mutablemapping__set_item__overwrite(mock_jira_core, project):
     '''
-    Ensure that __set_item__ overwrites an existing Issue to the underlying dataframe
+    Ensure that __set_item__ overwrites an existing Issue in the underlying dataframe
     '''
     # Setup the Jira DataFrame
     with mock.patch('jira_offline.jira.jira', mock_jira_core):
@@ -204,21 +204,31 @@ def test_jira__write_issues_load_issues__roundtrip(mock_os, mock_jira_core, proj
     mock_os.path.exists.return_value = True
     mock_os.stat.return_value.st_size = 1
 
+    # Create parameterized issue fixture
+    issue_1 = Issue.deserialize(issue_fixture, project)
+
+    # Create a modified issue
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
+        issue_2 = Issue.deserialize(ISSUE_1, project)
+        issue_2.assignee = 'dave'
+
     # Setup the Jira DataFrame
     with mock.patch('jira_offline.jira.jira', mock_jira_core):
-        issue = Issue.deserialize(issue_fixture, project)
-        issue.commit()
+        issue_1.commit()
+        issue_2.commit()
 
     key = issue_fixture['key']
 
     with mock.patch('jira_offline.jira.get_cache_filepath', return_value=f'{tmpdir}/issues.feather'):
         mock_jira_core.write_issues()
 
-        compare_issue_helper(issue, mock_jira_core[key])
+        compare_issue_helper(issue_1, mock_jira_core[key])
+        compare_issue_helper(issue_2, mock_jira_core['TEST-72'])
 
         mock_jira_core.load_issues()
 
-        compare_issue_helper(issue, mock_jira_core[key])
+        compare_issue_helper(issue_1, mock_jira_core[key])
+        compare_issue_helper(issue_2, mock_jira_core['TEST-72'])
 
         # ensure the original field is added during load_issues()
         assert 'original' in mock_jira_core._df.columns

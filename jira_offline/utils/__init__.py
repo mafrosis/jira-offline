@@ -10,6 +10,7 @@ from tzlocal import get_localzone
 
 import arrow
 import click
+import numpy
 import pandas as pd
 from tabulate import tabulate
 
@@ -55,22 +56,28 @@ def iter_issue_fields_by_type(*args: type) -> List[dataclasses.Field]:
 
 
 @functools.lru_cache()
-def get_dataclass_defaults_for_pandas(cls: type) -> Dict[str, str]:
+def get_dataclass_defaults_for_pandas(cls: type) -> Dict[str, Any]:
     '''
     Return a mapping of Issue.field_name->default, where the default is compatible with pandas
     '''
-    attrs = dict()
+    attrs: Dict[str, Any] = dict()
+
     for f in dataclasses.fields(cls):
+        # Special case for Issue.modified where empty is stored as numpy.nan
+        if f.name == 'modified':
+            attrs['modified'] = numpy.nan
+            continue
+
         if f.default != dataclasses.MISSING:
-            # Cast for mypy as get_base_type uses @functools.lru_cache
-            typ_ = get_base_type(cast(Hashable, f.type))
+            # Cast for mypy as istype uses @functools.lru_cache
+            typ_ = cast(Hashable, f.type)
 
             if istype(typ_, datetime.datetime):
                 attrs[f.name] = pd.to_datetime(0).tz_localize('utc')
             elif istype(typ_, (list, decimal.Decimal)):
                 attrs[f.name] = ''
             else:
-                attrs[f.name] = typ_()
+                attrs[f.name] = get_base_type(typ_)()
     return attrs
 
 

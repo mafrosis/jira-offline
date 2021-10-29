@@ -9,6 +9,7 @@ import logging
 import os
 from typing import cast, Dict, Hashable, List, Optional, Set
 
+import numpy
 import pandas as pd
 from peak.util.proxies import LazyProxy
 import pytz
@@ -124,9 +125,7 @@ class Jira(collections.abc.MutableMapping):
         )
 
         # Render modified as a string for storage in the DataFrame
-        df['modified'] = df['modified'].apply(
-            lambda x: json.dumps(x) if x else False
-        )
+        df['modified'] = df['modified'].apply(lambda x: json.dumps(x) if x else numpy.nan)
 
         # Add an empty column to for Issue.original
         df['original'] = ''

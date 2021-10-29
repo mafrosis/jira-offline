@@ -393,7 +393,7 @@ class Issue(DataclassSerializer):
     )
 
     # patch of current Issue to dict last seen on Jira server
-    modified: Optional[list] = field(default_factory=list)
+    modified: Optional[list] = field(default=None)
 
 
     def __post_init__(self):
@@ -455,7 +455,7 @@ class Issue(DataclassSerializer):
         'Return True if Issue exists on Jira, or False if it\'s local only'
         return bool(self.id)
 
-    def diff(self) -> list:
+    def diff(self) -> Optional[list]:
         '''
         If this Issue object has the original property set, render the diff between self and
         the original property. This is written to storage to track changes made offline.
@@ -466,19 +466,21 @@ class Issue(DataclassSerializer):
             Return from dictdiffer.diff to be stored in Issue.modified property
         '''
         if not self.exists:
-            return []
+            return None
 
         if not self.original:
             raise Exception
 
-        self.modified = list(
+        diff = list(
             dictdiffer.diff(
                 self.serialize(),
                 self.original,
                 ignore=set(['modified'])
             )
         )
-        return self.modified or []
+        if diff:
+            self.modified = diff
+        return self.modified
 
     @classmethod
     def deserialize(cls, attrs: dict, project: ProjectMeta, ignore_missing: bool=False) -> 'Issue':  # type: ignore[override] # pylint: disable=arguments-differ
@@ -635,11 +637,11 @@ class Issue(DataclassSerializer):
         attrs = {k:v for k,v in self.__dict__.items() if k not in ('project', '_active')}
         attrs['project_key'] = self.project.key if self.project else None
 
-        # Render Issue.modified a JSON string in the DataFrame, or None
+        # Render Issue.modified as a JSON string in the DataFrame
         if attrs['modified']:
             attrs['modified'] = json.dumps(attrs['modified'])
         else:
-            attrs['modified'] = False
+            attrs['modified'] = numpy.nan
 
         # Render Issue.original as a JSON string in the DataFrame
         attrs['original'] = json.dumps(attrs['original'])
@@ -687,8 +689,8 @@ class Issue(DataclassSerializer):
 
             # Special case for Issue.modified, as it's a list stored as a JSON string
             if key == 'modified':
-                if bool(value) is False:
-                    return []
+                if pd.isnull(value):
+                    return None
                 else:
                     return json.loads(attrs['modified'])
 
