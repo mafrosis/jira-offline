@@ -94,7 +94,7 @@ def cli_project_delete(ctx: click.core.Context, projectkey: str):
     # Access the private DataFrame so to be sure no filter is applied
     df = jira._df  # pylint: disable=protected-access
 
-    if len(df[(df.project_key == projectkey) & (df.id > 0) & df.modified]):
+    if len(df[ (df.project_key == projectkey) & (jira.is_new() | jira.is_modified()) ]):
         click.confirm('You have local modified changes which will be lost. Continue?', abort=True)
 
     del jira.config.projects[project.id]

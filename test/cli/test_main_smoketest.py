@@ -81,6 +81,7 @@ def test_main_smoketest_empty(mock_write_config, mock_auth1, mock_auth2, mock_pu
     runner = CliRunner(mix_stderr=False)
 
     with mock.patch('jira_offline.cli.main.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira), \
             mock.patch('jira_offline.cli.project.jira', mock_jira):
         result = runner.invoke(cli, [*command, *params])
 

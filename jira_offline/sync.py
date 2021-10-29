@@ -464,9 +464,9 @@ def push_issues() -> int:
 
     # Build up a list of issues to push in a specific order
     # 1. Push new issues; those created offline
-    issues_to_push = jira.df.loc[jira.df.id == 0, 'key'].tolist()
+    issues_to_push = jira.df.loc[jira.is_new(), 'key'].tolist()
     # 2. Push modified issues
-    issues_to_push += jira.df.loc[(jira.df.id > 0) & jira.df.modified, 'key'].tolist()
+    issues_to_push += jira.df.loc[~jira.is_new() & jira.is_modified(), 'key'].tolist()
 
     from jira_offline.cli.params import context  # pylint: disable=import-outside-toplevel, cyclic-import
 

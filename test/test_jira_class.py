@@ -1204,3 +1204,56 @@ def test_jira__update__merge_existing_issues_into_existing_dataframe(mock_jira, 
 
     compare_issue_helper(incoming_issue_1, mock_jira['TEST-71'])
     compare_issue_helper(incoming_issue_2, mock_jira['TEST-72'])
+
+
+def test_jira__modified_filter_none(mock_jira, project):
+    '''
+    Ensure jira.is_modified() enables filtering when no issues are modified
+    '''
+    issue_1 = Issue.deserialize(ISSUE_1, project)
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
+        issue_2 = Issue.deserialize(ISSUE_1, project)
+
+    # Setup the Jira DataFrame
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        issue_1.commit()
+        issue_2.commit()
+
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        assert len(mock_jira._df[mock_jira.is_modified()]) == 0
+
+
+def test_jira__modified_filter_some(mock_jira, project):
+    '''
+    Ensure jira.is_modified() enables filtering when some issues are modified
+    '''
+    issue_1 = Issue.deserialize(ISSUE_1, project)
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
+        issue_2 = Issue.deserialize(ISSUE_1, project)
+
+    # Make a modification to second issue
+    issue_2.assignee = 'dave'
+
+    # Setup the Jira DataFrame
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        issue_1.commit()
+        issue_2.commit()
+
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        assert len(mock_jira._df[mock_jira.is_modified()]) == 1
+
+
+def test_jira__new_filter(mock_jira, project):
+    '''
+    Ensure jira.is_new() enables filtering for new issues
+    '''
+    issue_1 = Issue.deserialize(ISSUE_1, project)
+    issue_new = Issue.deserialize(ISSUE_NEW, project)
+
+    # Setup the Jira DataFrame
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        issue_1.commit()
+        issue_new.commit()
+
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        assert len(mock_jira._df[mock_jira.is_new()]) == 1

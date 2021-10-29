@@ -197,6 +197,13 @@ class Jira(collections.abc.MutableMapping):
         return Jira.ValuesView(self, self.filter)
 
 
+    def is_new(self):
+        return self.df.id == 0
+
+    def is_modified(self):
+        return ~self.df.modified.isna()
+
+
     def _expand_customfields(self, df: pd.DataFrame) -> pd.DataFrame:  # pylint: disable=no-self-use
         '''
         Customfields are stored as a dict in the extended column of the DataFrame.
