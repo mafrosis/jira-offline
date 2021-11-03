@@ -527,7 +527,7 @@ class Jira(collections.abc.MutableMapping):
         server.
 
         Params:
-            project:           Properties of the Jira project on which to create new Issue
+            project:           Jira project on which to create new Issue
             fields:            K/V pairs for the issue; output from `utils.convert.issue_to_jiraapi_update`
             offline_temp_key:  Temporary key created for this issue until it's sync'd to Jira
         Returns:
@@ -570,7 +570,7 @@ class Jira(collections.abc.MutableMapping):
         are correct as they can only be set by the Jira server.
 
         Params:
-            project:  Properties of the Jira project to update
+            project:  Jira project which owns the issue to update
             issue:    Issue object to update
             fields:   K/V pairs for the issue; output from `utils.convert.issue_to_jiraapi_update`
         '''
@@ -589,7 +589,7 @@ class Jira(collections.abc.MutableMapping):
         Return a single Issue object from the Jira API by key
 
         Params:
-            project:  Properties of the project pushing issues to
+            project:  Jira project on which to lookup the issue
             key:      Issue key to lookup on Jira API
         Returns:
             Issue dataclass instance
