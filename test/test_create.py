@@ -254,7 +254,6 @@ def test_create__import_modified_issue__merges_writable_fields(mock_jira, projec
     # import some modified fields for Issue key=issue1
     import_dict = {
         'key': 'TEST-71',
-        'story_points': 99,
         'description': 'bacon',
     }
 
@@ -264,7 +263,6 @@ def test_create__import_modified_issue__merges_writable_fields(mock_jira, projec
 
     assert isinstance(imported_issue, Issue)
     assert imported_issue.key == 'TEST-71'
-    assert imported_issue.story_points == 99
     assert imported_issue.description == 'bacon'
 
 
@@ -518,7 +516,7 @@ def test_create__patch_issue_from_dict__ignore_undefined_customfield(mock_jira):
 
 def test_create__patch_issue_from_dict__uses_reset_before_edit(mock_jira):
     '''
-    Ensure that the reset_before_edit metadata field causes a single-field reset before a patch_
+    Ensure that the reset_before_edit metadata field causes a single-field reset before a patch
     '''
     project = ProjectMeta(
         key='TEST',
@@ -585,4 +583,48 @@ def test_create__patch_issue_from_dict__epic_name_patched_on_epic_issuetype(mock
         patch_issue_from_dict(issue, {'epic_name': 'eggs'})
 
     assert issue.epic_name == 'eggs'
+    assert issue.commit.called
+
+
+def test_create__patch_issue_from_dict__ignores_unused_customfields(mock_jira):
+    '''
+    Ensure the customfields on the Issue object are not set when the customfield IS NOT configured
+    for the project
+    '''
+    project = ProjectMeta(
+        key='TEST',
+        customfields=CustomFields(epic_name='customfield_10100')
+    )
+    with mock.patch.dict(EPIC_1, {'epic_name': None}):
+        issue = Issue.deserialize(EPIC_1, project)
+
+    issue.commit = mock.Mock()
+
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
+        patch_issue_from_dict(issue, {'epic_name': 'eggs'})
+
+    assert issue.epic_name == 'eggs'
+    assert issue.commit.called
+
+
+def test_create__patch_issue_from_dict__doesnt_ignore_not_unused_customfields(mock_jira):
+    '''
+    Ensure the customfields on the Issue object are set when the customfield IS configured for the
+    project
+    '''
+    project = ProjectMeta(
+        key='TEST',
+        customfields=CustomFields()
+    )
+    with mock.patch.dict(EPIC_1, {'epic_name': None}):
+        issue = Issue.deserialize(EPIC_1, project)
+
+    issue.commit = mock.Mock()
+
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
+        patch_issue_from_dict(issue, {'epic_name': 'eggs'})
+
+    assert issue.epic_name is None
     assert issue.commit.called

@@ -1,9 +1,11 @@
 '''
 Module for functions related to Issue creation, editing and bulk import.
 '''
+import dataclasses
+import functools
 import json
 import logging
-from typing import cast, Hashable, IO, List, Optional, Tuple
+from typing import cast, Hashable, IO, List, Optional, Set, Tuple
 import uuid
 
 from tqdm import tqdm
@@ -12,7 +14,7 @@ from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce
                                      FieldNotOnModelClass, ImportFailed, InvalidIssueType,
                                      NoInputDuringImport, ProjectNotConfigured, UnknownSprintError)
 from jira_offline.jira import jira
-from jira_offline.models import Issue, ProjectMeta
+from jira_offline.models import CustomFields, Issue, ProjectMeta
 from jira_offline.utils import (critical_logger, deserialize_single_issue_field, find_project,
                                 get_field_by_name)
 from jira_offline.utils.serializer import istype
@@ -237,6 +239,17 @@ def _import_new_issue(attrs: dict) -> Issue:
         raise ImportFailed(f'Unknown project ref {attrs["project"]} for new issue')
 
 
+@functools.lru_cache()
+def get_unused_customfields(project: ProjectMeta) -> Set[str]:
+    if project.customfields:
+        return {
+            f.name for f in dataclasses.fields(CustomFields)
+            if f.name not in dict(project.customfields.items())
+        }
+    else:
+        return set()
+
+
 def patch_issue_from_dict(issue: Issue, attrs: dict):
     '''
     Patch attributes on an Issue from the passed dict
@@ -245,6 +258,9 @@ def patch_issue_from_dict(issue: Issue, attrs: dict):
         issue:   Issue object to patch with k:v attributes
         attrs:   Dictionary containing k:v issue attributes
     '''
+    # Ignore unused customfields
+    unused_customfields = get_unused_customfields(issue.project)
+
     for field_name, value in attrs.items():
         if value is None:
             # Skip nulls in patch dict
@@ -253,6 +269,11 @@ def patch_issue_from_dict(issue: Issue, attrs: dict):
         if field_name == 'epic_name' and issue.issuetype != 'Epic':
             # Epic Name field is only valid for Epics
             logger.debug('%s: Skipped field "epic_name" as it\'s only applicable to epics', issue.key)
+            continue
+
+        if field_name in unused_customfields:
+            # Ignore unused customfields
+            logger.debug('%s: Skipped field "%s" as not in use on this project', issue.key, field_name)
             continue
 
         try:

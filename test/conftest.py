@@ -14,6 +14,7 @@ import requests
 from tzlocal import get_localzone
 
 from jira_offline.jira import Jira
+from jira_offline.create import get_unused_customfields
 from jira_offline.models import AppConfig, CustomFields, IssueType, ProjectMeta
 from jira_offline.utils.cli import _get_issue, _get_project
 
@@ -113,6 +114,7 @@ def lrucache_clear():
     'Ensure the lru_cache on `_get_project` and `_get_issue` is clear'
     _get_issue.cache_clear()
     _get_project.cache_clear()
+    get_unused_customfields.cache_clear()
 
 
 @pytest.fixture
