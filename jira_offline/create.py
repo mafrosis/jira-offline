@@ -242,11 +242,17 @@ def patch_issue_from_dict(issue: Issue, attrs: dict):
     Patch attributes on an Issue from the passed dict
 
     Params:
-        attrs:  Dictionary containing issue fields
+        issue:   Issue object to patch with k:v attributes
+        attrs:   Dictionary containing k:v issue attributes
     '''
     for field_name, value in attrs.items():
         if value is None:
             # Skip nulls in patch dict
+            continue
+
+        if field_name == 'epic_name' and issue.issuetype != 'Epic':
+            # Epic Name field is only valid for Epics
+            logger.debug('%s: Skipped field "epic_name" as it\'s only applicable to epics', issue.key)
             continue
 
         try:

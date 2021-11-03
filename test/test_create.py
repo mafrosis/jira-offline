@@ -554,3 +554,35 @@ def test_create__patch_issue_from_dict__uses_reset_before_edit(mock_jira):
         Sprint(id=3, name='Sprint 3', active=False),
     }
     assert issue.commit.called
+
+
+def test_create__patch_issue_from_dict__epic_name_ignored_on_story_issuetype(mock_jira, project):
+    '''
+    Ensure the field Issue.epic_name is only imported which issuetype==Epic
+    '''
+    issue = Issue.deserialize(ISSUE_1, project)
+
+    issue.commit = mock.Mock()
+
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
+        patch_issue_from_dict(issue, {'epic_name': 'eggs'})
+
+    assert issue.epic_name is None
+    assert issue.commit.called
+
+
+def test_create__patch_issue_from_dict__epic_name_patched_on_epic_issuetype(mock_jira, project):
+    '''
+    Ensure the field Issue.epic_name is only imported which issuetype==Epic
+    '''
+    issue = Issue.deserialize(EPIC_1, project)
+
+    issue.commit = mock.Mock()
+
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
+        patch_issue_from_dict(issue, {'epic_name': 'eggs'})
+
+    assert issue.epic_name == 'eggs'
+    assert issue.commit.called
