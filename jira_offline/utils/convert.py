@@ -190,8 +190,8 @@ def sprint_name_to_sprint_object(project: 'ProjectMeta', sprint_name: str) -> 'S
 
     try:
         return next(x for x in project.sprints.values() if x.name == sprint_name)
-    except StopIteration:
-        raise UnknownSprintError(project.key, sprint_name)
+    except StopIteration as e:
+        raise UnknownSprintError(project.key, sprint_name) from e
 
 
 def parse_list(project: 'ProjectMeta', value: str) -> List[str]:  # pylint: disable=unused-argument

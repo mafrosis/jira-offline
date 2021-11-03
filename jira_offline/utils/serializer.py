@@ -458,16 +458,16 @@ class DataclassSerializer(metaclass=SchemaClass):
                 # pull value from dataclass field name, or by property name, if defined on the dataclass.field
                 raw_value = attrs[f.name]
 
-            except KeyError:
+            except KeyError as e:
                 # handle key missing from passed dict
                 if ignore_missing is False:
                     # if the missing key's type is non-optional, raise an exception
                     if not typing_inspect.is_optional_type(f.type):
-                        raise DeserializeError(f'Missing input data for mandatory key "{f.name}"')
+                        raise DeserializeError(f'Missing input data for mandatory key "{f.name}"') from e
                     continue
 
             except TypeError as e:
-                raise DeserializeError(f'Fatal TypeError for key "{f.name}" ("{e}")')
+                raise DeserializeError(f'Fatal TypeError for key "{f.name}" ("{e}")') from e
 
             try:
                 data[f.name] = deserialize_value(
@@ -477,7 +477,7 @@ class DataclassSerializer(metaclass=SchemaClass):
                 )
 
             except DeserializeError as e:
-                raise DeserializeError(f'"{e}" on field "{f.name}"')
+                raise DeserializeError(f'"{e}" on field "{f.name}"') from e
 
         # feed additional kwargs to the target class constructor
         if constructor_kwargs:
