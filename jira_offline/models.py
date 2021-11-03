@@ -344,7 +344,7 @@ class AppConfig(DataclassSerializer):
 class Issue(DataclassSerializer):
     project_id: str = field(metadata={'friendly': 'Project ID', 'readonly': True})
     issuetype: str = field(metadata={'friendly': 'Type', 'readonly': True})
-    project: ProjectMeta = field(repr=False, metadata={'serialize': False})
+    project: ProjectMeta = field(repr=False, metadata={'serialize': False, 'readonly': True})
     summary: str
     key: str = field(metadata={'readonly': True})
 
