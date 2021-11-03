@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce,
                                      FieldNotOnModelClass, ImportFailed, InvalidIssueType,
-                                     NoInputDuringImport, ProjectNotConfigured)
+                                     NoInputDuringImport, ProjectNotConfigured, UnknownSprintError)
 from jira_offline.jira import jira
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.utils import (critical_logger, deserialize_single_issue_field, find_project,
@@ -113,7 +113,7 @@ def import_jsonlines(file: IO, verbose: bool=False) -> List[Issue]:
                 no_input = False
 
                 try:
-                    issue, is_new = import_issue(json.loads(line), lineno=i+1)
+                    issue, is_new = import_issue(json.loads(line))
                     issues.append(issue)
 
                     if is_new:
@@ -123,8 +123,10 @@ def import_jsonlines(file: IO, verbose: bool=False) -> List[Issue]:
 
                 except json.decoder.JSONDecodeError:
                     logger.error('Failed parsing line %s', i+1)
-                except ImportFailed as e:
+                except UnknownSprintError as e:
                     logger.error(e)
+                except ImportFailed as e:
+                    logger.error('%s on line %s', e.message, i+1)
             else:
                 break
 
@@ -152,30 +154,25 @@ def import_jsonlines(file: IO, verbose: bool=False) -> List[Issue]:
     return issues
 
 
-def import_issue(attrs: dict, lineno: int=None) -> Tuple[Issue, bool]:
+def import_issue(attrs: dict) -> Tuple[Issue, bool]:
     '''
     Import a single issue's fields from the passed dict. The issue could be new, or this could be an
     update to an issue which already exists.
 
     Params:
         attrs:   Dictionary containing issue fields
-        lineno:  Line number from the import file
     Returns:
         Tuple[
             The imported Issue,
             Flag indicating if the issue is new,
         ]
     '''
-    try:
-        if 'key' in attrs:
-            # Assume this object is an update to an existing Issue
-            return _import_modified_issue(attrs), False
-        else:
-            # Assume this object is a new issue
-            return _import_new_issue(attrs), True
-
-    except ImportFailed as e:
-        raise ImportFailed(e.message, lineno)
+    if attrs.get('key'):
+        # Assume this object is an update to an existing Issue
+        return _import_modified_issue(attrs), False
+    else:
+        # Assume this object is a new issue
+        return _import_new_issue(attrs), True
 
 
 def _import_modified_issue(attrs: dict) -> Issue:
@@ -197,6 +194,8 @@ def _import_modified_issue(attrs: dict) -> Issue:
         if attrs.get('key'):
             raise ImportFailed(f'Unknown issue key {attrs["key"]}')
         raise ImportFailed('Unknown issue key')
+
+    logger.debug('Patching %s %s', issue.issuetype, issue.key)
 
     patch_issue_from_dict(issue, attrs)
 
@@ -228,9 +227,13 @@ def _import_new_issue(attrs: dict) -> Issue:
         # retrieve the project object
         project = find_project(jira, attrs.pop('project'))
 
+        logger.debug('Creating %s "%s"', issuetype, summary)
+
         return create_issue(project, issuetype, summary, **attrs)
 
     except ProjectNotConfigured:
+        if 'project' not in attrs:
+            raise ImportFailed(f'No project reference on new {issuetype} "{summary}"')
         raise ImportFailed(f'Unknown project ref {attrs["project"]} for new issue')
 
 

@@ -239,16 +239,8 @@ class FailedConfigUpgrade(BaseAppException):
 
 
 # Failure when importing a JSON object as an Issue
-class ImportFailed(DynamicBaseAppException):
-    def __init__(self, message, lineno=None):
-        self.lineno = lineno
-        super().__init__(message)
-
-    def __str__(self):
-        msg = self.message
-        if self.lineno:
-            msg += f' on line {self.lineno}'
-        return msg
+class ImportFailed(BaseAppException):
+    pass
 
 
 class NoInputDuringImport(BaseAppException):
