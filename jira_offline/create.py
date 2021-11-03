@@ -273,7 +273,9 @@ def patch_issue_from_dict(issue: Issue, attrs: dict):
                 # Special case where a string is passed for a set field
                 if getattr(issue, field_name) is None:
                     setattr(issue, field_name, set())
-                getattr(issue, field_name).add(value)
+                if not isinstance(value, (set, list)):
+                    value = [value]
+                setattr(issue, field_name, getattr(issue, field_name) | set(value))
 
             elif istype(typ, list) and not isinstance(value, list):
                 # Special case where a string is passed for a list field

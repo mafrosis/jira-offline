@@ -422,7 +422,7 @@ def test_create__patch_issue_from_dict__set_priority(mock_jira, project):
 
 @pytest.mark.parametrize('param', [
     ('bacon'),
-    (set(['egg', 'bacon'])),
+    ('egg,bacon'),
 ])
 def test_create__patch_issue_from_dict__set_set(mock_jira, project, param):
     '''
@@ -447,7 +447,7 @@ def test_create__patch_issue_from_dict__set_set(mock_jira, project, param):
 @pytest.mark.skip(reason='Will succeed when there is a list-type field on Issue class')
 @pytest.mark.parametrize('param', [
     ('bacon'),
-    (['egg', 'bacon']),
+    ('egg,bacon'),
 ])
 def test_create__patch_issue_from_dict__set_list(mock_jira, project, param):
     '''

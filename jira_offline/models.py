@@ -28,9 +28,9 @@ from jira_offline import __title__
 from jira_offline.exceptions import (BadProjectMetaUri, UnableToCopyCustomCACert,
                                      NoAuthenticationMethod)
 from jira_offline.utils import (deserialize_single_issue_field, get_dataclass_defaults_for_pandas,
-                                get_field_by_name,
-                                render_dataclass_field, render_issue_field, render_value)
-from jira_offline.utils.convert import (parse_sprint, sprint_objects_to_names,
+                                get_field_by_name, render_dataclass_field, render_issue_field,
+                                render_value)
+from jira_offline.utils.convert import (parse_list, parse_sprint, sprint_objects_to_names,
                                         sprint_name_to_sprint_object)
 from jira_offline.utils.serializer import DataclassSerializer, get_base_type
 
@@ -353,10 +353,19 @@ class Issue(DataclassSerializer):
     created: Optional[datetime.datetime] = field(default=None, metadata={'readonly': True})
     creator: Optional[str] = field(default=None, metadata={'readonly': True})
     description: Optional[str] = field(default=None)
-    fix_versions: Optional[set] = field(default_factory=set, metadata={'friendly': 'Fix Version'})
-    components: Optional[set] = field(default_factory=set)
     id: Optional[int] = field(default=None, metadata={'readonly': True})
-    labels: Optional[set] = field(default_factory=set)
+    fix_versions: Optional[set] = field(
+        default_factory=set,
+        metadata={'friendly': 'Fix Version', 'parse_func': parse_list},
+    )
+    components: Optional[set] = field(
+        default_factory=set,
+        metadata={'parse_func': parse_list},
+    )
+    labels: Optional[set] = field(
+        default_factory=set,
+        metadata={'parse_func': parse_list},
+    )
     priority: Optional[str] = field(default=None, metadata={'friendly': 'Priority'})
     reporter: Optional[str] = field(default=None)
     status: Optional[str] = field(default=None, metadata={'friendly': 'Status', 'readonly': True})

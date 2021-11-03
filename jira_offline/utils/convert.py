@@ -192,3 +192,8 @@ def sprint_name_to_sprint_object(project: 'ProjectMeta', sprint_name: str) -> 'S
         return next(x for x in project.sprints.values() if x.name == sprint_name)
     except StopIteration:
         raise UnknownSprintError(project.key, sprint_name)
+
+
+def parse_list(project: 'ProjectMeta', value: str) -> List[str]:  # pylint: disable=unused-argument
+    'Parse a comma-separated list string into a list of strings'
+    return [f.strip() for f in value.split(',')]

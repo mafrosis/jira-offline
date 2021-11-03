@@ -362,12 +362,6 @@ def cli_new(_, projectkey: str, issuetype: str, summary: str, as_json: bool=Fals
         if kwargs.get('epic_name'):
             click.echo('Parameter --epic-name is ignored for anything other than an Epic', err=True)
 
-    # Parse fix_versions and labels
-    if kwargs.get('fix_versions'):
-        kwargs['fix_versions'] = set(kwargs['fix_versions'].split(','))
-    if kwargs.get('labels'):
-        kwargs['labels'] = set(kwargs['labels'].split(','))
-
     # Set a default reporter if defined for this project
     if not kwargs.get('reporter') and project.default_reporter:
         kwargs['reporter'] = project.default_reporter
@@ -444,12 +438,6 @@ def cli_edit(_, key: str, as_json: bool=False, editor: bool=False, **kwargs):
         else:
             if kwargs.get('epic_name'):
                 click.echo('Parameter --epic-name is ignored for anything other than an Epic', err=True)
-
-        # Parse fix_versions and labels
-        if kwargs.get('fix_versions'):
-            kwargs['fix_versions'] = set(kwargs['fix_versions'].split(','))
-        if kwargs.get('labels'):
-            kwargs['labels'] = set(kwargs['labels'].split(','))
 
         # Validate sprint field is valid for the project
         if 'sprint' in kwargs and not issue.project.sprints:
