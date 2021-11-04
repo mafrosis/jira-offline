@@ -285,6 +285,7 @@ def patch_issue_from_dict(issue: Issue, attrs: dict):
 
             if f.metadata.get('readonly'):
                 # Do not modify readonly fields
+                logger.debug('%s: Skipped readonly field "%s"', issue.key, field_name)
                 continue
 
             # Reset before edit means a field can only be modified once until it's sync'd with Jira.
@@ -329,6 +330,7 @@ def patch_issue_from_dict(issue: Issue, attrs: dict):
             # Verify this is really a configured customfield before continuing
             if issue.project.customfields and issue.project.customfields.extended is not None:
                 if field_name not in issue.project.customfields.extended:
+                    logger.debug('%s: Skipped unrecognised customfield "%s"', issue.key, field_name)
                     continue
 
             # Dynamic user-defined customfields are stored in issue.extended dict and are always
