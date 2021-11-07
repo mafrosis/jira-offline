@@ -3,9 +3,10 @@ from unittest import mock
 import pytest
 
 from fixtures import EPIC_1, ISSUE_1
+from helpers import compare_issue_helper
 from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce, ImportFailed,
                                      InvalidIssueType)
-from jira_offline.create import (create_issue, find_epic_by_reference, import_issue, _import_new_issue,
+from jira_offline.create import (create_issue, find_linked_issue_by_ref, import_issue, _import_new_issue,
                                  _import_modified_issue, patch_issue_from_dict)
 from jira_offline.models import CustomFields, Issue, ProjectMeta, Sprint
 
@@ -115,20 +116,6 @@ def test_create__create_issue__kwargs_are_set_in_new_issue_extended(mock_jira, p
     assert mock_jira[offline_issue.key].extended['arbitrary_key'] == 'arbitrary_value'
 
 
-def test_create__create_issue__raises_exception_when_passed_an_unknown_epic_link(mock_jira, project):
-    '''
-    Ensure create_issue() raises exception when an epic_link is passed which does not match an
-    existing epic on either summary OR epic_name
-    '''
-    # add an Epic fixture to the Jira dict
-    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1, project)
-
-    with mock.patch('jira_offline.create.jira', mock_jira), \
-            mock.patch('jira_offline.jira.jira', mock_jira):
-        with pytest.raises(EpicNotFound):
-            create_issue(project, 'Story', 'This is summary', epic_link='Nothing')
-
-
 @pytest.mark.parametrize('epic_link_value', [
     ('This is an epic'),
     ('0.1: Epic about a thing'),
@@ -149,59 +136,63 @@ def test_create__create_issue__issue_is_mapped_to_existing_epic_summary(mock_jir
     assert new_issue.epic_link == mock_jira['TEST-1'].key
 
 
-def test_create__find_epic_by_reference__match_by_key(mock_jira, project):
+def test_create__find_linked_issue_by_ref__match_by_key(mock_jira, project):
     '''
-    Ensure find_epic_by_reference() returns an Issue of epic type when passed the Issue key
+    Ensure `find_linked_issue_by_ref` returns an Issue of epic type when passed the Issue key
     '''
-    # add an Epic fixture to the Jira dict
-    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1, project)
+    # Add an Epic fixture to the Jira dict
+    mock_jira['TEST-1'] = issue = Issue.deserialize(EPIC_1, project)
 
     with mock.patch('jira_offline.create.jira', mock_jira), \
             mock.patch('jira_offline.jira.jira', mock_jira):
-        epic = find_epic_by_reference('TEST-1')
+        linked_issue = find_linked_issue_by_ref('TEST-1')
 
-    assert epic == mock_jira['TEST-1']
+    compare_issue_helper(issue, linked_issue)
 
 
-def test_create__find_epic_by_reference__match_by_summary(mock_jira, project):
+@pytest.mark.parametrize('search_str', [
+    ('This is an epic'),
+    ('is an epic'),
+])
+def test_create__find_linked_issue_by_ref__match_by_summary(mock_jira, project, search_str):
     '''
-    Ensure find_epic_by_reference() returns an Issue of epic type when passed a summary
+    Ensure `find_linked_issue_by_ref` returns an Issue of epic type when passed a summary
     '''
-    # add an Epic fixture to the Jira dict
-    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1, project)
+    # Add an Epic fixture to the Jira dict
+    mock_jira['TEST-1'] = issue = Issue.deserialize(EPIC_1, project)
 
     with mock.patch('jira_offline.create.jira', mock_jira), \
             mock.patch('jira_offline.jira.jira', mock_jira):
-        epic = find_epic_by_reference('This is an epic')
+        linked_issue = find_linked_issue_by_ref(search_str)
 
-    assert epic == mock_jira['TEST-1']
+    compare_issue_helper(issue, linked_issue)
 
 
-def test_create__find_epic_by_reference__match_by_epic_name(mock_jira, project):
+def test_create__find_linked_issue_by_ref__match_by_epic_name(mock_jira, project):
     '''
-    Ensure find_epic_by_reference() returns an Issue of epic type when passed an epic_name
+    Ensure `find_linked_issue_by_ref` returns an Issue of epic type when passed an epic_name
     '''
-    # add an Epic fixture to the Jira dict
-    mock_jira['TEST-1'] = Issue.deserialize(EPIC_1, project)
+    # Add an Epic fixture to the Jira dict
+    mock_jira['TEST-1'] = issue = Issue.deserialize(EPIC_1, project)
 
     with mock.patch('jira_offline.create.jira', mock_jira), \
             mock.patch('jira_offline.jira.jira', mock_jira):
-        epic = find_epic_by_reference('0.1: Epic about a thing')
+        linked_issue = find_linked_issue_by_ref('0.1: Epic about a thing')
 
-    assert epic == mock_jira['TEST-1']
+    compare_issue_helper(issue, linked_issue)
 
 
-def test_create__find_epic_by_reference__raise_on_failed_to_match(mock_jira, project):
+def test_create__find_linked_issue_by_ref__raise_on_failed_to_match(mock_jira, project):
     '''
     Ensure exception raised when epic not found
     '''
     with mock.patch('jira_offline.create.jira', mock_jira), \
             mock.patch('jira_offline.jira.jira', mock_jira):
         with pytest.raises(EpicNotFound):
-            find_epic_by_reference('fake epic reference')
+            find_linked_issue_by_ref('fake epic reference')
 
 
-def test_create__find_epic_by_reference__raise_on_duplicate_ref_string(mock_jira, project):
+def test_create__find_linked_issue_by_ref__raise_on_duplicate_ref_string(mock_jira, project):
     '''
     Ensure exception raised when there are two epics matching the search string
     '''
@@ -214,7 +205,7 @@ def test_create__find_epic_by_reference__raise_on_duplicate_ref_string(mock_jira
     with mock.patch('jira_offline.create.jira', mock_jira), \
             mock.patch('jira_offline.jira.jira', mock_jira):
         with pytest.raises(EpicSearchStrUsedMoreThanOnce):
-            find_epic_by_reference('This is an epic')
+            find_linked_issue_by_ref('This is an epic')
 
 
 @mock.patch('jira_offline.create._import_new_issue')
@@ -627,4 +618,35 @@ def test_create__patch_issue_from_dict__doesnt_ignore_not_unused_customfields(mo
         patch_issue_from_dict(issue, {'epic_name': 'eggs'})
 
     assert issue.epic_name is None
+    assert issue.commit.called
+
+
+@pytest.mark.parametrize('field', [
+    ('epic_link'),
+    ('parent_link'),
+])
+@mock.patch('jira_offline.create.find_linked_issue_by_ref')
+def test_create__patch_issue_from_dict__links_issue(mock_find_linked_issue_by_ref, mock_jira, field):
+    '''
+    Ensure the fields Issue.epic_link and Issue.parent_link are set correctly
+    '''
+    project = ProjectMeta(
+        'TEST',
+        customfields=CustomFields(
+            epic_link='customfield_10100',
+            parent_link='customfield_10100'
+        ),
+    )
+    issue = Issue.deserialize(ISSUE_1, project)
+
+    issue.commit = mock.Mock()
+
+    mock_find_linked_issue_by_ref.return_value = linked = Issue.deserialize(EPIC_1, project)
+
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
+        patch_issue_from_dict(issue, {field: 'eggs'})
+
+    mock_find_linked_issue_by_ref.assert_called_with('eggs')
+    assert getattr(issue, field) == linked.key
     assert issue.commit.called

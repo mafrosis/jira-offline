@@ -23,43 +23,38 @@ from jira_offline.utils.serializer import istype
 logger = logging.getLogger('jira')
 
 
-def find_epic_by_reference(epic_link_string: str) -> Issue:
+def find_linked_issue_by_ref(search_str: str) -> Issue:
     '''
-    Find an epic by search string.
+    Find a linked issue by search string.
 
-    This will attempt find an epic based on:
-        1. Issue.key
-        2. Issue.summary
-        3. Issue.epic_name
+    This will attempt find a linked issue by searching in this order:
+       1. Issue.key
+       2. Issue.epic_name
+       3. Issue.summary
 
     Params:
-        epic_link_string:  String by which to find an epic
+       search_str:  String to search for
     Returns:
-        Issue for matched Epic object
+       Matched Issue object
     '''
-    # first attempt to match issue.epic_link to an existing epic on key
-    matched_epic: Optional[Issue] = jira.get(epic_link_string)
+    # First attempt to match the search string to an existing issue key
+    matched: Optional[Issue] = jira.get(search_str)
+    if matched:
+        return matched
 
-    if matched_epic:
-        return matched_epic
+    keys = list(jira.df[jira.df.epic_name == search_str].index)
+    if len(keys) == 1:
+        return cast(Issue, jira[keys[0]])
+    if len(keys) > 0:
+        raise EpicSearchStrUsedMoreThanOnce(search_str)
 
-    for epic in jira.values():
-        # skip non-Epics
-        if epic.issuetype != 'Epic':
-            continue
+    keys = list(jira.df[jira.df.summary.str.match(f'(.*){search_str}(.*)')].index)
+    if len(keys) == 1:
+        return cast(Issue, jira[keys[0]])
+    if len(keys) > 0:
+        raise EpicSearchStrUsedMoreThanOnce(search_str)
 
-        if epic_link_string in (epic.summary, epic.epic_name):
-            if matched_epic:
-                # finding two epics that match epic_link_string is an exception, as you can only link
-                # an issue to a single epic
-                raise EpicSearchStrUsedMoreThanOnce(epic_link_string)
-
-            matched_epic = epic
-
-    if not matched_epic:
-        raise EpicNotFound(epic_link_string)
-
-    return matched_epic
+    raise EpicNotFound(search_str)
 
 
 def create_issue(project: ProjectMeta, issuetype: str, summary: str, **kwargs) -> Issue:
@@ -288,6 +283,18 @@ def patch_issue_from_dict(issue: Issue, attrs: dict):
                 logger.debug('%s: Skipped readonly field "%s"', issue.key, field_name)
                 continue
 
+            # Link an issue to epic/parent, if link field is supplied
+            if field_name in ('epic_link', 'parent_link'):
+                try:
+                    matched = find_linked_issue_by_ref(attrs[field_name])
+                    setattr(issue, field_name, matched.key)
+                except EpicNotFound:
+                    logger.debug('%s: Skipped linking to unknown epic %s', issue.key, field_name)
+                except EpicSearchStrUsedMoreThanOnce as e:
+                    logger.debug('%s: %s', issue.key, e)
+
+                continue
+
             # Reset before edit means a field can only be modified once until it's sync'd with Jira.
             # This setting only makes sense for sets/lists; and is primarily a hack in place for
             # Issue.sprint which is a set, but can only be updated as a single value via the API.
@@ -339,11 +346,6 @@ def patch_issue_from_dict(issue: Issue, attrs: dict):
                 issue.extended = dict()
 
             issue.extended[field_name] = value
-
-    # Link issue to epic if epic_link is present
-    if attrs.get('epic_link'):
-        matched_epic = find_epic_by_reference(attrs['epic_link'])
-        issue.epic_link = matched_epic.key
 
     # Commit issue object changes back into the DataFrame
     issue.commit()

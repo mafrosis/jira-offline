@@ -218,7 +218,7 @@ class NoAuthenticationMethod(BaseAppException):
 
 # Raised when trying to link an epic by a summary/epic name that has been used multiple times
 class EpicSearchStrUsedMoreThanOnce(BaseAppException):
-    'Unable to map to the specified epic, as two epics match "{}". Please try referencing the epic by key (eg. JIRA-123)'
+    'Unable to link to the specified issue, as two issues match search string "{}". Please try referencing key (eg. JIRA-123)'
 
     def __init__(self, epic_summary):
         self.epic_summary = epic_summary
