@@ -110,13 +110,14 @@ def import_jsonlines(file: IO, verbose: bool=False) -> List[Issue]:
                 no_input = False
 
                 try:
-                    issue, is_new = import_issue(json.loads(line))
-                    issues.append(issue)
+                    issue, was_created = import_issue(json.loads(line))
+                    if issue:
+                        issues.append(issue)
 
-                    if is_new:
-                        logger.info('New issue created: %s', issue.summary)
-                    else:
-                        logger.info('Issue %s updated', issue.key)
+                        if was_created:
+                            logger.info('New issue created: %s', issue.summary)
+                        else:
+                            logger.info('Issue updated: %s', issue.key)
 
                 except json.decoder.JSONDecodeError:
                     logger.error('Failed parsing line %s', i+1)
@@ -151,7 +152,7 @@ def import_jsonlines(file: IO, verbose: bool=False) -> List[Issue]:
     return issues
 
 
-def import_issue(attrs: dict) -> Tuple[Issue, bool]:
+def import_issue(attrs: dict) -> Tuple[Optional[Issue], bool]:
     '''
     Import a single issue's fields from the passed dict. The issue could be new, or this could be an
     update to an issue which already exists.
@@ -160,8 +161,8 @@ def import_issue(attrs: dict) -> Tuple[Issue, bool]:
         attrs:   Dictionary containing issue fields
     Returns:
         Tuple[
-            The imported Issue,
-            Flag indicating if the issue is new,
+            The imported Issue object (or None if nothing was imported),
+            True if the issue is new
         ]
     '''
     if attrs.get('key'):
@@ -172,7 +173,7 @@ def import_issue(attrs: dict) -> Tuple[Issue, bool]:
         return _import_new_issue(attrs), True
 
 
-def _import_modified_issue(attrs: dict) -> Issue:
+def _import_modified_issue(attrs: dict) -> Optional[Issue]:
     '''
     Update a modified issue's fields from the passed dict.
 
@@ -194,9 +195,10 @@ def _import_modified_issue(attrs: dict) -> Issue:
 
     logger.debug('Patching %s %s', issue.issuetype, issue.key)
 
-    patch_issue_from_dict(issue, attrs)
+    if patch_issue_from_dict(issue, attrs):
+        return issue
 
-    return issue
+    return None
 
 
 def _import_new_issue(attrs: dict) -> Issue:
@@ -245,7 +247,7 @@ def get_unused_customfields(project: ProjectMeta) -> Set[str]:
         return set()
 
 
-def patch_issue_from_dict(issue: Issue, attrs: dict):
+def patch_issue_from_dict(issue: Issue, attrs: dict) -> bool:
     '''
     Patch attributes on an Issue from the passed dict
 
@@ -253,6 +255,8 @@ def patch_issue_from_dict(issue: Issue, attrs: dict):
         issue:   Issue object to patch with k:v attributes
         attrs:   Dictionary containing k:v issue attributes
     '''
+    patched = False
+
     # Ignore unused customfields
     unused_customfields = get_unused_customfields(issue.project)
 
@@ -293,6 +297,7 @@ def patch_issue_from_dict(issue: Issue, attrs: dict):
                 except EpicSearchStrUsedMoreThanOnce as e:
                     logger.debug('%s: %s', issue.key, e)
 
+                patched = True
                 continue
 
             # Reset before edit means a field can only be modified once until it's sync'd with Jira.
@@ -328,6 +333,8 @@ def patch_issue_from_dict(issue: Issue, attrs: dict):
                 value = deserialize_single_issue_field(field_name, value)
                 setattr(issue, field_name, value)
 
+            patched = True
+
         except FieldNotOnModelClass:
             # FieldNotOnModelClass raised by `get_field_by_name` means this field is not a core Issue
             # attribute; and is possibly an extended customfield.
@@ -346,6 +353,10 @@ def patch_issue_from_dict(issue: Issue, attrs: dict):
                 issue.extended = dict()
 
             issue.extended[field_name] = value
+            patched = True
 
     # Commit issue object changes back into the DataFrame
-    issue.commit()
+    if patched:
+        issue.commit()
+
+    return patched
