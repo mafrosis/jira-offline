@@ -235,9 +235,6 @@ def test_create__import_issue__calls_import_updated_when_obj_has_key(mock_import
 def test_create__import_modified_issue__merges_writable_fields(mock_jira, project):
     '''
     Ensure _import_modified_issue() merges imported data onto writable fields
-
-    This test notably doesn't mock the function merge_issues(); failures in this test will uncover
-    problems in functions down the callstack
     '''
     # add an Issue fixture to the Jira dict
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
@@ -260,9 +257,6 @@ def test_create__import_modified_issue__merges_writable_fields(mock_jira, projec
 def test_create__import_modified_issue__doesnt_merge_readonly_fields(mock_jira, project):
     '''
     Ensure _import_modified_issue() doesnt merge imported data onto readonly fields
-
-    This test notably doesn't mock the function merge_issues(); failures in this test will uncover
-    problems in functions down the callstack
     '''
     # add an Issue fixture to the Jira dict
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
@@ -280,9 +274,6 @@ def test_create__import_modified_issue__doesnt_merge_readonly_fields(mock_jira, 
 def test_create__import_modified_issue__produces_issue_with_diff(mock_jira, project):
     '''
     Ensure _import_modified_issue() produces an Issue with a diff
-
-    This test notably doesn't mock the function merge_issues(); failures in this test will uncover
-    problems in functions down the callstack
     '''
     # add an Issue fixture to the Jira dict
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
@@ -300,9 +291,6 @@ def test_create__import_modified_issue__produces_issue_with_diff(mock_jira, proj
 def test_create__import_modified_issue__idempotent(mock_jira, project):
     '''
     Ensure an issue can be imported twice without breaking the diff behaviour
-
-    This test notably doesn't mock the function merge_issues(); failures in this test will uncover
-    problems in functions down the callstack
     '''
     # add an Issue fixture to the Jira dict
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
