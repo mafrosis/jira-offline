@@ -4,10 +4,12 @@ Module for functions related to Issue creation, editing and bulk import.
 import dataclasses
 import functools
 import json
+import io
 import logging
 from typing import cast, Hashable, IO, List, Optional, Set, Tuple
 import uuid
 
+import pandas as pd
 from tqdm import tqdm
 
 from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce,
@@ -92,6 +94,27 @@ def create_issue(project: ProjectMeta, issuetype: str, summary: str, strict: boo
     patch_issue_from_dict(new_issue, kwargs, strict=strict)
 
     return new_issue
+
+
+def import_csv(file: IO, verbose: bool=False, strict: bool=False) -> List[Issue]:
+    '''
+    Import new/modified issues from CSV file.
+
+    Params:
+        file:     Open file pointer to read from
+        verbose:  If False display progress bar, else print status on each import/create
+    '''
+    df = pd.read_csv(file)
+
+    # Rename s/project_key/project
+    df.rename(columns={'project_key': 'project'}, inplace=True)
+
+    # Dump the DataFrame to JSON lines and import
+    return import_jsonlines(
+        io.StringIO(df.to_json(orient='records', lines=True)),
+        verbose=verbose,
+        strict=strict,
+    )
 
 
 def import_jsonlines(file: IO, verbose: bool=False, strict: bool=False) -> List[Issue]:

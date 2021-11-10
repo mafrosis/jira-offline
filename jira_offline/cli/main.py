@@ -18,7 +18,7 @@ from jira_offline.cli.params import filter_option, force_option, global_options
 from jira_offline.cli.project import cli_project_list
 from jira_offline.config import get_default_user_config_filepath
 from jira_offline.config.user_config import write_default_user_config
-from jira_offline.create import create_issue, import_jsonlines, patch_issue_from_dict
+from jira_offline.create import create_issue, import_csv, import_jsonlines, patch_issue_from_dict
 from jira_offline.exceptions import (BadProjectMetaUri, EditorFieldParseFailed, EditorNoChanges,
                                      FailedPullingProjectMeta, JiraApiError, NoInputDuringImport)
 from jira_offline.jira import jira
@@ -479,7 +479,10 @@ def cli_import(ctx: click.core.Context, filepath: Union[str, int], dry_run: bool
 
     try:
         with open(filepath, encoding='utf8') as f:
-            imported_issues = import_jsonlines(f, verbose=ctx.obj.verbose, strict=strict)
+            if filepath == 0 or filepath.endswith(('json', 'jsonl')):  # type: ignore[union-attr]
+                imported_issues = import_jsonlines(f, verbose=ctx.obj.verbose, strict=strict)
+            else:
+                imported_issues = import_csv(f, verbose=ctx.obj.verbose, strict=strict)
 
     except NoInputDuringImport:
         click.echo('No data read on stdin or in passed file', err=True)
@@ -487,8 +490,10 @@ def cli_import(ctx: click.core.Context, filepath: Union[str, int], dry_run: bool
 
     if imported_issues and dry_run:
         for issue in imported_issues:
-            # Print a diff for modified or new imported issues
-            if issue.modified or not issue.exists:
+            # Print new issues, and print a diff for modified issues
+            if not issue.exists:
+                print(issue)
+            elif issue.modified:
                 print_diff(issue)
 
     elif imported_issues:
