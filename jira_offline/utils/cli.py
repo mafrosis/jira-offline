@@ -343,7 +343,7 @@ class ValidCustomfield(click.Option):
                 try:
                     # Validate for the project by issue key or project key
                     assert project.customfields[customfield_name]
-                except KeyError:
+                except (AssertionError, KeyError):
                     raise click.UsageError(
                         f"Option '--{customfield_name.replace('_', '-')}' is not available on project {project.key}"
                     )
