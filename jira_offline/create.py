@@ -57,7 +57,7 @@ def find_linked_issue_by_ref(search_str: str) -> Issue:
     raise EpicNotFound(search_str)
 
 
-def create_issue(project: ProjectMeta, issuetype: str, summary: str, **kwargs) -> Issue:
+def create_issue(project: ProjectMeta, issuetype: str, summary: str, strict: bool=False, **kwargs) -> Issue:
     '''
     Create a new Issue
 
@@ -65,6 +65,7 @@ def create_issue(project: ProjectMeta, issuetype: str, summary: str, **kwargs) -
         project:    Project properties on which to create the new issue
         issuetype:  Issue.issuetype
         summary:    Issue.summary
+        strict:     When true, raise exceptions on errors during import
         kwargs:     Issue fields as parameters
     '''
     # Ensure issues are loaded
@@ -88,18 +89,19 @@ def create_issue(project: ProjectMeta, issuetype: str, summary: str, **kwargs) -
     if 'description' not in kwargs or not kwargs['description']:
         kwargs['description'] = ''
 
-    patch_issue_from_dict(new_issue, kwargs)
+    patch_issue_from_dict(new_issue, kwargs, strict=strict)
 
     return new_issue
 
 
-def import_jsonlines(file: IO, verbose: bool=False) -> List[Issue]:
+def import_jsonlines(file: IO, verbose: bool=False, strict: bool=False) -> List[Issue]:
     '''
     Import new/modified issues from JSONlines format file.
 
     Params:
         file:     Open file pointer to read from
         verbose:  If False display progress bar, else print status on each import/create
+        strict:   When true, raise exceptions on errors during import
     '''
     def _run(pbar=None) -> List[Issue]:
         no_input = True
@@ -110,7 +112,7 @@ def import_jsonlines(file: IO, verbose: bool=False) -> List[Issue]:
                 no_input = False
 
                 try:
-                    issue, was_created = import_issue(json.loads(line))
+                    issue, was_created = import_issue(json.loads(line), strict=strict)
                     if issue:
                         issues.append(issue)
 
@@ -152,13 +154,14 @@ def import_jsonlines(file: IO, verbose: bool=False) -> List[Issue]:
     return issues
 
 
-def import_issue(attrs: dict) -> Tuple[Optional[Issue], bool]:
+def import_issue(attrs: dict, strict: bool=False) -> Tuple[Optional[Issue], bool]:
     '''
     Import a single issue's fields from the passed dict. The issue could be new, or this could be an
     update to an issue which already exists.
 
     Params:
         attrs:   Dictionary containing issue fields
+        strict:  When true, raise exceptions on errors during import
     Returns:
         Tuple[
             The imported Issue object (or None if nothing was imported),
@@ -167,13 +170,13 @@ def import_issue(attrs: dict) -> Tuple[Optional[Issue], bool]:
     '''
     if attrs.get('key'):
         # Assume this object is an update to an existing Issue
-        return _import_modified_issue(attrs), False
+        return _import_modified_issue(attrs, strict=strict), False
     else:
         # Assume this object is a new issue
-        return _import_new_issue(attrs), True
+        return _import_new_issue(attrs, strict=strict), True
 
 
-def _import_modified_issue(attrs: dict) -> Optional[Issue]:
+def _import_modified_issue(attrs: dict, strict: bool=False) -> Optional[Issue]:
     '''
     Update a modified issue's fields from the passed dict.
 
@@ -182,7 +185,8 @@ def _import_modified_issue(attrs: dict) -> Optional[Issue]:
         key:      Jira issue key
 
     Params:
-        attrs:  Dictionary containing issue fields
+        attrs:   Dictionary containing issue fields
+        strict:  When true, raise exceptions on errors during import
     '''
     try:
         # fetch existing issue by key, raising KeyError if unknown
@@ -195,13 +199,13 @@ def _import_modified_issue(attrs: dict) -> Optional[Issue]:
 
     logger.debug('Patching %s %s', issue.issuetype, issue.key)
 
-    if patch_issue_from_dict(issue, attrs):
+    if patch_issue_from_dict(issue, attrs, strict=strict):
         return issue
 
     return None
 
 
-def _import_new_issue(attrs: dict) -> Issue:
+def _import_new_issue(attrs: dict, strict: bool=False) -> Issue:
     '''
     Create a new issue from the fields in the passed dict.
 
@@ -211,7 +215,8 @@ def _import_new_issue(attrs: dict) -> Issue:
         summary:    Issue summary string
 
     Params:
-        attrs:  Dictionary containing issue fields
+        attrs:   Dictionary containing issue fields
+        strict:  When true, raise exceptions on errors during import
     '''
     try:
         # ensure all mandatory fields are in the import dict
@@ -228,7 +233,7 @@ def _import_new_issue(attrs: dict) -> Issue:
 
         logger.debug('Creating %s "%s"', issuetype, summary)
 
-        return create_issue(project, issuetype, summary, **attrs)
+        return create_issue(project, issuetype, summary, strict=strict, **attrs)
 
     except ProjectNotConfigured:
         if 'project' not in attrs:
@@ -247,13 +252,14 @@ def get_unused_customfields(project: ProjectMeta) -> Set[str]:
         return set()
 
 
-def patch_issue_from_dict(issue: Issue, attrs: dict) -> bool:
+def patch_issue_from_dict(issue: Issue, attrs: dict, strict: bool=False) -> bool:
     '''
     Patch attributes on an Issue from the passed dict
 
     Params:
         issue:   Issue object to patch with k:v attributes
         attrs:   Dictionary containing k:v issue attributes
+        strict:  When true, raise exceptions on error instead of just logging
     '''
     patched = False
 
@@ -292,10 +298,14 @@ def patch_issue_from_dict(issue: Issue, attrs: dict) -> bool:
                 try:
                     matched = find_linked_issue_by_ref(attrs[field_name])
                     setattr(issue, field_name, matched.key)
-                except EpicNotFound:
+                except EpicNotFound as e:
                     logger.debug('%s: Skipped linking to unknown epic %s', issue.key, field_name)
+                    if strict:
+                        raise e
                 except EpicSearchStrUsedMoreThanOnce as e:
                     logger.debug('%s: %s', issue.key, e)
+                    if strict:
+                        raise e
 
                 patched = True
                 continue

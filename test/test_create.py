@@ -287,7 +287,9 @@ def test_create__import_new_issue__calls_create_issue(mock_create_issue, mock_fi
     with mock.patch('jira_offline.create.jira', mock_jira):
         _import_new_issue(import_dict)
 
-    mock_create_issue.assert_called_with(project, 'Epic', 'Egg', story_points=99, description='bacon')
+    mock_create_issue.assert_called_with(
+        project, 'Epic', 'Egg', strict=False, story_points=99, description='bacon'
+    )
 
 
 @pytest.mark.parametrize('keys', [
@@ -655,4 +657,35 @@ def test_create__patch_issue_from_dict__idempotent(mock_jira, project):
     assert issue.assignee == 'hoganp'
     assert issue.diff() == [('change', 'assignee', ('hoganp', 'danil1'))]
     assert issue.commit.called
+    assert patched is True
+
+
+def test_create__patch_issue_from_dict__raises_exception_when_passed_an_unknown_epic_link(mock_jira, project):
+    '''
+    Ensure an exception is raised in strict mode, when an epic_link is passed which does not match
+    an existing epic
+    '''
+    issue = Issue.deserialize(EPIC_1, project)
+
+    issue.commit = mock.Mock()
+
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
+        with pytest.raises(EpicNotFound):
+            patch_issue_from_dict(issue, {'epic_link': 'Nothing'}, strict=True)
+
+
+def test_create__patch_issue_from_dict__DOES_NOT_raise_exception_when_passed_a_known_epic_link(mock_jira, project):
+    '''
+    Ensure NO exception is raised in strict mode, when an epic_link is passed which does not match
+    an existing epic
+    '''
+    issue = Issue.deserialize(EPIC_1, project)
+
+    issue.commit = mock.Mock()
+
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
+        patched = patch_issue_from_dict(issue, {'epic_link': 'Nothing'})
+
     assert patched is True

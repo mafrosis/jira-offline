@@ -462,9 +462,10 @@ def cli_edit(_, key: str, as_json: bool=False, editor: bool=False, **kwargs):
 @click.command(name='import', no_args_is_help=True)
 @click.argument('filepath', type=click.Path(exists=True, dir_okay=False, allow_dash=True))
 @click.option('--dry-run', '-n', is_flag=True, help="Don't actually import, just show the diff the import will create")
+@click.option('--strict', is_flag=True, help='Stop on errors during import')
 @click.pass_context
 @global_options
-def cli_import(ctx: click.core.Context, filepath: Union[str, int], dry_run: bool=False):
+def cli_import(ctx: click.core.Context, filepath: Union[str, int], dry_run: bool=False, strict: bool=False):
     '''
     Import issues from stdin, or from a filepath
 
@@ -478,7 +479,7 @@ def cli_import(ctx: click.core.Context, filepath: Union[str, int], dry_run: bool
 
     try:
         with open(filepath, encoding='utf8') as f:
-            imported_issues = import_jsonlines(f, verbose=ctx.obj.verbose)
+            imported_issues = import_jsonlines(f, verbose=ctx.obj.verbose, strict=strict)
 
     except NoInputDuringImport:
         click.echo('No data read on stdin or in passed file', err=True)
