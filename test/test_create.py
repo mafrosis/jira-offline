@@ -268,92 +268,6 @@ def test_create__import_modified_issue__returns_none_if_no_mod_made(mock_patch_i
     assert imported_issue is None
 
 
-def test_create__import_modified_issue__merges_writable_fields(mock_jira, project):
-    '''
-    Ensure _import_modified_issue() merges imported data onto writable fields
-    '''
-    # add an Issue fixture to the Jira dict
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
-
-    # import some modified fields for Issue key=issue1
-    import_dict = {
-        'key': 'TEST-71',
-        'description': 'bacon',
-    }
-
-    with mock.patch('jira_offline.jira.jira', mock_jira), \
-            mock.patch('jira_offline.create.jira', mock_jira):
-        imported_issue = _import_modified_issue(import_dict)
-
-    assert isinstance(imported_issue, Issue)
-    assert imported_issue.key == 'TEST-71'
-    assert imported_issue.description == 'bacon'
-
-
-def test_create__import_modified_issue__doesnt_merge_readonly_fields(mock_jira, project):
-    '''
-    Ensure _import_modified_issue() doesnt merge imported data onto readonly fields
-    '''
-    # add an Issue fixture to the Jira dict
-    mock_jira['TEST-71'] = issue = Issue.deserialize(ISSUE_1, project)
-
-    # import a writeable and a readonly field against issue TEST-71
-    import_dict = {'key': 'TEST-71', 'project_id': 'Bacon', 'summary': 'Egg'}
-
-    assert issue.summary == 'This is the story summary'
-    assert issue.project_id == '99fd9182cfc4c701a8a662f6293f4136201791b4'
-
-    with mock.patch('jira_offline.jira.jira', mock_jira), \
-            mock.patch('jira_offline.create.jira', mock_jira):
-        imported_issue = _import_modified_issue(import_dict)
-
-    # Assert writeable field is modified, but the readonly value is not modified
-    assert imported_issue.summary == 'Egg'
-    assert imported_issue.project_id == '99fd9182cfc4c701a8a662f6293f4136201791b4'
-
-
-def test_create__import_modified_issue__produces_issue_with_diff(mock_jira, project):
-    '''
-    Ensure _import_modified_issue() produces an Issue with a diff
-    '''
-    # add an Issue fixture to the Jira dict
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
-
-    import_dict = {'key': 'TEST-71', 'assignee': 'hoganp'}
-
-    with mock.patch('jira_offline.jira.jira', mock_jira), \
-            mock.patch('jira_offline.create.jira', mock_jira):
-        imported_issue = _import_modified_issue(import_dict)
-
-    assert imported_issue.assignee == 'hoganp'
-    assert imported_issue.diff() == [('change', 'assignee', ('hoganp', 'danil1'))]
-
-
-def test_create__import_modified_issue__idempotent(mock_jira, project):
-    '''
-    Ensure an issue can be imported twice without breaking the diff behaviour
-    '''
-    # add an Issue fixture to the Jira dict
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
-
-    import_dict = {'key': 'TEST-71', 'assignee': 'hoganp'}
-
-    # import same test JSON twice
-    with mock.patch('jira_offline.jira.jira', mock_jira), \
-            mock.patch('jira_offline.create.jira', mock_jira):
-        imported_issue = _import_modified_issue(import_dict)
-
-    assert imported_issue.assignee == 'hoganp'
-    assert imported_issue.diff() == [('change', 'assignee', ('hoganp', 'danil1'))]
-
-    with mock.patch('jira_offline.jira.jira', mock_jira), \
-            mock.patch('jira_offline.create.jira', mock_jira):
-        imported_issue = _import_modified_issue(import_dict)
-
-    assert imported_issue.assignee == 'hoganp'
-    assert imported_issue.diff() == [('change', 'assignee', ('hoganp', 'danil1'))]
-
-
 @mock.patch('jira_offline.create.find_project')
 @mock.patch('jira_offline.create.create_issue')
 def test_create__import_new_issue__calls_create_issue(mock_create_issue, mock_find_project, mock_jira, project):
@@ -437,6 +351,28 @@ def test_create__patch_issue_from_dict__set_priority(mock_jira, project):
         patched = patch_issue_from_dict(issue, {'priority': 'Bacon'})
 
     assert issue.priority == 'Bacon'
+    assert issue.commit.called
+    assert patched is True
+
+
+def test_create__patch_issue_from_dict__skips_readonly_fields(mock_jira, project):
+    '''
+    Ensure readonly fields are skipped during a patch
+    '''
+    issue = Issue.deserialize(ISSUE_1, project)
+
+    issue.commit = mock.Mock()
+
+    assert issue.summary == 'This is the story summary'
+    assert issue.project_id == '99fd9182cfc4c701a8a662f6293f4136201791b4'
+
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
+        patched = patch_issue_from_dict(issue, {'key': 'TEST-71', 'project_id': 'Bacon', 'summary': 'Egg'})
+
+    # Assert writeable field is modified, but the readonly value is not modified
+    assert issue.summary == 'Egg'
+    assert issue.project_id == '99fd9182cfc4c701a8a662f6293f4136201791b4'
     assert issue.commit.called
     assert patched is True
 
@@ -690,5 +626,33 @@ def test_create__patch_issue_from_dict__links_issue(mock_find_linked_issue_by_re
 
     mock_find_linked_issue_by_ref.assert_called_with('eggs')
     assert getattr(issue, field) == linked.key
+    assert issue.commit.called
+    assert patched is True
+
+
+def test_create__patch_issue_from_dict__idempotent(mock_jira, project):
+    '''
+    Ensure an issue can be patched twice and produces an identical diff
+    '''
+    issue = Issue.deserialize(ISSUE_1, project)
+
+    issue.commit = mock.Mock()
+
+    # import same test JSON twice
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
+        patched = patch_issue_from_dict(issue, {'key': 'TEST-71', 'assignee': 'hoganp'})
+
+    assert issue.assignee == 'hoganp'
+    assert issue.diff() == [('change', 'assignee', ('hoganp', 'danil1'))]
+    assert issue.commit.called
+    assert patched is True
+
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
+        patched = patch_issue_from_dict(issue, {'key': 'TEST-71', 'assignee': 'hoganp'})
+
+    assert issue.assignee == 'hoganp'
+    assert issue.diff() == [('change', 'assignee', ('hoganp', 'danil1'))]
     assert issue.commit.called
     assert patched is True
