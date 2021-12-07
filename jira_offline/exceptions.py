@@ -44,9 +44,15 @@ class BaseAppException(click.ClickException):
     Inherits click.ClickException, so that when raised, these are conveniently handled by the click
     library and the output `format_message` is printed on the CLI.
     '''
-    def __init__(self, extra_message='', dynamic_message=''):
+    def __init__(self, message=None, extra_message=''):
         self.extra_message = str(extra_message).strip()
-        super().__init__(dynamic_message)
+
+        # If a str is passed as the first parameter, then simply treat per a normal exception.
+        # Else, call the exception objects __str__ method to return the message string.
+        if message:
+            super().__init__(message)
+        else:
+            super().__init__(str(self))
 
     def show(self):  # pylint: disable=arguments-differ
         super().show()
@@ -59,25 +65,16 @@ class BaseAppException(click.ClickException):
         # if --debug or --verbose were passed on CLI, the global logger will be at logging.INFO
         # or logging.DEBUG. In these cases, print the extra message.
         if self.extra_message and logger.level <= logging.INFO:
-            return f'{str(self)}\n\n{self.extra_message}'
+            return f'{self.message}\n\n{self.extra_message}'
         else:
-            return str(self)
+            return self.message
 
     def __str__(self):
+        '''
+        Vanilla __str__ method which returns __doc__ without formatting. Should be overriden in
+        child classes.
+        '''
         return self.__doc__
-
-
-class DynamicBaseAppException(BaseAppException):
-    '''
-    Simple wrapper around BaseAppException for the case where different error message strings are
-    passed to an exception constructor depending on the case. See `UnreadableConfig` in config.py
-    for an example.
-    '''
-    def __init__(self, message=''):
-        super().__init__(dynamic_message=message)
-
-    def __str__(self):
-        return str(self.message)
 
 
 # Raised when attempting map an issue to an epic that doesnt exist
@@ -111,7 +108,7 @@ class InvalidIssueStatus(BaseAppException):
 
     def __init__(self, options):
         self.options = options
-        super().__init__('')
+        super().__init__()
 
     def __str__(self):
         return self.__doc__.format(self.options)
@@ -123,7 +120,7 @@ class InvalidIssuePriority(BaseAppException):
 
     def __init__(self, options):
         self.options = options
-        super().__init__('')
+        super().__init__()
 
     def __str__(self):
         return self.__doc__.format(self.options)
@@ -134,7 +131,7 @@ class CliError(BaseAppException):
 
 
 # Raised when load_config cannot read the config file
-class UnreadableConfig(DynamicBaseAppException):
+class UnreadableConfig(BaseAppException):
     def __init__(self, message, path: str=None):
         self.path = path
         super().__init__(message)
@@ -157,7 +154,7 @@ class ProjectDoesntExist(BaseAppException):
 
     def __init__(self, project):
         self.project = project
-        super().__init__('')
+        super().__init__()
 
     def __str__(self):
         return self.__doc__.format(self.project)
@@ -169,7 +166,7 @@ class ProjectNotConfigured(BaseAppException):
 
     def __init__(self, key):
         self.key = key
-        super().__init__('')
+        super().__init__()
 
     def __str__(self):
         return self.__doc__.format(key=self.key)
@@ -189,7 +186,7 @@ class JiraNotConfigured(BaseAppException):
         self.project_key = project_key
         self.jira_server = jira_server
         self.extra_message = extra_message
-        super().__init__('')
+        super().__init__()
 
     def __str__(self):
         return self.__doc__.format(host=self.jira_server, proj=self.project_key)
@@ -222,7 +219,7 @@ class EpicSearchStrUsedMoreThanOnce(BaseAppException):
 
     def __init__(self, epic_summary):
         self.epic_summary = epic_summary
-        super().__init__('')
+        super().__init__()
 
     def __str__(self):
         return self.__doc__.format(self.epic_summary)
@@ -286,7 +283,7 @@ class FilterUnknownFieldException(BaseAppException):
 
     def __init__(self, field):
         self.field = field
-        super().__init__('')
+        super().__init__()
 
     def __str__(self):
         return self.__doc__.format(self.field)
@@ -296,7 +293,7 @@ class FilterUnknownOperatorException(BaseAppException):
 
     def __init__(self, operator_):
         self.operator = operator_
-        super().__init__('')
+        super().__init__()
 
     def __str__(self):
         return self.__doc__.format(self.operator)
@@ -307,7 +304,7 @@ class UserConfigAlreadyExists(BaseAppException):
 
     def __init__(self, operator_):
         self.operator = operator_
-        super().__init__('')
+        super().__init__()
 
     def __str__(self):
         return self.__doc__.format(self.operator)
@@ -318,7 +315,7 @@ class InvalidLsFieldInConfig(BaseAppException):
 
     def __init__(self, field):
         self.field = field
-        super().__init__('')
+        super().__init__()
 
     def __str__(self):
         return self.__doc__.format(self.field)
@@ -333,7 +330,7 @@ class FieldNotOnModelClass(BaseAppException):
 
     def __init__(self, field):
         self.field = field
-        super().__init__('')
+        super().__init__()
 
     def __str__(self):
         return self.__doc__.format(self.field)
@@ -345,7 +342,7 @@ class UnknownSprintError(BaseAppException):
     def __init__(self, project_key, sprint):
         self.project_key = project_key
         self.sprint = sprint
-        super().__init__('')
+        super().__init__()
 
     def __str__(self):
         return self.__doc__.format(self.sprint, self.project_key)
