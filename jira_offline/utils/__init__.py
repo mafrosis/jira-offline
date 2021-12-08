@@ -5,11 +5,12 @@ import decimal
 import functools
 import logging
 import textwrap
-from typing import Any, cast, Dict, Generator, Hashable, Optional, Tuple, TYPE_CHECKING
+from typing import Any, cast, Dict, Hashable, List, Optional, Tuple, TYPE_CHECKING
 from tzlocal import get_localzone
 
 import arrow
 import click
+import numpy
 import pandas as pd
 from tabulate import tabulate
 
@@ -39,22 +40,44 @@ def get_field_by_name(cls: type, field_name: str) -> dataclasses.Field:
 
 
 @functools.lru_cache()
-def get_dataclass_defaults_for_pandas(cls: type) -> Dict[str, str]:
+def iter_issue_fields_by_type(*args: type) -> List[dataclasses.Field]:
+    '''
+    Return list of Issue fields matching the passed type
+
+    Params:
+        field_type:  Filter for fields of this type
+    Returns:
+        List of dataclasses.Field objects
+    '''
+    # late import to avoid circular dependency
+    from jira_offline.models import Issue  # pylint: disable=import-outside-toplevel
+
+    return [f for f in dataclasses.fields(Issue) if istype(cast(Hashable, f.type), args)]
+
+
+@functools.lru_cache()
+def get_dataclass_defaults_for_pandas(cls: type) -> Dict[str, Any]:
     '''
     Return a mapping of Issue.field_name->default, where the default is compatible with pandas
     '''
-    attrs = dict()
+    attrs: Dict[str, Any] = dict()
+
     for f in dataclasses.fields(cls):
+        # Special case for Issue.modified where empty is stored as numpy.nan
+        if f.name == 'modified':
+            attrs['modified'] = numpy.nan
+            continue
+
         if f.default != dataclasses.MISSING:
-            # Cast for mypy as get_base_type uses @functools.lru_cache
-            typ_ = get_base_type(cast(Hashable, f.type))
+            # Cast for mypy as istype uses @functools.lru_cache
+            typ_ = cast(Hashable, f.type)
 
             if istype(typ_, datetime.datetime):
                 attrs[f.name] = pd.to_datetime(0).tz_localize('utc')
             elif istype(typ_, (list, decimal.Decimal)):
                 attrs[f.name] = ''
             else:
-                attrs[f.name] = typ_()
+                attrs[f.name] = get_base_type(typ_)()
     return attrs
 
 

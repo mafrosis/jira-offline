@@ -3,11 +3,13 @@ The Jira class in this module is the primary abstraction around the Jira API.
 '''
 import collections.abc
 import dataclasses
+import decimal
 import json
 import logging
 import os
-from typing import Dict, List, Optional, Set
+from typing import cast, Dict, Hashable, List, Optional, Set
 
+import numpy
 import pandas as pd
 from peak.util.proxies import LazyProxy
 import pytz
@@ -17,9 +19,11 @@ from jira_offline.config.user_config import apply_user_config_to_project
 from jira_offline.exceptions import JiraApiError, MultipleTimezoneError, ProjectDoesntExist
 from jira_offline.models import AppConfig, CustomFields, Issue, IssueType, ProjectMeta, Sprint
 from jira_offline.sql_filter import IssueFilter
+from jira_offline.utils import iter_issue_fields_by_type
 from jira_offline.utils.api import get as api_get, post as api_post, put as api_put
 from jira_offline.utils.convert import jiraapi_object_to_issue
 from jira_offline.utils.decorators import auth_retry
+from jira_offline.utils.serializer import istype
 
 
 logger = logging.getLogger('jira')
@@ -50,6 +54,12 @@ class Jira(collections.abc.MutableMapping):
 
 
     def __getitem__(self, key: str) -> Issue:
+        # If key is an abbreviated UUID, load full key from the DataFrame
+        full_key = self._df.index[(self._df.key.str.len() == 36) & self._df.index.str.startswith(key)].any()
+
+        if full_key:
+            key = full_key
+
         series = self._df.loc[key]
         return Issue.from_series(
             series,
@@ -70,6 +80,10 @@ class Jira(collections.abc.MutableMapping):
         return len(self._df)
 
     def __contains__(self, key):
+        # Check if key is an abbreviated UUID
+        if self._df.index[(self._df.key.str.len() == 36) & self._df.index.str.startswith(key)].any():
+            return True
+
         return key in self._df.index
 
 
@@ -121,9 +135,7 @@ class Jira(collections.abc.MutableMapping):
         )
 
         # Render modified as a string for storage in the DataFrame
-        df['modified'] = df['modified'].apply(
-            lambda x: json.dumps(x) if x else False
-        )
+        df['modified'] = df['modified'].apply(lambda x: json.dumps(x) if x else numpy.nan)
 
         # Add an empty column to for Issue.original
         df['original'] = ''
@@ -134,11 +146,22 @@ class Jira(collections.abc.MutableMapping):
         # In-place update for modified issues
         self._df.update(df)
 
+        # Specify Pandas datatypes
+        type_mappings = {}
+        for f in iter_issue_fields_by_type(str, int):
+            # Cast for mypy as istype uses @functools.lru_cache
+            typ_ = cast(Hashable, f.type)
+
+            if istype(typ_, (decimal.Decimal, str)):
+                type_mappings[f.name] = 'string'
+            elif istype(typ_, int):
+                type_mappings[f.name] = 'Int64'
+            else:
+                type_mappings[f.name] = 'object'
+        self._df = self._df.astype(type_mappings)
+
         # Customfields are stored as a dict in the extended column of the DataFrame
         self._df = self._expand_customfields(self._df)
-
-        # Let Pandas pick the best datatypes
-        self._df = self._df.convert_dtypes()
 
         # Persist new data to disk
         self.write_issues()
@@ -182,6 +205,13 @@ class Jira(collections.abc.MutableMapping):
 
     def values(self):
         return Jira.ValuesView(self, self.filter)
+
+
+    def is_new(self):
+        return self.df.id == 0
+
+    def is_modified(self):
+        return ~self.df.modified.isna()
 
 
     def _expand_customfields(self, df: pd.DataFrame) -> pd.DataFrame:  # pylint: disable=no-self-use
@@ -241,7 +271,7 @@ class Jira(collections.abc.MutableMapping):
         if os.path.exists(cache_filepath) and os.stat(cache_filepath).st_size > 0:
             self._df = pd.read_feather(
                 cache_filepath
-            ).set_index('key', drop=False).rename_axis(None).convert_dtypes()
+            ).set_index('key', drop=False).rename_axis(None)
 
             # Add an empty column to for Issue.original
             self._df['original'] = ''
@@ -256,8 +286,8 @@ class Jira(collections.abc.MutableMapping):
                 'project_id', 'issuetype', 'summary', 'key', 'assignee', 'created',
                 'creator', 'description', 'fix_versions', 'components', 'id', 'labels',
                 'priority', 'reporter', 'status', 'updated', 'epic_link', 'epic_name',
-                'sprint', 'story_points', 'extended', 'modified',
-                'project_key', 'original', 'parent_link'
+                'sprint', 'story_points', 'extended', 'modified', 'project_key',
+                'parent_link', 'original'
             ])
 
 
@@ -497,7 +527,7 @@ class Jira(collections.abc.MutableMapping):
         server.
 
         Params:
-            project:           Properties of the Jira project on which to create new Issue
+            project:           Jira project on which to create new Issue
             fields:            K/V pairs for the issue; output from `utils.convert.issue_to_jiraapi_update`
             offline_temp_key:  Temporary key created for this issue until it's sync'd to Jira
         Returns:
@@ -540,7 +570,7 @@ class Jira(collections.abc.MutableMapping):
         are correct as they can only be set by the Jira server.
 
         Params:
-            project:  Properties of the Jira project to update
+            project:  Jira project which owns the issue to update
             issue:    Issue object to update
             fields:   K/V pairs for the issue; output from `utils.convert.issue_to_jiraapi_update`
         '''
@@ -559,7 +589,7 @@ class Jira(collections.abc.MutableMapping):
         Return a single Issue object from the Jira API by key
 
         Params:
-            project:  Properties of the project pushing issues to
+            project:  Jira project on which to lookup the issue
             key:      Issue key to lookup on Jira API
         Returns:
             Issue dataclass instance

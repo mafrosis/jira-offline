@@ -7,7 +7,7 @@ from conftest import not_raises
 from fixtures import ISSUE_1
 from jira_offline.exceptions import BadParamsPassedToValidCustomfield
 from jira_offline.jira import Issue
-from jira_offline.utils.cli import CustomfieldsAsOptions, print_list, ValidCustomfield
+from jira_offline.utils.cli import CustomfieldsAsOptions, prepare_df, ValidCustomfield
 
 
 def test_print_list__display_ls_fields_config_rendered_in_listing(mock_jira, project):
@@ -22,7 +22,7 @@ def test_print_list__display_ls_fields_config_rendered_in_listing(mock_jira, pro
 
     with mock.patch('jira_offline.utils.cli.jira', mock_jira), \
         mock.patch('jira_offline.jira.jira', mock_jira):
-        df = print_list(mock_jira.df)
+        df = prepare_df(mock_jira.df)
 
     assert set(df.columns) == {'summary'}
 
@@ -37,7 +37,7 @@ def test_print_list__display_ls_fields_defaults_rendered_in_listing(mock_jira, p
 
     with mock.patch('jira_offline.utils.cli.jira', mock_jira), \
         mock.patch('jira_offline.jira.jira', mock_jira):
-        df = print_list(mock_jira.df)
+        df = prepare_df(mock_jira.df)
 
     assert set(df.columns) == set(['issuetype', 'epic_link', 'summary', 'status', 'assignee', 'updated'])
 

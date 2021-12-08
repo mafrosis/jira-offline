@@ -17,7 +17,6 @@ ISSUE_1 = {
     'updated': '2019-08-20T16:41:19',
     'epic_link': 'TEST-1',
     'story_points': '1',
-    'modified': [],
 }
 
 ISSUE_NEW = {
@@ -44,7 +43,6 @@ EPIC_1 = {
     'summary': 'This is an epic',
     'updated': '2019-08-27T16:41:19',
     'epic_name': '0.1: Epic about a thing',
-    'modified': [],
 }
 
 EPIC_NEW = {

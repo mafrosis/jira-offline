@@ -1,11 +1,10 @@
 '''
 Tests for methods on the Issue model
 '''
-import copy
 from unittest import mock
 
 from conftest import not_raises
-from fixtures import ISSUE_1
+from fixtures import ISSUE_1, ISSUE_NEW
 from helpers import compare_issue_helper, modified_issue_helper
 from jira_offline.models import Issue, ProjectMeta, Sprint
 
@@ -29,14 +28,6 @@ def test_issue_model__blank_returns_valid_issue(project):
         issue.serialize()
         issue.as_json()
         issue.render()
-
-
-def test_issue_model__diff_returns_empty_for_unmodified_issue(project):
-    '''
-    Ensure Issue.diff returns empty list for an unmodified Issue
-    '''
-    issue = Issue.deserialize(ISSUE_1, project)
-    assert issue.diff() == []
 
 
 def test_issue_model__diff_returns_consistently_for_modified_issue(project):
@@ -66,28 +57,47 @@ def test_issue_model__original_is_set_after_constructor(project):
     assert issue.original is not None
 
 
-def test_issue_model__diff_sets_issue_modified(project):
+def test_issue_model__diff_sets_modified(project):
     '''
     Ensure Issue.diff sets Issue.modified
     '''
     issue = Issue.deserialize(ISSUE_1, project)
 
+    assert issue.modified is None
+
     # modify the issue, and run a diff
     issue.assignee = 'eggbert'
-    issue.diff()
+    modified = issue.diff()
 
-    assert issue.modified == [('change', 'assignee', ('eggbert', 'danil1'))]
+    assert issue.modified == modified == [('change', 'assignee', ('eggbert', 'danil1'))]
 
 
-def test_issue_model__set_original_doesnt_set_modified_true(project):
+def test_issue_model__diff_doesnt_set_modified_on_new_issues(project):
     '''
-    Ensure Issue.set_original does not set Issue.modified to true
+    Ensure Issue.diff DOES NOT set Issue.modified on new issues
+    '''
+    issue = Issue.deserialize(ISSUE_NEW, project)
+
+    assert issue.modified is None
+
+    # modify the issue, and run a diff
+    issue.assignee = 'eggbert'
+    modified = issue.diff()
+
+    assert issue.modified is modified is None
+
+
+def test_issue_model__diff_doesnt_set_modified_when_no_modification_made(project):
+    '''
+    Ensure Issue.diff DOES NOT set Issue.modified when an issue has not actually been modified
     '''
     issue = Issue.deserialize(ISSUE_1, project)
 
-    issue.set_original(issue.serialize())
+    assert issue.modified is None
 
-    assert bool(issue.modified) is False
+    modified = issue.diff()
+
+    assert issue.modified is modified is None
 
 
 def test_issue_model__set_original_removes_modified_field(project):
@@ -102,34 +112,6 @@ def test_issue_model__set_original_removes_modified_field(project):
     issue.set_original(issue.serialize())
 
     assert 'modified' not in issue.original
-
-
-def test_issue_model__original_not_updated_during_attribute_set(project):
-    '''
-    Ensure Issue.original does not get modified by an attribute value change
-    '''
-    issue_1 = Issue.deserialize(ISSUE_1, project)
-    serialized_issue = copy.deepcopy(issue_1.serialize())
-
-    assert issue_1.original == serialized_issue
-
-    setattr(issue_1, 'summary', 'egg')
-
-    assert issue_1.original == serialized_issue
-
-
-def test_issue_model__original_not_updated_during_attribute_set_with_roundtrip(mock_jira, project):
-    '''
-    Ensure Issue.original does not get modified by an attribute value change
-    '''
-    mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
-    serialized_issue = copy.deepcopy(mock_jira['TEST-71'].serialize())
-
-    assert mock_jira['TEST-71'].original == serialized_issue
-
-    setattr(mock_jira['TEST-71'], 'summary', 'egg')
-
-    assert mock_jira['TEST-71'].original == serialized_issue
 
 
 def test_issue_model__commit__produces_issue_with_diff(mock_jira, project):
@@ -197,6 +179,32 @@ def test_issue_model__render_returns_core_fields(project):
     assert output[8] == ('Fix Version', '-  0.1')
     assert output[9] == ('Reporter', 'danil1')
     assert output[10] == ('Creator', 'danil1')
+
+
+def test_issue_model__render_abbrev_key_for_new_issues(project):
+    '''
+    Validate Issue.render returns abbreviated UUID for new issues when verbose=False
+    '''
+    issue = Issue.deserialize(ISSUE_NEW, project)
+
+    from jira_offline.cli.params import context  # pylint: disable=import-outside-toplevel, cyclic-import
+    context.verbose = False  # pylint: disable=assigning-non-slot
+
+    output = issue.render()
+    assert output[0] == ('Summary', '[7242cc9e] This is the story summary')
+
+
+def test_issue_model__render_long_key_for_new_issues_when_verbose(project):
+    '''
+    Validate Issue.render returns long UUID for new issues when verbose=True
+    '''
+    issue = Issue.deserialize(ISSUE_NEW, project)
+
+    from jira_offline.cli.params import context  # pylint: disable=import-outside-toplevel, cyclic-import
+    context.verbose = True  # pylint: disable=assigning-non-slot
+
+    output = issue.render()
+    assert output[0] == ('Summary', '[7242cc9e-ea52-4e51-bd84-2ced250cabf0] This is the story summary')
 
 
 def test_issue_model__render_returns_core_does_not_include_space_prefix(project):

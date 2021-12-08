@@ -3,6 +3,7 @@ Print and text rendering utils for the CLI commands
 Click library extension classes
 '''
 import dataclasses
+import datetime
 import decimal
 import functools
 import logging
@@ -18,54 +19,81 @@ from jira_offline.exceptions import (BadParamsPassedToValidCustomfield, EditorRe
                                      FieldNotOnModelClass, InvalidLsFieldInConfig)
 from jira_offline.jira import jira
 from jira_offline.models import CustomFields, Issue, ProjectMeta
-from jira_offline.utils import find_project, friendly_title, get_field_by_name
-from jira_offline.utils.serializer import istype
+from jira_offline.utils import (find_project, friendly_title, get_field_by_name, istype,
+                                iter_issue_fields_by_type)
 
 
 logger = logging.getLogger('jira')
 
 
-def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_project_col: bool=False,
-               print_total: bool=False, print_filter: str=None) -> pd.DataFrame:
+def prepare_df(df: pd.DataFrame, fields: Optional[List[str]]=None, width: Optional[int]=None,
+               include_long_date: bool=False, include_project_col: bool=False) -> pd.DataFrame:
     '''
-    Helper to print abbreviated list of issues
+    Preprocess the DataFrame for display/export.
 
     Params:
         df:                   Issues to display in a DataFrame
-        width:                Crop width for the summary string
-        verbose:              Display more information
+        fields:               Specify list of fields to return in DataFrame (default: config.display.ls_fields)
+        width:                Crop width for the summary string (default: no crop)
+        include_long_date:    Include long format date column
         include_project_col:  Include the Issue.project field in a column
-        print_total:          Print the total count of records as text
     '''
     # Sort the output DataFrame by index. Also has side-effect of making a copy of the DataFrame, so
     # subsequent destructive changes can be made
-    df = df.sort_index()
+    df = df.sort_values(['epic_link', 'key'])
+
+    # User-defined fields in the listing (or the default if undefined)
+    if not fields:
+        fields = jira.config.user_config.display.ls_fields or []
 
     if include_project_col:
-        fields = ['project_key']
-    else:
-        fields = []
-
-    if not verbose:
-        fields += jira.config.user_config.display.ls_fields
-    else:
-        fields += jira.config.user_config.display.ls_fields_verbose
-        width = 200
-
-    def format_datetime(raw):
-        if not raw or pd.isnull(raw):
-            return ''
-        dt = arrow.get(raw)
-        if verbose:
-            return f'{dt.format()}'
-        else:
-            return f'{dt.humanize()}'
+        fields.insert(0, 'project_key')
 
     # Pretty dates
-    df['updated'] = df.updated.apply(format_datetime)
+    for col in iter_issue_fields_by_type(datetime.datetime):
+        if col.name in fields:
+            if include_long_date:
+                df[f'{col.name}_full'] = df[col.name].apply(lambda x: arrow.get(x).format())
+                fields.append(f'{col.name}_full')
 
-    # Shorten the summary field for printing
-    df['summary'] = df.summary.str.slice(0, width)
+            df[col.name] = df[col.name].apply(lambda x: arrow.get(x).humanize())
+
+    # Shorten the summary field for terminal display
+    if width:
+        df['summary'] = df.summary.str.slice(0, width)
+
+    # Display a linked issue's epic name
+    if 'epic_name' in fields:
+        # Extract list of epics
+        epics = df.loc[df['issuetype'] == 'Epic', 'epic_name']
+        # Left join epic names into a new column
+        df = pd.merge(df, epics, left_on='epic_link', right_index=True, how='left', suffixes=(None, '_x'))
+        # Copy merged epic names into existing "epic_name" column
+        df.loc[~df['epic_name_x'].isnull(), 'epic_name'] = df['epic_name_x']
+
+    # Abbreviate UUID key for locally-created issues
+    df.loc[df['key'].str.len() == 36, 'key'] = df['key'].str.slice(0, 8)
+
+    # Use key as the display index
+    df.set_index('key', inplace=True)
+
+    # Abbreviate UUIDs in link columns
+    for col_name in ('epic_link', 'parent_link'):
+        if col_name in fields:
+            df.loc[df[col_name].str.len() == 36, col_name] = df[col_name].str.slice(0, 8)
+
+    # Convert set/list columns to comma-separated
+    for col in iter_issue_fields_by_type(set, list):
+        if col.name == 'sprint':
+            # Sprint is special as it's a list of serialized Sprint objects in the DataFrame, and is
+            # handled below
+            continue
+
+        if col.name in fields:
+            df[col.name] = df[col.name].apply(lambda x: '' if x is None else ','.join(x))
+
+    # Rename all extended customfield columns, removing the "extended." prefix
+    df.rename(columns={f'extended.{f}': f for f in jira.config.iter_customfield_names()}, inplace=True)
 
     # Reduce list of sprint IDs to name of the most recent sprint
     if 'sprint' in fields:
@@ -76,27 +104,30 @@ def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pro
 
         df['sprint'] = df.apply(lambda row: get_latest_sprint(row.project_id, row.sprint), axis=1)
 
-    def abbrev_key(key):
-        if key is None:
-            return ''
-        if len(key) == 36:
-            return key[0:8]
-        return key
+    return df[fields]
 
-    # Abbreviate long issue keys (offline-created issues have a UUID as the key)
-    df['key'] = df.key.apply(abbrev_key)
-    df.set_index('key', inplace=True)
-    df['epic_link'] = df.epic_link.apply(abbrev_key)
-    df['parent_link'] = df.parent_link.apply(abbrev_key)
 
+def print_list(df: pd.DataFrame, verbose: bool=False, include_project_col: bool=False,
+               print_total: bool=False, print_filter: str=None) -> pd.DataFrame:
+    '''
+    Helper to print abbreviated list of issues
+
+    Params:
+        df:                   Issues to display in a DataFrame
+        verbose:              Display more information
+        include_project_col:  Include the Issue.project field in a column
+        print_total:          Print the total count of records as text
+        print_filter:         Print the current filter applied to the listing
+    '''
     if verbose:
-        df.fix_versions = df.fix_versions.apply(lambda x: '' if x is None else ','.join(x))
+        width = 200
+    else:
+        width = 60
 
-    # Rename all extended customfield columns, removing the "extended." prefix
-    df.rename(columns={f'extended.{f}': f for f in jira.config.iter_customfield_names()}, inplace=True)
+    df = prepare_df(df, width=width, include_project_col=include_project_col)
 
     try:
-        print_table(df[fields])
+        print_table(df)
     except KeyError as e:
         raise InvalidLsFieldInConfig(e)
 
@@ -110,9 +141,6 @@ def print_list(df: pd.DataFrame, width: int=60, verbose: bool=False, include_pro
 
     elif print_total:
         click.echo(f'Total issues {len(df)}')
-
-    # Make this function testable by returning the DataFrame
-    return df[fields]
 
 
 def print_table(df: pd.DataFrame):
@@ -315,7 +343,7 @@ class ValidCustomfield(click.Option):
                 try:
                     # Validate for the project by issue key or project key
                     assert project.customfields[customfield_name]
-                except KeyError:
+                except (AssertionError, KeyError):
                     raise click.UsageError(
                         f"Option '--{customfield_name.replace('_', '-')}' is not available on project {project.key}"
                     )

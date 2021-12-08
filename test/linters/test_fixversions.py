@@ -1,7 +1,6 @@
 from unittest import mock
 
 from fixtures import EPIC_1, ISSUE_1
-from helpers import setup_jira_dataframe_helper
 from jira_offline.models import Issue
 from jira_offline.linters import fix_versions
 
@@ -17,7 +16,9 @@ def test_lint__fix_versions__finds_empty_fix_versions_field(mock_jira, project):
         issue_1 = Issue.deserialize(ISSUE_1, project)
 
     # Setup the Jira DataFrame
-    mock_jira._df = setup_jira_dataframe_helper([epic_1, issue_1])
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        epic_1.commit()
+        issue_1.commit()
 
     with mock.patch('jira_offline.linters.jira', mock_jira), \
             mock.patch('jira_offline.jira.jira', mock_jira):
@@ -39,7 +40,9 @@ def test_lint__fix_versions__fix_updates_an_issues_linked_to_epic(mock_jira, pro
         issue_1 = Issue.deserialize(ISSUE_1, project)
 
     # Setup the Jira DataFrame
-    mock_jira._df = setup_jira_dataframe_helper([epic_1, issue_1])
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        epic_1.commit()
+        issue_1.commit()
 
     with mock.patch('jira_offline.linters.jira', mock_jira), \
             mock.patch('jira_offline.jira.jira', mock_jira):
@@ -63,7 +66,9 @@ def test_lint__fix_versions__respect_the_filter(mock_jira, project):
         issue_2 = Issue.deserialize(ISSUE_1, project)
 
     # Setup the Jira DataFrame
-    mock_jira._df = setup_jira_dataframe_helper([issue_1, issue_2])
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        issue_1.commit()
+        issue_2.commit()
 
     # Set the filter
     mock_jira.filter.set('assignee = bob')

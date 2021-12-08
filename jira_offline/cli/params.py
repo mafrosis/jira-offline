@@ -34,6 +34,8 @@ class CliParams:
     _debug: bool = field(default=False)
     debug_level: int = field(default=0)
 
+    force: bool = field(default=False)
+
     lint: Optional[LintParams] = field(default=None)
 
     @property
@@ -81,7 +83,7 @@ def global_options(func):
         if kwargs.get('config'):
             jira.config.user_config_filepath = kwargs.get('config')
 
-        # Remove the click.options vars from kwargs, so they are not passed to the wrapped command
+        # These options have been consumed, so remove from kwargs
         for param in ('verbose', 'debug', 'config'):
             del kwargs[param]
 
@@ -91,7 +93,9 @@ def global_options(func):
 
 
 def filter_option(func):
-    '''Define the common filter CLI option, which is applied to many subcommands'''
+    '''
+    Define a reusable --filter CLI option, which can be applied to many subcommands
+    '''
     @click.option('--filter', help='SQL-like filter for issues')
     @click.option('--tz', help='Set specific timezone for date filters (default: local system timezone)')
     @functools.wraps(func)
@@ -103,9 +107,33 @@ def filter_option(func):
         if kwargs.get('tz'):
             jira.filter.tz = kwargs.get('tz')
 
-        # Remove the click.options vars from kwargs, so they are not passed to the wrapped command
+        # These options have been consumed, so remove from kwargs
         for param in ('filter', 'tz'):
             del kwargs[param]
+
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+def force_option(func):
+    '''
+    Define a reusable --force option, which can be applied to many subcommands
+    '''
+    @click.option('--force', '-f', is_flag=True, help='Do not prompt for confirmation. Beware!')
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        ctx = args[0]
+
+        if ctx.obj is None:
+            # Initialise the CliParams DTO on first call
+            ctx.obj = CliParams()
+
+        if kwargs.get('force'):
+            ctx.obj.force = True
+
+        # This option has been consumed, so remove from kwargs
+        del kwargs['force']
 
         return func(*args, **kwargs)
 

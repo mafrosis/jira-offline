@@ -14,6 +14,7 @@ import requests
 from tzlocal import get_localzone
 
 from jira_offline.jira import Jira
+from jira_offline.create import get_unused_customfields
 from jira_offline.models import AppConfig, CustomFields, IssueType, ProjectMeta
 from jira_offline.utils.cli import _get_issue, _get_project
 
@@ -49,6 +50,13 @@ def timezone_project(request, project):
     return project
 
 
+@pytest.fixture(autouse=True)
+def verbose_default():
+    'Always set verbose to true during tests'
+    from jira_offline.cli.params import context  # pylint: disable=import-outside-toplevel, cyclic-import
+    context.verbose = True  # pylint: disable=assigning-non-slot
+
+
 @pytest.fixture
 @mock.patch('jira_offline.jira.load_config')
 def mock_jira_core(mock_load_config, project):
@@ -67,10 +75,13 @@ def mock_jira_core(mock_load_config, project):
     # Never write to disk during tests
     jira.config.write_to_disk = mock.Mock()
 
-    # Always set verbose to true during tests
-    from jira_offline.cli.params import context  # pylint: disable=import-outside-toplevel, cyclic-import
-    context.verbose = True  # pylint: disable=assigning-non-slot
-
+    jira._df = pd.DataFrame(columns=[
+        'project_id', 'issuetype', 'summary', 'key', 'assignee', 'created',
+        'creator', 'description', 'fix_versions', 'components', 'id', 'labels',
+        'priority', 'reporter', 'status', 'updated', 'epic_link', 'epic_name',
+        'sprint', 'story_points', 'extended', 'modified', 'project_key',
+        'parent_link', 'original'
+    ])
     return jira
 
 
@@ -79,13 +90,6 @@ def mock_jira(mock_jira_core):
     '''
     Mock additional methods of Jira class which have side-effects (eg. disk/network access)
     '''
-    mock_jira_core._df = pd.DataFrame(columns=[
-        'project_id', 'issuetype', 'summary', 'key', 'assignee', 'created',
-        'creator', 'description', 'fix_versions', 'components', 'id', 'labels',
-        'priority', 'reporter', 'status', 'updated', 'epic_link', 'epic_name',
-        'sprint', 'story_points', 'extended', 'modified',
-        'project_key', 'parent_link',
-    ])
     mock_jira_core.load_issues = mock.Mock()
     mock_jira_core.write_issues = mock.Mock()
     mock_jira_core.update_issue = mock.Mock()
@@ -110,6 +114,7 @@ def lrucache_clear():
     'Ensure the lru_cache on `_get_project` and `_get_issue` is clear'
     _get_issue.cache_clear()
     _get_project.cache_clear()
+    get_unused_customfields.cache_clear()
 
 
 @pytest.fixture

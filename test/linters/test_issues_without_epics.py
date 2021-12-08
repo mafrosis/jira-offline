@@ -1,7 +1,6 @@
 from unittest import mock
 
 from fixtures import ISSUE_1
-from helpers import setup_jira_dataframe_helper
 from jira_offline.models import Issue
 from jira_offline.linters import issues_missing_epic
 
@@ -16,7 +15,9 @@ def test_lint__issues_missing_epic__finds_issues_missing_epic(mock_jira, project
         issue_2 = Issue.deserialize(ISSUE_1, project)
 
     # Setup the Jira DataFrame
-    mock_jira._df = setup_jira_dataframe_helper([issue_1, issue_2])
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        issue_1.commit()
+        issue_2.commit()
 
     with mock.patch('jira_offline.linters.jira', mock_jira), \
             mock.patch('jira_offline.jira.jira', mock_jira):
@@ -37,7 +38,9 @@ def test_lint__issues_missing_epic__fix_updates_an_issue(mock_jira, project):
         issue_2 = Issue.deserialize(ISSUE_1, project)
 
     # Setup the Jira DataFrame
-    mock_jira._df = setup_jira_dataframe_helper([issue_1, issue_2])
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        issue_1.commit()
+        issue_2.commit()
 
     with mock.patch('jira_offline.linters.jira', mock_jira), \
             mock.patch('jira_offline.jira.jira', mock_jira):
@@ -60,7 +63,9 @@ def test_lint__issues_missing_epic__respect_the_filter(mock_jira, project):
         issue_2 = Issue.deserialize(ISSUE_1, project)
 
     # Setup the Jira DataFrame
-    mock_jira._df = setup_jira_dataframe_helper([issue_1, issue_2])
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        issue_1.commit()
+        issue_2.commit()
 
     # Set the filter
     mock_jira.filter.set('assignee = bob')

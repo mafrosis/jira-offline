@@ -10,33 +10,55 @@ import pandas as pd
 import pytest
 
 from fixtures import EPIC_1, EPIC_NEW, ISSUE_1, ISSUE_NEW
-from helpers import compare_issue_helper, setup_jira_dataframe_helper
+from helpers import compare_issue_helper
 from jira_offline.exceptions import FailedAuthError, JiraApiError, ProjectDoesntExist
 from jira_offline.models import Issue, IssueType, ProjectMeta
 from jira_offline.utils.convert import issue_to_jiraapi_update
 
 
-def test_jira__mutablemapping__get_item__(mock_jira_core, project):
+def test_jira__mutablemapping__getitem__(mock_jira_core, project):
     '''
-    Ensure that __get_item__ returns a valid Issue object from the underlying dataframe
+    Ensure that __getitem__ returns a valid Issue object from the underlying DataFrame
     '''
     # Setup the Jira DataFrame
-    issue_1 = Issue.deserialize(ISSUE_1, project)
-    mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
+    with mock.patch('jira_offline.jira.jira', mock_jira_core):
+        issue_1 = Issue.deserialize(ISSUE_1, project)
+        issue_1.commit()
 
-    # retrieve the issue via __get_item__
+    # Retrieve the issue via __getitem__
     retrieved_issue = mock_jira_core['TEST-71']
 
     compare_issue_helper(issue_1, retrieved_issue)
 
 
-def test_jira__mutablemapping__set_item__new(mock_jira_core, project):
+@pytest.mark.parametrize('key', [
+    '7242cc9e-ea52-4e51-bd84-2ced250cabf0',
+    '7242cc9e',
+])
+def test_jira__mutablemapping__getitem__handles_abbrev_key(mock_jira_core, project, key):
     '''
-    Ensure that __set_item__ adds a valid new Issue to the underlying dataframe
+    Ensure that __getitem__ returns a valid Issue object from the underlying DataFrame, when passed
+    an abbreviated UUID key from a new Issue
     '''
     # Setup the Jira DataFrame
-    issue_1 = Issue.deserialize(ISSUE_1, project)
-    mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
+    with mock.patch('jira_offline.jira.jira', mock_jira_core):
+        issue_new = Issue.deserialize(ISSUE_NEW, project)
+        issue_new.commit()
+
+    # Retrieve the issue via __getitem__
+    retrieved_issue = mock_jira_core[key]
+
+    compare_issue_helper(issue_new, retrieved_issue)
+
+
+def test_jira__mutablemapping__setitem__new(mock_jira_core, project):
+    '''
+    Ensure that __setitem__ adds a valid new Issue to the underlying DataFrame
+    '''
+    # Setup the Jira DataFrame
+    with mock.patch('jira_offline.jira.jira', mock_jira_core):
+        issue_1 = Issue.deserialize(ISSUE_1, project)
+        issue_1.commit()
 
     assert len(mock_jira_core._df) == 1
 
@@ -44,7 +66,7 @@ def test_jira__mutablemapping__set_item__new(mock_jira_core, project):
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
         issue_2 = Issue.deserialize(ISSUE_1, project)
 
-    # add the issue via __set_item__
+    # add the issue via __setitem__
     mock_jira_core['TEST-72'] = issue_2
 
     assert len(mock_jira_core._df) == 2
@@ -52,17 +74,18 @@ def test_jira__mutablemapping__set_item__new(mock_jira_core, project):
     compare_issue_helper(issue_2, mock_jira_core['TEST-72'])
 
 
-def test_jira__mutablemapping__set_item__overwrite(mock_jira_core, project):
+def test_jira__mutablemapping__setitem__overwrite(mock_jira_core, project):
     '''
-    Ensure that __set_item__ overwrites an existing Issue to the underlying dataframe
+    Ensure that __setitem__ overwrites an existing Issue in the underlying DataFrame
     '''
     # Setup the Jira DataFrame
-    issue_1 = Issue.deserialize(ISSUE_1, project)
-    mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
+    with mock.patch('jira_offline.jira.jira', mock_jira_core):
+        issue_1 = Issue.deserialize(ISSUE_1, project)
+        issue_1.commit()
 
     assert len(mock_jira_core._df) == 1
 
-    # add the issue via __set_item__
+    # add the issue via __setitem__
     mock_jira_core['TEST-71'] = issue_1
 
     assert len(mock_jira_core._df) == 1
@@ -70,31 +93,48 @@ def test_jira__mutablemapping__set_item__overwrite(mock_jira_core, project):
     compare_issue_helper(issue_1, mock_jira_core['TEST-71'])
 
 
-def test_jira__mutablemapping__del_item__(mock_jira_core, project):
+def test_jira__mutablemapping__delitem__(mock_jira_core, project):
     '''
-    Ensure that __del_item__ deletes an issue from the underlying dataframe
+    Ensure that __delitem__ deletes an issue from the underlying DataFrame
     '''
-    issue_1 = Issue.deserialize(ISSUE_1, project)
-
     # Setup the Jira DataFrame
-    mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
+    with mock.patch('jira_offline.jira.jira', mock_jira_core):
+        issue_1 = Issue.deserialize(ISSUE_1, project)
+        issue_1.commit()
 
     assert len(mock_jira_core._df) == 1
 
-    # delete the issue via __del_item__
+    # delete the issue via __delitem__
     del mock_jira_core['TEST-71']
 
     assert len(mock_jira_core._df) == 0
+
+
+@pytest.mark.parametrize('key', [
+    '7242cc9e-ea52-4e51-bd84-2ced250cabf0',
+    '7242cc9e',
+])
+def test_jira__mutablemapping__contains__handles_abbrev_key(mock_jira_core, project, key):
+    '''
+    Ensure that __contains__ returns True when passed a valid abbreviated UUID key from a new Issue
+    '''
+    # Setup the Jira DataFrame
+    with mock.patch('jira_offline.jira.jira', mock_jira_core):
+        issue_new = Issue.deserialize(ISSUE_NEW, project)
+        issue_new.commit()
+
+    # Check dictionary __contains__
+    assert key in mock_jira_core
 
 
 def test_jira__mutablemapping__in_operator(mock_jira_core, project):
     '''
     Ensure that one can use the "in" operator with the Jira dict
     '''
-    issue_1 = Issue.deserialize(ISSUE_1, project)
-
     # Setup the Jira DataFrame
-    mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
+    with mock.patch('jira_offline.jira.jira', mock_jira_core):
+        issue_1 = Issue.deserialize(ISSUE_1, project)
+        issue_1.commit()
 
     # simply assert the key is in the dict
     assert ISSUE_1['key'] in mock_jira_core
@@ -105,8 +145,9 @@ def test_jira__mutablemapping__in_operator_with_new_issue(mock_jira_core, projec
     Ensure that one can use the "in" operator with the Jira dict
     '''
     # Setup the Jira DataFrame
-    issue_1 = Issue.deserialize(ISSUE_1, project)
-    mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
+    with mock.patch('jira_offline.jira.jira', mock_jira_core):
+        issue_1 = Issue.deserialize(ISSUE_1, project)
+        issue_1.commit()
 
     mock_jira_core['7242cc9e-ea52-4e51-bd84-2ced250cabf0'] = Issue.deserialize(ISSUE_NEW, project)
 
@@ -125,7 +166,7 @@ def test_jira__mutablemapping__roundtrip(mock_jira, project, issue_fixture):
 
     Parameterized with the various different types of Issue fixtures.
     '''
-    # add to dataframe (via __set_item__)
+    # add to dataframe (via __setitem__)
     mock_jira[issue_fixture['key']] = issue_1 = Issue.deserialize(issue_fixture, project)
 
     # extract back out of dataframe (via __get_item__)
@@ -200,20 +241,31 @@ def test_jira__write_issues_load_issues__roundtrip(mock_os, mock_jira_core, proj
     mock_os.path.exists.return_value = True
     mock_os.stat.return_value.st_size = 1
 
+    # Create parameterized issue fixture
+    issue_1 = Issue.deserialize(issue_fixture, project)
+
+    # Create a modified issue
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
+        issue_2 = Issue.deserialize(ISSUE_1, project)
+        issue_2.assignee = 'dave'
+
     # Setup the Jira DataFrame
-    issue = Issue.deserialize(issue_fixture, project)
-    mock_jira_core._df = setup_jira_dataframe_helper([issue])
+    with mock.patch('jira_offline.jira.jira', mock_jira_core):
+        issue_1.commit()
+        issue_2.commit()
 
     key = issue_fixture['key']
 
     with mock.patch('jira_offline.jira.get_cache_filepath', return_value=f'{tmpdir}/issues.feather'):
         mock_jira_core.write_issues()
 
-        compare_issue_helper(issue, mock_jira_core[key])
+        compare_issue_helper(issue_1, mock_jira_core[key])
+        compare_issue_helper(issue_2, mock_jira_core['TEST-72'])
 
         mock_jira_core.load_issues()
 
-        compare_issue_helper(issue, mock_jira_core[key])
+        compare_issue_helper(issue_1, mock_jira_core[key])
+        compare_issue_helper(issue_2, mock_jira_core['TEST-72'])
 
         # ensure the original field is added during load_issues()
         assert 'original' in mock_jira_core._df.columns
@@ -829,9 +881,10 @@ def test_jira__new_issue__calls_write_issues_on_success(mock_api_post, mock_jira
     '''
     Ensure a successful new issue API request causes call to write_issues and returns the new Issue
     '''
-    # Setup the the Jira DataFrame
-    issue_new = Issue.deserialize(ISSUE_NEW, project)
-    mock_jira_core._df = setup_jira_dataframe_helper([issue_new])
+    # Setup the Jira DataFrame
+    with mock.patch('jira_offline.jira.jira', mock_jira_core):
+        issue_new = Issue.deserialize(ISSUE_NEW, project)
+        issue_new.commit()
 
     # Don't write to disk during tests
     mock_jira_core.write_issues = mock.Mock()
@@ -860,9 +913,10 @@ def test_jira__new_issue__does_not_call_write_issues_on_failure(mock_api_post, m
     '''
     Ensure a failed new issue API request does not cause call to write_issues
     '''
-    # Setup the the Jira DataFrame
-    issue_new = Issue.deserialize(ISSUE_NEW, project)
-    mock_jira_core._df = setup_jira_dataframe_helper([issue_new])
+    # Setup the Jira DataFrame
+    with mock.patch('jira_offline.jira.jira', mock_jira_core):
+        issue_new = Issue.deserialize(ISSUE_NEW, project)
+        issue_new.commit()
 
     # Don't write to disk during tests
     mock_jira_core.write_issues = mock.Mock()
@@ -894,9 +948,10 @@ def test_jira__new_issue__removes_temp_key_when_new_post_successful(mock_api_pos
     '''
     Ensure a successful new Issue creation deletes the old temp UUID key
     '''
-    # Setup the the Jira DataFrame
-    issue_new = Issue.deserialize(ISSUE_NEW, project)
-    mock_jira_core._df = setup_jira_dataframe_helper([issue_new])
+    # Setup the Jira DataFrame
+    with mock.patch('jira_offline.jira.jira', mock_jira_core):
+        issue_new = Issue.deserialize(ISSUE_NEW, project)
+        issue_new.commit()
 
     # Don't write to disk during tests
     mock_jira_core.write_issues = mock.Mock()
@@ -930,12 +985,15 @@ def test_jira__new_issue__link_is_updated_after_post(mock_api_post, mock_jira_co
     '''
     Ensure that "Parent Link" and "Epic Link" are updated to the new parent key
     '''
-    # Setup the the Jira DataFrame: a new issue linking to a new epic
     with mock.patch.dict(ISSUE_NEW, {link_name: EPIC_NEW['key']}):
         issue_new = Issue.deserialize(ISSUE_NEW, project)
 
     epic_new = Issue.deserialize(EPIC_NEW, project)
-    mock_jira_core._df = setup_jira_dataframe_helper([issue_new, epic_new])
+
+    # Setup the Jira DataFrame
+    with mock.patch('jira_offline.jira.jira', mock_jira_core):
+        issue_new.commit()
+        epic_new.commit()
 
     # Don't write to disk during tests
     mock_jira_core.write_issues = mock.Mock()
@@ -972,9 +1030,10 @@ def test_jira__update_issue__successful_put_results_in_get(
     '''
     Ensure a successful PUT of an Issue is followed by a GET
     '''
-    # Setup the the Jira DataFrame
-    issue_1 = Issue.deserialize(ISSUE_1, project)
-    mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
+    # Setup the Jira DataFrame
+    with mock.patch('jira_offline.jira.jira', mock_jira_core):
+        issue_1 = Issue.deserialize(ISSUE_1, project)
+        issue_1.commit()
 
     # Don't write to disk during tests
     mock_jira_core.write_issues = mock.Mock()
@@ -1001,9 +1060,10 @@ def test_jira__update_issue__failed_put_raises_exception(
     '''
     Ensure a failed PUT of an Issue causes an exception
     '''
-    # Setup the the Jira DataFrame
-    issue_1 = Issue.deserialize(ISSUE_1, project)
-    mock_jira_core._df = setup_jira_dataframe_helper([issue_1])
+    # Setup the Jira DataFrame
+    with mock.patch('jira_offline.jira.jira', mock_jira_core):
+        issue_1 = Issue.deserialize(ISSUE_1, project)
+        issue_1.commit()
 
     # Don't write to disk during tests
     mock_jira_core.write_issues = mock.Mock()
@@ -1045,7 +1105,9 @@ def test_jira__keys__respect_the_filter(mock_jira_core):
         issue_2 = Issue.deserialize(ISSUE_1, project=ProjectMeta('SECOND'))
 
     # Setup the Jira DataFrame
-    mock_jira_core._df = setup_jira_dataframe_helper([issue_1, issue_2])
+    with mock.patch('jira_offline.jira.jira', mock_jira_core):
+        issue_1.commit()
+        issue_2.commit()
 
     with mock.patch('jira_offline.jira.jira', mock_jira_core):
         assert list(mock_jira_core.keys()) == ['TEST-71', 'TEST-72']
@@ -1065,7 +1127,9 @@ def test_jira__values__respect_the_filter(mock_jira_core):
         issue_2 = Issue.deserialize(ISSUE_1, project=ProjectMeta('SECOND'))
 
     # Setup the Jira DataFrame
-    mock_jira_core._df = setup_jira_dataframe_helper([issue_1, issue_2])
+    with mock.patch('jira_offline.jira.jira', mock_jira_core):
+        issue_1.commit()
+        issue_2.commit()
 
     with mock.patch('jira_offline.jira.jira', mock_jira_core):
         assert list(mock_jira_core.values()) == [mock_jira_core['TEST-71'], mock_jira_core['TEST-72']]
@@ -1085,7 +1149,9 @@ def test_jira__items__respect_the_filter(mock_jira_core):
         issue_2 = Issue.deserialize(ISSUE_1, project=ProjectMeta('SECOND'))
 
     # Setup the Jira DataFrame
-    mock_jira_core._df = setup_jira_dataframe_helper([issue_1, issue_2])
+    with mock.patch('jira_offline.jira.jira', mock_jira_core):
+        issue_1.commit()
+        issue_2.commit()
 
     with mock.patch('jira_offline.jira.jira', mock_jira_core):
         assert list(mock_jira_core.items()) == [
@@ -1127,7 +1193,8 @@ def test_jira__update__merge_new_issues_into_existing_dataframe(mock_jira, proje
     issue_1 = Issue.deserialize(ISSUE_1, project)
 
     # Setup the Jira DataFrame
-    mock_jira._df = setup_jira_dataframe_helper([issue_1])
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        issue_1.commit()
 
     assert len(mock_jira) == 1
 
@@ -1155,7 +1222,9 @@ def test_jira__update__merge_existing_issues_into_existing_dataframe(mock_jira, 
         issue_2 = Issue.deserialize(ISSUE_1, project)
 
     # Setup the Jira DataFrame
-    mock_jira._df = setup_jira_dataframe_helper([issue_1, issue_2])
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        issue_1.commit()
+        issue_2.commit()
 
     assert len(mock_jira) == 2
 
@@ -1172,3 +1241,56 @@ def test_jira__update__merge_existing_issues_into_existing_dataframe(mock_jira, 
 
     compare_issue_helper(incoming_issue_1, mock_jira['TEST-71'])
     compare_issue_helper(incoming_issue_2, mock_jira['TEST-72'])
+
+
+def test_jira__modified_filter_none(mock_jira, project):
+    '''
+    Ensure jira.is_modified() enables filtering when no issues are modified
+    '''
+    issue_1 = Issue.deserialize(ISSUE_1, project)
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
+        issue_2 = Issue.deserialize(ISSUE_1, project)
+
+    # Setup the Jira DataFrame
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        issue_1.commit()
+        issue_2.commit()
+
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        assert len(mock_jira._df[mock_jira.is_modified()]) == 0
+
+
+def test_jira__modified_filter_some(mock_jira, project):
+    '''
+    Ensure jira.is_modified() enables filtering when some issues are modified
+    '''
+    issue_1 = Issue.deserialize(ISSUE_1, project)
+    with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
+        issue_2 = Issue.deserialize(ISSUE_1, project)
+
+    # Make a modification to second issue
+    issue_2.assignee = 'dave'
+
+    # Setup the Jira DataFrame
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        issue_1.commit()
+        issue_2.commit()
+
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        assert len(mock_jira._df[mock_jira.is_modified()]) == 1
+
+
+def test_jira__new_filter(mock_jira, project):
+    '''
+    Ensure jira.is_new() enables filtering for new issues
+    '''
+    issue_1 = Issue.deserialize(ISSUE_1, project)
+    issue_new = Issue.deserialize(ISSUE_NEW, project)
+
+    # Setup the Jira DataFrame
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        issue_1.commit()
+        issue_new.commit()
+
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        assert len(mock_jira._df[mock_jira.is_new()]) == 1

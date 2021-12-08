@@ -92,7 +92,7 @@ def issue_to_jiraapi_update(project: 'ProjectMeta', issue: 'Issue', modified: se
     field_keys['project_id'] = 'project'
     issue_values['project_id'] = {'id': project.jira_id}
 
-    # Never include Issue.key, as it's invalid for create and in the URL for edit
+    # Never include Issue.key, as it's invalid for create, and included in the URL during update
     if 'key' in modified:
         modified.remove('key')
 
@@ -112,10 +112,11 @@ def issue_to_jiraapi_update(project: 'ProjectMeta', issue: 'Issue', modified: se
 
     if 'sprint' in modified and issue.sprint:
         try:
-            from jira_offline.models import Issue  # pylint: disable=import-outside-toplevel, cyclic-import
-            original = Issue.deserialize(issue.original, issue.project)
+            if issue.original:
+                from jira_offline.models import Issue  # pylint: disable=import-outside-toplevel, cyclic-import
+                original = Issue.deserialize(issue.original, issue.project)
 
-            if not original.sprint:
+            if not issue.exists or not original.sprint:
                 # Issue.sprint has no previous value; send the current value to the API
                 issue_values['sprint'] = next(iter(issue.sprint)).id
             else:
@@ -190,5 +191,10 @@ def sprint_name_to_sprint_object(project: 'ProjectMeta', sprint_name: str) -> 'S
 
     try:
         return next(x for x in project.sprints.values() if x.name == sprint_name)
-    except StopIteration:
-        raise UnknownSprintError(project.key, sprint_name)
+    except StopIteration as e:
+        raise UnknownSprintError(project.key, sprint_name) from e
+
+
+def parse_list(project: 'ProjectMeta', value: str) -> List[str]:  # pylint: disable=unused-argument
+    'Parse a comma-separated list string into a list of strings'
+    return [f.strip() for f in value.split(',')]

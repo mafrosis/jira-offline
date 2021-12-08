@@ -28,9 +28,9 @@ from jira_offline import __title__
 from jira_offline.exceptions import (BadProjectMetaUri, UnableToCopyCustomCACert,
                                      NoAuthenticationMethod)
 from jira_offline.utils import (deserialize_single_issue_field, get_dataclass_defaults_for_pandas,
-                                get_field_by_name,
-                                render_dataclass_field, render_issue_field, render_value)
-from jira_offline.utils.convert import (parse_sprint, sprint_objects_to_names,
+                                get_field_by_name, render_dataclass_field, render_issue_field,
+                                render_value)
+from jira_offline.utils.convert import (parse_list, parse_sprint, sprint_objects_to_names,
                                         sprint_name_to_sprint_object)
 from jira_offline.utils.serializer import DataclassSerializer, get_base_type
 
@@ -344,7 +344,7 @@ class AppConfig(DataclassSerializer):
 class Issue(DataclassSerializer):
     project_id: str = field(metadata={'friendly': 'Project ID', 'readonly': True})
     issuetype: str = field(metadata={'friendly': 'Type', 'readonly': True})
-    project: ProjectMeta = field(repr=False, metadata={'serialize': False})
+    project: ProjectMeta = field(repr=False, metadata={'serialize': False, 'readonly': True})
     summary: str
     key: str = field(metadata={'readonly': True})
 
@@ -353,10 +353,19 @@ class Issue(DataclassSerializer):
     created: Optional[datetime.datetime] = field(default=None, metadata={'readonly': True})
     creator: Optional[str] = field(default=None, metadata={'readonly': True})
     description: Optional[str] = field(default=None)
-    fix_versions: Optional[set] = field(default_factory=set, metadata={'friendly': 'Fix Version'})
-    components: Optional[set] = field(default_factory=set)
     id: Optional[int] = field(default=None, metadata={'readonly': True})
-    labels: Optional[set] = field(default_factory=set)
+    fix_versions: Optional[set] = field(
+        default_factory=set,
+        metadata={'friendly': 'Fix Version', 'parse_func': parse_list},
+    )
+    components: Optional[set] = field(
+        default_factory=set,
+        metadata={'parse_func': parse_list},
+    )
+    labels: Optional[set] = field(
+        default_factory=set,
+        metadata={'parse_func': parse_list},
+    )
     priority: Optional[str] = field(default=None, metadata={'friendly': 'Priority'})
     reporter: Optional[str] = field(default=None)
     status: Optional[str] = field(default=None, metadata={'friendly': 'Status', 'readonly': True})
@@ -393,7 +402,7 @@ class Issue(DataclassSerializer):
     )
 
     # patch of current Issue to dict last seen on Jira server
-    modified: Optional[list] = field(default_factory=list)
+    modified: Optional[list] = field(default=None)
 
 
     def __post_init__(self):
@@ -455,7 +464,7 @@ class Issue(DataclassSerializer):
         'Return True if Issue exists on Jira, or False if it\'s local only'
         return bool(self.id)
 
-    def diff(self) -> list:
+    def diff(self) -> Optional[list]:
         '''
         If this Issue object has the original property set, render the diff between self and
         the original property. This is written to storage to track changes made offline.
@@ -466,19 +475,21 @@ class Issue(DataclassSerializer):
             Return from dictdiffer.diff to be stored in Issue.modified property
         '''
         if not self.exists:
-            return []
+            return None
 
         if not self.original:
             raise Exception
 
-        self.modified = list(
+        diff = list(
             dictdiffer.diff(
                 self.serialize(),
                 self.original,
                 ignore=set(['modified'])
             )
         )
-        return self.modified or []
+        if diff:
+            self.modified = diff
+        return self.modified
 
     @classmethod
     def deserialize(cls, attrs: dict, project: ProjectMeta, ignore_missing: bool=False) -> 'Issue':  # type: ignore[override] # pylint: disable=arguments-differ
@@ -615,8 +626,16 @@ class Issue(DataclassSerializer):
             for field_name in ('reporter', 'creator', 'created', 'updated'):
                 yield from iter_fields(field_name, None)
 
+        from jira_offline.cli.params import context  # pylint: disable=import-outside-toplevel, cyclic-import
+
+        # Abbreviate UUID issue key, if verbose is False
+        if len(self.key) == 36 and not context.verbose:
+            key = self.key[0:8]
+        else:
+            key = self.key
+
         fields = [
-            *fmt('summary', prefix=f'[{self.key}] '),
+            *fmt('summary', prefix=f'[{key}] '),
             *fmt('issuetype'),
             *epicdetails,
             *fmt('status'),
@@ -635,11 +654,11 @@ class Issue(DataclassSerializer):
         attrs = {k:v for k,v in self.__dict__.items() if k not in ('project', '_active')}
         attrs['project_key'] = self.project.key if self.project else None
 
-        # Render Issue.modified a JSON string in the DataFrame, or None
+        # Render Issue.modified as a JSON string in the DataFrame
         if attrs['modified']:
             attrs['modified'] = json.dumps(attrs['modified'])
         else:
-            attrs['modified'] = False
+            attrs['modified'] = numpy.nan
 
         # Render Issue.original as a JSON string in the DataFrame
         attrs['original'] = json.dumps(attrs['original'])
@@ -687,8 +706,8 @@ class Issue(DataclassSerializer):
 
             # Special case for Issue.modified, as it's a list stored as a JSON string
             if key == 'modified':
-                if bool(value) is False:
-                    return []
+                if pd.isnull(value):
+                    return None
                 else:
                     return json.loads(attrs['modified'])
 

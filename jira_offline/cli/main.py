@@ -2,30 +2,32 @@
 Module containing the simple top-level commands which do not have any subcommands
 '''
 from contextlib import redirect_stdout
+import datetime
 import json
 import io
 import logging
 import os
 from pathlib import Path
-from typing import Optional, Set
+from typing import cast, Optional, Set, Tuple, Union
 
 import click
 from click.shell_completion import shell_complete  # pylint: disable=no-name-in-module
 from tabulate import tabulate
 
 from jira_offline.auth import authenticate
-from jira_offline.cli.params import filter_option, global_options
+from jira_offline.cli.params import filter_option, force_option, global_options
 from jira_offline.cli.project import cli_project_list
 from jira_offline.config import get_default_user_config_filepath
 from jira_offline.config.user_config import write_default_user_config
-from jira_offline.create import create_issue, import_issue, patch_issue_from_dict
+from jira_offline.create import create_issue, import_csv, import_jsonlines, patch_issue_from_dict
 from jira_offline.exceptions import (BadProjectMetaUri, EditorFieldParseFailed, EditorNoChanges,
-                                     FailedPullingProjectMeta, ImportFailed, JiraApiError)
+                                     FailedPullingProjectMeta, JiraApiError, NoInputDuringImport)
 from jira_offline.jira import jira
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.sync import pull_issues, pull_single_project, push_issues
 from jira_offline.utils import find_project
-from jira_offline.utils.cli import CustomfieldsAsOptions, parse_editor_result, print_diff, print_list
+from jira_offline.utils.cli import (CustomfieldsAsOptions, parse_editor_result, prepare_df,
+                                    print_diff, print_list)
 
 
 logger = logging.getLogger('jira')
@@ -38,9 +40,9 @@ logger = logging.getLogger('jira')
 @global_options
 def cli_show(_, key: str, as_json: bool=False):
     '''
-    Pretty print an Issue on the CLI
+    Pretty print an Issue on the CLI.
 
-    KEY - Jira issue key
+    KEY  Jira issue key
     '''
     jira.load_issues()
 
@@ -62,7 +64,7 @@ def cli_show(_, key: str, as_json: bool=False):
 @global_options
 @filter_option
 def cli_ls(ctx: click.core.Context, as_json: bool=False):
-    '''List Issues on the CLI'''
+    '''List Issues on the CLI.'''
     jira.load_issues()
 
     if len(jira) == 0:
@@ -92,7 +94,9 @@ def cli_ls(ctx: click.core.Context, as_json: bool=False):
 @global_options
 def cli_diff(_, key: str=None):
     '''
-    Show the diff between changes made locally and the remote issues on Jira
+    Show the diff between changes made locally and the remote issues on Jira.
+
+    KEY  Jira issue key, if specified display diff for this issue only
     '''
     jira.load_issues()
 
@@ -108,53 +112,104 @@ def cli_diff(_, key: str=None):
         print_diff(jira[key])
 
     else:
-        for issue in jira.values():
-            if issue.modified and issue.exists:
-                print_diff(issue)
+        # Display diff for all locally modified issues
+        for issue_key in jira.df.loc[~jira.is_new() & jira.is_modified(), 'key']:
+            print_diff(jira[issue_key])
+
+
+@click.command(name='status')
+@click.pass_context
+@global_options
+def cli_status(ctx: click.core.Context):
+    '''
+    Show locally modified issues.
+    '''
+    jira.load_issues()
+
+    for issue in jira.values():
+        if issue.exists is False:
+            if ctx.obj.verbose:
+                print(f'new issue:   {issue.key}')
+            else:
+                print(f'new issue:   {issue.key[0:8]}')
+        elif issue.modified:
+            print(f'modified:    {issue.key}')
 
 
 @click.command(name='reset', no_args_is_help=True)
 @click.argument('key')
 @click.pass_context
 @global_options
-def cli_reset(_, key: str):
+@force_option
+def cli_reset(ctx: click.core.Context, key: str):
     '''
-    Reset an issue back to the last-seen Jira version, dropping any changes made locally
+    Reset an issue back to the last seen Jira version, dropping any changes made locally.
+
+    Passing the string "all" will reset ALL locally modified issues, and delete any new issues
+    created offline.
+
+    KEY  Jira issue key, or "all"
     '''
     jira.load_issues()
 
-    if key not in jira:
-        click.echo('Unknown issue key', err=True)
-        raise click.Abort
+    issues: Tuple[Issue, ...]
 
-    issue = jira[key]
+    if key != 'all':
+        if key not in jira:
+            click.echo('Unknown issue key', err=True)
+            raise click.Abort
 
-    # Overwrite local changes with the original issue from Jira
-    jira[key] = Issue.deserialize(issue.original, issue.project)
+        issues = (cast(Issue, jira[key]),)
+    else:
+        if not ctx.obj.force:
+            click.confirm(
+                'Warning! This will destroy any local changes for all projects!\n\nContinue?',
+                abort=True
+            )
+
+        # Retrieve all new or modified Jira issues
+        issues = tuple(
+            cast(Issue, jira[k])
+            for k in jira.df.loc[jira.is_new() | jira.is_modified(), 'key']
+        )
+
+    for issue in issues:
+        if not issue.exists:
+            # Delete new, local-only issues
+            del jira[issue.key]
+        else:
+            # Overwrite local changes with the original issue from Jira
+            jira[issue.key] = Issue.deserialize(issue.original, issue.project)
+
     jira.write_issues()
 
-    click.echo(f'Reset issue {key}')
+    if key != 'all':
+        click.echo(f'Reset issue {key}')
+    else:
+        click.echo('Done')
 
 
 @click.command(name='push')
+@click.option('--dry-run', '-n', is_flag=True, help='Simulate a push, logging the data that would be sent to Jira API')
+@click.option('--interactive', '-i', is_flag=True, help='Display a diff for each issue, and prompt to push or skip')
 @click.pass_context
 @global_options
-def cli_push(_):
-    '''Synchronise changes back to Jira server'''
+def cli_push(_, dry_run: bool=False, interactive: bool=False):
+    '''Synchronise changes back to Jira server.'''
     jira.load_issues()
 
     if not jira:
         click.echo('No issues in the cache', err=True)
         raise click.Abort
 
-    push_issues()
+    push_issues(dry_run, interactive)
 
 
 @click.command(name='projects')
 @click.pass_context
 @global_options
 def cli_project_list_shortcut(ctx: click.core.Context):
-    '''View currently cloned projects'''
+    '''View currently cloned projects.'''
     # Shortcut to the `jira project list` subcommmand.
     ctx.forward(cli_project_list)
 
@@ -163,9 +218,9 @@ def cli_project_list_shortcut(ctx: click.core.Context):
 @click.option('--config', '-c', type=click.Path(), help='Write default configuration to PATH')
 def cli_config(config: Optional[str]=None):
     '''
-    Output a default config file into ~/.config/jira-offline/jira-offline.ini
+    Output a default config file into ~/.config/jira-offline/jira-offline.ini.
 
-    Set a custom path with the --config option
+    Set a custom path with the --config option.
     '''
     if config is None:
         config = get_default_user_config_filepath()
@@ -187,9 +242,9 @@ def cli_config(config: Optional[str]=None):
 def cli_clone(_, project_uri: str, username: str=None, password: str=None, oauth_app: str=None,
               oauth_private_key: str=None, ca_cert: str=None, tz: str=None):
     '''
-    Clone a Jira project to offline
+    Clone a Jira project to use offline.
 
-    PROJECT_URI - Jira project URI to setup and pull issues from, for example: https://jira.atlassian.com:8080/PROJ
+    PROJECT_URI  Jira project URI to setup and pull issues from, for example: https://jira.atlassian.com:8080/PROJ
     '''
     if username and oauth_private_key:
         click.echo('You cannot supply both username and oauth params together', err=True)
@@ -238,8 +293,9 @@ def cli_clone(_, project_uri: str, username: str=None, password: str=None, oauth
 @click.option('--no-retry', is_flag=True, help='Do not retry a Jira server which is unavailable')
 @click.pass_context
 @global_options
-def cli_pull(_, projects: str=None, reset: bool=False, no_retry: bool=False):
-    '''Fetch and cache all Jira issues'''
+@force_option
+def cli_pull(ctx: click.core.Context, projects: str=None, reset: bool=False, no_retry: bool=False):
+    '''Fetch and cache all Jira issues.'''
 
     projects_set: Optional[Set[str]] = None
     if projects:
@@ -256,7 +312,8 @@ def cli_pull(_, projects: str=None, reset: bool=False, no_retry: bool=False):
         else:
             reset_warning = '\n'.join([p.key for p in jira.config.projects.values()])
 
-        if reset_warning:
+        # Display warning if more than one project is configured, and force is False
+        if reset_warning and not ctx.obj.force:
             click.confirm(
                 f'Warning! This will destroy any local changes for project(s)\n\n{reset_warning}\n\nContinue?',
                 abort=True
@@ -280,12 +337,11 @@ def cli_pull(_, projects: str=None, reset: bool=False, no_retry: bool=False):
 @global_options
 def cli_new(_, projectkey: str, issuetype: str, summary: str, as_json: bool=False, **kwargs):
     '''
-    Create a new issue on a project
+    Create a new issue on a project.
 
-    PROJECTKEY  Jira project on which to create the issue
-
+    \b
+    PROJECTKEY  Jira project key
     ISSUETYPE   A valid issue type for the specified project
-
     SUMMARY     Mandatory free text one-liner
     '''
     if ',' in projectkey:
@@ -306,12 +362,6 @@ def cli_new(_, projectkey: str, issuetype: str, summary: str, as_json: bool=Fals
     else:
         if kwargs.get('epic_name'):
             click.echo('Parameter --epic-name is ignored for anything other than an Epic', err=True)
-
-    # Parse fix_versions and labels
-    if kwargs.get('fix_versions'):
-        kwargs['fix_versions'] = set(kwargs['fix_versions'].split(','))
-    if kwargs.get('labels'):
-        kwargs['labels'] = set(kwargs['labels'].split(','))
 
     # Set a default reporter if defined for this project
     if not kwargs.get('reporter') and project.default_reporter:
@@ -348,9 +398,9 @@ def cli_new(_, projectkey: str, issuetype: str, summary: str, as_json: bool=Fals
 @global_options
 def cli_edit(_, key: str, as_json: bool=False, editor: bool=False, **kwargs):
     '''
-    Edit one or more fields on an issue
+    Edit one or more fields on an issue.
 
-    KEY - Jira issue key
+    KEY  Jira issue key
     '''
     jira.load_issues()
 
@@ -390,12 +440,6 @@ def cli_edit(_, key: str, as_json: bool=False, editor: bool=False, **kwargs):
             if kwargs.get('epic_name'):
                 click.echo('Parameter --epic-name is ignored for anything other than an Epic', err=True)
 
-        # Parse fix_versions and labels
-        if kwargs.get('fix_versions'):
-            kwargs['fix_versions'] = set(kwargs['fix_versions'].split(','))
-        if kwargs.get('labels'):
-            kwargs['labels'] = set(kwargs['labels'].split(','))
-
         # Validate sprint field is valid for the project
         if 'sprint' in kwargs and not issue.project.sprints:
             click.echo(f'Project {issue.project.key} has no sprints, ignoring --sprint parameter', err=True)
@@ -416,59 +460,79 @@ def cli_edit(_, key: str, as_json: bool=False, editor: bool=False, **kwargs):
         print_diff(issue)
 
 
-@click.command(name='import', no_args_is_help=True)
-@click.argument('file', type=click.File('r'))
+@click.command(name='export', no_args_is_help=True)
+@click.argument('directory', type=click.Path(exists=True, file_okay=False, dir_okay=True, writable=True))
 @click.pass_context
 @global_options
-def cli_import(_, file: io.TextIOWrapper):
+@filter_option
+def cli_export(_, directory: str):
     '''
-    Import issues from stdin, or from a filepath
+    Export issues to CSV at DIRECTORY
 
-    FILE  Jsonlines format file from which to import issues
+    Supply the --filter argument with an SQL clause to filter the set of returned issues.
     '''
     jira.load_issues()
 
-    no_input = True
-    write = False
+    df = prepare_df(jira.df, width=None, include_long_date=True, include_project_col=False)
 
-    # verbose logging by default during import
-    logger.setLevel(logging.INFO)
+    # Simply write the filtered DataFrame to CSV
+    df.to_csv(
+        os.path.join(directory, datetime.datetime.now().strftime('jira_export_%Y-%m-%d.csv')),
+        index=True,
+        header=True,
+    )
 
-    for i, line in enumerate(file.readlines()):
-        if line:
-            no_input = False
 
-            try:
-                issue, is_new = import_issue(json.loads(line), lineno=i+1)
-                write = True
+@click.command(name='import', no_args_is_help=True)
+@click.argument('filepath', type=click.Path(exists=True, dir_okay=False, allow_dash=True))
+@click.option('--dry-run', '-n', is_flag=True, help="Don't actually import, just show the diff the import will create")
+@click.option('--strict', is_flag=True, help='Stop on errors during import')
+@click.pass_context
+@global_options
+def cli_import(ctx: click.core.Context, filepath: Union[str, int], dry_run: bool=False, strict: bool=False):
+    '''
+    Import issues from stdin, or from a filepath
 
-                if is_new:
-                    logger.info('New issue created: %s', issue.summary)
-                else:
-                    logger.info('Issue %s updated', issue.key)
+    FILEPATH  JSONlines or CSV format file to import from. To read JSONlines from STDIN, pass a dash.
+    '''
+    jira.load_issues()
 
-            except json.decoder.JSONDecodeError:
-                logger.error('Failed parsing line %s', i+1)
-            except ImportFailed as e:
-                logger.error(e)
-        else:
-            break
+    # Interpret dash to mean read STDIN
+    if filepath == '-':
+        filepath = 0
 
-    if no_input:
+    try:
+        with open(filepath, encoding='utf8') as f:
+            if filepath == 0 or filepath.endswith(('json', 'jsonl')):  # type: ignore[union-attr]
+                imported_issues = import_jsonlines(f, verbose=ctx.obj.verbose, strict=strict)
+            else:
+                imported_issues = import_csv(f, verbose=ctx.obj.verbose, strict=strict)
+
+    except NoInputDuringImport:
         click.echo('No data read on stdin or in passed file', err=True)
         raise click.Abort
 
-    if write:
+    if imported_issues and dry_run:
+        for issue in imported_issues:
+            # Print new issues, and print a diff for modified issues
+            if not issue.exists:
+                print(issue)
+            elif issue.modified:
+                print_diff(issue)
+
+    elif imported_issues:
         jira.write_issues()
 
 
-@click.command(name='delete')
+@click.command(name='delete', no_args_is_help=True)
 @click.argument('key')
 @click.pass_context
 @global_options
 def cli_delete_issue(_, key: str):
     '''
-    Delete an issue
+    Delete an issue.
+
+    KEY  Jira issue key
     '''
     jira.load_issues()
 
