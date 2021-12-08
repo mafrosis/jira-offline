@@ -2,6 +2,7 @@
 Module containing the simple top-level commands which do not have any subcommands
 '''
 from contextlib import redirect_stdout
+import datetime
 import json
 import io
 import logging
@@ -25,7 +26,7 @@ from jira_offline.jira import jira
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.sync import pull_issues, pull_single_project, push_issues
 from jira_offline.utils import find_project
-from jira_offline.utils.cli import (CustomfieldsAsOptions, parse_editor_result,
+from jira_offline.utils.cli import (CustomfieldsAsOptions, parse_editor_result, prepare_df,
                                     print_diff, print_list)
 
 
@@ -457,6 +458,29 @@ def cli_edit(_, key: str, as_json: bool=False, editor: bool=False, **kwargs):
     else:
         # Print diff of edited issue
         print_diff(issue)
+
+
+@click.command(name='export', no_args_is_help=True)
+@click.argument('directory', type=click.Path(exists=True, file_okay=False, dir_okay=True, writable=True))
+@click.pass_context
+@global_options
+@filter_option
+def cli_export(_, directory: str):
+    '''
+    Export issues to CSV at DIRECTORY
+
+    Supply the --filter argument with an SQL clause to filter the set of returned issues.
+    '''
+    jira.load_issues()
+
+    df = prepare_df(jira.df, width=None, include_long_date=True, include_project_col=False)
+
+    # Simply write the filtered DataFrame to CSV
+    df.to_csv(
+        os.path.join(directory, datetime.datetime.now().strftime('jira_export_%Y-%m-%d.csv')),
+        index=True,
+        header=True,
+    )
 
 
 @click.command(name='import', no_args_is_help=True)
