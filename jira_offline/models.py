@@ -30,8 +30,8 @@ from jira_offline.exceptions import (BadProjectMetaUri, UnableToCopyCustomCACert
 from jira_offline.utils import (deserialize_single_issue_field, get_dataclass_defaults_for_pandas,
                                 get_field_by_name, render_dataclass_field, render_issue_field,
                                 render_value)
-from jira_offline.utils.convert import (parse_list, parse_sprint, sprint_objects_to_names,
-                                        sprint_name_to_sprint_object)
+from jira_offline.utils.convert import (issue_to_jiraapi_update, parse_list, parse_sprint,
+                                        sprint_objects_to_names, sprint_name_to_sprint_object)
 from jira_offline.utils.serializer import DataclassSerializer, get_base_type
 
 # pylint: disable=too-many-instance-attributes
@@ -745,3 +745,17 @@ class Issue(DataclassSerializer):
     def __str__(self) -> str:
         'Render issue to friendly string'
         return tabulate(self.render())
+
+
+@dataclass
+class IssueUpdate:
+    '''
+    A class representing an update to an Issue (or a new Issue)
+    '''
+    merged_issue: Issue
+    modified: set = field(default_factory=set)
+    conflicts: dict = field(default_factory=dict)
+
+    @property
+    def fields(self) -> dict:
+        return issue_to_jiraapi_update(self.merged_issue, self.modified)

@@ -17,7 +17,8 @@ import pytz
 from jira_offline.config import get_cache_filepath, load_config
 from jira_offline.config.user_config import apply_user_config_to_project
 from jira_offline.exceptions import JiraApiError, MultipleTimezoneError, ProjectDoesntExist
-from jira_offline.models import AppConfig, CustomFields, Issue, IssueType, ProjectMeta, Sprint
+from jira_offline.models import (AppConfig, CustomFields, Issue, IssueType, IssueUpdate, ProjectMeta,
+                                 Sprint)
 from jira_offline.sql_filter import IssueFilter
 from jira_offline.utils import iter_issue_fields_by_type
 from jira_offline.utils.api import get as api_get, post as api_post, put as api_put
@@ -563,22 +564,24 @@ class Jira(collections.abc.MutableMapping):
         return new_issue
 
 
-    def update_issue(self, project: ProjectMeta, issue: Issue, fields: dict):
+    def update_issue(self, project: ProjectMeta, update_obj: IssueUpdate):
         '''
         Update an issue on a Jira project via the API. A PUT request is immediately followed by a
         GET for the updated issue - which is rather heavyweight, but ensures that issue timestamps
         are correct as they can only be set by the Jira server.
 
         Params:
-            project:  Jira project which owns the issue to update
-            issue:    Issue object to update
-            fields:   K/V pairs for the issue; output from `utils.convert.issue_to_jiraapi_update`
+            project:     Jira project which owns the issue to update
+            update_obj:  IssueUpdate DTO representing issue changes
         '''
-        api_put(project, f'/rest/api/2/issue/{issue.key}', data={'fields': fields})
+        api_put(
+            project, f'/rest/api/2/issue/{update_obj.merged_issue.key}',
+            data={'fields': update_obj.fields},
+        )
 
-        # Jira is now updated to match local; synchronise offline issue to the server version
-        issue_data = api_get(project, f'/rest/api/2/issue/{issue.key}')
-        self[issue.key] = jiraapi_object_to_issue(project, issue_data)
+        # Jira is now updated to match local; synchronise offline issue to match the server version
+        issue_data = api_get(project, f'/rest/api/2/issue/{update_obj.merged_issue.key}')
+        self[update_obj.merged_issue.key] = jiraapi_object_to_issue(project, issue_data)
 
         # Write changes to disk
         self.write_issues()

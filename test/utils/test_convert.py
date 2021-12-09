@@ -89,7 +89,7 @@ def test_issue_to_jiraapi_update__handles_customfields(mock_jira, project):
     issue_fixture = Issue.deserialize(ISSUE_1, project)
     issue_fixture.story_points = decimal.Decimal('1.234')
 
-    update_dict = issue_to_jiraapi_update(project, issue_fixture, {'story_points'})
+    update_dict = issue_to_jiraapi_update(issue_fixture, {'story_points'})
     assert 'customfield_10400' in update_dict
     assert update_dict['customfield_10400'] == '1.234'
 
@@ -111,7 +111,7 @@ def test_issue_to_jiraapi_update__handles_customfields_extended(mock_jira, proje
     issue_fixture = Issue.deserialize(ISSUE_1, project)
     issue_fixture.extended['arbitrary_key'] = 'arbitrary_value'
 
-    update_dict = issue_to_jiraapi_update(project, issue_fixture, {'extended.arbitrary_key'})
+    update_dict = issue_to_jiraapi_update(issue_fixture, {'extended.arbitrary_key'})
     assert 'customfield_10111' in update_dict
     assert update_dict['customfield_10111'] == 'arbitrary_value'
 
@@ -126,7 +126,7 @@ def test_issue_to_jiraapi_update__returns_only_fields_passed_in_modified(mock_ji
     '''
     project = ProjectMeta(key='TEST')
 
-    issue_dict = issue_to_jiraapi_update(project, Issue.deserialize(ISSUE_1, project), modified)
+    issue_dict = issue_to_jiraapi_update(Issue.deserialize(ISSUE_1, project), modified)
     assert issue_dict.keys() == modified
 
 
@@ -142,7 +142,7 @@ def test_issue_to_jiraapi_update__fields_are_formatted_correctly(mock_jira, proj
     '''
     project = ProjectMeta(key='TEST')
 
-    issue_dict = issue_to_jiraapi_update(project, Issue.deserialize(ISSUE_1, project), modified)
+    issue_dict = issue_to_jiraapi_update(Issue.deserialize(ISSUE_1, project), modified)
     assert 'name' in issue_dict[next(iter(modified))]
 
 
@@ -152,7 +152,7 @@ def test_issue_to_jiraapi_update__handles_class_property(mock_jira, project):
     '''
     project = ProjectMeta(key='TEST')
 
-    issue_dict = issue_to_jiraapi_update(project, Issue.deserialize(ISSUE_1, project), {'priority'})
+    issue_dict = issue_to_jiraapi_update(Issue.deserialize(ISSUE_1, project), {'priority'})
     assert issue_dict.keys() == {'priority'}
 
 
@@ -172,9 +172,7 @@ def test_issue_to_jiraapi_update__core_mandatory_fields_returned_for_new_issue(m
     with mock.patch.dict(ISSUE_NEW, {'fix_versions': set(), 'epic_link': None, 'reporter': None}):
         new_issue = Issue.deserialize(ISSUE_NEW, project)
 
-    issue_dict = issue_to_jiraapi_update(
-        project, new_issue, {'project_id', 'issuetype', 'summary', 'key'}
-    )
+    issue_dict = issue_to_jiraapi_update(new_issue, {'project_id', 'issuetype', 'summary', 'key'})
 
     assert issue_dict == {
         'project': {'id': '10000'},
@@ -208,7 +206,8 @@ def test_issue_to_jiraapi_update__customfields_and_extended_customfields_returne
         new_issue = Issue.deserialize(ISSUE_NEW, project)
 
     issue_dict = issue_to_jiraapi_update(
-        project, new_issue, {'project_id', 'issuetype', 'summary', 'key', 'description', 'epic_link', 'extended.arbitrary_key'}
+        new_issue,
+        {'project_id', 'issuetype', 'summary', 'key', 'description', 'epic_link', 'extended.arbitrary_key'},
     )
 
     assert issue_dict == {
@@ -240,7 +239,7 @@ def test_issue_to_jiraapi_update__outputs_sprint_as_string(mock_jira, project):
     issue = Issue.deserialize(ISSUE_1, project)
     issue.sprint = {Sprint(id=1, name='Sprint 1', active=True)}
 
-    issue_dict = issue_to_jiraapi_update(project, issue, {'sprint'})
+    issue_dict = issue_to_jiraapi_update(issue, {'sprint'})
 
     # Assert customfield key maps to an int (not the set type)
     assert issue_dict == {
@@ -266,7 +265,7 @@ def test_issue_to_jiraapi_update__outputs_sprint_as_string(mock_jira, project):
 #    issue = Issue.deserialize(ISSUE_1, project)
 #    issue.sprint = {Sprint(id=1, name='Sprint 1', active=True)}
 #
-#    issue_dict = issue_to_jiraapi_update(project, issue, {'sprint'})
+#    issue_dict = issue_to_jiraapi_update(issue, {'sprint'})
 #
 #    # Assert customfield key maps to an int (not the set type)
 #    assert issue_dict == {
@@ -299,7 +298,7 @@ def test_issue_to_jiraapi_update__outputs_only_sprint_diff(mock_jira, project, i
         issue.commit = mock.Mock()
         patch_issue_from_dict(issue, {'sprint': 'Sprint 2'})
 
-    issue_dict = issue_to_jiraapi_update(project, issue, {'sprint'})
+    issue_dict = issue_to_jiraapi_update(issue, {'sprint'})
 
     # Assert customfield key maps to an int (not the set type)
     # The int will be for new sprint, not the older sprint
@@ -332,7 +331,7 @@ def test_issue_to_jiraapi_update__outputs_only_sprint_diff_2(mock_jira, project,
     issue.commit = mock.Mock()
     patch_issue_from_dict(issue, {'sprint': 'Sprint 2'})
 
-    issue_dict = issue_to_jiraapi_update(project, issue, {'sprint'})
+    issue_dict = issue_to_jiraapi_update(issue, {'sprint'})
 
     # Assert customfield key maps to an int (not the set type)
     # The int will be for new sprint, not the older sprint

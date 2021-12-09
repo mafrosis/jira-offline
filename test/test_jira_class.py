@@ -12,8 +12,7 @@ import pytest
 from fixtures import EPIC_1, EPIC_NEW, ISSUE_1, ISSUE_NEW
 from helpers import compare_issue_helper
 from jira_offline.exceptions import FailedAuthError, JiraApiError, ProjectDoesntExist
-from jira_offline.models import Issue, IssueType, ProjectMeta
-from jira_offline.utils.convert import issue_to_jiraapi_update
+from jira_offline.models import Issue, IssueType, IssueUpdate, ProjectMeta
 
 
 def test_jira__mutablemapping__getitem__(mock_jira_core, project):
@@ -1042,7 +1041,7 @@ def test_jira__update_issue__successful_put_results_in_get(
     mock_jiraapi_object_to_issue.return_value = issue_1
 
     mock_jira_core.update_issue(
-        project, issue_1, issue_to_jiraapi_update(project, issue_1, {'priority'})
+        project, IssueUpdate(merged_issue=issue_1, modified={'priority'})
     )
 
     mock_api_put.assert_called_with(
@@ -1070,7 +1069,7 @@ def test_jira__update_issue__failed_put_raises_exception(
 
     with pytest.raises(JiraApiError):
         mock_jira_core.update_issue(
-            project, issue_1, issue_to_jiraapi_update(project, issue_1, {'priority'})
+            project, IssueUpdate(merged_issue=issue_1, modified={'priority'})
         )
 
     assert mock_api_put.called
