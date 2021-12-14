@@ -104,7 +104,10 @@ def prepare_df(df: pd.DataFrame, fields: Optional[List[str]]=None, width: Option
 
         df['sprint'] = df.apply(lambda row: get_latest_sprint(row.project_id, row.sprint), axis=1)
 
-    return df[fields]
+    try:
+        return df[fields]
+    except KeyError as e:
+        raise InvalidLsFieldInConfig(e)
 
 
 def print_list(df: pd.DataFrame, verbose: bool=False, include_project_col: bool=False,
@@ -125,11 +128,7 @@ def print_list(df: pd.DataFrame, verbose: bool=False, include_project_col: bool=
         width = 60
 
     df = prepare_df(df, width=width, include_project_col=include_project_col)
-
-    try:
-        print_table(df)
-    except KeyError as e:
-        raise InvalidLsFieldInConfig(e)
+    print_table(df)
 
     if print_filter:
         print_filter = f'Filter: {print_filter}'
