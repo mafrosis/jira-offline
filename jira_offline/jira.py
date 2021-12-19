@@ -288,7 +288,7 @@ class Jira(collections.abc.MutableMapping):
                 'creator', 'description', 'fix_versions', 'components', 'id', 'labels',
                 'priority', 'reporter', 'status', 'updated', 'epic_link', 'epic_name',
                 'sprint', 'story_points', 'extended', 'modified', 'project_key',
-                'parent_link', 'original'
+                'parent_link', 'original', 'transitions',
             ])
 
 
@@ -576,12 +576,17 @@ class Jira(collections.abc.MutableMapping):
         '''
         api_put(
             project, f'/rest/api/2/issue/{update_obj.merged_issue.key}',
-            data={'fields': update_obj.fields},
+            data={'fields': update_obj.fields}
         )
 
+        if 'status' in update_obj.modified:
+            api_post(
+                project, f'/rest/api/2/issue/{update_obj.merged_issue.key}/transitions',
+                data={'transition': update_obj.transition}
+            )
+
         # Jira is now updated to match local; synchronise offline issue to match the server version
-        issue_data = api_get(project, f'/rest/api/2/issue/{update_obj.merged_issue.key}')
-        self[update_obj.merged_issue.key] = jiraapi_object_to_issue(project, issue_data)
+        self[update_obj.merged_issue.key] = self.fetch_issue(project, update_obj.merged_issue.key)
 
         # Write changes to disk
         self.write_issues()
@@ -597,5 +602,5 @@ class Jira(collections.abc.MutableMapping):
         Returns:
             Issue dataclass instance
         '''
-        issue_data = api_get(project, f'/rest/api/2/issue/{key}')
+        issue_data = api_get(project, f'/rest/api/2/issue/{key}', params={'expand': 'transitions'})
         return jiraapi_object_to_issue(project, issue_data)

@@ -17,6 +17,7 @@ ISSUE_1 = {
     'updated': '2019-08-20T16:41:19',
     'epic_link': 'TEST-1',
     'story_points': '1',
+    'transitions': {},
 }
 
 ISSUE_NEW = {
@@ -43,6 +44,7 @@ EPIC_1 = {
     'summary': 'This is an epic',
     'updated': '2019-08-27T16:41:19',
     'epic_name': '0.1: Epic about a thing',
+    'transitions': {},
 }
 
 EPIC_NEW = {
@@ -75,4 +77,5 @@ JIRAAPI_OBJECT = {
     },
     'id': ISSUE_1['id'],
     'key': ISSUE_1['key'],
+    'transitions': {},
 }

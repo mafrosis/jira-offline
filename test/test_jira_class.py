@@ -1020,12 +1020,9 @@ def test_jira__new_issue__link_is_updated_after_post(mock_api_post, mock_jira_co
     assert getattr(mock_jira_core[ISSUE_NEW['key']], link_name) == epic_1.key
 
 
-@mock.patch('jira_offline.jira.jiraapi_object_to_issue')
+@mock.patch('jira_offline.jira.api_post')
 @mock.patch('jira_offline.jira.api_put')
-@mock.patch('jira_offline.jira.api_get')
-def test_jira__update_issue__successful_put_results_in_get(
-        mock_api_get, mock_api_put, mock_jiraapi_object_to_issue, mock_jira_core, project
-    ):
+def test_jira__update_issue__successful_put_results_in_get(mock_api_put, mock_api_post, mock_jira_core, project):
     '''
     Ensure a successful PUT of an Issue is followed by a GET
     '''
@@ -1037,8 +1034,8 @@ def test_jira__update_issue__successful_put_results_in_get(
     # Don't write to disk during tests
     mock_jira_core.write_issues = mock.Mock()
 
-    # Mock api_get conversion function to return a valid issue
-    mock_jiraapi_object_to_issue.return_value = issue_1
+    # Don't try to fetch during this test
+    mock_jira_core.fetch_issue = mock.Mock(return_value=issue_1)
 
     mock_jira_core.update_issue(
         project, IssueUpdate(merged_issue=issue_1, modified={'priority'})
@@ -1047,7 +1044,39 @@ def test_jira__update_issue__successful_put_results_in_get(
     mock_api_put.assert_called_with(
         project, f'/rest/api/2/issue/{issue_1.key}', data={'fields': {'priority': {'name': 'Normal'}}}
     )
-    mock_api_get.assert_called_with(project, f'/rest/api/2/issue/{issue_1.key}')
+    assert not mock_api_post.called
+    mock_jira_core.fetch_issue.assert_called_with(project, issue_1.key)
+    assert mock_jira_core.write_issues.called
+
+
+@mock.patch('jira_offline.jira.api_post')
+@mock.patch('jira_offline.jira.api_put')
+def test_jira__update_issue__calls_transition_api_on_status_change(mock_api_put, mock_api_post, mock_jira_core, project):
+    '''
+    Ensure a successful POST to /transitions happens when Issue.status is modified
+    '''
+    # Setup the Jira DataFrame
+    with mock.patch('jira_offline.jira.jira', mock_jira_core):
+        issue_1 = Issue.deserialize(ISSUE_1, project)
+        issue_1.commit()
+
+    # Don't write to disk during tests
+    mock_jira_core.write_issues = mock.Mock()
+
+    # Don't try to fetch during this test
+    mock_jira_core.fetch_issue = mock.Mock(return_value=issue_1)
+
+    mock_jira_core.update_issue(
+        project, IssueUpdate(merged_issue=issue_1, modified={'status'})
+    )
+
+    mock_api_put.assert_called_with(
+        project, f'/rest/api/2/issue/{issue_1.key}', data={'fields': {}}
+    )
+    mock_api_post.assert_called_with(
+        project, f'/rest/api/2/issue/{issue_1.key}/transitions', data={'transition': {}}
+    )
+    mock_jira_core.fetch_issue.assert_called_with(project, issue_1.key)
     assert mock_jira_core.write_issues.called
 
 
@@ -1090,7 +1119,7 @@ def test_jira__fetch_issue__returns_output_from_jiraapi_object_to_issue(
     ret = mock_jira_core.fetch_issue(project, ISSUE_1['key'])
     assert ret == 1
 
-    mock_api_get.assert_called_with(project, f'/rest/api/2/issue/{ISSUE_1["key"]}')
+    mock_api_get.assert_called_with(project, f'/rest/api/2/issue/{ISSUE_1["key"]}', params={'expand': 'transitions'})
     assert mock_jiraapi_object_to_issue.called
 
 

@@ -366,9 +366,9 @@ class Issue(DataclassSerializer):
         default_factory=set,
         metadata={'parse_func': parse_list},
     )
-    priority: Optional[str] = field(default=None, metadata={'friendly': 'Priority'})
+    priority: Optional[str] = field(default=None)
     reporter: Optional[str] = field(default=None)
-    status: Optional[str] = field(default=None, metadata={'friendly': 'Status', 'readonly': True})
+    status: Optional[str] = field(default=None)
     updated: Optional[datetime.datetime] = field(default=None, metadata={'readonly': True})
 
     # Customfields
@@ -401,8 +401,11 @@ class Issue(DataclassSerializer):
         init=False, repr=False, default_factory=dict, metadata={'serialize': False}
     )
 
-    # patch of current Issue to dict last seen on Jira server
+    # Patch of current Issue to dict last seen on Jira server
     modified: Optional[list] = field(default=None)
+
+    # List of transitions available for this issue
+    transitions: Optional[Dict[str, int]] = field(default=None, metadata={'readonly': True})
 
 
     def __post_init__(self):
@@ -759,3 +762,14 @@ class IssueUpdate:
     @property
     def fields(self) -> dict:
         return issue_to_jiraapi_update(self.merged_issue, self.modified)
+
+    @property
+    def transition(self) -> dict:
+        if not self.merged_issue.transitions:
+            return {}
+
+        transition_id = self.merged_issue.transitions[self.merged_issue.status]  # type: ignore[index]
+        if not transition_id:
+            return {}
+
+        return {'id': transition_id}

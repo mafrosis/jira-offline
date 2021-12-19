@@ -117,7 +117,7 @@ def pull_single_project(project: ProjectMeta, force: bool, page_size: int):
         while True:
             startAt = page * page_size
 
-            params = {'jql': jql, 'startAt': startAt, 'maxResults': page_size}
+            params = {'jql': jql, 'startAt': startAt, 'maxResults': page_size, 'expand': 'transitions'}
             data = api_get(project, '/rest/api/2/search', params=params)
 
             api_issues = data.get('issues', [])
@@ -260,7 +260,7 @@ def build_update(base_issue: Issue, updated_issue: Optional[Issue]) -> IssueUpda
     updated_issue_dict: dict = updated_issue.serialize()
 
     # fields to ignore during dictdiffer.diff
-    ignore_fields = set(['modified', 'modified'])
+    ignore_fields = {'modified'}
 
     if updated_issue != Issue.blank():
         # ignore readonly fields when diffing new Issues

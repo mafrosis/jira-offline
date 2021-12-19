@@ -38,6 +38,7 @@ def jiraapi_object_to_issue(project: 'ProjectMeta', issue: dict) -> 'Issue':
         'project_id': project.id,
         'status': issue['fields']['status']['name'],
         'summary': issue['fields']['summary'],
+        'transitions': {x['to']['name']:x['id'] for x in issue['transitions']},
         'updated': issue['fields']['updated'],
     }
 
@@ -129,9 +130,11 @@ def issue_to_jiraapi_update(issue: 'Issue', modified: set) -> dict:
             del field_keys['sprint']
 
     # Include only modified fields
+    # Ignore status change as that's handled via IssueUpdate.transitions, and a different API call
     return {
         field_keys[field_name]: issue_values[field_name]
         for field_name in modified
+        if field_name != 'status'
     }
 
 
