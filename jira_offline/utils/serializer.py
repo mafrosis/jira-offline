@@ -483,7 +483,7 @@ class DataclassSerializer(metaclass=SchemaClass):
         if constructor_kwargs:
             data.update(constructor_kwargs)
 
-        return cls(**data)  # type: ignore[call-arg]
+        return cls(**data)
 
 
     def serialize(self) -> dict:

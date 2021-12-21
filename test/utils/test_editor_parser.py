@@ -53,7 +53,7 @@ def test_parse_editor_result__handles_str_change_over_100_chars(project):
         'Priority          Normal',
         'Assignee          danil1',
         'Story Points',
-        'Description       {}'.format('This is a story or issue ' * 5),
+        'Description       {}'.format('This is a story or issue ' * 5),  # pylint: disable=consider-using-f-string
         'Fix Version       -  0.1',
         'Labels',
         'Reporter          danil1',

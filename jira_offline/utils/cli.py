@@ -219,8 +219,8 @@ def parse_editor_result(issue: Issue, editor_result_raw: str, conflicts: Optiona
             if not typing_inspect.is_optional_type(field.type):
                 # Field is mandatory, and editor returned blank - skip this field
                 return SkipEditorField()
-            elif field.default_factory != dataclasses.MISSING:  # type: ignore[misc] # https://github.com/python/mypy/issues/6910
-                return field.default_factory()  # type: ignore[misc]
+            elif field.default_factory != dataclasses.MISSING:
+                return field.default_factory()
             else:
                 return field.default
 
