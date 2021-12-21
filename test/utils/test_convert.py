@@ -67,13 +67,6 @@ def test_jiraapi_object_to_issue__handles_customfields_extended(mock_jira):
     assert issue.extended['arbitrary_key'] == 'arbitrary_value'
 
 
-def test_jiraapi_object_to_issue__handles_sprint(mock_jira):
-    '''
-    Ensure jiraapi_object_to_issue uses the "parse_func" defined on Issue.sprint field's metadata to
-    process the response from the API
-    '''
-
-
 def test_issue_to_jiraapi_update__handles_customfields(mock_jira, project):
     '''
     Ensure issue_to_jiraapi_update converts Issue customfield attributes into the Jira API update format
