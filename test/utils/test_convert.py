@@ -237,30 +237,30 @@ def test_issue_to_jiraapi_update__outputs_sprint_as_string(mock_jira, project):
     }
 
 
-#def test_issue_to_jiraapi_update__handles_sprint_on_new_issues(mock_jira, project):
-#    '''
-#    Ensure issue_to_jiraapi_update handles sprint field on new issues
-#    '''
-#    # Setup the project configuration with sprint customfield
-#    project = ProjectMeta(
-#        key='TEST',
-#        jira_id='10000',
-#        customfields=CustomFields(sprint='customfield_10300'),
-#        sprints={
-#            1: Sprint(id=1, name='Sprint 1', active=True),
-#        },
-#    )
-#
-#    # Create an issue fixture and add it to a sprint
-#    issue = Issue.deserialize(ISSUE_1, project)
-#    issue.sprint = {Sprint(id=1, name='Sprint 1', active=True)}
-#
-#    issue_dict = issue_to_jiraapi_update(issue, {'sprint'})
-#
-#    # Assert customfield key maps to an int (not the set type)
-#    assert issue_dict == {
-#        'customfield_10300': 1,
-#    }
+def test_issue_to_jiraapi_update__handles_sprint_on_new_issues(mock_jira, project):
+    '''
+    Ensure issue_to_jiraapi_update handles sprint field on new issues
+    '''
+    # Setup the project configuration with sprint customfield
+    project = ProjectMeta(
+        key='TEST',
+        jira_id='10000',
+        customfields=CustomFields(sprint='customfield_10300'),
+        sprints={
+            1: Sprint(id=1, name='Sprint 1', active=True),
+        },
+    )
+
+    # Create an issue fixture and add it to a sprint
+    issue = Issue.deserialize(ISSUE_1, project)
+    issue.sprint = {Sprint(id=1, name='Sprint 1', active=True)}
+
+    issue_dict = issue_to_jiraapi_update(issue, {'sprint'})
+
+    # Assert customfield key maps to an int (not the set type)
+    assert issue_dict == {
+        'customfield_10300': 1,
+    }
 
 
 @pytest.mark.parametrize('issue_fixture', [
