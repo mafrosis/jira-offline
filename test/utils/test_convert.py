@@ -146,16 +146,6 @@ def test_issue_to_jiraapi_update__fields_are_formatted_correctly(mock_jira, proj
     assert 'name' in issue_dict[next(iter(modified))]
 
 
-def test_issue_to_jiraapi_update__handles_class_property(mock_jira, project):
-    '''
-    Ensure issue_to_jiraapi_update handles @property fields on Issue class
-    '''
-    project = ProjectMeta(key='TEST')
-
-    issue_dict = issue_to_jiraapi_update(Issue.deserialize(ISSUE_1, project), {'priority'})
-    assert issue_dict.keys() == {'priority'}
-
-
 def test_issue_to_jiraapi_update__core_mandatory_fields_returned_for_new_issue(mock_jira, project):
     '''
     Ensure issue_to_jiraapi_update returns all mandatory and new fields for a new Issue
