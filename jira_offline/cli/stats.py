@@ -5,7 +5,7 @@ import click
 
 from jira_offline.cli.params import filter_option, global_options
 from jira_offline.jira import jira
-from jira_offline.utils.cli import print_table
+from jira_offline.cli.utils import print_table
 
 
 @click.group(name='stats', invoke_without_command=True)

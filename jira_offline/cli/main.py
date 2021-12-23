@@ -17,6 +17,8 @@ from jira_offline.auth import authenticate
 from jira_offline.edit import edit_issue
 from jira_offline.cli.params import filter_option, force_option, global_options
 from jira_offline.cli.project import cli_project_list
+from jira_offline.cli.utils import (CustomfieldsAsOptions, EditClickCommand, prepare_df, print_diff,
+                                    print_list)
 from jira_offline.config import get_default_user_config_filepath
 from jira_offline.config.user_config import write_default_user_config
 from jira_offline.create import create_issue, import_csv, import_jsonlines
@@ -26,8 +28,6 @@ from jira_offline.jira import jira
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.sync import pull_issues, pull_single_project, push_issues
 from jira_offline.utils import find_project
-from jira_offline.utils.cli import (CustomfieldsAsOptions, EditClickCommand, prepare_df, print_diff,
-                                    print_list)
 
 
 logger = logging.getLogger('jira')

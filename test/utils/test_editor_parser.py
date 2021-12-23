@@ -6,7 +6,7 @@ from conftest import not_raises
 from fixtures import ISSUE_1
 from jira_offline.exceptions import EditorFieldParseFailed, EditorRepeatFieldFound
 from jira_offline.models import Issue
-from jira_offline.utils.cli import parse_editor_result
+from jira_offline.cli.utils import parse_editor_result
 
 
 def test_parse_editor_result__handles_str_change(project):

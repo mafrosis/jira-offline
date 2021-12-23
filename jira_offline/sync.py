@@ -22,7 +22,7 @@ from jira_offline.jira import jira
 from jira_offline.models import Issue, IssueUpdate, ProjectMeta
 from jira_offline.utils import critical_logger
 from jira_offline.utils.api import get as api_get
-from jira_offline.utils.cli import parse_editor_result, print_diff
+from jira_offline.cli.utils import parse_editor_result, print_diff
 from jira_offline.utils.convert import jiraapi_object_to_issue
 from jira_offline.utils.serializer import DeserializeError
 
