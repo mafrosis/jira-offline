@@ -7,14 +7,13 @@ import uuid
 from fixtures import ISSUE_1, ISSUE_NEW
 from helpers import modified_issue_helper
 from jira_offline.exceptions import JiraApiError
-from jira_offline.models import Issue
-from jira_offline.sync import IssueUpdate, push_issues
+from jira_offline.models import Issue, IssueUpdate
+from jira_offline.sync import push_issues
 
 
 @mock.patch('jira_offline.sync.merge_issues')
-@mock.patch('jira_offline.sync.issue_to_jiraapi_update')
 def test_push_issues__calls_fetch_and_check_resolve_once_per_issue(
-        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira, project
+        mock_merge_issues, mock_jira, project
     ):
     '''
     Ensure fetch_issue(), merge_issues() and issue_to_jiraapi_update() are called
@@ -41,13 +40,11 @@ def test_push_issues__calls_fetch_and_check_resolve_once_per_issue(
 
     assert mock_jira.fetch_issue.call_count == 2
     assert mock_merge_issues.call_count == 2
-    assert mock_issue_to_jiraapi_update.call_count == 2
 
 
 @mock.patch('jira_offline.sync.merge_issues')
-@mock.patch('jira_offline.sync.issue_to_jiraapi_update')
 def test_push_issues__calls_update_issue_when_issue_has_an_id(
-        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira, project
+        mock_merge_issues, mock_jira, project
     ):
     '''
     When Issue.id is set, ensure update_issue() is called, and new_issue() is NOT called
@@ -72,9 +69,8 @@ def test_push_issues__calls_update_issue_when_issue_has_an_id(
 
 
 @mock.patch('jira_offline.sync.merge_issues')
-@mock.patch('jira_offline.sync.issue_to_jiraapi_update')
 def test_push_issues__calls_new_issue_when_issue_doesnt_have_an_id(
-        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira, project
+        mock_merge_issues, mock_jira, project
     ):
     '''
     When Issue.id is NOT set, ensure new_issue() is called, and update_issue() is NOT called
@@ -85,8 +81,10 @@ def test_push_issues__calls_new_issue_when_issue_doesnt_have_an_id(
     with mock.patch('jira_offline.jira.jira', mock_jira):
         issue_1.commit()
 
-    # mock merge_issues to return NO conflicts
-    mock_merge_issues.return_value = IssueUpdate(merged_issue=issue_1)
+    # mock merge_issues to return an IssueUpdate for new Issue
+    mock_merge_issues.return_value = IssueUpdate(
+        merged_issue=issue_1, modified={'project_id', 'key', 'issuetype', 'summary'}
+    )
 
     with mock.patch('jira_offline.sync.jira', mock_jira), \
             mock.patch('jira_offline.jira.jira', mock_jira):
@@ -97,9 +95,8 @@ def test_push_issues__calls_new_issue_when_issue_doesnt_have_an_id(
 
 
 @mock.patch('jira_offline.sync.merge_issues')
-@mock.patch('jira_offline.sync.issue_to_jiraapi_update')
 def test_push_issues__count_only_successful_new_issue_calls(
-        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira, project
+        mock_merge_issues, mock_jira, project
     ):
     '''
     Ensure that count reflects the total successful new_issue calls
@@ -117,8 +114,14 @@ def test_push_issues__count_only_successful_new_issue_calls(
 
     # Mock `sync.merge_issues` to return valid issues
     mock_merge_issues.side_effect = [
-        IssueUpdate(merged_issue=mock_jira[ISSUE_NEW['key']]),
-        IssueUpdate(merged_issue=mock_jira[issue_key]),
+        IssueUpdate(
+            merged_issue=issue_1,
+            modified={'project_id', 'key', 'issuetype', 'summary'}
+        ),
+        IssueUpdate(
+            merged_issue=issue_2,
+            modified={'project_id', 'key', 'issuetype', 'summary'}
+        ),
     ]
 
     with mock.patch('jira_offline.sync.jira', mock_jira), \
@@ -130,9 +133,8 @@ def test_push_issues__count_only_successful_new_issue_calls(
 
 
 @mock.patch('jira_offline.sync.merge_issues')
-@mock.patch('jira_offline.sync.issue_to_jiraapi_update')
 def test_push_issues__count_only_successful_new_issue_calls_when_one_fails(
-        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira, project
+        mock_merge_issues, mock_jira, project
     ):
     '''
     Ensure that count reflects the total successful updates
@@ -154,8 +156,14 @@ def test_push_issues__count_only_successful_new_issue_calls_when_one_fails(
 
     # Mock `sync.merge_issues` to return valid issues
     mock_merge_issues.side_effect = [
-        IssueUpdate(merged_issue=issue_1),
-        IssueUpdate(merged_issue=issue_2),
+        IssueUpdate(
+            merged_issue=issue_1,
+            modified={'project_id', 'key', 'issuetype', 'summary'}
+        ),
+        IssueUpdate(
+            merged_issue=issue_2,
+            modified={'project_id', 'key', 'issuetype', 'summary'}
+        ),
     ]
 
     with mock.patch('jira_offline.sync.jira', mock_jira), \
@@ -167,9 +175,8 @@ def test_push_issues__count_only_successful_new_issue_calls_when_one_fails(
 
 
 @mock.patch('jira_offline.sync.merge_issues')
-@mock.patch('jira_offline.sync.issue_to_jiraapi_update')
 def test_push_issues__count_only_successful_update_issue_calls(
-        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira, project
+        mock_merge_issues, mock_jira, project
     ):
     '''
     Ensure that count reflects the total successful updates
@@ -200,9 +207,8 @@ def test_push_issues__count_only_successful_update_issue_calls(
 
 
 @mock.patch('jira_offline.sync.merge_issues')
-@mock.patch('jira_offline.sync.issue_to_jiraapi_update')
 def test_push_issues__count_only_successful_update_issue_calls_when_one_fails(
-        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira, project
+        mock_merge_issues, mock_jira, project
     ):
     '''
     Ensure that count reflects the total successful updates
@@ -230,9 +236,8 @@ def test_push_issues__count_only_successful_update_issue_calls_when_one_fails(
 
 
 @mock.patch('jira_offline.sync.merge_issues')
-@mock.patch('jira_offline.sync.issue_to_jiraapi_update')
 def test_push_issues__new_and_update_are_not_called_when_dry_run(
-        mock_issue_to_jiraapi_update, mock_merge_issues, mock_jira, project
+        mock_merge_issues, mock_jira, project
     ):
     '''
     Ensure that `new_issue` and `update_issue` are not called when dry_run param is True
@@ -248,7 +253,10 @@ def test_push_issues__new_and_update_are_not_called_when_dry_run(
 
     # Mock `sync.merge_issues` to return valid issues
     mock_merge_issues.side_effect = [
-        IssueUpdate(merged_issue=issue_1),
+        IssueUpdate(
+            merged_issue=issue_1,
+            modified={'project_id', 'key', 'issuetype', 'summary'}
+        ),
         IssueUpdate(merged_issue=issue_2),
     ]
 

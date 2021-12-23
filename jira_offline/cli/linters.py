@@ -28,7 +28,7 @@ def cli_lint(ctx: click.core.Context, fix: bool=False):
     jira.load_issues()
 
     if jira.df.empty:
-        click.echo('No issues in the cache', err=True)
+        click.echo('No issues in the cache')
         raise click.Abort
 
 
@@ -46,7 +46,7 @@ def cli_lint_fix_versions(ctx: click.core.Context, value: str=None):
 
     if value:
         if not ctx.obj.lint.fix:
-            logger.warning('Passing --value without --fix has no effect', err=True)
+            logger.warning('Passing --value without --fix has no effect')
 
     # query issues missing the fix_versions field
     df = lint_fix_versions(fix=False)
@@ -77,7 +77,7 @@ def cli_lint_issues_missing_epic(ctx: click.core.Context, epic_link: str=None):
 
     if epic_link:
         if not ctx.obj.lint.fix:
-            logger.warning('Passing --epic-link without --fix has no effect', err=True)
+            logger.warning('Passing --epic-link without --fix has no effect')
 
     # query issues missing the epic field
     df = lint_issues_missing_epic(fix=False)

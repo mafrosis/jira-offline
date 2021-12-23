@@ -38,6 +38,7 @@ def jiraapi_object_to_issue(project: 'ProjectMeta', issue: dict) -> 'Issue':
         'project_id': project.id,
         'status': issue['fields']['status']['name'],
         'summary': issue['fields']['summary'],
+        'transitions': {x['to']['name']:x['id'] for x in issue['transitions']},
         'updated': issue['fields']['updated'],
     }
 
@@ -69,17 +70,16 @@ def jiraapi_object_to_issue(project: 'ProjectMeta', issue: dict) -> 'Issue':
     return Issue.deserialize(jiraapi_object, project)
 
 
-def issue_to_jiraapi_update(project: 'ProjectMeta', issue: 'Issue', modified: set) -> dict:
+def issue_to_jiraapi_update(issue: 'Issue', modified: set) -> dict:
     '''
     Convert an Issue object to a JSON blob to update the Jira API. Handles both new and updated
     Issues.
 
     Params:
-        project:   Properties of the project pushing issues to
         issue:     Issue model to create an update for
         modified:  Set of modified fields (created by a call to `sync.build_update`)
     Return:
-        A JSON-compatible Python dict
+        Dict of field->value mappings
     '''
     # Serialize all Issue data to be JSON-compatible
     issue_values: dict = issue.serialize()
@@ -90,15 +90,15 @@ def issue_to_jiraapi_update(project: 'ProjectMeta', issue: 'Issue', modified: se
 
     # Pass the Jira-internal project ID
     field_keys['project_id'] = 'project'
-    issue_values['project_id'] = {'id': project.jira_id}
+    issue_values['project_id'] = {'id': issue.project.jira_id}
 
     # Never include Issue.key, as it's invalid for create, and included in the URL during update
     if 'key' in modified:
         modified.remove('key')
 
     # Include the customfields
-    if project.customfields:
-        for customfield_name, customfield_ref in project.customfields.items():
+    if issue.project.customfields:
+        for customfield_name, customfield_ref in issue.project.customfields.items():
             # Include mapping from the customfield name, to the customfield identifier on Jira
             field_keys[customfield_name] = customfield_ref
 
@@ -130,9 +130,11 @@ def issue_to_jiraapi_update(project: 'ProjectMeta', issue: 'Issue', modified: se
             del field_keys['sprint']
 
     # Include only modified fields
+    # Ignore status change as that's handled via IssueUpdate.transitions, and a different API call
     return {
         field_keys[field_name]: issue_values[field_name]
         for field_name in modified
+        if field_name != 'status'
     }
 
 

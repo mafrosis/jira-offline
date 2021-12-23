@@ -80,7 +80,7 @@ def mock_jira_core(mock_load_config, project):
         'creator', 'description', 'fix_versions', 'components', 'id', 'labels',
         'priority', 'reporter', 'status', 'updated', 'epic_link', 'epic_name',
         'sprint', 'story_points', 'extended', 'modified', 'project_key',
-        'parent_link', 'original'
+        'parent_link', 'original', 'transitions',
     ])
     return jira
 

@@ -3,7 +3,6 @@ Functions related to pull & push of Issues to/from the Jira API. Also includes c
 resolution functions.
 '''
 import dataclasses
-from dataclasses import dataclass, field
 import datetime
 import logging
 import time
@@ -20,11 +19,11 @@ from jira_offline.exceptions import (EditorFieldParseFailed, FailedPullingIssues
                                      FailedPullingProjectMeta, JiraApiError, JiraUnavailable)
 from jira_offline.jira import jira
 from jira_offline.create import patch_issue_from_dict
-from jira_offline.models import Issue, ProjectMeta
+from jira_offline.models import Issue, IssueUpdate, ProjectMeta
 from jira_offline.utils import critical_logger
 from jira_offline.utils.api import get as api_get
 from jira_offline.utils.cli import parse_editor_result, print_diff
-from jira_offline.utils.convert import jiraapi_object_to_issue, issue_to_jiraapi_update
+from jira_offline.utils.convert import jiraapi_object_to_issue
 from jira_offline.utils.serializer import DeserializeError
 
 
@@ -118,7 +117,7 @@ def pull_single_project(project: ProjectMeta, force: bool, page_size: int):
         while True:
             startAt = page * page_size
 
-            params = {'jql': jql, 'startAt': startAt, 'maxResults': page_size}
+            params = {'jql': jql, 'startAt': startAt, 'maxResults': page_size, 'expand': 'transitions'}
             data = api_get(project, '/rest/api/2/search', params=params)
 
             api_issues = data.get('issues', [])
@@ -186,16 +185,6 @@ def pull_single_project(project: ProjectMeta, force: bool, page_size: int):
     # cache the last_updated value
     project.last_updated = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
     jira.config.write_to_disk()
-
-
-@dataclass
-class IssueUpdate:
-    '''
-    A class representing an update to an Issue (or a new Issue)
-    '''
-    merged_issue: Issue
-    modified: set = field(default_factory=set)
-    conflicts: dict = field(default_factory=dict)
 
 
 def merge_issues(base_issue: Issue, updated_issue: Issue, is_upstream_merge: bool) -> IssueUpdate:
@@ -271,7 +260,7 @@ def build_update(base_issue: Issue, updated_issue: Optional[Issue]) -> IssueUpda
     updated_issue_dict: dict = updated_issue.serialize()
 
     # fields to ignore during dictdiffer.diff
-    ignore_fields = set(['modified', 'modified'])
+    ignore_fields = {'modified'}
 
     if updated_issue != Issue.blank():
         # ignore readonly fields when diffing new Issues
@@ -440,10 +429,6 @@ def push_issues(dry_run: bool=False, interactive: bool=False) -> int:
             # Resolve any conflicts with upstream
             update_obj: IssueUpdate = merge_issues(local_issue, remote_issue, is_upstream_merge=True)
 
-            update_dict: dict = issue_to_jiraapi_update(
-                project, update_obj.merged_issue, update_obj.modified
-            )
-
             try:
                 if interactive:
                     # Display a diff, and then prompt user for push
@@ -455,20 +440,20 @@ def push_issues(dry_run: bool=False, interactive: bool=False) -> int:
                 if update_obj.merged_issue.exists:
                     logger.info(
                         'Updating %s %s with %s', update_obj.merged_issue.issuetype,
-                        update_obj.merged_issue.key, update_dict
+                        update_obj.merged_issue.key, update_obj.fields
                     )
                 else:
                     logger.info(
-                        'Creating %s on %s with %s', update_dict['issuetype'], project.key,
-                        update_dict
+                        'Creating %s on %s with %s', update_obj.fields['issuetype'], project.key,
+                        update_obj.fields
                     )
 
                 if not dry_run:
                     if update_obj.merged_issue.exists:
-                        jira.update_issue(project, update_obj.merged_issue, update_dict)
+                        jira.update_issue(project, update_obj)
                         logger.warning('Updated %s', update_obj.merged_issue.key)
                     else:
-                        new_issue = jira.new_issue(project, update_dict, update_obj.merged_issue.key)
+                        new_issue = jira.new_issue(project, update_obj.fields, update_obj.merged_issue.key)
                         logger.warning('Created %s', new_issue.key)
 
                 count += 1

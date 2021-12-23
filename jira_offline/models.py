@@ -30,8 +30,8 @@ from jira_offline.exceptions import (BadProjectMetaUri, UnableToCopyCustomCACert
 from jira_offline.utils import (deserialize_single_issue_field, get_dataclass_defaults_for_pandas,
                                 get_field_by_name, render_dataclass_field, render_issue_field,
                                 render_value)
-from jira_offline.utils.convert import (parse_list, parse_sprint, sprint_objects_to_names,
-                                        sprint_name_to_sprint_object)
+from jira_offline.utils.convert import (issue_to_jiraapi_update, parse_list, parse_sprint,
+                                        sprint_objects_to_names, sprint_name_to_sprint_object)
 from jira_offline.utils.serializer import DataclassSerializer, get_base_type
 
 # pylint: disable=too-many-instance-attributes
@@ -366,9 +366,9 @@ class Issue(DataclassSerializer):
         default_factory=set,
         metadata={'parse_func': parse_list},
     )
-    priority: Optional[str] = field(default=None, metadata={'friendly': 'Priority'})
+    priority: Optional[str] = field(default=None)
     reporter: Optional[str] = field(default=None)
-    status: Optional[str] = field(default=None, metadata={'friendly': 'Status', 'readonly': True})
+    status: Optional[str] = field(default=None)
     updated: Optional[datetime.datetime] = field(default=None, metadata={'readonly': True})
 
     # Customfields
@@ -401,8 +401,11 @@ class Issue(DataclassSerializer):
         init=False, repr=False, default_factory=dict, metadata={'serialize': False}
     )
 
-    # patch of current Issue to dict last seen on Jira server
+    # Patch of current Issue to dict last seen on Jira server
     modified: Optional[list] = field(default=None)
+
+    # List of transitions available for this issue
+    transitions: Optional[Dict[str, int]] = field(default=None, metadata={'readonly': True})
 
 
     def __post_init__(self):
@@ -745,3 +748,28 @@ class Issue(DataclassSerializer):
     def __str__(self) -> str:
         'Render issue to friendly string'
         return tabulate(self.render())
+
+
+@dataclass
+class IssueUpdate:
+    '''
+    A class representing an update to an Issue (or a new Issue)
+    '''
+    merged_issue: Issue
+    modified: set = field(default_factory=set)
+    conflicts: dict = field(default_factory=dict)
+
+    @property
+    def fields(self) -> dict:
+        return issue_to_jiraapi_update(self.merged_issue, self.modified)
+
+    @property
+    def transition(self) -> dict:
+        if not self.merged_issue.transitions:
+            return {}
+
+        transition_id = self.merged_issue.transitions[self.merged_issue.status]  # type: ignore[index]
+        if not transition_id:
+            return {}
+
+        return {'id': transition_id}

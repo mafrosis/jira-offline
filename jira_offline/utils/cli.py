@@ -104,7 +104,10 @@ def prepare_df(df: pd.DataFrame, fields: Optional[List[str]]=None, width: Option
 
         df['sprint'] = df.apply(lambda row: get_latest_sprint(row.project_id, row.sprint), axis=1)
 
-    return df[fields]
+    try:
+        return df[fields]
+    except KeyError as e:
+        raise InvalidLsFieldInConfig(e)
 
 
 def print_list(df: pd.DataFrame, verbose: bool=False, include_project_col: bool=False,
@@ -125,11 +128,7 @@ def print_list(df: pd.DataFrame, verbose: bool=False, include_project_col: bool=
         width = 60
 
     df = prepare_df(df, width=width, include_project_col=include_project_col)
-
-    try:
-        print_table(df)
-    except KeyError as e:
-        raise InvalidLsFieldInConfig(e)
+    print_table(df)
 
     if print_filter:
         print_filter = f'Filter: {print_filter}'
@@ -219,8 +218,8 @@ def parse_editor_result(issue: Issue, editor_result_raw: str, conflicts: Optiona
             if not typing_inspect.is_optional_type(field.type):
                 # Field is mandatory, and editor returned blank - skip this field
                 return SkipEditorField()
-            elif field.default_factory != dataclasses.MISSING:  # type: ignore[misc] # https://github.com/python/mypy/issues/6910
-                return field.default_factory()  # type: ignore[misc]
+            elif field.default_factory != dataclasses.MISSING:
+                return field.default_factory()
             else:
                 return field.default
 

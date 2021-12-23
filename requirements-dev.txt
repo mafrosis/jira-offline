@@ -1,7 +1,7 @@
 -r requirements.txt
 docker
 ipdb
-pylint==2.10.2
+pylint==2.12.2
 pytest
 pytest-cov
 pytest-mypy
