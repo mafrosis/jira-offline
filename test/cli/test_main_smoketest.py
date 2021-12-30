@@ -20,7 +20,7 @@ from jira_offline.jira import Issue
 CLI_COMMAND_MAPPING = [
     (('config',), tuple(), 0),
     (('project', 'list'), tuple(), 0),
-    (('project', 'delete'), ('TEST',), 0),
+    (('project', 'delete'), ('--force', 'TEST',), 0),
     (('project', 'update-auth'), ('TEST',), 0),
     (('ls',), tuple(), 1),
     (('show',), ('TEST-71',), 1),

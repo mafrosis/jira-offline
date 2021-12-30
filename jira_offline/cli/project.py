@@ -5,7 +5,7 @@ import click
 from tabulate import tabulate
 
 from jira_offline.auth import authenticate
-from jira_offline.cli.params import global_options
+from jira_offline.cli.params import force_option, global_options
 from jira_offline.exceptions import ProjectNotConfigured
 from jira_offline.jira import jira
 from jira_offline.utils import find_project
@@ -80,6 +80,7 @@ def cli_project_update_auth(ctx: click.core.Context, projectkey: str, username: 
 @click.argument('projectkey')
 @click.pass_context
 @global_options
+@force_option
 def cli_project_delete(ctx: click.core.Context, projectkey: str):
     '''
     Delete a cloned project from local storage.
@@ -95,11 +96,11 @@ def cli_project_delete(ctx: click.core.Context, projectkey: str):
 
     jira.load_issues()
 
-    # Access the private DataFrame so to be sure no filter is applied
-    df = jira._df  # pylint: disable=protected-access
-
-    if len(df[ (df.project_key == projectkey) & (jira.is_new() | jira.is_modified()) ]):
-        click.confirm('You have local modified changes which will be lost. Continue?', abort=True)
+    if not ctx.obj.force:
+        click.confirm(
+            f'Warning! This will delete all local issues for project {projectkey}\n\nContinue?',
+            abort=True
+        )
 
     del jira.config.projects[project.id]
     jira.config.write_to_disk()
