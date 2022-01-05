@@ -5,7 +5,6 @@ _to_ an object good for an API post.
 import logging
 from typing import Generator, List, Optional, Union, Set, TYPE_CHECKING
 
-from jira_offline.exceptions import ProjectHasNoSprints, UnknownSprintError
 from jira_offline.utils import get_field_by_name
 
 if TYPE_CHECKING:
@@ -178,25 +177,3 @@ def sprint_objects_to_names(sprints: Set['Sprint']) -> Generator[str, None, None
     '''
     for sprint in sorted(sprints):
         yield sprint.name
-
-
-def sprint_name_to_sprint_object(project: 'ProjectMeta', sprint_name: str) -> 'Sprint':
-    '''
-    Utility function to return a Sprint object, when passed a sprint name.
-
-    Params:
-        project_id:   Internal project ID
-        sprint_name:  Text name of a sprint
-    '''
-    if not project.sprints:
-        raise ProjectHasNoSprints
-
-    try:
-        return next(x for x in project.sprints.values() if x.name == sprint_name)
-    except StopIteration as e:
-        raise UnknownSprintError(project.key, sprint_name) from e
-
-
-def parse_list(project: 'ProjectMeta', value: str) -> List[str]:  # pylint: disable=unused-argument
-    'Parse a comma-separated list string into a list of strings'
-    return [f.strip() for f in value.split(',')]

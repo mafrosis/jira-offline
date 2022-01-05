@@ -204,7 +204,7 @@ def test_issue_to_jiraapi_update__customfields_and_extended_customfields_returne
     }
 
 
-def test_issue_to_jiraapi_update__outputs_sprint_as_string(mock_jira, project):
+def test_issue_to_jiraapi_update__outputs_sprint_as_string(mock_jira):
     '''
     Ensure issue_to_jiraapi_update converts the sprint set into a string
     '''
@@ -220,7 +220,7 @@ def test_issue_to_jiraapi_update__outputs_sprint_as_string(mock_jira, project):
 
     # Create an issue fixture and add it to a sprint
     issue = Issue.deserialize(ISSUE_1, project)
-    issue.sprint = {Sprint(id=1, name='Sprint 1', active=True)}
+    patch_issue_from_dict(issue, {'sprint': 'Sprint 1'})
 
     issue_dict = issue_to_jiraapi_update(issue, {'sprint'})
 
@@ -230,7 +230,7 @@ def test_issue_to_jiraapi_update__outputs_sprint_as_string(mock_jira, project):
     }
 
 
-def test_issue_to_jiraapi_update__handles_sprint_on_new_issues(mock_jira, project):
+def test_issue_to_jiraapi_update__handles_sprint_on_new_issues(mock_jira):
     '''
     Ensure issue_to_jiraapi_update handles sprint field on new issues
     '''
@@ -246,7 +246,7 @@ def test_issue_to_jiraapi_update__handles_sprint_on_new_issues(mock_jira, projec
 
     # Create an issue fixture and add it to a sprint
     issue = Issue.deserialize(ISSUE_1, project)
-    issue.sprint = {Sprint(id=1, name='Sprint 1', active=True)}
+    patch_issue_from_dict(issue, {'sprint': 'Sprint 1'})
 
     issue_dict = issue_to_jiraapi_update(issue, {'sprint'})
 
@@ -260,7 +260,7 @@ def test_issue_to_jiraapi_update__handles_sprint_on_new_issues(mock_jira, projec
     ISSUE_1,
     ISSUE_NEW,
 ])
-def test_issue_to_jiraapi_update__outputs_only_sprint_diff(mock_jira, project, issue_fixture):
+def test_issue_to_jiraapi_update__outputs_only_sprint_diff(mock_jira, issue_fixture):
     '''
     Ensure issue_to_jiraapi_update outputs only the new item in a sprint set
     '''
@@ -276,7 +276,7 @@ def test_issue_to_jiraapi_update__outputs_only_sprint_diff(mock_jira, project, i
     )
 
     # Create an issue which already exists in a sprint, and then add it to another sprint
-    with mock.patch.dict(issue_fixture, {'sprint': [{'id': 1, 'name': 'Sprint 1', 'active': True}]}):
+    with mock.patch.dict(issue_fixture, {'sprint': 'Sprint 1'}):
         issue = Issue.deserialize(issue_fixture, project)
         issue.commit = mock.Mock()
         patch_issue_from_dict(issue, {'sprint': 'Sprint 2'})
@@ -294,7 +294,7 @@ def test_issue_to_jiraapi_update__outputs_only_sprint_diff(mock_jira, project, i
     ISSUE_1,
     ISSUE_NEW,
 ])
-def test_issue_to_jiraapi_update__outputs_only_sprint_diff_2(mock_jira, project, issue_fixture):
+def test_issue_to_jiraapi_update__outputs_only_sprint_diff_2(mock_jira, issue_fixture):
     '''
     Ensure issue_to_jiraapi_update outputs only the new item in a sprint set
     '''

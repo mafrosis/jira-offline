@@ -14,12 +14,12 @@ from tqdm import tqdm
 
 from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce,
                                      FieldNotOnModelClass, ImportFailed, InvalidIssueType,
-                                     NoInputDuringImport, ProjectNotConfigured, UnknownSprintError)
+                                     NoInputDuringImport, ProjectNotConfigured)
 from jira_offline.jira import jira
 from jira_offline.models import CustomFields, Issue, ProjectMeta
 from jira_offline.utils import (critical_logger, deserialize_single_issue_field, find_project,
                                 get_field_by_name)
-from jira_offline.utils.serializer import istype
+from jira_offline.utils.serializer import DeserializeError, istype
 
 
 logger = logging.getLogger('jira')
@@ -146,8 +146,6 @@ def import_jsonlines(file: IO, verbose: bool=False, strict: bool=False) -> List[
 
                 except json.decoder.JSONDecodeError:
                     logger.error('Failed parsing line %s', i+1)
-                except UnknownSprintError as e:
-                    logger.error(e)
                 except ImportFailed as e:
                     logger.error('%s on line %s', e.message, i+1)
             else:
@@ -337,15 +335,20 @@ def patch_issue_from_dict(issue: Issue, attrs: dict, strict: bool=False) -> bool
             # This setting only makes sense for sets/lists; and is primarily a hack in place for
             # Issue.sprint which is a set, but can only be updated as a single value via the API.
             if f.metadata.get('reset_before_edit'):
-                original_value = deserialize_single_issue_field(field_name, issue.original.get(field_name))
+                original_value = deserialize_single_issue_field(
+                    field_name, issue.original.get(field_name), issue.project
+                )
                 setattr(issue, field_name, original_value)
 
-            # Fields can specify a parsing function to convert input string before updating the field value
-            parse_func = f.metadata.get('parse_func')
-            if parse_func:
-                value = parse_func(issue.project, value)
+            try:
+                value = deserialize_single_issue_field(field_name, value, issue.project)
 
-            if istype(typ, set) and not isinstance(value, set):
+            except DeserializeError as e:
+                logger.debug('%s: %s', issue.key, e)
+                if strict:
+                    raise e
+
+            if istype(typ, set):
                 # Special case where a string is passed for a set field
                 if getattr(issue, field_name) is None:
                     setattr(issue, field_name, set())
@@ -353,7 +356,7 @@ def patch_issue_from_dict(issue: Issue, attrs: dict, strict: bool=False) -> bool
                     value = [value]
                 setattr(issue, field_name, getattr(issue, field_name) | set(value))
 
-            elif istype(typ, list) and not isinstance(value, list):
+            elif istype(typ, list):
                 # Special case where a string is passed for a list field
                 if getattr(issue, field_name) is None:
                     setattr(issue, field_name, [])
@@ -363,7 +366,6 @@ def patch_issue_from_dict(issue: Issue, attrs: dict, strict: bool=False) -> bool
                 # When setting an Issue attribute to empty string, map it to None
                 setattr(issue, field_name, None)
             else:
-                value = deserialize_single_issue_field(field_name, value)
                 setattr(issue, field_name, value)
 
             patched = True

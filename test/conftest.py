@@ -15,7 +15,7 @@ from tzlocal import get_localzone
 
 from jira_offline.jira import Jira
 from jira_offline.create import get_unused_customfields
-from jira_offline.models import AppConfig, CustomFields, IssueType, ProjectMeta
+from jira_offline.models import AppConfig, CustomFields, IssueType, ProjectMeta, Sprint
 from jira_offline.utils.cli import _get_issue, _get_project
 
 
@@ -33,6 +33,9 @@ def project():
             epic_name='customfield_10200',
             sprint='customfield_10300',
         ),
+        sprints={
+            1: Sprint(id=1, name='Sprint 1', active=True),
+        },
         priorities=['High', 'Low'],
         issuetypes={'Story': IssueType(name='Story', statuses=['Backlog', 'Done'])},
     )

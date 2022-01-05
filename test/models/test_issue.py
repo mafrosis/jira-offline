@@ -6,7 +6,7 @@ from unittest import mock
 from conftest import not_raises
 from fixtures import ISSUE_1, ISSUE_NEW
 from helpers import compare_issue_helper, modified_issue_helper
-from jira_offline.models import Issue, ProjectMeta, Sprint
+from jira_offline.models import Issue, Sprint
 
 
 def test_issue_model__modified_is_false_after_constructor(project):
@@ -242,14 +242,10 @@ def test_issue_model__render_returns_optional_fields_only_when_set(project):
     assert output[5] == ('Creator', 'danil1')
 
 
-def test_issue_model__render_returns_sprint_names():
+def test_issue_model__render_returns_sprint_names(project):
     '''
     Validate Issue.render returns the sprint names, and not the stored IDs
     '''
-    project = ProjectMeta(
-        'TEST',
-        sprints={1: Sprint(id=1, name='Sprint 1', active=True)}
-    )
     issue = Issue.deserialize(ISSUE_1, project)
 
     # Set the sprint field on the issue
@@ -376,7 +372,7 @@ def test_issue_model__render_deserializes_values_in_original(project):
     Validate Issue.render returns added and removed rows, when a field is changed
     '''
     # Create an issue which exists in a sprint
-    with mock.patch.dict(ISSUE_1, {'sprint': [{'id': 1, 'name': 'Sprint 1', 'active': True}]}):
+    with mock.patch.dict(ISSUE_1, {'sprint': 'Sprint 1'}):
         issue = Issue.deserialize(ISSUE_1, project)
 
     # Remove the sprint

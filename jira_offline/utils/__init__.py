@@ -224,28 +224,28 @@ def render_value(value: Any, type_: Optional[type]=None) -> str:
         return str(value)
 
 
-def deserialize_single_issue_field(field_name: str, value: Optional[Any],
-                                   tz: Optional[datetime.tzinfo]=None) -> Any:
+def deserialize_single_issue_field(field_name: str, value: Optional[Any], project: Optional['ProjectMeta']=None) -> Any:
     '''
     Use DataclassSerializer.deserialize_value to convert from string to the correct type.
 
     Params:
         field_name:  Name of the field Issue dataclass
         value:       Value to deserialize to field_name's type
-        tz:          Timezone to apply to dates/datetimes in `value`
+        project:     Properties of the project this issue belongs to
     '''
     if value is None:
         return
-
-    if tz is None:
-        tz = get_localzone()
 
     try:
         # late import to avoid circular dependency
         from jira_offline.models import Issue  # pylint: disable=import-outside-toplevel
 
-        # look up the type of Issue.field_name and deserialize string value to this type
-        return deserialize_value(get_field_by_name(Issue, field_name).type, value, tz)
+        typ = get_field_by_name(Issue, field_name).type
+
+        if not project:
+            return deserialize_value(typ, value, tz=get_localzone())
+        else:
+            return deserialize_value(typ, value, tz=project.timezone, project=project)
 
     except DeserializeError as e:
         raise DeserializeError(f'Failed parsing "{field_name}" with value "{value}" ({e})')

@@ -494,7 +494,7 @@ def test_create__patch_issue_from_dict__uses_reset_before_edit(mock_jira):
     )
 
     # Create an issue which already exists in a sprint
-    with mock.patch.dict(ISSUE_1, {'sprint': [{'id': 1, 'name': 'Sprint 1', 'active': True}]}):
+    with mock.patch.dict(ISSUE_1, {'sprint': 'Sprint 1'}):
         issue = Issue.deserialize(ISSUE_1, project)
 
     issue.commit = mock.Mock()

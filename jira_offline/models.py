@@ -30,8 +30,8 @@ from jira_offline.exceptions import (BadProjectMetaUri, UnableToCopyCustomCACert
 from jira_offline.utils import (deserialize_single_issue_field, get_dataclass_defaults_for_pandas,
                                 get_field_by_name, render_dataclass_field, render_issue_field,
                                 render_value)
-from jira_offline.utils.convert import (issue_to_jiraapi_update, parse_list, parse_sprint,
-                                        sprint_objects_to_names, sprint_name_to_sprint_object)
+from jira_offline.utils.convert import (issue_to_jiraapi_update, parse_sprint,
+                                        sprint_objects_to_names)
 from jira_offline.utils.serializer import DataclassSerializer, get_base_type
 
 # pylint: disable=too-many-instance-attributes
@@ -354,18 +354,9 @@ class Issue(DataclassSerializer):
     creator: Optional[str] = field(default=None, metadata={'readonly': True})
     description: Optional[str] = field(default=None)
     id: Optional[int] = field(default=None, metadata={'readonly': True})
-    fix_versions: Optional[set] = field(
-        default_factory=set,
-        metadata={'friendly': 'Fix Version', 'parse_func': parse_list},
-    )
-    components: Optional[set] = field(
-        default_factory=set,
-        metadata={'parse_func': parse_list},
-    )
-    labels: Optional[set] = field(
-        default_factory=set,
-        metadata={'parse_func': parse_list},
-    )
+    fix_versions: Optional[set] = field(default_factory=set, metadata={'friendly': 'Fix Version'})
+    components: Optional[set] = field(default_factory=set)
+    labels: Optional[set] = field(default_factory=set)
     priority: Optional[str] = field(default=None)
     reporter: Optional[str] = field(default=None)
     status: Optional[str] = field(default=None)
@@ -379,7 +370,6 @@ class Issue(DataclassSerializer):
     sprint: Optional[Set[Sprint]] = field(
         default=None,
         metadata={
-            'parse_func': sprint_name_to_sprint_object,
             'prerender_func': sprint_objects_to_names,
             'reset_before_edit': True,
             'sort_key': 'id',
@@ -516,6 +506,7 @@ class Issue(DataclassSerializer):
                 project.timezone if project else None,
                 ignore_missing=ignore_missing,
                 constructor_kwargs={'project': project},
+                project=project,
             )
         )
 
@@ -559,7 +550,9 @@ class Issue(DataclassSerializer):
                 else:
                     # Issue.original is a serialized copy of the Issue object, so a deserialize must
                     # happen if we're extracting a value from it.
-                    removed_value = deserialize_single_issue_field(field_name, self.original.get(field_name))
+                    removed_value = deserialize_single_issue_field(
+                        field_name, self.original.get(field_name), self.project,
+                    )
                     added_value = getattr(self, field_name)
 
                 if removed_value:

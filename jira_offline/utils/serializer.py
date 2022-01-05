@@ -4,7 +4,7 @@ import decimal
 import enum
 import functools
 from operator import itemgetter
-from typing import Any, cast, Dict, Hashable, List, Optional, Tuple, Union
+from typing import Any, cast, Dict, Hashable, List, Optional, Tuple, TYPE_CHECKING, Union
 import uuid
 
 import arrow
@@ -13,6 +13,9 @@ import typing_inspect
 from tzlocal import get_localzone
 
 from jira_offline.exceptions import DeserializeError, SerializeError
+
+if TYPE_CHECKING:
+    from jira_offline.models import ProjectMeta
 
 
 @functools.lru_cache()
@@ -89,7 +92,7 @@ def istype(type_: type, typ: Union[type, Tuple[type, ...]]) -> bool:
         return typ is base_type
 
 
-def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:
+def deserialize_value(type_, value: Any, tz: datetime.tzinfo, project: Optional['ProjectMeta']=None) -> Any:
     '''
     Utility function to deserialize `value` into `type_`. Used by DataclassSerializer.
 
@@ -103,13 +106,35 @@ def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:
     if value is None:
         return None
 
+    def parse_list(value: str) -> List[str]:
+        'Parse a comma-separated list string into a list of strings'
+        return [f.strip() for f in value.split(',')]
+
     # unwrap any typing.Optional to expose the underlying type
     type_ = unwrap_optional_type(type_)
 
     # extract the base type (eg. typing.Dict becomes dict)
     base_type = get_base_type(type_)
 
-    if dataclasses.is_dataclass(base_type):
+    if base_type.__name__ == 'Sprint':  # jira_offline.models.Sprint cannot be imported due to cyclic import
+        try:
+            # Try to deserialize string as a serialized Sprint
+            return base_type.deserialize(value)
+        except DeserializeError:
+            pass
+
+        if project is None:
+            raise DeserializeError('Project must be passed when deserializing sprint fields')
+        if not project.sprints:
+            raise DeserializeError(f'ProjectHasNoSprints: {project.key}')
+
+        try:
+            # Convert a sprint name into a Sprint object
+            return next(x for x in project.sprints.values() if x.name == value)
+        except StopIteration as e:
+            raise DeserializeError(f'UnknownSprintError: "{value}" on {project.key}') from e
+
+    elif dataclasses.is_dataclass(base_type):
         return base_type.deserialize(value)
 
     elif base_type is decimal.Decimal:
@@ -153,8 +178,8 @@ def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:
             try:
                 # deserialize keys and values individually, constructing a new dict
                 return {
-                    deserialize_value(generic_key_type, item_key, tz=tz):
-                        deserialize_value(generic_value_type, item_value, tz=tz)
+                    deserialize_value(generic_key_type, item_key, tz=tz, project=project):
+                        deserialize_value(generic_value_type, item_value, tz=tz, project=project)
                     for item_key, item_value in value.items()
                 }
             except AttributeError:
@@ -168,6 +193,9 @@ def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:
             # a python dict is JSON-compatible, so no additional conversion necessary
 
     elif base_type is list:
+        if isinstance(value, str):
+            value = parse_list(value)
+
         if typing_inspect.is_generic_type(type_):
             # additional error handling is required here as python will iterate a string as though
             # it's a list; causing subsequent code to produce incorrect results when a string is fed
@@ -181,7 +209,7 @@ def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:
             try:
                 # deserialize values individually into a new list
                 return [
-                    deserialize_value(generic_type, v, tz=tz) for v in value
+                    deserialize_value(generic_type, v, tz=tz, project=project) for v in value
                 ]
             except (AttributeError, TypeError):
                 raise DeserializeError(f'Failed serializing "{value}" to {type_}')
@@ -194,6 +222,9 @@ def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:
             return list(value)
 
     elif base_type is set:
+        if isinstance(value, str):
+            value = parse_list(value)
+
         if typing_inspect.is_generic_type(type_):
             # extract value type for the generic Set
             generic_type = type_.__args__[0]
@@ -201,7 +232,7 @@ def deserialize_value(type_, value: Any, tz: datetime.tzinfo) -> Any:
             try:
                 # deserialize values individually into a new set
                 return {
-                    deserialize_value(generic_type, v, tz=tz) for v in value
+                    deserialize_value(generic_type, v, tz=tz, project=project) for v in value
                 }
             except (AttributeError, TypeError):
                 raise DeserializeError(f'Failed serializing "{value}" to {type_}')
@@ -430,7 +461,7 @@ class SchemaClass(type):
 class DataclassSerializer(metaclass=SchemaClass):
     @classmethod
     def deserialize(cls, attrs: dict, tz: Optional[datetime.tzinfo]=None, ignore_missing: bool=False,
-                    constructor_kwargs: Optional[dict]=None) -> Any:
+                    constructor_kwargs: Optional[dict]=None, project: Optional['ProjectMeta']=None) -> Any:
         '''
         Deserialize JSON-compatible dict to dataclass.
 
@@ -473,7 +504,8 @@ class DataclassSerializer(metaclass=SchemaClass):
                 data[f.name] = deserialize_value(
                     f.type,
                     raw_value,
-                    tz=tz if tz else get_localzone()
+                    tz=tz if tz else get_localzone(),
+                    project=project,
                 )
 
             except DeserializeError as e:
