@@ -250,6 +250,9 @@ def deserialize_value(type_, value: Any, tz: datetime.tzinfo, project: Optional[
             raise DeserializeError('Only booleans can be deserialized to boolean type')
 
     else:
+        if base_type is str:
+            value = str(value)
+
         # handle enum
         enum_type = get_enum(base_type)
         if enum_type:
@@ -259,7 +262,6 @@ def deserialize_value(type_, value: Any, tz: datetime.tzinfo, project: Optional[
             except ValueError:
                 raise DeserializeError(f'Failed deserializing {value} to {type_}')
 
-    # no deserialize necessary
     return value
 
 
