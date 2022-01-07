@@ -93,7 +93,7 @@ class IssueFilter:
 
     def _build_mask(self, df: pd.DataFrame, filter_: dict) -> pd.Series:
         '''
-        Recurse the WHERE part of the result from `mozparse`, and build a logical Series mask to
+        Recurse the WHERE part of the result from `mozparse`, and build a logical pd.Series mask to
         filter the central DataFrame
 
         Params:
@@ -122,16 +122,16 @@ class IssueFilter:
                 )
             elif operator_ == 'lt':
                 # field less than 00:00:00 on value date
-                return dt
+                return operator.lt(df[column], dt)
             elif operator_ == 'gt':
                 # field greater than 23:59:59 on value date
-                return midnight(dt)
+                return operator.gt(df[column], midnight(dt))
             elif operator_ == 'gte':
                 # field greater than or equal to 00:00:00 on value date
-                return dt
+                return operator.ge(df[column], dt)
             elif operator_ == 'lte':
                 # field less than or equal to 23:59:59 on value date
-                return midnight(dt)
+                return operator.le(df[column], midnight(dt))
             elif operator_ == 'neq':
                 # field less than 00:00:00 on value date, OR greater than 23:59:59 on value date
                 return operator.or_(
@@ -150,7 +150,7 @@ class IssueFilter:
             # `field_` is the Issue attribute to filter on
             # `value` is the value to compare against
 
-            # Recursive filter builing for AND and OR
+            # Recursive filter building for AND and OR
             if operator_ == 'and':
                 return operator.and_(*[self._build_mask(df, cnd) for cnd in conditions])
             elif operator_ == 'or':
@@ -188,9 +188,9 @@ class IssueFilter:
                     dt = arrow.get(value).replace(tzinfo=self.tz).datetime
 
                     if (dt.hour, dt.minute, dt.second) == (0, 0, 0):
-                        value = handle_date_without_time(operator_, dt)
-                        if isinstance(value, pd.Series):
-                            return value
+                        # Handle the special case where a date is passed as a filter without the
+                        # time component.
+                        return handle_date_without_time(operator_, dt)
                     else:
                         value = dt
 
