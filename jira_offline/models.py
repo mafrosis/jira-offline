@@ -392,7 +392,7 @@ class Issue(DataclassSerializer):
     )
 
     # Patch of current Issue to dict last seen on Jira server
-    modified: Optional[list] = field(default=None)
+    modified: Optional[list] = field(default=None, metadata={'readonly': True})
 
     # List of transitions available for this issue
     transitions: Optional[Dict[str, int]] = field(default=None, metadata={'readonly': True})
