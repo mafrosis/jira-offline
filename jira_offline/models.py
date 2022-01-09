@@ -499,6 +499,8 @@ class Issue(DataclassSerializer):
         '''
         # deserialize supplied dict into an Issue object
         # use `cast` to cover the mypy typecheck errors the arise from polymorphism
+        attrs['project_id'] = project.id
+
         return cast(
             Issue,
             super().deserialize(

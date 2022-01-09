@@ -201,11 +201,13 @@ def test_parse__primitive_list__set(mock_jira, project, operator, search_terms, 
     ('in', '"Story Done", Egg', 2),
     ('in', 'Egg', 1),
     ('in', '"Story Done"', 1),
+    ('in', 'Egg, Missing', 1),
     ('in', 'Missing', 0),
 
     ('not in', '"Story Done", Egg', 0),
     ('not in', 'Egg', 1),
     ('not in', '"Story Done"', 1),
+    ('not in', 'Egg, Missing', 1),
     ('not in', 'Missing', 2),
 ])
 def test_parse__primitive_list__string(mock_jira, project, operator, search_terms, count):

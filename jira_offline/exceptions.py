@@ -273,7 +273,14 @@ class FilterMozParseFailed(BaseAppException):
     'Invalid SQL WHERE clause passed as filter string'
 
 class FilterQueryParseFailed(BaseAppException):
-    'Failed processing filter string'
+    'Failed processing filter string: {}'
+
+    def __init__(self, excp=None):
+        self.message = str(excp) or ''
+        super().__init__(self.message)
+
+    def __str__(self):
+        return self.__doc__.format(self.message)
 
 class FilterQueryEscapingError(FilterQueryParseFailed):
     'Ensure your whole filter string is not double-escaped'

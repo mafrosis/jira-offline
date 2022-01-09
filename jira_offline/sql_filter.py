@@ -3,8 +3,9 @@ Functions for parsing SQL where-clause syntax, and filtering the Pandas DataFram
 '''
 from dataclasses import dataclass, field
 import datetime
+import logging
 import operator
-from typing import cast, Hashable, Optional, Union
+from typing import cast, Hashable, List, Optional, TYPE_CHECKING, Union
 import warnings
 
 import arrow
@@ -14,12 +15,18 @@ from mo_sql_parsing import parse as mozparse
 import pandas as pd
 from tzlocal import get_localzone
 
-from jira_offline.exceptions import (FieldNotOnModelClass, FilterMozParseFailed,
+from jira_offline.exceptions import (DeserializeError, FieldNotOnModelClass, FilterMozParseFailed,
                                      FilterUnknownOperatorException, FilterUnknownFieldException,
                                      FilterQueryEscapingError, FilterQueryParseFailed)
 from jira_offline.models import Issue
-from jira_offline.utils import get_field_by_name
-from jira_offline.utils.serializer import istype
+from jira_offline.utils import deserialize_single_issue_field, find_project, get_field_by_name
+from jira_offline.utils.serializer import istype, unwrap_optional_type
+
+if TYPE_CHECKING:
+    from jira_offline.models import ProjectMeta  # pylint: disable=cyclic-import
+
+
+logger = logging.getLogger('jira')
 
 
 @dataclass
@@ -36,6 +43,7 @@ class IssueFilter:
     _where: Optional[dict] = field(default=None, init=False)
     _tz: Optional[datetime.tzinfo] = field(default=None, init=False)
     _pandas_mask: Optional[pd.Series] = field(default=None, init=False)
+    _query_project: Optional['ProjectMeta'] = field(default=None, init=False)
 
 
     @property
@@ -82,11 +90,25 @@ class IssueFilter:
         if self._where is None:
             return jira._df  # pylint: disable=protected-access
 
+        def gather_column_values(where: dict):
+            'Recurse the where structure extracting all the queried columns and values'
+            for v in where.values():
+                if isinstance(v, list) and isinstance(v[0], dict):
+                    for x in v:
+                        yield from gather_column_values(x)
+                else:
+                    yield v[0], unpack_literal(v[1])
+
+        queried_columns = dict(gather_column_values(self._where))
+
+        if 'project' in queried_columns:
+            self._query_project = find_project(jira, queried_columns['project'])
+
         if self._pandas_mask is None:
             try:
                 self._pandas_mask = self._build_mask(jira._df, self._where)  # pylint: disable=protected-access
-            except (KeyError, IndexError, ValueError, TypeError) as e:
-                raise FilterQueryParseFailed from e
+            except (KeyError, IndexError, ValueError, TypeError, DeserializeError) as e:
+                raise FilterQueryParseFailed(e)
 
         return jira._df[self._pandas_mask]  # pylint: disable=protected-access
 
@@ -100,12 +122,6 @@ class IssueFilter:
             df:       DataFrame to use for creating masks
             filter_:  Dict object created by `mozparse` containing each part of the filter query
         '''
-        def unpack_condition(obj):
-            if isinstance(obj, dict) and obj.get('literal'):
-                return obj['literal']
-            else:
-                return obj
-
         def midnight(dt: datetime.datetime) -> datetime.datetime:
             return dt + datetime.timedelta(hours=23, minutes=59, seconds=59)
 
@@ -144,7 +160,7 @@ class IssueFilter:
 
         for operator_, conditions in filter_.items():
             field_ = conditions[0]
-            value = unpack_condition(conditions[1])
+            value = unpack_literal(conditions[1])
 
             # `operator_` is the comparator, eg. =, !=, AND etc
             # `field_` is the Issue attribute to filter on
@@ -165,8 +181,9 @@ class IssueFilter:
                     f = get_field_by_name(Issue, conditions[0])
                     column = f.name
 
+                    # Store the column's type
                     # Cast for mypy as istype uses @functools.lru_cache
-                    typ = cast(Hashable, f.type)
+                    typ = unwrap_optional_type(cast(Hashable, f.type))
 
                 except FieldNotOnModelClass:
                     # A ValueError is raised by `get_field_by_name`, when the supplied field doesn't
@@ -177,11 +194,26 @@ class IssueFilter:
                     else:
                         raise FilterUnknownFieldException(conditions[0])
 
-                if istype(typ, int):
-                    # Coerce supplied strings to int if more appropriate
-                    value = int(value)
+                if operator_ in ('in', 'nin'):
+                    # Support single and multiple search terms for IN clause
+                    # mozparse returns a single value for a IN clause of length=1
+                    if not isinstance(value, (set, list)):
+                        value = [value]
+                    elif isinstance(value, set):
+                        value = list(value)
 
-                elif istype(typ, (datetime.datetime, datetime.date)):
+                    # Deserialize all IN or NOT IN query values as List
+                    if typ is str:
+                        typ = List[typ]  # type: ignore[valid-type]
+
+                value = deserialize_single_issue_field(column, value, self._query_project, type_override=typ)
+
+                if operator_ in ('in', 'nin'):
+                    # Convert int/float search terms to str, which is how they're stored in the
+                    # DataFrame
+                    value = [str(x) if isinstance(x, (int, float)) else x for x in value]
+
+                if istype(typ, (datetime.datetime, datetime.date)):
                     # Timezone adjust for query datetimes
                     # Dates are stored in UTC in the Jira DataFrame, but will be passed as the user's local
                     # timezone on the CLI. Alternatively users can pass a specific timezone via --tz.
@@ -212,9 +244,6 @@ class IssueFilter:
                 return df[column].str.contains(value)
 
             elif operator_ in ('in', 'nin'):
-                if not isinstance(value, list):
-                    value = [value]
-
                 # Probably correct solution here is to use Series.isin:
                 #   df[column].isin(value)
                 # However, currently that is broken:
@@ -226,10 +255,10 @@ class IssueFilter:
 
                     # IN or NOT IN
                     if operator_ == 'in':
-                        in_masks = [df[column].apply(lambda x, y=item: str(y) in x) for item in value]
+                        in_masks = [df[column].apply(lambda x, y=item: y in x) for item in value]
                         logical_operator = operator.or_
                     else:
-                        in_masks = [df[column].apply(lambda x, y=item: str(y) not in x) for item in value]
+                        in_masks = [df[column].apply(lambda x, y=item: y not in x) for item in value]
                         logical_operator = operator.and_
 
                 # Combine multiple in-list masks with a logical OR
@@ -246,3 +275,10 @@ class IssueFilter:
 
             else:
                 raise FilterUnknownOperatorException(operator_)
+
+
+def unpack_literal(obj):
+    if isinstance(obj, dict) and obj.get('literal'):
+        return obj['literal']
+    else:
+        return obj

@@ -224,14 +224,18 @@ def render_value(value: Any, type_: Optional[type]=None) -> str:
         return str(value)
 
 
-def deserialize_single_issue_field(field_name: str, value: Optional[Any], project: Optional['ProjectMeta']=None) -> Any:
+def deserialize_single_issue_field(
+        field_name: str, value: Optional[Any], project: Optional['ProjectMeta']=None,
+        type_override: Optional[type]=None
+    ) -> Any:
     '''
     Use DataclassSerializer.deserialize_value to convert from string to the correct type.
 
     Params:
-        field_name:  Name of the field Issue dataclass
-        value:       Value to deserialize to field_name's type
-        project:     Properties of the project this issue belongs to
+        field_name:     Name of the field Issue dataclass
+        value:          Value to deserialize to field_name's type
+        project:        Properties of the project this issue belongs to
+        type_override:  Deserialize to a different type than specified on the Issue model field
     '''
     if value is None:
         return
@@ -240,7 +244,10 @@ def deserialize_single_issue_field(field_name: str, value: Optional[Any], projec
         # late import to avoid circular dependency
         from jira_offline.models import Issue  # pylint: disable=import-outside-toplevel
 
-        typ = get_field_by_name(Issue, field_name).type
+        if type_override:
+            typ = type_override
+        else:
+            typ = get_field_by_name(Issue, field_name).type
 
         if not project:
             return deserialize_value(typ, value, tz=get_localzone())
