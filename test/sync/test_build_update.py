@@ -362,7 +362,7 @@ def test_build_update__base_modified_and_updated_modified_to_empty_string(projec
     assert update_obj.merged_issue.assignee is None
 
 
-@pytest.mark.parametrize('value_to_append', [0, 2])
+@pytest.mark.parametrize('value_to_append', ['0', '2'])
 def test_build_update__base_unmodified_and_updated_modified_to_append_to_set(project, value_to_append):
     '''
     Ensure an unmodified Issue can have a set field appended when it already has a value.
@@ -373,7 +373,7 @@ def test_build_update__base_unmodified_and_updated_modified_to_append_to_set(pro
     order on the resulting set (https://stackoverflow.com/a/51949325/425050)
     '''
     # Create test fixtures with starting Issue.fix_version == set(1)
-    with mock.patch.dict(ISSUE_1, {'fix_versions': {1}}):
+    with mock.patch.dict(ISSUE_1, {'fix_versions': {'1'}}):
         base_issue = Issue.deserialize(ISSUE_1, project)
         updated_issue = Issue.deserialize(ISSUE_1, project)
 
@@ -384,10 +384,10 @@ def test_build_update__base_unmodified_and_updated_modified_to_append_to_set(pro
 
     assert update_obj.modified == {'fix_versions'}
     assert not update_obj.conflicts
-    assert update_obj.merged_issue.fix_versions == {1, value_to_append}
+    assert update_obj.merged_issue.fix_versions == {'1', value_to_append}
 
 
-@pytest.mark.parametrize('value_to_append', [0, 2])
+@pytest.mark.parametrize('value_to_append', ['0', '2'])
 def test_build_update__base_modified_and_updated_modified_to_append_to_set(project, value_to_append):
     '''
     Ensure an unmodified Issue can have a set field appended when it already has a value.
@@ -398,7 +398,7 @@ def test_build_update__base_modified_and_updated_modified_to_append_to_set(proje
     order on the resulting set (https://stackoverflow.com/a/51949325/425050)
     '''
     # Create test fixtures with starting Issue.fix_version == set(1)
-    with mock.patch.dict(ISSUE_1, {'fix_versions': {1}}):
+    with mock.patch.dict(ISSUE_1, {'fix_versions': {'1'}}):
         base_issue = Issue.deserialize(ISSUE_1, project)
         updated_issue = Issue.deserialize(ISSUE_1, project)
 
@@ -409,4 +409,4 @@ def test_build_update__base_modified_and_updated_modified_to_append_to_set(proje
 
     assert update_obj.modified == {'fix_versions'}
     assert not update_obj.conflicts
-    assert update_obj.merged_issue.fix_versions == {1, value_to_append}
+    assert update_obj.merged_issue.fix_versions == {'1', value_to_append}

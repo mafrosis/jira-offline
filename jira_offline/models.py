@@ -354,9 +354,9 @@ class Issue(DataclassSerializer):
     creator: Optional[str] = field(default=None, metadata={'readonly': True})
     description: Optional[str] = field(default=None)
     id: Optional[int] = field(default=None, metadata={'readonly': True})
-    fix_versions: Optional[set] = field(default_factory=set, metadata={'friendly': 'Fix Version'})
-    components: Optional[set] = field(default_factory=set)
-    labels: Optional[set] = field(default_factory=set)
+    fix_versions: Optional[Set[str]] = field(default_factory=set, metadata={'friendly': 'Fix Version'})  # type: ignore[assignment]
+    components: Optional[Set[str]] = field(default_factory=set)  # type: ignore[assignment]
+    labels: Optional[Set[str]] = field(default_factory=set)  # type: ignore[assignment]
     priority: Optional[str] = field(default=None)
     reporter: Optional[str] = field(default=None)
     status: Optional[str] = field(default=None)
