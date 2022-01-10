@@ -7,7 +7,7 @@ from unittest import mock
 import pytest
 
 from fixtures import ISSUE_1, ISSUE_NEW, JIRAAPI_OBJECT
-from jira_offline.create import patch_issue_from_dict
+from jira_offline.edit import patch_issue_from_dict
 from jira_offline.models import CustomFields, Issue, ProjectMeta, Sprint
 from jira_offline.utils.convert import issue_to_jiraapi_update, jiraapi_object_to_issue, parse_sprint
 

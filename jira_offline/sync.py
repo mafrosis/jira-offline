@@ -17,8 +17,8 @@ from tqdm import tqdm
 
 from jira_offline.exceptions import (EditorFieldParseFailed, FailedPullingIssues,
                                      FailedPullingProjectMeta, JiraApiError, JiraUnavailable)
+from jira_offline.edit import patch_issue_from_dict
 from jira_offline.jira import jira
-from jira_offline.create import patch_issue_from_dict
 from jira_offline.models import Issue, IssueUpdate, ProjectMeta
 from jira_offline.utils import critical_logger
 from jira_offline.utils.api import get as api_get
