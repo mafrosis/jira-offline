@@ -283,6 +283,7 @@ def patch_issue_from_dict(issue: Issue, attrs: dict, strict: bool=False) -> bool
         strict:  When true, raise exceptions on error instead of just logging
     '''
     patched = False
+    remove = False
 
     # Ignore unused customfields
     unused_customfields = get_unused_customfields(issue.project)
@@ -301,6 +302,11 @@ def patch_issue_from_dict(issue: Issue, attrs: dict, strict: bool=False) -> bool
             # Ignore unused customfields
             logger.debug('%s: Skipped field "%s" as not in use on this project', issue.key, field_name)
             continue
+
+        if field_name.startswith('remove_'):
+            # Special case for removing a value from a set/list type field
+            field_name = field_name[7:]
+            remove = True
 
         try:
             # Extract type from Issue dataclass field
@@ -352,15 +358,25 @@ def patch_issue_from_dict(issue: Issue, attrs: dict, strict: bool=False) -> bool
                 # Special case where a string is passed for a set field
                 if getattr(issue, field_name) is None:
                     setattr(issue, field_name, set())
+
                 if not isinstance(value, (set, list)):
                     value = [value]
-                setattr(issue, field_name, getattr(issue, field_name) | set(value))
+
+                if remove is True:
+                    setattr(issue, field_name, getattr(issue, field_name) ^ set(value))
+                else:
+                    setattr(issue, field_name, getattr(issue, field_name) | set(value))
 
             elif istype(typ, list):
                 # Special case where a string is passed for a list field
                 if getattr(issue, field_name) is None:
                     setattr(issue, field_name, [])
-                getattr(issue, field_name).append(value)
+
+                if remove is True:
+                    # Remove all instances of value from the list
+                    setattr(issue, field_name, [x for x in getattr(issue, field_name) if x != value])
+                else:
+                    getattr(issue, field_name).append(value)
 
             elif istype(typ, str) and value == '':
                 # When setting an Issue attribute to empty string, map it to None

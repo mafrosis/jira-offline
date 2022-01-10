@@ -384,3 +384,29 @@ class CustomfieldsAsOptions(click.Command):
             )
 
         super().__init__(*args, **kwargs)
+
+
+class RemoveableIssueFieldOptions(click.Command):
+    '''
+    Add list/set type Issue fields as --remove-* optional CLI parameters
+    '''
+    def __init__(self, *args, **kwargs):
+        for f in iter_issue_fields_by_type(set, list):
+            if f.metadata.get('readonly'):
+                continue
+
+            field_name = f.name.replace('_', '-')
+
+            # Extract help text if defined on Issue class field
+            help_text = f'Remove given {field_name} from an issue'
+
+            kwargs['params'].insert(
+                len(kwargs['params'])-3,  # insert above global_options
+                ValidCustomfield([f'--remove-{field_name}'], help=help_text),
+            )
+
+        super().__init__(*args, **kwargs)
+
+
+class EditClickCommand(CustomfieldsAsOptions, RemoveableIssueFieldOptions):
+    pass

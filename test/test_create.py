@@ -404,6 +404,30 @@ def test_create__patch_issue_from_dict__set_set(mock_jira, project, param):
     assert patched is True
 
 
+@pytest.mark.parametrize('param', [
+    ('bacon'),
+    ('egg,bacon'),
+])
+def test_create__patch_issue_from_dict__remove_from_set(mock_jira, project, param):
+    '''
+    Ensure patch will remove one or many from a set
+    '''
+    with mock.patch.dict(ISSUE_1, {'labels': set(param.split(','))}):
+        issue = Issue.deserialize(ISSUE_1, project)
+
+    issue.commit = mock.Mock()
+
+    assert issue.labels == set(param.split(','))
+
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
+        patched = patch_issue_from_dict(issue, {'remove_labels': param})
+
+    assert issue.labels == set()
+    assert issue.commit.called
+    assert patched is True
+
+
 @pytest.mark.skip(reason='Will succeed when there is a list-type field on Issue class')
 @pytest.mark.parametrize('param', [
     ('bacon'),
@@ -426,6 +450,31 @@ def test_create__patch_issue_from_dict__set_list(mock_jira, project, param):
         patched = patch_issue_from_dict(issue, {'labels': param})
 
     assert issue.labels == ['egg', 'bacon']
+    assert issue.commit.called
+    assert patched is True
+
+
+@pytest.mark.skip(reason='Will succeed when there is a list-type field on Issue class')
+@pytest.mark.parametrize('param', [
+    ('bacon'),
+    ('egg,bacon'),
+])
+def test_create__patch_issue_from_dict__remove_from_list(mock_jira, project, param):
+    '''
+    Ensure patch will remove one or many from a list
+    '''
+    with mock.patch.dict(ISSUE_1, {'labels': param.split(',')}):
+        issue = Issue.deserialize(ISSUE_1, project)
+
+    issue.commit = mock.Mock()
+
+    assert issue.labels == param.split(',')
+
+    with mock.patch('jira_offline.create.jira', mock_jira), \
+            mock.patch('jira_offline.jira.jira', mock_jira):
+        patched = patch_issue_from_dict(issue, {'remove_labels': param})
+
+    assert issue.labels == []
     assert issue.commit.called
     assert patched is True
 

@@ -220,7 +220,9 @@ def test_issue_to_jiraapi_update__outputs_sprint_as_string(mock_jira):
 
     # Create an issue fixture and add it to a sprint
     issue = Issue.deserialize(ISSUE_1, project)
-    patch_issue_from_dict(issue, {'sprint': 'Sprint 1'})
+
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        patch_issue_from_dict(issue, {'sprint': 'Sprint 1'})
 
     issue_dict = issue_to_jiraapi_update(issue, {'sprint'})
 
@@ -246,7 +248,9 @@ def test_issue_to_jiraapi_update__handles_sprint_on_new_issues(mock_jira):
 
     # Create an issue fixture and add it to a sprint
     issue = Issue.deserialize(ISSUE_1, project)
-    patch_issue_from_dict(issue, {'sprint': 'Sprint 1'})
+
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        patch_issue_from_dict(issue, {'sprint': 'Sprint 1'})
 
     issue_dict = issue_to_jiraapi_update(issue, {'sprint'})
 
@@ -278,7 +282,8 @@ def test_issue_to_jiraapi_update__outputs_only_sprint_diff(mock_jira, issue_fixt
     # Create an issue which already exists in a sprint, and then add it to another sprint
     with mock.patch.dict(issue_fixture, {'sprint': 'Sprint 1'}):
         issue = Issue.deserialize(issue_fixture, project)
-        issue.commit = mock.Mock()
+
+    with mock.patch('jira_offline.jira.jira', mock_jira):
         patch_issue_from_dict(issue, {'sprint': 'Sprint 2'})
 
     issue_dict = issue_to_jiraapi_update(issue, {'sprint'})
@@ -311,8 +316,9 @@ def test_issue_to_jiraapi_update__outputs_only_sprint_diff_2(mock_jira, issue_fi
 
     # Create an issue without a sprint, and add it to a sprint
     issue = Issue.deserialize(issue_fixture, project)
-    issue.commit = mock.Mock()
-    patch_issue_from_dict(issue, {'sprint': 'Sprint 2'})
+
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        patch_issue_from_dict(issue, {'sprint': 'Sprint 2'})
 
     issue_dict = issue_to_jiraapi_update(issue, {'sprint'})
 

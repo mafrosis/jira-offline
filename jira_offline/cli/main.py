@@ -26,8 +26,8 @@ from jira_offline.jira import jira
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.sync import pull_issues, pull_single_project, push_issues
 from jira_offline.utils import find_project
-from jira_offline.utils.cli import (CustomfieldsAsOptions, parse_editor_result, prepare_df,
-                                    print_diff, print_list)
+from jira_offline.utils.cli import (CustomfieldsAsOptions, EditClickCommand, parse_editor_result,
+                                    prepare_df, print_diff, print_list)
 
 
 logger = logging.getLogger('jira')
@@ -382,7 +382,7 @@ def cli_new(_, projectkey: str, issuetype: str, summary: str, as_json: bool=Fals
     click.echo(output)
 
 
-@click.command(name='edit', cls=CustomfieldsAsOptions, no_args_is_help=True)
+@click.command(name='edit', cls=EditClickCommand, no_args_is_help=True)
 @click.argument('key')
 @click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
 @click.option('--editor', is_flag=True, help='Free edit all issue fields in your shell editor')
