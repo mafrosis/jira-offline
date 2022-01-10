@@ -3,8 +3,8 @@ from unittest import mock
 import pytest
 
 from fixtures import ISSUE_1
-from jira_offline.exceptions import FilterQueryEscapingError
-from jira_offline.models import Issue, ProjectMeta
+from jira_offline.exceptions import FilterQueryEscapingError, FilterQueryParseFailed
+from jira_offline.models import CustomFields, Issue, ProjectMeta, Sprint
 from jira_offline.sql_filter import IssueFilter
 
 
@@ -230,6 +230,80 @@ def test_parse__primitive_list__string(mock_jira, project, operator, search_term
         df = filt.apply()
 
     assert len(df) == count
+
+
+@pytest.mark.parametrize('operator,search_terms,count', [
+    ('in', '"Sprint 1", "Sprint 2"', 2),
+    ('in', '"Sprint 1"', 1),
+    ('in', '"Sprint 2"', 1),
+
+    ('not in', '"Sprint 1", "Sprint 2"', 0),
+    ('not in', '"Sprint 1"', 1),
+    ('not in', '"Sprint 2"', 1),
+])
+def test_parse__primitive_list__sprint(mock_jira, operator, search_terms, count):
+    '''
+    Test sprint string IN/NOT IN a list of sprint objects.
+
+    This is a special case as sprint is stored in the DataFrame as a list of objects, not a simple list of string.
+    '''
+    # Setup the project configuration with sprint customfield, and two sprints on the project
+    project = ProjectMeta(
+        key='TEST',
+        jira_id='10000',
+        customfields=CustomFields(sprint='customfield_10300'),
+        sprints={
+            1: Sprint(id=1, name='Sprint 1', active=True),
+            2: Sprint(id=2, name='Sprint 2', active=False),
+        },
+    )
+    mock_jira.config.projects = {project.id: project}
+
+    # Setup test fixtures to target in the filter query
+    with mock.patch.dict(ISSUE_1, {'sprint': 'Sprint 1'}):
+        mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
+
+    with mock.patch.dict(ISSUE_1, {'sprint': 'Sprint 2', 'key': 'FILT-1'}):
+        mock_jira['FILT-1'] = Issue.deserialize(ISSUE_1, project)
+
+    assert len(mock_jira) == 2
+
+    filt = IssueFilter()
+    filt.set(f"sprint {operator} ({search_terms}) AND project = TEST")
+
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        df = filt.apply()
+
+    assert len(df) == count
+
+
+def test_parse__primitive_list__sprint_error(mock_jira):
+    '''
+    Test error raised when sprint is not valid for the supplied project.
+    '''
+    # Setup the project configuration with sprint customfield, and two sprints on the project
+    project = ProjectMeta(
+        key='TEST',
+        jira_id='10000',
+        customfields=CustomFields(sprint='customfield_10300'),
+        sprints={
+            1: Sprint(id=1, name='Sprint 1', active=True),
+        },
+    )
+    mock_jira.config.projects = {project.id: project}
+
+    # Setup test fixtures to target in the filter query
+    with mock.patch.dict(ISSUE_1, {'sprint': 'Sprint 1'}):
+        mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
+
+    assert len(mock_jira) == 1
+
+    filt = IssueFilter()
+    filt.set("sprint IN (BadSprint) AND project = TEST")
+
+    with mock.patch('jira_offline.jira.jira', mock_jira):
+        with pytest.raises(FilterQueryParseFailed):
+            filt.apply()
 
 
 @pytest.mark.parametrize('where,count', [

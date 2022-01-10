@@ -17,7 +17,8 @@ from tzlocal import get_localzone
 
 from jira_offline.exceptions import (DeserializeError, FieldNotOnModelClass, FilterMozParseFailed,
                                      FilterUnknownOperatorException, FilterUnknownFieldException,
-                                     FilterQueryEscapingError, FilterQueryParseFailed)
+                                     FilterQueryEscapingError, FilterQueryParseFailed,
+                                     MustFilterOnProjectWithSprint)
 from jira_offline.models import Issue
 from jira_offline.utils import deserialize_single_issue_field, find_project, get_field_by_name
 from jira_offline.utils.serializer import istype, unwrap_optional_type
@@ -103,6 +104,10 @@ class IssueFilter:
 
         if 'project' in queried_columns:
             self._query_project = find_project(jira, queried_columns['project'])
+
+        elif 'sprint' in queried_columns:
+            # Attempting to filter on sprint, without specifying the project
+            raise MustFilterOnProjectWithSprint
 
         if self._pandas_mask is None:
             try:
@@ -209,9 +214,13 @@ class IssueFilter:
                 value = deserialize_single_issue_field(column, value, self._query_project, type_override=typ)
 
                 if operator_ in ('in', 'nin'):
-                    # Convert int/float search terms to str, which is how they're stored in the
-                    # DataFrame
-                    value = [str(x) if isinstance(x, (int, float)) else x for x in value]
+                    if column == 'sprint':
+                        # An issue's Sprints are stored as serialized objects
+                        value = [x.serialize() for x in value]
+                    else:
+                        # Convert int/float search terms to str, which is how they're stored in the
+                        # DataFrame
+                        value = [str(x) if isinstance(x, (int, float)) else x for x in value]
 
                 if istype(typ, (datetime.datetime, datetime.date)):
                     # Timezone adjust for query datetimes

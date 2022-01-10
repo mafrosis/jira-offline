@@ -341,3 +341,6 @@ class FieldNotOnModelClass(BaseAppException):
 
     def __str__(self):
         return self.__doc__.format(self.field)
+
+class MustFilterOnProjectWithSprint(BaseAppException):
+    'You must filter on project when also filtering on sprint'
