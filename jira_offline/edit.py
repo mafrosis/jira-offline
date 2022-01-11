@@ -6,11 +6,15 @@ import functools
 import logging
 from typing import cast, Hashable, Optional, Set
 
+import click
+from tabulate import tabulate
+
 from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce,
-                                     FieldNotOnModelClass)
+                                     EditorFieldParseFailed, EditorNoChanges, FieldNotOnModelClass)
 from jira_offline.jira import jira
 from jira_offline.models import CustomFields, Issue, ProjectMeta
 from jira_offline.utils import deserialize_single_issue_field, get_field_by_name
+from jira_offline.utils.cli import parse_editor_result
 from jira_offline.utils.serializer import DeserializeError, istype
 
 
@@ -200,3 +204,47 @@ def patch_issue_from_dict(issue: Issue, attrs: dict, strict: bool=False) -> bool
         issue.commit()
 
     return patched
+
+
+def edit_issue(issue: Issue, kwargs: dict, editor: bool):
+    '''
+    Patch the issue with fields from the CLI or editor
+    '''
+    if editor:
+        retry = 1
+        while retry <= 3:
+            try:
+                # Display interactively in $EDITOR
+                editor_result_raw = click.edit(tabulate(issue.render()))
+                if not editor_result_raw:
+                    raise EditorNoChanges
+
+                # Parse the editor output into a dict
+                patch_dict = parse_editor_result(issue, editor_result_raw)
+                break
+
+            except (EditorFieldParseFailed, EditorNoChanges) as e:
+                logger.error(e)
+
+                if not click.confirm(f'Try again?  (retry {retry} of 3)'):
+                    return
+            finally:
+                retry += 1
+    else:
+        # Validate epic parameters
+        if issue.issuetype == 'Epic':
+            if kwargs.get('epic_link'):
+                click.echo('Parameter --epic-link is ignored when modifing an Epic', err=True)
+                del kwargs['epic_link']
+        else:
+            if kwargs.get('epic_name'):
+                click.echo('Parameter --epic-name is ignored for anything other than an Epic', err=True)
+
+        # Ensure sprint field is valid for the project
+        if 'sprint' in kwargs and not issue.project.sprints:
+            click.echo(f'Project {issue.project.key} has no sprints, ignoring --sprint parameter', err=True)
+            del kwargs['sprint']
+
+        patch_dict = kwargs
+
+    patch_issue_from_dict(issue, patch_dict)

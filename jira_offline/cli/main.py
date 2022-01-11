@@ -12,23 +12,22 @@ from typing import cast, Optional, Set, Tuple, Union
 
 import click
 from click.shell_completion import shell_complete  # pylint: disable=no-name-in-module
-from tabulate import tabulate
 
 from jira_offline.auth import authenticate
+from jira_offline.edit import edit_issue
 from jira_offline.cli.params import filter_option, force_option, global_options
 from jira_offline.cli.project import cli_project_list
 from jira_offline.config import get_default_user_config_filepath
 from jira_offline.config.user_config import write_default_user_config
 from jira_offline.create import create_issue, import_csv, import_jsonlines
-from jira_offline.edit import patch_issue_from_dict
-from jira_offline.exceptions import (BadProjectMetaUri, EditorFieldParseFailed, EditorNoChanges,
-                                     FailedPullingProjectMeta, JiraApiError, NoInputDuringImport)
+from jira_offline.exceptions import (BadProjectMetaUri, FailedPullingProjectMeta, JiraApiError,
+                                     NoInputDuringImport)
 from jira_offline.jira import jira
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.sync import pull_issues, pull_single_project, push_issues
 from jira_offline.utils import find_project
-from jira_offline.utils.cli import (CustomfieldsAsOptions, EditClickCommand, parse_editor_result,
-                                    prepare_df, print_diff, print_list)
+from jira_offline.utils.cli import (CustomfieldsAsOptions, EditClickCommand, prepare_df, print_diff,
+                                    print_list)
 
 
 logger = logging.getLogger('jira')
@@ -411,45 +410,7 @@ def cli_edit(_, key: str, as_json: bool=False, editor: bool=False, **kwargs):
 
     issue = jira[key]
 
-    if editor:
-        retry = 1
-        while retry <= 3:
-            try:
-                # Display interactively in $EDITOR
-                editor_result_raw = click.edit(tabulate(issue.render()))
-                if not editor_result_raw:
-                    raise EditorNoChanges
-
-                # Parse the editor output into a dict
-                patch_dict = parse_editor_result(issue, editor_result_raw)
-                break
-
-            except (EditorFieldParseFailed, EditorNoChanges) as e:
-                logger.error(e)
-
-                if not click.confirm(f'Try again?  (retry {retry} of 3)'):
-                    return
-            finally:
-                retry += 1
-    else:
-        # Validate epic parameters
-        if issue.issuetype == 'Epic':
-            if kwargs.get('epic_link'):
-                click.echo('Parameter --epic-link is ignored when modifing an Epic', err=True)
-                del kwargs['epic_link']
-        else:
-            if kwargs.get('epic_name'):
-                click.echo('Parameter --epic-name is ignored for anything other than an Epic', err=True)
-
-        # Validate sprint field is valid for the project
-        if 'sprint' in kwargs and not issue.project.sprints:
-            click.echo(f'Project {issue.project.key} has no sprints, ignoring --sprint parameter', err=True)
-            del kwargs['sprint']
-
-        patch_dict = kwargs
-
-    # Patch the issue with fields from the CLI or editor
-    patch_issue_from_dict(issue, patch_dict)
+    edit_issue(issue, kwargs, editor)
 
     jira.write_issues()
 
