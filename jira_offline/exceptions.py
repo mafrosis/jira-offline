@@ -328,10 +328,6 @@ class InvalidLsFieldInConfig(BaseAppException):
         return self.__doc__.format(self.field)
 
 
-class BadParamsPassedToValidCustomfield(BaseAppException):
-    'ValidCustomfield constructor must be passed `key` or `projectkey`'
-
-
 class FieldNotOnModelClass(BaseAppException):
     '{} does not exist!'
 

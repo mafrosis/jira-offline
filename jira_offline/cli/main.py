@@ -8,7 +8,7 @@ import io
 import logging
 import os
 from pathlib import Path
-from typing import cast, Optional, Set, Tuple, Union
+from typing import cast, Iterable, Optional, Set, Tuple, Union
 
 import click
 from click.shell_completion import shell_complete  # pylint: disable=no-name-in-module
@@ -383,7 +383,7 @@ def cli_new(_, projectkey: str, issuetype: str, summary: str, as_json: bool=Fals
 
 
 @click.command(name='edit', cls=EditClickCommand, no_args_is_help=True)
-@click.argument('key')
+@click.argument('key', required=False)
 @click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
 @click.option('--editor', is_flag=True, help='Free edit all issue fields in your shell editor')
 @click.option('--assignee', help='Username of person assigned to the issue')
@@ -396,30 +396,41 @@ def cli_new(_, projectkey: str, issuetype: str, summary: str, as_json: bool=Fals
 @click.option('--status', help='Valid status for the issue\'s type')
 @click.pass_context
 @global_options
+@filter_option
 def cli_edit(_, key: str, as_json: bool=False, editor: bool=False, **kwargs):
     '''
-    Edit one or more fields on an issue.
+    Edit one or more fields on one or more issues.
 
-    KEY  Jira issue key
+    KEY  Jira issue key (optional if --filter is supplied)
     '''
-    jira.load_issues()
-
-    if key not in jira:
-        click.echo('Unknown issue key', err=True)
+    if editor and jira.filter.is_set:
+        click.echo('Parameter --editor cannot be used in conjunction with --filter', err=True)
         raise click.Abort
 
-    issue = jira[key]
+    jira.load_issues()
 
-    edit_issue(issue, kwargs, editor)
+    issues: Iterable[Issue]
+
+    if jira.filter.is_set:
+        issues = (jira[key] for key in jira.filter.apply().index)
+    else:
+        if key not in jira:
+            click.echo(f'Unknown issue key: {key}', err=True)
+            raise click.Abort
+
+        issues = [jira[key]]
+
+    for issue in issues:
+        edit_issue(issue, kwargs, editor)
+
+        if as_json:
+            # Display the edited issue as JSON
+            click.echo(issue.as_json())
+        else:
+            # Print diff of edited issue
+            print_diff(issue)
 
     jira.write_issues()
-
-    if as_json:
-        # Display the edited issue as JSON
-        click.echo(issue.as_json())
-    else:
-        # Print diff of edited issue
-        print_diff(issue)
 
 
 @click.command(name='export', no_args_is_help=True)
