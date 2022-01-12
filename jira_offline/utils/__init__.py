@@ -137,6 +137,11 @@ def render_dataclass_field(cls: type, field_name: str, value: Any) -> Tuple[str,
     try:
         f = get_field_by_name(cls, field_name)
 
+        # Execute a pre-render util function on the field value, if one is defined
+        prerender_func = f.metadata.get('prerender_func')
+        if callable(prerender_func):
+            value = prerender_func(value)
+
         # Determine the origin type for this field (thus handling Optional[type])
         type_ = get_base_type(cast(Hashable, f.type))
 
@@ -169,18 +174,6 @@ def render_issue_field(
     Returns:
         Pretty field title, formatted value
     '''
-    try:
-        f = get_field_by_name(cast(Hashable, type(issue)), field_name)
-
-        # Execute a pre-render util function on the field value, if one is defined
-        prerender_func = f.metadata.get('prerender_func')
-        if callable(prerender_func):
-            value = prerender_func(value)
-
-    except FieldNotOnModelClass:
-        # Extended fields do not have an attribute on the Issue dataclass; see `render_dataclass_field`
-        pass
-
     title, value = render_dataclass_field(type(issue), field_name, value)
 
     if title_prefix:
