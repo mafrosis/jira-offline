@@ -10,7 +10,7 @@ import hashlib
 import os
 import pathlib
 import shutil
-from typing import Any, cast, Dict, Generator, Iterator, List, Optional, Set, Tuple
+from typing import Any, cast, Dict, Iterable, List, Optional, Set, Tuple
 from urllib.parse import urlparse
 
 import click
@@ -70,7 +70,7 @@ class CustomFields(DataclassSerializer):
     extended: Optional[Dict[str, str]] = field(default_factory=dict)  # type: ignore[assignment]
 
 
-    def items(self) -> Iterator:
+    def items(self) -> Iterable:
         'Iterate the customfields set for the associated project, plus user-defined ones in self.extended'
         attrs = {k:v for k,v in asdict(self).items() if v}
         if self.extended:
@@ -600,7 +600,7 @@ class Issue(DataclassSerializer):
 
         def iter_optionals():
             'Iterate the optional attributes of this issue'
-            def iter_fields(field_name, customfield_value) -> Generator[Tuple, None, None]:
+            def iter_fields(field_name, customfield_value) -> Iterable[Tuple]:
                 # Always display modified fields
                 if modified_fields and field_name in modified_fields:
                     for x in fmt(field_name):

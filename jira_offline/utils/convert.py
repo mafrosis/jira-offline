@@ -3,7 +3,7 @@ Two util functions for converting _from_ an API response to an Issue, and for co
 _to_ an object good for an API post.
 '''
 import logging
-from typing import Generator, List, Optional, Union, Set, TYPE_CHECKING
+from typing import Iterable, List, Optional, Union, Set, TYPE_CHECKING
 
 from jira_offline.utils import get_field_by_name
 
@@ -175,7 +175,7 @@ def parse_sprint(val: Union[str, dict]) -> Optional[List[dict]]:
     return None
 
 
-def sprint_objects_to_names(sprints: Set['Sprint']) -> Generator[str, None, None]:
+def sprint_objects_to_names(sprints: Set['Sprint']) -> Iterable[str]:
     '''
     Utility function to convert a set of sprint objects into a set of sprint names. This is used
     when rendering a set of Sprint objects in the CLI, and is mapped via dataclass.field metadata in
