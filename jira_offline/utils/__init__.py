@@ -157,34 +157,32 @@ def render_dataclass_field(cls: type, field_name: str, value: Any) -> Tuple[str,
 
 
 def render_issue_field(
-        issue: 'Issue', field_name: str, value: Any, title_prefix: str=None, value_prefix: str=None,
-        color: str=None
+        issue: 'Issue', field_name: str, value: Any, value_template: Optional[str]=None,
+        diff: Optional[str]=None
     ) -> Tuple[str, str]:
     '''
     A slighty more complicated single-field pretty formatting function, specifically for fields on an
     instance of the Issue dataclass.
 
     Params:
-        issue:         Instance of Issue class with the field to render
-        field_name:    Issue dataclass attribute name to render
-        value:         Value to be rendered, the type of the dataclass.field
-        title_prefix:  Arbitrary string to be prepended to the title
-        value_prefix:  Arbitrary string to be prepended to the field value
-        color:         Render all output in this colour
+        issue:           Instance of Issue class with the field to render
+        field_name:      Issue dataclass attribute name to render
+        value:           Value to be rendered, the type of the dataclass.field
+        value_template:  Optional f-string template to use to format the value
+        diff:            A single char to prepend the field title, when rendering a diff
     Returns:
         Pretty field title, formatted value
     '''
     title, value = render_dataclass_field(type(issue), field_name, value)
 
-    if title_prefix:
-        title = f'{title_prefix}{title}'
+    if value_template:
+        value = value_template.format(value)
 
-    if value_prefix:
-        value = f'{value_prefix}{value}'
-
-    if color:
-        title = click.style(f'{title}', fg=color)
-        value = click.style(f'{value}', fg=color)
+    if diff:
+        if diff == '+':
+            return click.style(f'+{title}', fg='green'), click.style(value, fg='green')
+        else:
+            return click.style(f'-{title}', fg='red'), click.style(value, fg='red')
 
     return title, value
 

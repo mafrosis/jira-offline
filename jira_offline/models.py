@@ -521,7 +521,7 @@ class Issue(DataclassSerializer):
             conflicts:        Render conflicting fields in the style of git-merge
             modified_fields:  Render modified fields with colours in the style of git-diff
         '''
-        def fmt(field_name: str, prefix: str=None) -> Tuple:
+        def fmt(field_name: str, value_template: Optional[str]=None) -> Tuple:
             '''
             Pretty formatting with support for diffing and conflicts
 
@@ -534,9 +534,9 @@ class Issue(DataclassSerializer):
             if conflicts and field_name in conflicts:
                 return (
                     ('<<<<<<< base', ''),
-                    render_issue_field(self, field_name, conflicts[field_name]['base'], value_prefix=prefix),
+                    render_issue_field(self, field_name, conflicts[field_name]['base'], value_template),
                     ('=======', ''),
-                    render_issue_field(self, field_name, conflicts[field_name]['updated'], value_prefix=prefix),
+                    render_issue_field(self, field_name, conflicts[field_name]['updated'], value_template),
                     ('>>>>>>> updated', ''),
                 )
 
@@ -559,39 +559,39 @@ class Issue(DataclassSerializer):
 
                 if removed_value:
                     # Render a removed field in red with a minus
-                    removed_field = render_issue_field(
-                        self, field_name, removed_value, title_prefix='-', value_prefix=prefix, color='red'
+                    removed_title, removed_value = render_issue_field(
+                        self, field_name, removed_value, value_template, diff='-'
                     )
 
                 if added_value:
                     # Render an added field in green with a plus
-                    added_field = render_issue_field(
-                        self, field_name, added_value, title_prefix='+', value_prefix=prefix, color='green'
+                    added_title, added_value = render_issue_field(
+                        self, field_name, added_value, value_template, diff='+'
                     )
 
                 if removed_value and added_value:
-                    return (removed_field, added_field)
+                    return ((removed_title, removed_value), (added_title, added_value))
                 elif removed_value:
-                    return (removed_field,)
+                    return ((removed_title, removed_value),)
                 else:
-                    return (added_field,)
+                    return ((added_title, added_value),)
 
             else:
-                # Render a single blank char prefix to ensure the unmodified fields line up nicely
-                # with the modified fields. Modified fields are printed with a +/- diff prefix char.
-                # Char u2800 is used to prevent the tabulate module from stripping the prefix.
-                if modified_fields:
-                    title_prefix = '\u2800'
-                else:
-                    title_prefix = ''
-
                 # Handle render of extended customfields
                 if field_name.startswith('extended.') and self.extended:
                     value = self.extended[field_name[9:]]
                 else:
                     value = getattr(self, field_name)
 
-                return (render_issue_field(self, field_name, value, title_prefix=title_prefix, value_prefix=prefix),)
+                title, value = render_issue_field(self, field_name, value, value_template)
+
+                # Render a single blank char prefix to ensure the unmodified fields line up nicely
+                # with the modified fields. Modified fields are printed with a +/- diff prefix char.
+                # Char u2800 is used to prevent the tabulate module from stripping the prefix.
+                if modified_fields:
+                    title = f'\u2800{title}'
+
+                return ((title, value),)
 
         if self.issuetype == 'Epic':
             epicdetails = fmt('epic_name')
@@ -633,7 +633,7 @@ class Issue(DataclassSerializer):
             key = self.key
 
         fields = [
-            *fmt('summary', prefix=f'[{key}] '),
+            *fmt('summary', f'[{key}] {{}}'),
             *fmt('issuetype'),
             *epicdetails,
             *fmt('status'),
