@@ -680,7 +680,7 @@ class Issue(DataclassSerializer):
 
         # Convert all datetimes to UTC, where they are non-null (which is all non-new issues)
         for col in ('created', 'updated'):
-            series[col] = pd.Timestamp(series[col]).tz_convert('UTC')
+            series[col] = pd.Timestamp(series[col]).tz_convert('UTC')  # pylint: disable=unsubscriptable-object,unsupported-assignment-operation
 
         return series
 

@@ -124,10 +124,10 @@ class Jira(collections.abc.MutableMapping):
 
         # Convert all datetimes to UTC
         for col in ('created', 'updated'):
-            df[col] = df[col].dt.tz_convert('UTC')
+            df[col] = df[col].dt.tz_convert('UTC')  # pylint: disable=unsubscriptable-object,unsupported-assignment-operation
 
         # Extract ProjectMeta.key into a new string column named `project_key`
-        df.loc[:, 'project_key'] = [p.key if p else None for p in df['project']]
+        df.loc[:, 'project_key'] = [p.key if p else None for p in df['project']]  # pylint: disable=unsubscriptable-object
 
         # Drop columns for fields marked repr=False
         df.drop(
@@ -136,13 +136,13 @@ class Jira(collections.abc.MutableMapping):
         )
 
         # Render modified as a string for storage in the DataFrame
-        df['modified'] = df['modified'].apply(lambda x: json.dumps(x) if x else numpy.nan)
+        df['modified'] = df['modified'].apply(lambda x: json.dumps(x) if x else numpy.nan)  # pylint: disable=unsubscriptable-object,unsupported-assignment-operation
 
         # Add an empty column to for Issue.original
-        df['original'] = ''
+        df['original'] = ''  # pylint: disable=unsupported-assignment-operation
 
         # Append any new issues
-        self._df = pd.concat([ self._df, df[~df.key.isin(self._df.index)] ])
+        self._df = pd.concat([ self._df, df[~df.key.isin(self._df.index)] ])  # pylint: disable=unsubscriptable-object
 
         # In-place update for modified issues
         self._df.update(df)
