@@ -173,9 +173,16 @@ class IssueFilter:
 
             # Recursive filter building for AND and OR
             if operator_ == 'and':
-                return operator.and_(*[self._build_mask(df, cnd) for cnd in conditions])
+                mask = self._build_mask(df, conditions.pop())
+                for cnd in conditions:
+                    mask = operator.and_(mask, self._build_mask(df, cnd))
+                return mask
+
             elif operator_ == 'or':
-                return operator.or_(*[self._build_mask(df, cnd) for cnd in conditions])
+                mask = self._build_mask(df, conditions.pop())
+                for cnd in conditions:
+                    mask = operator.or_(mask, self._build_mask(df, cnd))
+                return mask
 
             if field_ == 'project':
                 # Support "project" keyword for Issue.project_key, just like Jira

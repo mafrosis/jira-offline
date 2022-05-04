@@ -309,16 +309,18 @@ def test_parse__primitive_list__sprint_error(mock_jira):
 @pytest.mark.parametrize('where,count', [
     ('summary == eggcellent and creator == dave', 1),
     ('summary == notarealsummary and creator == dave', 0),
+    ('summary == eggcellent and creator == dave and description == 1', 1),
+    ('summary == eggcellent and creator == dave and description == 0', 0),
 ])
 def test_parse__compound_and_eq_str(mock_jira, project, where, count):
     '''
     Test field EQUALS string AND otherfield EQUALS otherstring filter
     '''
     # Setup test fixtures to target in the filter query
-    with mock.patch.dict(ISSUE_1, {'summary': 'This is the story summary', 'creator': 'danil1'}):
+    with mock.patch.dict(ISSUE_1, {'summary': 'This is the story summary', 'creator': 'danil1', 'description': '1'}):
         mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
-    with mock.patch.dict(ISSUE_1, {'summary': 'eggcellent', 'creator': 'dave', 'key': 'FILT-1'}):
+    with mock.patch.dict(ISSUE_1, {'summary': 'eggcellent', 'creator': 'dave', 'description': '1', 'key': 'FILT-1'}):
         mock_jira['FILT-1'] = Issue.deserialize(ISSUE_1, project)
 
     assert len(mock_jira) == 2
@@ -335,16 +337,18 @@ def test_parse__compound_and_eq_str(mock_jira, project, where, count):
 @pytest.mark.parametrize('where,count', [
     ('summary == eggcellent or creator == dave', 1),
     ('summary == notarealsummary or creator == dave', 0),
+    ('summary == notarealsummary or creator == dave or description == 1', 2),
+    ('summary == notarealsummary or creator == noone or description == 0', 0),
 ])
 def test_parse__compound_or_eq_str(mock_jira, project, where, count):
     '''
     Test field EQUALS string OR otherfield EQUALS otherstring filter
     '''
     # Setup test fixtures to target in the filter query
-    with mock.patch.dict(ISSUE_1, {'summary': 'This is the story summary', 'creator': 'danil1'}):
+    with mock.patch.dict(ISSUE_1, {'summary': 'This is the story summary', 'creator': 'danil1', 'description': '1'}):
         mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
-    with mock.patch.dict(ISSUE_1, {'summary': 'eggcellent', 'creator': 'notarealcreator', 'key': 'FILT-1'}):
+    with mock.patch.dict(ISSUE_1, {'summary': 'eggcellent', 'creator': 'notarealcreator', 'description': '1', 'key': 'FILT-1'}):
         mock_jira['FILT-1'] = Issue.deserialize(ISSUE_1, project)
 
     assert len(mock_jira) == 2
