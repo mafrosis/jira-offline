@@ -54,12 +54,16 @@ class Jira(collections.abc.MutableMapping):
         self.filter = IssueFilter()
 
 
-    def __getitem__(self, key: str) -> Issue:
+    def _get_full_key(self, key: str) -> str:
         # If key is an abbreviated UUID, load full key from the DataFrame
         full_key = self._df.index[(self._df.key.str.len() == 36) & self._df.index.str.startswith(key)].any()
 
         if full_key:
-            key = full_key
+            return cast(str, full_key)
+        return key
+
+    def __getitem__(self, key: str) -> Issue:
+        key = self._get_full_key(key)
 
         series = self._df.loc[key]
         return Issue.from_series(
@@ -68,10 +72,14 @@ class Jira(collections.abc.MutableMapping):
         )
 
     def __setitem__(self, key: str, issue: Issue):
+        key = self._get_full_key(key)
+
         series = issue.to_series()
         self._df.loc[key] = series
 
     def __delitem__(self, key: str):
+        key = self._get_full_key(key)
+
         self._df.drop(key, inplace=True)
 
     def __iter__(self):
