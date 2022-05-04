@@ -10,7 +10,7 @@ import hashlib
 import os
 import pathlib
 import shutil
-from typing import Any, cast, Dict, Iterable, List, Optional, Set, Tuple
+from typing import Any, cast, Dict, Iterable, List, Optional, Set, Tuple, TYPE_CHECKING
 from urllib.parse import urlparse
 
 import click
@@ -21,6 +21,8 @@ import pandas as pd
 import pytz
 from requests.auth import HTTPBasicAuth
 from requests_oauthlib import OAuth1
+from rich import box
+from rich.table import Table
 from tabulate import tabulate
 from tzlocal import get_localzone
 
@@ -33,6 +35,10 @@ from jira_offline.utils import (deserialize_single_issue_field, get_dataclass_de
 from jira_offline.utils.convert import (issue_to_jiraapi_update, parse_sprint,
                                         sprint_objects_to_names)
 from jira_offline.utils.serializer import DataclassSerializer, get_base_type
+
+
+if TYPE_CHECKING:
+    from rich.console import Console, ConsoleOptions, RenderResult
 
 # pylint: disable=too-many-instance-attributes
 
@@ -633,7 +639,7 @@ class Issue(DataclassSerializer):
             key = self.key
 
         fields = [
-            *fmt('summary', f'[{key}] {{}}'),
+            *fmt('summary', f'[bright_white][{key}][/] {{}}'),
             *fmt('issuetype'),
             *epicdetails,
             *fmt('status'),
@@ -740,9 +746,14 @@ class Issue(DataclassSerializer):
         return issue
 
 
-    def __str__(self) -> str:
-        'Render issue to friendly string'
-        return tabulate(self.render())
+    def __rich_console__(self, console: 'Console', options: 'ConsoleOptions') -> 'RenderResult':  # pylint: disable=unused-argument
+        'Render issue to a rich renderable'
+        table = Table(show_header=False, box=box.HORIZONTALS)
+
+        for row in self.render():
+            table.add_row(*row)
+
+        yield table
 
 
 @dataclass

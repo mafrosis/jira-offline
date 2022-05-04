@@ -180,11 +180,11 @@ def render_issue_field(
 
     if diff:
         if diff == '+':
-            return click.style(f'+{title}', fg='green'), click.style(value, fg='green')
+            return f'[green]+{title}[/]', f'[green]{value}[/]'
         else:
-            return click.style(f'-{title}', fg='red'), click.style(value, fg='red')
+            return f'[red]-{title}[/]', f'[red]{value}[/]'
 
-    return title, value
+    return f'[bright_black]{title}[/]', value
 
 
 def render_value(value: Any, type_: Optional[type]=None) -> str:

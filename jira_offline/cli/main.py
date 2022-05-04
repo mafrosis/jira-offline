@@ -15,6 +15,7 @@ from click.shell_completion import shell_complete  # pylint: disable=no-name-in-
 
 from jira_offline.auth import authenticate
 from jira_offline.edit import edit_issue
+from jira_offline.cli.console import console
 from jira_offline.cli.params import filter_option, force_option, global_options
 from jira_offline.cli.project import cli_project_list
 from jira_offline.cli.utils import (CustomfieldsAsOptions, EditClickCommand, prepare_df, print_diff,
@@ -52,10 +53,9 @@ def cli_show(_, key: str, as_json: bool=False):
 
     if as_json:
         output = jira[key].as_json()
+        click.echo(output)
     else:
-        output = str(jira[key])
-
-    click.echo(output)
+        console.print(jira[key])
 
 
 @click.command(name='ls')
@@ -63,7 +63,7 @@ def cli_show(_, key: str, as_json: bool=False):
 @click.pass_context
 @global_options
 @filter_option
-def cli_ls(ctx: click.core.Context, as_json: bool=False):
+def cli_ls(_, as_json: bool=False):
     '''List Issues on the CLI.'''
     jira.load_issues()
 
@@ -81,7 +81,6 @@ def cli_ls(ctx: click.core.Context, as_json: bool=False):
     else:
         print_list(
             jira.df,
-            verbose=ctx.obj.verbose,
             include_project_col=len(jira.config.projects) > 1,
             print_total=True,
             print_filter=jira.filter.filter,

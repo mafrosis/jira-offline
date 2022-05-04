@@ -168,17 +168,17 @@ def test_issue_model__render_returns_core_fields(project):
     issue = Issue.deserialize(ISSUE_1, project)
     output = issue.render()
 
-    assert output[0] == ('Summary', '[TEST-71] This is the story summary')
-    assert output[1] == ('Type', 'Story')
-    assert output[2] == ('Epic Link', 'TEST-1')
-    assert output[3] == ('Status', 'Story Done')
-    assert output[4] == ('Priority', 'Normal')
-    assert output[5] == ('Assignee', 'danil1')
-    assert output[6] == ('Story Points', '1')
-    assert output[7] == ('Description', 'This is a story or issue')
-    assert output[8] == ('Fix Version', '-  0.1')
-    assert output[9] == ('Reporter', 'danil1')
-    assert output[10] == ('Creator', 'danil1')
+    assert output[0] == ('[bright_black]Summary[/]', '[bright_white][TEST-71][/] This is the story summary')
+    assert output[1] == ('[bright_black]Type[/]', 'Story')
+    assert output[2] == ('[bright_black]Epic Link[/]', 'TEST-1')
+    assert output[3] == ('[bright_black]Status[/]', 'Story Done')
+    assert output[4] == ('[bright_black]Priority[/]', 'Normal')
+    assert output[5] == ('[bright_black]Assignee[/]', 'danil1')
+    assert output[6] == ('[bright_black]Story Points[/]', '1')
+    assert output[7] == ('[bright_black]Description[/]', 'This is a story or issue')
+    assert output[8] == ('[bright_black]Fix Version[/]', '-  0.1')
+    assert output[9] == ('[bright_black]Reporter[/]', 'danil1')
+    assert output[10] == ('[bright_black]Creator[/]', 'danil1')
 
 
 def test_issue_model__render_abbrev_key_for_new_issues(project):
@@ -191,7 +191,7 @@ def test_issue_model__render_abbrev_key_for_new_issues(project):
     context.verbose = False  # pylint: disable=assigning-non-slot
 
     output = issue.render()
-    assert output[0] == ('Summary', '[7242cc9e] This is the story summary')
+    assert output[0] == ('[bright_black]Summary[/]', '[bright_white][7242cc9e][/] This is the story summary')
 
 
 def test_issue_model__render_long_key_for_new_issues_when_verbose(project):
@@ -204,7 +204,7 @@ def test_issue_model__render_long_key_for_new_issues_when_verbose(project):
     context.verbose = True  # pylint: disable=assigning-non-slot
 
     output = issue.render()
-    assert output[0] == ('Summary', '[7242cc9e-ea52-4e51-bd84-2ced250cabf0] This is the story summary')
+    assert output[0] == ('[bright_black]Summary[/]', '[bright_white][7242cc9e-ea52-4e51-bd84-2ced250cabf0][/] This is the story summary')
 
 
 def test_issue_model__render_returns_core_does_not_include_space_prefix(project):
@@ -234,12 +234,12 @@ def test_issue_model__render_returns_optional_fields_only_when_set(project):
 
     output = issue.render()
 
-    assert output[0] == ('Summary', '[TEST-71] This is the story summary')
-    assert output[1] == ('Type', 'Story')
-    assert output[2] == ('Epic Link', 'TEST-1')
-    assert output[3] == ('Status', 'Story Done')
-    assert output[4] == ('Reporter', 'danil1')
-    assert output[5] == ('Creator', 'danil1')
+    assert output[0] == ('[bright_black]Summary[/]', '[bright_white][TEST-71][/] This is the story summary')
+    assert output[1] == ('[bright_black]Type[/]', 'Story')
+    assert output[2] == ('[bright_black]Epic Link[/]', 'TEST-1')
+    assert output[3] == ('[bright_black]Status[/]', 'Story Done')
+    assert output[4] == ('[bright_black]Reporter[/]', 'danil1')
+    assert output[5] == ('[bright_black]Creator[/]', 'danil1')
 
 
 def test_issue_model__render_returns_sprint_names(project):
@@ -253,7 +253,7 @@ def test_issue_model__render_returns_sprint_names(project):
 
     output = issue.render()
 
-    assert output[4] == ('Sprint', '-  Sprint 1')
+    assert output[4] == ('[bright_black]Sprint[/]', '-  Sprint 1')
 
 
 def test_issue_model__render_returns_extended_fields(project):
@@ -266,7 +266,7 @@ def test_issue_model__render_returns_extended_fields(project):
 
     output = issue.render()
 
-    assert output[9] == ('Arbitrary Key', 'arbitrary_value')
+    assert output[9] == ('[bright_black]Arbitrary Key[/]', 'arbitrary_value')
 
 
 def test_issue_model__render_returns_conflict(project):
@@ -280,9 +280,9 @@ def test_issue_model__render_returns_conflict(project):
 
     # Rendered output includes both sides of conflict with git-like formatting
     assert output[5] == ('<<<<<<< base', '')
-    assert output[6] == ('Assignee', 'murphye')
+    assert output[6] == ('[bright_black]Assignee[/]', 'murphye')
     assert output[7] == ('=======', '')
-    assert output[8] == ('Assignee', 'hoganp')
+    assert output[8] == ('[bright_black]Assignee[/]', 'hoganp')
     assert output[9] == ('>>>>>>> updated', '')
 
 
@@ -303,9 +303,9 @@ def test_issue_model__render_returns_conflict_for_extended_fields(project):
 
     # Rendered output includes both sides of conflict with git-like formatting
     assert output[9] == ('<<<<<<< base', '')
-    assert output[10] == ('Arbitrary Key', 'other_value')
+    assert output[10] == ('[bright_black]Arbitrary Key[/]', 'other_value')
     assert output[11] == ('=======', '')
-    assert output[12] == ('Arbitrary Key', 'upstream_value')
+    assert output[12] == ('[bright_black]Arbitrary Key[/]', 'upstream_value')
     assert output[13] == ('>>>>>>> updated', '')
 
 
@@ -333,7 +333,7 @@ def test_issue_model__render_returns_modified_field_added(project):
     output = issue.render(modified_fields={'components'})
 
     # Rendered output is in colour with a "+" prefix
-    assert output[9] == ('\x1b[32m+Components\x1b[0m', '\x1b[32m-  thing\x1b[0m')
+    assert output[9] == ('[green]+Components[/]', '[green]-  thing[/]')
 
 
 def test_issue_model__render_returns_modified_field_removed(project):
@@ -348,7 +348,7 @@ def test_issue_model__render_returns_modified_field_removed(project):
     output = issue.render(modified_fields={'description'})
 
     # Rendered output is in colour with a "-" prefix
-    assert output[7] == ('\x1b[31m-Description\x1b[0m', '\x1b[31mThis is a story or issue\x1b[0m')
+    assert output[7] == ('[red]-Description[/]', '[red]This is a story or issue[/]')
 
 
 def test_issue_model__render_returns_modified_field_changed(project):
@@ -363,8 +363,8 @@ def test_issue_model__render_returns_modified_field_changed(project):
     output = issue.render(modified_fields={'description'})
 
     # Rendered output is in colour, one line with a "-" prefix and another with a "+" prefix
-    assert output[7] == ('\x1b[31m-Description\x1b[0m', '\x1b[31mThis is a story or issue\x1b[0m')
-    assert output[8] == ('\x1b[32m+Description\x1b[0m', '\x1b[32mNew description\x1b[0m')
+    assert output[7] == ('[red]-Description[/]', '[red]This is a story or issue[/]')
+    assert output[8] == ('[green]+Description[/]', '[green]New description[/]')
 
 
 def test_issue_model__render_deserializes_values_in_original(project):
@@ -381,7 +381,7 @@ def test_issue_model__render_deserializes_values_in_original(project):
     output = issue.render(modified_fields={'sprint'})
 
     # Rendered output is in colour, one line with a "+" prefix
-    assert output[4] == ('\x1b[31m-Sprint\x1b[0m', '\x1b[31m-  Sprint 1\x1b[0m')
+    assert output[4] == ('[red]-Sprint[/]', '[red]-  Sprint 1[/]')
 
 
 def test_issue_model__render_returns_modified_field_added_extended(project):
@@ -396,7 +396,7 @@ def test_issue_model__render_returns_modified_field_added_extended(project):
     output = issue.render(modified_fields={'extended.arbitrary_key'})
 
     # Rendered output is in colour with a "+" prefix
-    assert output[9] == ('\x1b[32m+Arbitrary Key\x1b[0m', '\x1b[32marbitrary_value\x1b[0m')
+    assert output[9] == ('[green]+Arbitrary Key[/]', '[green]arbitrary_value[/]')
 
 
 def test_issue_model__render_returns_modified_field_removed_extended(project):
@@ -413,7 +413,7 @@ def test_issue_model__render_returns_modified_field_removed_extended(project):
     output = issue.render(modified_fields={'extended.arbitrary_key'})
 
     # Rendered output is in colour with a "-" prefix
-    assert output[9] == ('\x1b[31m-Arbitrary Key\x1b[0m', '\x1b[31marbitrary_value\x1b[0m')
+    assert output[9] == ('[red]-Arbitrary Key[/]', '[red]arbitrary_value[/]')
 
 
 def test_issue_model__render_returns_modified_field_changed_extended(project):
@@ -430,5 +430,5 @@ def test_issue_model__render_returns_modified_field_changed_extended(project):
     output = issue.render(modified_fields={'extended.arbitrary_key'})
 
     # Rendered output is in colour, one line with a "-" prefix and another with a "+" prefix
-    assert output[9] == ('\x1b[31m-Arbitrary Key\x1b[0m', '\x1b[31marbitrary_value\x1b[0m')
-    assert output[10] == ('\x1b[32m+Arbitrary Key\x1b[0m', '\x1b[32mupdated_value\x1b[0m')
+    assert output[9] == ('[red]-Arbitrary Key[/]', '[red]arbitrary_value[/]')
+    assert output[10] == ('[green]+Arbitrary Key[/]', '[green]updated_value[/]')
