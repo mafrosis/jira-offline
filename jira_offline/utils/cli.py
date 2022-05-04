@@ -15,8 +15,8 @@ import pandas as pd
 from tabulate import tabulate
 import typing_inspect
 
-from jira_offline.exceptions import (BadParamsPassedToValidCustomfield, EditorRepeatFieldFound,
-                                     FieldNotOnModelClass, InvalidLsFieldInConfig)
+from jira_offline.exceptions import (EditorRepeatFieldFound, FieldNotOnModelClass,
+                                     InvalidLsFieldInConfig)
 from jira_offline.jira import jira
 from jira_offline.models import CustomFields, Issue, ProjectMeta
 from jira_offline.utils import (find_project, friendly_title, get_field_by_name, istype,
@@ -322,30 +322,30 @@ class ValidCustomfield(click.Option):
     found at `Issue.project.customfields`, a call to `jira.load_issues` must be executed.
     '''
     def handle_parse_result(self, ctx, opts, args):
-        if 'key' in opts:
+        project = None
+
+        if opts.get('key'):
             # Load ProjectMeta instance via Issue.key
             jira.load_issues()
             issue = _get_issue(opts['key'])
             project = issue.project
 
-        elif 'projectkey' in opts:
+        elif opts.get('projectkey'):
             # Load ProjectMeta instance by ProjectMeta.key
             project = _get_project(opts['projectkey'])
 
-        else:
-            raise BadParamsPassedToValidCustomfield
-
-        # Iterate all configured customfields
-        for customfield_name in jira.config.iter_customfield_names():
-            # If one was passed as a CLI parameter..
-            if opts.get(customfield_name):
-                try:
-                    # Validate for the project by issue key or project key
-                    assert project.customfields[customfield_name]
-                except (AssertionError, KeyError):
-                    raise click.UsageError(
-                        f"Option '--{customfield_name.replace('_', '-')}' is not available on project {project.key}"
-                    )
+        if project:
+            for customfield_name in jira.config.iter_customfield_names():
+                # If one was passed as a CLI parameter..
+                if opts.get(customfield_name):
+                    try:
+                        # Validate for the project by issue key or project key
+                        assert project.customfields[customfield_name]
+                    except (AssertionError, KeyError):
+                        raise click.UsageError(
+                            (f"Option '--{customfield_name.replace('_', '-')}' is not available"
+                             "on project {project.key}")
+                        )
 
         return super().handle_parse_result(ctx, opts, args)
 
@@ -384,3 +384,29 @@ class CustomfieldsAsOptions(click.Command):
             )
 
         super().__init__(*args, **kwargs)
+
+
+class RemoveableIssueFieldOptions(click.Command):
+    '''
+    Add list/set type Issue fields as --remove-* optional CLI parameters
+    '''
+    def __init__(self, *args, **kwargs):
+        for f in iter_issue_fields_by_type(set, list):
+            if f.metadata.get('readonly'):
+                continue
+
+            field_name = f.name.replace('_', '-')
+
+            # Extract help text if defined on Issue class field
+            help_text = f'Remove given {field_name} from an issue'
+
+            kwargs['params'].insert(
+                len(kwargs['params'])-3,  # insert above global_options
+                ValidCustomfield([f'--remove-{field_name}'], help=help_text),
+            )
+
+        super().__init__(*args, **kwargs)
+
+
+class EditClickCommand(CustomfieldsAsOptions, RemoveableIssueFieldOptions):
+    pass

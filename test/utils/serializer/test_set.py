@@ -31,6 +31,16 @@ def test_set_deserialize_from_set():
     assert isinstance(obj.s, set)
     assert obj.s == {'1', '2', '3'}
 
+def test_set_deserialize_from_commaseparated():
+    """
+    Test list deserializes from comma-separated string
+    """
+    obj = Test.deserialize({
+        's': '1,2,3'
+    })
+    assert isinstance(obj.s, set)
+    assert obj.s == {'1', '2', '3'}
+
 def test_set_deserialize_roundtrip():
     """
     Test set deserializes/serializes in a loss-less roundtrip
@@ -73,4 +83,4 @@ def test_set_bad_deserialize():
     Test bad set deserialize raises exception (exception raised when passed value is not a list)
     '''
     with pytest.raises(DeserializeError):
-        Test.deserialize({'s': 'Egx'})
+        Test.deserialize({'l': {'Egg'}})

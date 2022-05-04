@@ -1127,10 +1127,15 @@ def test_jira__keys__respect_the_filter(mock_jira_core):
     '''
     Ensure that jira.keys() respects a filter set in jira.filter
     '''
-    issue_1 = Issue.deserialize(ISSUE_1, project=ProjectMeta('FIRST'))
+    # Setup the project configuration with two projects
+    project_1 = ProjectMeta('FIRST')
+    project_2 = ProjectMeta('SECOND')
+    mock_jira_core.config.projects = {project_1.id: project_1, project_2.id: project_2}
+
+    issue_1 = Issue.deserialize(ISSUE_1, project=project_1)
 
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
-        issue_2 = Issue.deserialize(ISSUE_1, project=ProjectMeta('SECOND'))
+        issue_2 = Issue.deserialize(ISSUE_1, project=project_2)
 
     # Setup the Jira DataFrame
     with mock.patch('jira_offline.jira.jira', mock_jira_core):
@@ -1149,10 +1154,15 @@ def test_jira__values__respect_the_filter(mock_jira_core):
     '''
     Ensure that jira.values() respects a filter set in jira.filter
     '''
-    issue_1 = Issue.deserialize(ISSUE_1, project=ProjectMeta('FIRST'))
+    # Setup the project configuration with two projects
+    project_1 = ProjectMeta('FIRST')
+    project_2 = ProjectMeta('SECOND')
+    mock_jira_core.config.projects = {project_1.id: project_1, project_2.id: project_2}
+
+    issue_1 = Issue.deserialize(ISSUE_1, project=project_1)
 
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
-        issue_2 = Issue.deserialize(ISSUE_1, project=ProjectMeta('SECOND'))
+        issue_2 = Issue.deserialize(ISSUE_1, project=project_2)
 
     # Setup the Jira DataFrame
     with mock.patch('jira_offline.jira.jira', mock_jira_core):
@@ -1171,10 +1181,15 @@ def test_jira__items__respect_the_filter(mock_jira_core):
     '''
     Ensure that jira.items() respects a filter set in jira.filter
     '''
-    issue_1 = Issue.deserialize(ISSUE_1, project=ProjectMeta('FIRST'))
+    # Setup the project configuration with two projects
+    project_1 = ProjectMeta('FIRST')
+    project_2 = ProjectMeta('SECOND')
+    mock_jira_core.config.projects = {project_1.id: project_1, project_2.id: project_2}
+
+    issue_1 = Issue.deserialize(ISSUE_1, project=project_1)
 
     with mock.patch.dict(ISSUE_1, {'key': 'TEST-72'}):
-        issue_2 = Issue.deserialize(ISSUE_1, project=ProjectMeta('SECOND'))
+        issue_2 = Issue.deserialize(ISSUE_1, project=project_2)
 
     # Setup the Jira DataFrame
     with mock.patch('jira_offline.jira.jira', mock_jira_core):

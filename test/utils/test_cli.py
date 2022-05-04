@@ -5,7 +5,6 @@ import pytest
 
 from conftest import not_raises
 from fixtures import ISSUE_1
-from jira_offline.exceptions import BadParamsPassedToValidCustomfield
 from jira_offline.jira import Issue
 from jira_offline.utils.cli import CustomfieldsAsOptions, prepare_df, ValidCustomfield
 
@@ -112,25 +111,6 @@ def test_validcustomfield_calls__get_project_when_projectkey_supplied(mock_valid
     assert not mock_jira.load_issues.called
     assert not mock_validcustomfield_get_issue.called
     assert mock_validcustomfield_get_project.called
-
-
-def test_validcustomfield__raises_error_on_neither_key_nor_projectkey_supplied(mock_jira):
-    '''
-    Ensure `ValidCustomfield.handle_parse_result` raises when neither `Issue.key` or `ProjectMeta.key`
-    are supplied
-    '''
-    # CLI options
-    opts = {}
-
-    command = CustomfieldsAsOptions(*tuple(), **{'name': 'new', 'params': []})
-
-    with mock.patch('jira_offline.utils.cli.jira', mock_jira):
-        with pytest.raises(BadParamsPassedToValidCustomfield):
-            ValidCustomfield(
-                ['--arbitrary-user-defined-field'], help=''
-            ).handle_parse_result(
-                click.core.Context(command), opts, None
-            )
 
 
 def test_validcustomfield__raises_error_on_customfield_supplied_but_not_mapped_to_project(mock_jira):

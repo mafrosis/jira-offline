@@ -273,7 +273,14 @@ class FilterMozParseFailed(BaseAppException):
     'Invalid SQL WHERE clause passed as filter string'
 
 class FilterQueryParseFailed(BaseAppException):
-    'Failed processing filter string'
+    'Failed processing filter string: {}'
+
+    def __init__(self, excp=None):
+        self.message = str(excp) or ''
+        super().__init__(self.message)
+
+    def __str__(self):
+        return self.__doc__.format(self.message)
 
 class FilterQueryEscapingError(FilterQueryParseFailed):
     'Ensure your whole filter string is not double-escaped'
@@ -321,10 +328,6 @@ class InvalidLsFieldInConfig(BaseAppException):
         return self.__doc__.format(self.field)
 
 
-class BadParamsPassedToValidCustomfield(BaseAppException):
-    'ValidCustomfield constructor must be passed `key` or `projectkey`'
-
-
 class FieldNotOnModelClass(BaseAppException):
     '{} does not exist!'
 
@@ -335,18 +338,5 @@ class FieldNotOnModelClass(BaseAppException):
     def __str__(self):
         return self.__doc__.format(self.field)
 
-
-class UnknownSprintError(BaseAppException):
-    'Sprint "{}" is not valid. It could be closed, or it could not exist on {}.'
-
-    def __init__(self, project_key, sprint):
-        self.project_key = project_key
-        self.sprint = sprint
-        super().__init__()
-
-    def __str__(self):
-        return self.__doc__.format(self.sprint, self.project_key)
-
-
-class ProjectHasNoSprints(BaseAppException):
-    'Raised by some sprint helpers for projects which do not use sprints'
+class MustFilterOnProjectWithSprint(BaseAppException):
+    'You must filter on project when also filtering on sprint'

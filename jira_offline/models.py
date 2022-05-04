@@ -10,7 +10,7 @@ import hashlib
 import os
 import pathlib
 import shutil
-from typing import Any, cast, Dict, Generator, Iterator, List, Optional, Set, Tuple
+from typing import Any, cast, Dict, Iterable, List, Optional, Set, Tuple
 from urllib.parse import urlparse
 
 import click
@@ -30,8 +30,8 @@ from jira_offline.exceptions import (BadProjectMetaUri, UnableToCopyCustomCACert
 from jira_offline.utils import (deserialize_single_issue_field, get_dataclass_defaults_for_pandas,
                                 get_field_by_name, render_dataclass_field, render_issue_field,
                                 render_value)
-from jira_offline.utils.convert import (issue_to_jiraapi_update, parse_list, parse_sprint,
-                                        sprint_objects_to_names, sprint_name_to_sprint_object)
+from jira_offline.utils.convert import (issue_to_jiraapi_update, parse_sprint,
+                                        sprint_objects_to_names)
 from jira_offline.utils.serializer import DataclassSerializer, get_base_type
 
 # pylint: disable=too-many-instance-attributes
@@ -70,7 +70,7 @@ class CustomFields(DataclassSerializer):
     extended: Optional[Dict[str, str]] = field(default_factory=dict)  # type: ignore[assignment]
 
 
-    def items(self) -> Iterator:
+    def items(self) -> Iterable:
         'Iterate the customfields set for the associated project, plus user-defined ones in self.extended'
         attrs = {k:v for k,v in asdict(self).items() if v}
         if self.extended:
@@ -354,18 +354,9 @@ class Issue(DataclassSerializer):
     creator: Optional[str] = field(default=None, metadata={'readonly': True})
     description: Optional[str] = field(default=None)
     id: Optional[int] = field(default=None, metadata={'readonly': True})
-    fix_versions: Optional[set] = field(
-        default_factory=set,
-        metadata={'friendly': 'Fix Version', 'parse_func': parse_list},
-    )
-    components: Optional[set] = field(
-        default_factory=set,
-        metadata={'parse_func': parse_list},
-    )
-    labels: Optional[set] = field(
-        default_factory=set,
-        metadata={'parse_func': parse_list},
-    )
+    fix_versions: Optional[Set[str]] = field(default_factory=set, metadata={'friendly': 'Fix Version'})  # type: ignore[assignment]
+    components: Optional[Set[str]] = field(default_factory=set)  # type: ignore[assignment]
+    labels: Optional[Set[str]] = field(default_factory=set)  # type: ignore[assignment]
     priority: Optional[str] = field(default=None)
     reporter: Optional[str] = field(default=None)
     status: Optional[str] = field(default=None)
@@ -379,7 +370,6 @@ class Issue(DataclassSerializer):
     sprint: Optional[Set[Sprint]] = field(
         default=None,
         metadata={
-            'parse_func': sprint_name_to_sprint_object,
             'prerender_func': sprint_objects_to_names,
             'reset_before_edit': True,
             'sort_key': 'id',
@@ -402,7 +392,7 @@ class Issue(DataclassSerializer):
     )
 
     # Patch of current Issue to dict last seen on Jira server
-    modified: Optional[list] = field(default=None)
+    modified: Optional[list] = field(default=None, metadata={'readonly': True})
 
     # List of transitions available for this issue
     transitions: Optional[Dict[str, int]] = field(default=None, metadata={'readonly': True})
@@ -509,6 +499,8 @@ class Issue(DataclassSerializer):
         '''
         # deserialize supplied dict into an Issue object
         # use `cast` to cover the mypy typecheck errors the arise from polymorphism
+        attrs['project_id'] = project.id
+
         return cast(
             Issue,
             super().deserialize(
@@ -516,6 +508,7 @@ class Issue(DataclassSerializer):
                 project.timezone if project else None,
                 ignore_missing=ignore_missing,
                 constructor_kwargs={'project': project},
+                project=project,
             )
         )
 
@@ -559,7 +552,9 @@ class Issue(DataclassSerializer):
                 else:
                     # Issue.original is a serialized copy of the Issue object, so a deserialize must
                     # happen if we're extracting a value from it.
-                    removed_value = deserialize_single_issue_field(field_name, self.original.get(field_name))
+                    removed_value = deserialize_single_issue_field(
+                        field_name, self.original.get(field_name), self.project,
+                    )
                     added_value = getattr(self, field_name)
 
                 if removed_value:
@@ -605,7 +600,7 @@ class Issue(DataclassSerializer):
 
         def iter_optionals():
             'Iterate the optional attributes of this issue'
-            def iter_fields(field_name, customfield_value) -> Generator[Tuple, None, None]:
+            def iter_fields(field_name, customfield_value) -> Iterable[Tuple]:
                 # Always display modified fields
                 if modified_fields and field_name in modified_fields:
                     for x in fmt(field_name):

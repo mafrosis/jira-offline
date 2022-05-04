@@ -21,6 +21,16 @@ def test_list_deserialize_from_list():
     assert isinstance(obj.l, list)
     assert obj.l == ['abc', 'def']
 
+def test_list_deserialize_from_commaseparated():
+    """
+    Test list deserializes from comma-separated string
+    """
+    obj = Test.deserialize({
+        'l': 'abc,def'
+    })
+    assert isinstance(obj.l, list)
+    assert obj.l == ['abc', 'def']
+
 def test_list_deserialize_roundrip():
     """
     Test list deserializes/serializes in a loss-less roundrip
@@ -65,4 +75,4 @@ def test_list_bad_deserialize():
     Test bad list deserialize raises exception
     '''
     with pytest.raises(DeserializeError):
-        Test.deserialize({'l': 'Egx'})
+        Test.deserialize({'l': {'Egg'}})

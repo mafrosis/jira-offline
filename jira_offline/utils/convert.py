@@ -3,9 +3,8 @@ Two util functions for converting _from_ an API response to an Issue, and for co
 _to_ an object good for an API post.
 '''
 import logging
-from typing import Generator, List, Optional, Union, Set, TYPE_CHECKING
+from typing import Iterable, List, Optional, Union, Set, TYPE_CHECKING
 
-from jira_offline.exceptions import ProjectHasNoSprints, UnknownSprintError
 from jira_offline.utils import get_field_by_name
 
 if TYPE_CHECKING:
@@ -116,13 +115,21 @@ def issue_to_jiraapi_update(issue: 'Issue', modified: set) -> dict:
                 from jira_offline.models import Issue  # pylint: disable=import-outside-toplevel, cyclic-import
                 original = Issue.deserialize(issue.original, issue.project)
 
-            if not issue.exists or not original.sprint:
-                # Issue.sprint has no previous value; send the current value to the API
+                if issue.sprint and original.sprint and len(issue.sprint) < len(original.sprint):
+                    # Removing an issue from a sprint
+                    issue_values['sprint'] = None
+
+                elif not original.sprint:
+                    # Issue.sprint has no previous value; send the current value to the API
+                    issue_values['sprint'] = next(iter(issue.sprint)).id
+                else:
+                    # Send only the diff value for the sprint field. Only a single new sprint ID is
+                    # accepted via the API. See the `reset_before_edit` on Issue.sprint.
+                    issue_values['sprint'] = next(iter(issue.sprint.difference(original.sprint))).id
+
+            elif not issue.exists:
+                # New Issues do not have a previous sprint value; send the current value to the API
                 issue_values['sprint'] = next(iter(issue.sprint)).id
-            else:
-                # Send only the diff value for the sprint field. Only a single new sprint ID is
-                # accepted via the API. See the `reset_before_edit` on Issue.sprint.
-                issue_values['sprint'] = next(iter(issue.sprint.difference(original.sprint))).id
 
         except KeyError:
             logger.info('Unrecognised sprint on %s, skipping update on this field.', issue.key)
@@ -130,9 +137,10 @@ def issue_to_jiraapi_update(issue: 'Issue', modified: set) -> dict:
             del field_keys['sprint']
 
     # Include only modified fields
+    # Assume value is None, if key missing from issue_values
     # Ignore status change as that's handled via IssueUpdate.transitions, and a different API call
     return {
-        field_keys[field_name]: issue_values[field_name]
+        field_keys[field_name]: issue_values.get(field_name, None)
         for field_name in modified
         if field_name != 'status'
     }
@@ -167,7 +175,7 @@ def parse_sprint(val: Union[str, dict]) -> Optional[List[dict]]:
     return None
 
 
-def sprint_objects_to_names(sprints: Set['Sprint']) -> Generator[str, None, None]:
+def sprint_objects_to_names(sprints: Set['Sprint']) -> Iterable[str]:
     '''
     Utility function to convert a set of sprint objects into a set of sprint names. This is used
     when rendering a set of Sprint objects in the CLI, and is mapped via dataclass.field metadata in
@@ -178,25 +186,3 @@ def sprint_objects_to_names(sprints: Set['Sprint']) -> Generator[str, None, None
     '''
     for sprint in sorted(sprints):
         yield sprint.name
-
-
-def sprint_name_to_sprint_object(project: 'ProjectMeta', sprint_name: str) -> 'Sprint':
-    '''
-    Utility function to return a Sprint object, when passed a sprint name.
-
-    Params:
-        project_id:   Internal project ID
-        sprint_name:  Text name of a sprint
-    '''
-    if not project.sprints:
-        raise ProjectHasNoSprints
-
-    try:
-        return next(x for x in project.sprints.values() if x.name == sprint_name)
-    except StopIteration as e:
-        raise UnknownSprintError(project.key, sprint_name) from e
-
-
-def parse_list(project: 'ProjectMeta', value: str) -> List[str]:  # pylint: disable=unused-argument
-    'Parse a comma-separated list string into a list of strings'
-    return [f.strip() for f in value.split(',')]

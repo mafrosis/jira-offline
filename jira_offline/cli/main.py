@@ -8,26 +8,26 @@ import io
 import logging
 import os
 from pathlib import Path
-from typing import cast, Optional, Set, Tuple, Union
+from typing import cast, Iterable, Optional, Set, Tuple, Union
 
 import click
 from click.shell_completion import shell_complete  # pylint: disable=no-name-in-module
-from tabulate import tabulate
 
 from jira_offline.auth import authenticate
+from jira_offline.edit import edit_issue
 from jira_offline.cli.params import filter_option, force_option, global_options
 from jira_offline.cli.project import cli_project_list
 from jira_offline.config import get_default_user_config_filepath
 from jira_offline.config.user_config import write_default_user_config
-from jira_offline.create import create_issue, import_csv, import_jsonlines, patch_issue_from_dict
-from jira_offline.exceptions import (BadProjectMetaUri, EditorFieldParseFailed, EditorNoChanges,
-                                     FailedPullingProjectMeta, JiraApiError, NoInputDuringImport)
+from jira_offline.create import create_issue, import_csv, import_jsonlines
+from jira_offline.exceptions import (BadProjectMetaUri, FailedPullingProjectMeta, JiraApiError,
+                                     NoInputDuringImport)
 from jira_offline.jira import jira
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.sync import pull_issues, pull_single_project, push_issues
 from jira_offline.utils import find_project
-from jira_offline.utils.cli import (CustomfieldsAsOptions, parse_editor_result, prepare_df,
-                                    print_diff, print_list)
+from jira_offline.utils.cli import (CustomfieldsAsOptions, EditClickCommand, prepare_df, print_diff,
+                                    print_list)
 
 
 logger = logging.getLogger('jira')
@@ -382,8 +382,8 @@ def cli_new(_, projectkey: str, issuetype: str, summary: str, as_json: bool=Fals
     click.echo(output)
 
 
-@click.command(name='edit', cls=CustomfieldsAsOptions, no_args_is_help=True)
-@click.argument('key')
+@click.command(name='edit', cls=EditClickCommand, no_args_is_help=True)
+@click.argument('key', required=False)
 @click.option('--json', 'as_json', '-j', is_flag=True, help='Print output in JSON format')
 @click.option('--editor', is_flag=True, help='Free edit all issue fields in your shell editor')
 @click.option('--assignee', help='Username of person assigned to the issue')
@@ -396,68 +396,41 @@ def cli_new(_, projectkey: str, issuetype: str, summary: str, as_json: bool=Fals
 @click.option('--status', help='Valid status for the issue\'s type')
 @click.pass_context
 @global_options
+@filter_option
 def cli_edit(_, key: str, as_json: bool=False, editor: bool=False, **kwargs):
     '''
-    Edit one or more fields on an issue.
+    Edit one or more fields on one or more issues.
 
-    KEY  Jira issue key
+    KEY  Jira issue key (optional if --filter is supplied)
     '''
-    jira.load_issues()
-
-    if key not in jira:
-        click.echo('Unknown issue key', err=True)
+    if editor and jira.filter.is_set:
+        click.echo('Parameter --editor cannot be used in conjunction with --filter', err=True)
         raise click.Abort
 
-    issue = jira[key]
+    jira.load_issues()
 
-    if editor:
-        retry = 1
-        while retry <= 3:
-            try:
-                # Display interactively in $EDITOR
-                editor_result_raw = click.edit(tabulate(issue.render()))
-                if not editor_result_raw:
-                    raise EditorNoChanges
+    issues: Iterable[Issue]
 
-                # Parse the editor output into a dict
-                patch_dict = parse_editor_result(issue, editor_result_raw)
-                break
-
-            except (EditorFieldParseFailed, EditorNoChanges) as e:
-                logger.error(e)
-
-                if not click.confirm(f'Try again?  (retry {retry} of 3)'):
-                    return
-            finally:
-                retry += 1
+    if jira.filter.is_set:
+        issues = (jira[key] for key in jira.filter.apply().index)
     else:
-        # Validate epic parameters
-        if issue.issuetype == 'Epic':
-            if kwargs.get('epic_link'):
-                click.echo('Parameter --epic-link is ignored when modifing an Epic', err=True)
-                del kwargs['epic_link']
+        if key not in jira:
+            click.echo(f'Unknown issue key: {key}', err=True)
+            raise click.Abort
+
+        issues = [jira[key]]
+
+    for issue in issues:
+        edit_issue(issue, kwargs, editor)
+
+        if as_json:
+            # Display the edited issue as JSON
+            click.echo(issue.as_json())
         else:
-            if kwargs.get('epic_name'):
-                click.echo('Parameter --epic-name is ignored for anything other than an Epic', err=True)
-
-        # Validate sprint field is valid for the project
-        if 'sprint' in kwargs and not issue.project.sprints:
-            click.echo(f'Project {issue.project.key} has no sprints, ignoring --sprint parameter', err=True)
-            del kwargs['sprint']
-
-        patch_dict = kwargs
-
-    # Patch the issue with fields from the CLI or editor
-    patch_issue_from_dict(issue, patch_dict)
+            # Print diff of edited issue
+            print_diff(issue)
 
     jira.write_issues()
-
-    if as_json:
-        # Display the edited issue as JSON
-        click.echo(issue.as_json())
-    else:
-        # Print diff of edited issue
-        print_diff(issue)
 
 
 @click.command(name='export', no_args_is_help=True)
