@@ -40,7 +40,7 @@ def prepare_df(df: pd.DataFrame, fields: Optional[List[str]]=None, width: Option
     '''
     # Sort the output DataFrame by index. Also has side-effect of making a copy of the DataFrame, so
     # subsequent destructive changes can be made
-    df = df.sort_values(['epic_link', 'key'])
+    df = df.sort_values(['epic_link', 'updated'])
 
     # User-defined fields in the listing (or the default if undefined)
     if not fields:
