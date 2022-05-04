@@ -12,9 +12,14 @@ from typing import Any, cast, Dict, Hashable, List, Optional, Set
 import arrow
 import click
 import pandas as pd
+from rich import box
+from rich.table import Table
+from rich.syntax import Syntax
 from tabulate import tabulate
+
 import typing_inspect
 
+from jira_offline.cli.console import console
 from jira_offline.exceptions import (EditorRepeatFieldFound, FieldNotOnModelClass,
                                      InvalidLsFieldInConfig)
 from jira_offline.jira import jira
@@ -40,7 +45,7 @@ def prepare_df(df: pd.DataFrame, fields: Optional[List[str]]=None, width: Option
     '''
     # Sort the output DataFrame by index. Also has side-effect of making a copy of the DataFrame, so
     # subsequent destructive changes can be made
-    df = df.sort_values(['epic_link', 'key'])
+    df = df.sort_values(['epic_link', 'updated'])
 
     # User-defined fields in the listing (or the default if undefined)
     if not fields:
@@ -110,19 +115,18 @@ def prepare_df(df: pd.DataFrame, fields: Optional[List[str]]=None, width: Option
         raise InvalidLsFieldInConfig(e)
 
 
-def print_list(df: pd.DataFrame, verbose: bool=False, include_project_col: bool=False,
+def print_list(df: pd.DataFrame, include_project_col: bool=False,
                print_total: bool=False, print_filter: str=None) -> pd.DataFrame:
     '''
     Helper to print abbreviated list of issues
 
     Params:
         df:                   Issues to display in a DataFrame
-        verbose:              Display more information
         include_project_col:  Include the Issue.project field in a column
         print_total:          Print the total count of records as text
         print_filter:         Print the current filter applied to the listing
     '''
-    if verbose:
+    if console.width > 150:
         width = 200
     else:
         width = 60
@@ -131,20 +135,23 @@ def print_list(df: pd.DataFrame, verbose: bool=False, include_project_col: bool=
     print_table(df)
 
     if print_filter:
-        print_filter = f'Filter: {print_filter}'
+        console.print('[bold bright_white]Filter: [/]', end='')
+        console.print(Syntax(print_filter, 'sql', background_color='default'))
 
-        if print_total:
-            click.echo(f'Total issues {len(df)} ({print_filter.lower()})')
-        else:
-            click.echo(print_filter)
-
-    elif print_total:
-        click.echo(f'Total issues {len(df)}')
+    if print_total:
+        console.print(f'[bold bright_white]Total issues:[/] {len(df)}')
 
 
 def print_table(df: pd.DataFrame):
     '''Helper to pretty print dataframes'''
-    click.echo(tabulate(df, headers='keys', tablefmt='psql'))
+    # Add the index column header
+    headers = [friendly_title(Issue, df.index.name)]
+
+    # Include all remaining column headers
+    for f in df.columns.to_list():
+        headers.append(friendly_title(Issue, f))
+
+    click.echo(tabulate(df, headers, tablefmt='fancy_outline'))
 
 
 def print_diff(issue: Issue):
@@ -153,17 +160,22 @@ def print_diff(issue: Issue):
     '''
     if not issue.exists:
         # this issue was locally created offline so no diff is available; just do a plain print
-        click.echo(issue)
+        console.print(issue)
         return
 
-    # late import to avoid cyclic import
+    # Late import to avoid cyclic import
     from jira_offline.sync import build_update  # pylint: disable=import-outside-toplevel, cyclic-import
 
-    # run build_update to diff between the remote version of the Issue, and the locally modified one
+    # Run build_update to diff between the remote version of the Issue, and the locally modified one
     update_obj = build_update(Issue.deserialize(issue.original, issue.project), issue)
 
-    # print a handsome table
-    click.echo(tabulate(issue.render(modified_fields=update_obj.modified)))
+    # Print a handsome table
+    table = Table(show_header=False, box=box.HORIZONTALS, padding=(0, 1, 0, 0))
+
+    for row in issue.render(modified_fields=update_obj.modified):
+        table.add_row(*row)
+
+    console.print(table)
 
 
 def parse_editor_result(issue: Issue, editor_result_raw: str, conflicts: Optional[dict]=None) -> dict:

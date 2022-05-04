@@ -9,12 +9,12 @@ from typing import cast, Hashable, Optional, Set
 import click
 from tabulate import tabulate
 
+from jira_offline.cli.utils import parse_editor_result
 from jira_offline.exceptions import (EpicNotFound, EpicSearchStrUsedMoreThanOnce,
                                      EditorFieldParseFailed, EditorNoChanges, FieldNotOnModelClass)
 from jira_offline.jira import jira
 from jira_offline.models import CustomFields, Issue, ProjectMeta
 from jira_offline.utils import deserialize_single_issue_field, get_field_by_name
-from jira_offline.utils.cli import parse_editor_result
 from jira_offline.utils.serializer import DeserializeError, istype
 
 

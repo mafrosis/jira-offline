@@ -54,12 +54,16 @@ class Jira(collections.abc.MutableMapping):
         self.filter = IssueFilter()
 
 
-    def __getitem__(self, key: str) -> Issue:
+    def _get_full_key(self, key: str) -> str:
         # If key is an abbreviated UUID, load full key from the DataFrame
         full_key = self._df.index[(self._df.key.str.len() == 36) & self._df.index.str.startswith(key)].any()
 
         if full_key:
-            key = full_key
+            return cast(str, full_key)
+        return key
+
+    def __getitem__(self, key: str) -> Issue:
+        key = self._get_full_key(key)
 
         series = self._df.loc[key]
         return Issue.from_series(
@@ -68,10 +72,14 @@ class Jira(collections.abc.MutableMapping):
         )
 
     def __setitem__(self, key: str, issue: Issue):
+        key = self._get_full_key(key)
+
         series = issue.to_series()
         self._df.loc[key] = series
 
     def __delitem__(self, key: str):
+        key = self._get_full_key(key)
+
         self._df.drop(key, inplace=True)
 
     def __iter__(self):
@@ -124,10 +132,10 @@ class Jira(collections.abc.MutableMapping):
 
         # Convert all datetimes to UTC
         for col in ('created', 'updated'):
-            df[col] = df[col].dt.tz_convert('UTC')
+            df[col] = df[col].dt.tz_convert('UTC')  # pylint: disable=unsubscriptable-object,unsupported-assignment-operation
 
         # Extract ProjectMeta.key into a new string column named `project_key`
-        df.loc[:, 'project_key'] = [p.key if p else None for p in df['project']]
+        df.loc[:, 'project_key'] = [p.key if p else None for p in df['project']]  # pylint: disable=unsubscriptable-object
 
         # Drop columns for fields marked repr=False
         df.drop(
@@ -136,13 +144,13 @@ class Jira(collections.abc.MutableMapping):
         )
 
         # Render modified as a string for storage in the DataFrame
-        df['modified'] = df['modified'].apply(lambda x: json.dumps(x) if x else numpy.nan)
+        df['modified'] = df['modified'].apply(lambda x: json.dumps(x) if x else numpy.nan)  # pylint: disable=unsubscriptable-object,unsupported-assignment-operation
 
         # Add an empty column to for Issue.original
-        df['original'] = ''
+        df['original'] = ''  # pylint: disable=unsupported-assignment-operation
 
         # Append any new issues
-        self._df = pd.concat([ self._df, df[~df.key.isin(self._df.index)] ])
+        self._df = pd.concat([ self._df, df[~df.key.isin(self._df.index)] ])  # pylint: disable=unsubscriptable-object
 
         # In-place update for modified issues
         self._df.update(df)
@@ -534,6 +542,10 @@ class Jira(collections.abc.MutableMapping):
         Returns:
             The new Issue, including the Jira-generated key field
         '''
+        # Transitions are not valid for new issues
+        if 'transitions' in fields:
+            del fields['transitions']
+
         # Create new issue in Jira
         data = api_post(project, '/rest/api/2/issue', data={'fields': fields})
 

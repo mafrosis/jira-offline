@@ -13,10 +13,10 @@ import requests
 
 from tzlocal import get_localzone
 
-from jira_offline.jira import Jira
+from jira_offline.cli.utils import _get_issue, _get_project
 from jira_offline.edit import get_unused_customfields
+from jira_offline.jira import Jira
 from jira_offline.models import AppConfig, CustomFields, IssueType, ProjectMeta, Sprint
-from jira_offline.utils.cli import _get_issue, _get_project
 
 
 @pytest.fixture

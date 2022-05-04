@@ -20,7 +20,7 @@ from jira_offline.jira import Issue
 CLI_COMMAND_MAPPING = [
     (('config',), tuple(), 0),
     (('project', 'list'), tuple(), 0),
-    (('project', 'delete'), ('TEST',), 0),
+    (('project', 'delete'), ('--force', 'TEST',), 0),
     (('project', 'update-auth'), ('TEST',), 0),
     (('ls',), tuple(), 1),
     (('show',), ('TEST-71',), 1),
@@ -58,7 +58,7 @@ def test_main_smoketest(mock_write_config, mock_auth1, mock_auth2, mock_push_iss
 
     with mock.patch('jira_offline.cli.main.jira', mock_jira), \
             mock.patch('jira_offline.cli.project.jira', mock_jira), \
-            mock.patch('jira_offline.utils.cli.jira', mock_jira), \
+            mock.patch('jira_offline.cli.utils.jira', mock_jira), \
             mock.patch('jira_offline.jira.jira', mock_jira):
         result = runner.invoke(cli, [*command, *params])
 

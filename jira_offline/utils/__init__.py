@@ -137,6 +137,11 @@ def render_dataclass_field(cls: type, field_name: str, value: Any) -> Tuple[str,
     try:
         f = get_field_by_name(cls, field_name)
 
+        # Execute a pre-render util function on the field value, if one is defined
+        prerender_func = f.metadata.get('prerender_func')
+        if callable(prerender_func):
+            value = prerender_func(value)
+
         # Determine the origin type for this field (thus handling Optional[type])
         type_ = get_base_type(cast(Hashable, f.type))
 
@@ -152,48 +157,34 @@ def render_dataclass_field(cls: type, field_name: str, value: Any) -> Tuple[str,
 
 
 def render_issue_field(
-        issue: 'Issue', field_name: str, value: Any, title_prefix: str=None, value_prefix: str=None,
-        color: str=None
+        issue: 'Issue', field_name: str, value: Any, value_template: Optional[str]=None,
+        diff: Optional[str]=None
     ) -> Tuple[str, str]:
     '''
     A slighty more complicated single-field pretty formatting function, specifically for fields on an
     instance of the Issue dataclass.
 
     Params:
-        issue:         Instance of Issue class with the field to render
-        field_name:    Issue dataclass attribute name to render
-        value:         Value to be rendered, the type of the dataclass.field
-        title_prefix:  Arbitrary string to be prepended to the title
-        value_prefix:  Arbitrary string to be prepended to the field value
-        color:         Render all output in this colour
+        issue:           Instance of Issue class with the field to render
+        field_name:      Issue dataclass attribute name to render
+        value:           Value to be rendered, the type of the dataclass.field
+        value_template:  Optional f-string template to use to format the value
+        diff:            A single char to prepend the field title, when rendering a diff
     Returns:
         Pretty field title, formatted value
     '''
-    try:
-        f = get_field_by_name(cast(Hashable, type(issue)), field_name)
-
-        # Execute a pre-render util function on the field value, if one is defined
-        prerender_func = f.metadata.get('prerender_func')
-        if callable(prerender_func):
-            value = prerender_func(value)
-
-    except FieldNotOnModelClass:
-        # Extended fields do not have an attribute on the Issue dataclass; see `render_dataclass_field`
-        pass
-
     title, value = render_dataclass_field(type(issue), field_name, value)
 
-    if title_prefix:
-        title = f'{title_prefix}{title}'
+    if value_template:
+        value = value_template.format(value)
 
-    if value_prefix:
-        value = f'{value_prefix}{value}'
+    if diff:
+        if diff == '+':
+            return f'[green]+{title}[/]', f'[green]{value}[/]'
+        else:
+            return f'[red]-{title}[/]', f'[red]{value}[/]'
 
-    if color:
-        title = click.style(f'{title}', fg=color)
-        value = click.style(f'{value}', fg=color)
-
-    return title, value
+    return f'[bright_black]{title}[/]', value
 
 
 def render_value(value: Any, type_: Optional[type]=None) -> str:

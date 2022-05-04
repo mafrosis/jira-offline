@@ -15,8 +15,11 @@ from click.shell_completion import shell_complete  # pylint: disable=no-name-in-
 
 from jira_offline.auth import authenticate
 from jira_offline.edit import edit_issue
+from jira_offline.cli.console import console
 from jira_offline.cli.params import filter_option, force_option, global_options
 from jira_offline.cli.project import cli_project_list
+from jira_offline.cli.utils import (CustomfieldsAsOptions, EditClickCommand, prepare_df, print_diff,
+                                    print_list)
 from jira_offline.config import get_default_user_config_filepath
 from jira_offline.config.user_config import write_default_user_config
 from jira_offline.create import create_issue, import_csv, import_jsonlines
@@ -26,8 +29,6 @@ from jira_offline.jira import jira
 from jira_offline.models import Issue, ProjectMeta
 from jira_offline.sync import pull_issues, pull_single_project, push_issues
 from jira_offline.utils import find_project
-from jira_offline.utils.cli import (CustomfieldsAsOptions, EditClickCommand, prepare_df, print_diff,
-                                    print_list)
 
 
 logger = logging.getLogger('jira')
@@ -52,10 +53,9 @@ def cli_show(_, key: str, as_json: bool=False):
 
     if as_json:
         output = jira[key].as_json()
+        click.echo(output)
     else:
-        output = str(jira[key])
-
-    click.echo(output)
+        console.print(jira[key])
 
 
 @click.command(name='ls')
@@ -63,7 +63,7 @@ def cli_show(_, key: str, as_json: bool=False):
 @click.pass_context
 @global_options
 @filter_option
-def cli_ls(ctx: click.core.Context, as_json: bool=False):
+def cli_ls(_, as_json: bool=False):
     '''List Issues on the CLI.'''
     jira.load_issues()
 
@@ -81,7 +81,6 @@ def cli_ls(ctx: click.core.Context, as_json: bool=False):
     else:
         print_list(
             jira.df,
-            verbose=ctx.obj.verbose,
             include_project_col=len(jira.config.projects) > 1,
             print_total=True,
             print_filter=jira.filter.filter,
@@ -448,12 +447,11 @@ def cli_export(_, directory: str):
 
     df = prepare_df(jira.df, width=None, include_long_date=True, include_project_col=False)
 
+    output_file = os.path.join(directory, datetime.datetime.now().strftime('jira_export_%Y-%m-%d.csv'))
+
     # Simply write the filtered DataFrame to CSV
-    df.to_csv(
-        os.path.join(directory, datetime.datetime.now().strftime('jira_export_%Y-%m-%d.csv')),
-        index=True,
-        header=True,
-    )
+    df.to_csv(output_file, index=True, header=True)
+    print(f' {output_file}')
 
 
 @click.command(name='import', no_args_is_help=True)

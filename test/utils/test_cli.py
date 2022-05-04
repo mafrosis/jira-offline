@@ -6,7 +6,7 @@ import pytest
 from conftest import not_raises
 from fixtures import ISSUE_1
 from jira_offline.jira import Issue
-from jira_offline.utils.cli import CustomfieldsAsOptions, prepare_df, ValidCustomfield
+from jira_offline.cli.utils import CustomfieldsAsOptions, prepare_df, ValidCustomfield
 
 
 def test_print_list__display_ls_fields_config_rendered_in_listing(mock_jira, project):
@@ -19,7 +19,7 @@ def test_print_list__display_ls_fields_config_rendered_in_listing(mock_jira, pro
 
     mock_jira.config.user_config.display.ls_fields = {'summary'}
 
-    with mock.patch('jira_offline.utils.cli.jira', mock_jira), \
+    with mock.patch('jira_offline.cli.utils.jira', mock_jira), \
         mock.patch('jira_offline.jira.jira', mock_jira):
         df = prepare_df(mock_jira.df)
 
@@ -34,14 +34,14 @@ def test_print_list__display_ls_fields_defaults_rendered_in_listing(mock_jira, p
     # add fixture to Jira dict
     mock_jira['TEST-71'] = Issue.deserialize(ISSUE_1, project)
 
-    with mock.patch('jira_offline.utils.cli.jira', mock_jira), \
+    with mock.patch('jira_offline.cli.utils.jira', mock_jira), \
         mock.patch('jira_offline.jira.jira', mock_jira):
         df = prepare_df(mock_jira.df)
 
     assert set(df.columns) == set(['issuetype', 'epic_link', 'summary', 'status', 'assignee', 'updated'])
 
 
-@mock.patch('jira_offline.utils.cli.ValidCustomfield')
+@mock.patch('jira_offline.cli.utils.ValidCustomfield')
 def test_click_customfieldsasoptions__configured_customfields_become_options(mock_ValidCustomfield, mock_jira):
     '''
     Ensure ValidCustomfield click.Command instances are created for configured customfields
@@ -54,7 +54,7 @@ def test_click_customfieldsasoptions__configured_customfields_become_options(moc
 
     assert len(kwargs['params']) == 3
 
-    with mock.patch('jira_offline.utils.cli.jira', mock_jira):
+    with mock.patch('jira_offline.cli.utils.jira', mock_jira):
         CustomfieldsAsOptions(*tuple(), **kwargs)
 
     assert mock_ValidCustomfield.called_once_with(['--epic-link'], '')
@@ -63,8 +63,8 @@ def test_click_customfieldsasoptions__configured_customfields_become_options(moc
     assert mock_ValidCustomfield.called_once_with(['--arbitrary-user-defined-field'], '')
 
 
-@mock.patch('jira_offline.utils.cli._get_project')
-@mock.patch('jira_offline.utils.cli._get_issue')
+@mock.patch('jira_offline.cli.utils._get_project')
+@mock.patch('jira_offline.cli.utils._get_issue')
 def test_validcustomfield__calls_get_issue_when_key_supplied(mock_validcustomfield_get_issue, mock_validcustomfield_get_project, mock_jira):
     '''
     Ensure `ValidCustomfield.handle_parse_result` calls `_get_issue`, when an issue key is supplied
@@ -76,7 +76,7 @@ def test_validcustomfield__calls_get_issue_when_key_supplied(mock_validcustomfie
 
     command = CustomfieldsAsOptions(*tuple(), **{'name': 'edit', 'params': []})
 
-    with mock.patch('jira_offline.utils.cli.jira', mock_jira):
+    with mock.patch('jira_offline.cli.utils.jira', mock_jira):
         ValidCustomfield(
             ['--arbitrary-user-defined-field'], help=''
         ).handle_parse_result(
@@ -88,8 +88,8 @@ def test_validcustomfield__calls_get_issue_when_key_supplied(mock_validcustomfie
     assert not mock_validcustomfield_get_project.called
 
 
-@mock.patch('jira_offline.utils.cli._get_project')
-@mock.patch('jira_offline.utils.cli._get_issue')
+@mock.patch('jira_offline.cli.utils._get_project')
+@mock.patch('jira_offline.cli.utils._get_issue')
 def test_validcustomfield_calls__get_project_when_projectkey_supplied(mock_validcustomfield_get_issue, mock_validcustomfield_get_project, mock_jira):
     '''
     Ensure `ValidCustomfield.handle_parse_result` calls `_get_project`, when a project key is supplied
@@ -101,7 +101,7 @@ def test_validcustomfield_calls__get_project_when_projectkey_supplied(mock_valid
 
     command = CustomfieldsAsOptions(*tuple(), **{'name': 'edit', 'params': []})
 
-    with mock.patch('jira_offline.utils.cli.jira', mock_jira):
+    with mock.patch('jira_offline.cli.utils.jira', mock_jira):
         ValidCustomfield(
             ['--arbitrary-user-defined-field'], help=''
         ).handle_parse_result(
@@ -129,7 +129,7 @@ def test_validcustomfield__raises_error_on_customfield_supplied_but_not_mapped_t
 
     command = CustomfieldsAsOptions(*tuple(), **{'name': 'new', 'params': []})
 
-    with mock.patch('jira_offline.utils.cli.jira', mock_jira):
+    with mock.patch('jira_offline.cli.utils.jira', mock_jira):
         with pytest.raises(click.exceptions.UsageError):
             ValidCustomfield(
                 ['--arbitrary-user-defined-field'], help=''
@@ -156,7 +156,7 @@ def test_validcustomfield__succeeds_on_customfield_supplied_and_mapped_to_projec
 
     command = CustomfieldsAsOptions(*tuple(), **{'name': 'new', 'params': []})
 
-    with mock.patch('jira_offline.utils.cli.jira', mock_jira):
+    with mock.patch('jira_offline.cli.utils.jira', mock_jira):
         with not_raises(click.exceptions.UsageError):
             ValidCustomfield(
                 ['--arbitrary-user-defined-field'], help=''

@@ -975,6 +975,38 @@ def test_jira__new_issue__removes_temp_key_when_new_post_successful(mock_api_pos
     assert issue_new.key not in mock_jira_core
 
 
+@mock.patch('jira_offline.jira.api_post')
+def test_jira__new_issue__ignores_transitions(mock_api_post, mock_jira_core, project):
+    '''
+    Ensure new_issue method ignores "transitions" key passed in fields
+    '''
+    # Setup the Jira DataFrame
+    with mock.patch('jira_offline.jira.jira', mock_jira_core):
+        issue_new = Issue.deserialize(ISSUE_NEW, project)
+        issue_new.commit()
+
+    # Don't write to disk during tests
+    mock_jira_core.write_issues = mock.Mock()
+
+    # Mock the return from fetch_issue() which happens after a successful new_issue() call
+    issue_1 = Issue.deserialize(ISSUE_1, project)
+    mock_jira_core.fetch_issue = mock.Mock(return_value=issue_1)
+
+    mock_jira_core.new_issue(
+        project,
+        fields={
+            'project': {'id': project.jira_id},
+            'summary': 'A summary',
+            'issuetype': {'name': 'Story'},
+            'transitions': {'egg': 'bacon'},
+        },
+        offline_temp_key=issue_new.key,
+    )
+
+    # Assert new key returned from Jira API has been added
+    assert 'transitions' not in mock_api_post.call_args_list[0][1]['data']['fields']
+
+
 @pytest.mark.parametrize('link_name', [
     'epic_link',
     'parent_link'
