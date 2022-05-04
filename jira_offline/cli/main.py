@@ -447,12 +447,11 @@ def cli_export(_, directory: str):
 
     df = prepare_df(jira.df, width=None, include_long_date=True, include_project_col=False)
 
+    output_file = os.path.join(directory, datetime.datetime.now().strftime('jira_export_%Y-%m-%d.csv'))
+
     # Simply write the filtered DataFrame to CSV
-    df.to_csv(
-        os.path.join(directory, datetime.datetime.now().strftime('jira_export_%Y-%m-%d.csv')),
-        index=True,
-        header=True,
-    )
+    df.to_csv(output_file, index=True, header=True)
+    print(f' {output_file}')
 
 
 @click.command(name='import', no_args_is_help=True)
