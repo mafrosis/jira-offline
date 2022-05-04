@@ -534,6 +534,10 @@ class Jira(collections.abc.MutableMapping):
         Returns:
             The new Issue, including the Jira-generated key field
         '''
+        # Transitions are not valid for new issues
+        if 'transitions' in fields:
+            del fields['transitions']
+
         # Create new issue in Jira
         data = api_post(project, '/rest/api/2/issue', data={'fields': fields})
 
